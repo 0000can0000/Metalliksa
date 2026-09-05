@@ -4,6 +4,28 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:23 — Commit and push industrial decision engine on `yeni1`
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User required always commit-and-push. Land Priority 2 decision engine on `yeni1` and push to `origin`.
+- **Done**: Rule 7 already in `RULES.md`. Staging industrial decision files, committing, pushing `yeni1`.
+- **Where we left off**: After this push, `yeni1` should match origin for this change set.
+- **Files**: `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/utils/lpbfIndustrialDecision.ts`, `src/components/Additive3DDistortionLab.tsx`, `src/components/LpbfBuildJobRail.tsx`, `src/services/pythonComputationService.ts`, `src/components/3d-distortion-lab/index.ts`, `sonkayıtlar/LOG.md`
+- **Tests**: Prior `tsc --noEmit` PASS; this step is git only.
+
+---
+
+## 2026-09-05 19:16 — Priority 2: industrial LPBF decision engine (Python)
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Surface industrial decisions (P–v safety, printability, warpage, literature coupon) with Python Goldak + slicer as the main 3D LPBF tab engine.
+- **Done**: Added `IndustrialLPBFDecisionLab` as default sub-tab; Build Job rail step 3 opens it; `solveSTLSlicerBuildTime` on the computation service; verdict uses W/h, D/t, keyhole, recoater, distortion index, nearest DOI record.
+- **Where we left off**: `tsc --noEmit` PASS. Python thermal + slicer smoke tests PASS. UI click-through not done (no browser tools). IN718 ground-truth array is still empty. Decision lab uses CAD preset (nozzle unless `cadAssetName` hints otherwise), not the live uploaded triangle buffer.
+- **Files**: `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/utils/lpbfIndustrialDecision.ts`, `src/components/Additive3DDistortionLab.tsx`, `src/components/LpbfBuildJobRail.tsx`, `src/services/pythonComputationService.ts`, `src/components/3d-distortion-lab/index.ts`
+- **Tests**: `npx tsc --noEmit` — PASS; `py -3 python/lpbf_thermal_solver.py` Ti-6Al-4V 200 W / 900 mm/s — success, LoF Pass, ΔH/hₛ 27.58; slicer nozzle preset — success, 8.13 h build.
+
+---
+
 ## 2026-09-05 19:42 — Inverse LPBF unused import + Proof 008 store binding
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

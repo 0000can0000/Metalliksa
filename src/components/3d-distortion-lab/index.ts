@@ -22,6 +22,7 @@ export { CADStlSlicerDistortionLab } from "./CADStlSlicerDistortionLab";
 export type { CADModelType, SlicerHeatmapMode, BoundaryConditionMode } from "./CADStlSlicerDistortionLab";
 export { BasicSTLSlicerLab } from "./BasicSTLSlicerLab";
 export type { BasicSTLSlicerLabProps } from "./BasicSTLSlicerLab";
+export { IndustrialLPBFDecisionLab } from "./IndustrialLPBFDecisionLab";
 export { LPBFGroundTruthDataLab } from "./LPBFGroundTruthDataLab";
 export type { LPBFGroundTruthDataLabProps } from "./LPBFGroundTruthDataLab";
 

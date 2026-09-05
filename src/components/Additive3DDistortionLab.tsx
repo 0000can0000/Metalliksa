@@ -50,6 +50,7 @@ import {
   CADStlSlicerDistortionLab,
   BasicSTLSlicerLab,
   LPBFGroundTruthDataLab,
+  IndustrialLPBFDecisionLab,
 } from "./3d-distortion-lab";
 import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
 import { LpbfBuildJobRail } from "./LpbfBuildJobRail";
@@ -344,6 +345,7 @@ export const LPBF_ALLOY_PRESETS: LpbfAlloyPreset[] = [
 export const Additive3DDistortionLab: React.FC = () => {
   // Navigation Sub-tab
   const [activeSubTab, setActiveSubTab] = useState<
+    | "industrial-decision"
     | "ground-truth-foundation"
     | "basic-stl-slicer"
     | "3d-macro-distortion"
@@ -355,7 +357,7 @@ export const Additive3DDistortionLab: React.FC = () => {
     | "anisotropic-fatigue-estimator"
     | "operando-synchrotron"
     | "2d-thermal-melt-pool"
-  >("basic-stl-slicer");
+  >("industrial-decision");
 
   // 3D Canvas Ref
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -1074,6 +1076,22 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 bg-[#090e18] border border-[#1e2d46] rounded-2xl overflow-x-auto">
         <button
           type="button"
+          onClick={() => setActiveSubTab("industrial-decision")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition cursor-pointer ${
+            activeSubTab === "industrial-decision"
+              ? "bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.35)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4 text-emerald-400" />
+          <span>Industrial Decision Engine</span>
+          <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-300 border border-emerald-400/20 hidden lg:inline-block">
+            Python P–v
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveSubTab("ground-truth-foundation")}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition cursor-pointer ${
             activeSubTab === "ground-truth-foundation"
@@ -1249,7 +1267,12 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
         </button>
       </div>
 
-      {activeSubTab === "ground-truth-foundation" ? (
+      {activeSubTab === "industrial-decision" ? (
+        <IndustrialLPBFDecisionLab
+          onOpenSlicer={() => setActiveSubTab("basic-stl-slicer")}
+          onOpenGroundTruth={() => setActiveSubTab("ground-truth-foundation")}
+        />
+      ) : activeSubTab === "ground-truth-foundation" ? (
         <LPBFGroundTruthDataLab
           onApplyParametersToSimulation={(p) => {
             updateLpbfProcess({

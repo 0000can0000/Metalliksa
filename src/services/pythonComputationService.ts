@@ -1370,6 +1370,34 @@ class PythonComputationService {
   }
 
   /**
+   * CAD/STL hatch discretization and LPBF build-time estimate (galvo + recoater).
+   */
+  async solveSTLSlicerBuildTime(payload: {
+    preset: string;
+    material: string;
+    laserPower_W: number;
+    scanSpeed_mms: number;
+    layerThickness_um: number;
+    hatchSpacing_um: number;
+    recoatTimePerLayer_s?: number;
+    hatchStrategy?: string;
+  }): Promise<PythonSTLSlicerResult> {
+    const res = await fetch("/api/python/stl-slicer-build-time", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recoatTimePerLayer_s: 9,
+        hatchStrategy: "meander",
+        ...payload,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`STL slicer / build-time proxy error: HTTP ${res.status}`);
+    }
+    return await res.json();
+  }
+
+  /**
    * Automatically identify the most likely equivalent circuit components from uploaded impedance data
    * using the Bisquert Transmission Line Model (TLM) in the Python computation service.
    */
@@ -1489,6 +1517,29 @@ class PythonComputationService {
     });
     return await res.json();
   }
+}
+
+export interface PythonSTLSlicerResult {
+  success?: boolean;
+  pythonDurationMs?: number;
+  meshMetrics?: {
+    sizeX_mm: number;
+    sizeY_mm: number;
+    sizeZ_mm: number;
+    estimatedSolidVolume_cm3: number;
+    estimatedPartMass_g: number;
+    triangleCount: number;
+  };
+  buildTimeSummary?: {
+    totalLayers: number;
+    totalBuildTime_hr: number;
+    totalBuildTime_min: number;
+    totalLaserTime_hr: number;
+    totalRecoatTime_hr: number;
+    laserDutyRatio_pct: number;
+    peakLayerArea_mm2: number;
+    meanLayerArea_mm2: number;
+  };
 }
 
 export interface PythonLPBFResult {

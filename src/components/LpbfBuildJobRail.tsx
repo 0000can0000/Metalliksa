@@ -13,8 +13,8 @@ export const LPBF_BUILD_JOB_STAGES: {
 }[] = [
   { id: "cad", step: "1", label: "STL / CAD", subTab: "basic-stl-slicer" },
   { id: "scan", step: "2", label: "Slice + Scan", subTab: "multi-track-accumulation" },
-  { id: "process", step: "3", label: "P–v–h–t–d", subTab: "3d-cross-section-melt-pool" },
-  { id: "regime", step: "4", label: "Regime", subTab: "2d-thermal-melt-pool" },
+  { id: "process", step: "3", label: "Decision (Python)", subTab: "industrial-decision" },
+  { id: "regime", step: "4", label: "Melt pool", subTab: "3d-cross-section-melt-pool" },
   { id: "defects", step: "5", label: "Pores / Distortion / Ṫ", subTab: "3d-macro-distortion" },
   { id: "record", step: "6", label: "DOI Specimen", subTab: "ground-truth-foundation" },
 ];
@@ -22,7 +22,8 @@ export const LPBF_BUILD_JOB_STAGES: {
 export function subTabToBuildJobStage(subTab: string): LpbfBuildJobStage {
   if (subTab === "basic-stl-slicer") return "cad";
   if (subTab === "multi-track-accumulation") return "scan";
-  if (subTab === "3d-cross-section-melt-pool" || subTab === "rosenthal-laser-profile") return "process";
+  if (subTab === "industrial-decision") return "process";
+  if (subTab === "3d-cross-section-melt-pool" || subTab === "rosenthal-laser-profile") return "regime";
   if (subTab === "2d-thermal-melt-pool" || subTab === "operando-synchrotron") return "regime";
   if (
     subTab === "3d-macro-distortion" ||

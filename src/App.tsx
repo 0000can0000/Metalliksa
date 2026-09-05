@@ -118,9 +118,9 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
     subTabs: [
       {
         id: "uq-lab",
-        label: "UQ-Lab: Quasi-Monte Carlo & MMPDS Allowables",
+        label: "UQ-Lab: Quasi-Monte Carlo & coupon scatter",
         shortLabel: "UQ-Lab",
-        sublabel: "Quasi-Monte Carlo Sobol Sampling, MMPDS-01 A/B Allowables & Saltelli Global Sensitivity",
+        sublabel: "Sobol QMC sampling; MMPDS A/B only for uploaded coupons",
         icon: ShieldCheck,
         badge: "QMC Sobol / MMPDS",
         category: "Uncertainty & Allowables",
@@ -304,11 +304,11 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
   {
     id: "certification",
     stepNumber: "03",
-    label: "3. Certification & Qualification",
-    shortLabel: "3. Certification",
-    description: "Sample Digital Twin, AS9100 / NADCAP PDF Hub, MMPDS & AI Copilot",
+    label: "3. Screening & Qualification",
+    shortLabel: "3. Screening",
+    description: "Sample Digital Twin, audit report templates, MMPDS screening & AI Copilot",
     icon: ShieldCheck,
-    badge: "AS9100 / MMPDS / NADCAP",
+    badge: "Screening templates",
     defaultTab: "digital-twin",
     subTabs: [
       {
@@ -322,18 +322,18 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
       },
       {
         id: "aerospace-pdf-audit",
-        label: "AS9100 / NADCAP / ASTM Official PDF Hub",
-        shortLabel: "Official PDF Reports",
-        sublabel: "One-Click Airworthiness CoC, Multi-Laboratory PDF Export",
+        label: "Audit report templates (demo)",
+        shortLabel: "Audit templates",
+        sublabel: "Screening PDFs and protocol checklists (not NADCAP / airworthiness)",
         icon: Award,
-        badge: "AS9100 / NADCAP",
+        badge: "Demo templates",
         category: "Aerospace Audit",
       },
       {
         id: "qualification",
-        label: "MMPDS & Standard Qualification Engine",
-        shortLabel: "MMPDS Qualification",
-        sublabel: "A/B-Basis Statistical Allowables, MIL-STD-810H, NATO STANAG",
+        label: "MMPDS screening & protocol checklist",
+        shortLabel: "MMPDS screening",
+        sublabel: "Coupon stats, MIL-STD-810H / AS9100 / STANAG checklist templates",
         icon: ShieldCheck,
         badge: "MIL-HDBK-5",
         category: "Standard Allowables",

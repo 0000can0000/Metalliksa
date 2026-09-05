@@ -12,6 +12,13 @@
    - Never commit models or directives to this file or code without first passing:
      - **Academic Validation**: Grounded in peer-reviewed additive manufacturing / metallurgical literature (e.g., Rosenthal moving heat source, Eagar-Tsai 3D solution, normalized enthalpy, ASTM/ISO standard testing methods).
      - **Functional Validation**: Clean `tsc --noEmit` validation, `npm run build` production bundling, and entries logged in [`PROOF.md`](./PROOF.md).
+3. **Session Self-Record (`sonkayıtlar`)**:
+   - After the task is done **and** tests for that task are finished, the agent **must write a record of itself** in [`sonkayıtlar/LOG.md`](./sonkayıtlar/LOG.md) (newest first). See Rule 5 in [`RULES.md`](./RULES.md).
+   - Do not mark the job complete until that log entry exists.
+4. **End-of-Job User Briefing**:
+   - The final message must state **what was done** and **where the user stands** (finished vs remaining, next step). See Rule 6 in [`RULES.md`](./RULES.md).
+5. **Commit and Push to GitHub**:
+   - After any completed change set, commit and push to `origin` on the current branch. See Rule 7 in [`RULES.md`](./RULES.md). Do not leave finished work uncommitted.
 
 ---
 

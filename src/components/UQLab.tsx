@@ -66,8 +66,10 @@ import {
   calculateMMPDSToleranceFactor,
   generateSyntheticCoupons,
   parseCSVToCoupons,
-  exportCouponsToCSV
+  exportCouponsToCSV,
+  isSyntheticCouponDataset
 } from "./uqLabData";
+import { ENGINEERING_ESTIMATE_DISCLAIMER, EngineeringEstimateBanner, SYNTHETIC_COUPON_MMPDS_NOTICE } from "../utils/engineeringDisclaimer";
 
 interface UQLabProps {
   onNavigate?: (tabId: string) => void;
@@ -136,6 +138,9 @@ export function UQLab({ onNavigate }: UQLabProps) {
     return computeMMPDSEmpiricalStats(values, specMin, lotIds);
   }, [activeDataset, selectedProperty]);
 
+  const isSyntheticCoupons = isSyntheticCouponDataset(activeDataset);
+  const showMmpdsAllowables = !isSyntheticCoupons;
+
   // --------------------------------------------------------------------------
   // RUN PYTHON QMC SOBOL SOLVER
   // --------------------------------------------------------------------------
@@ -196,7 +201,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
       }
 
       setDatasets((prev) =>
-        prev.map((d) => (d.id === activeDataset.id ? { ...d, coupons: parsedCoupons } : d))
+        prev.map((d) => (d.id === activeDataset.id ? { ...d, coupons: parsedCoupons, couponSource: "uploaded" } : d))
       );
       setCouponPage(1);
     };
@@ -230,7 +235,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
     });
 
     setDatasets((prev) =>
-      prev.map((d) => (d.id === activeDataset.id ? { ...d, coupons: newCoupons } : d))
+      prev.map((d) => (d.id === activeDataset.id ? { ...d, coupons: newCoupons, couponSource: "synthetic" } : d))
     );
     setIsSynthesizeModalOpen(false);
     setCouponPage(1);
@@ -337,7 +342,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1.5 shadow-sm">
                 <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-                MMPDS-01 Section 9 / MIL-HDBK-5J Specification Standard
+                MMPDS-01 Section 9 methods (screening)
               </span>
 
               {samplingMethod === "sobol_qmc" ? (
@@ -358,15 +363,15 @@ export function UQLab({ onNavigate }: UQLabProps) {
 
             <h1 className="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight flex items-center gap-2.5">
               <ShieldCheck className="w-7 h-7 text-sky-400" />
-              UQ-Lab: Quasi-Monte Carlo & MMPDS-01 Allowables
+              UQ-Lab: Quasi-Monte Carlo & Coupon Scatter
             </h1>
 
             <p className="text-xs md:text-sm text-slate-400 max-w-3xl leading-relaxed">
               Propagate composition tolerances and thermal scatter using{" "}
-              <strong className="text-amber-300">Quasi-Monte Carlo Sobol low-discrepancy sequences</strong> to calculate certified{" "}
-              <strong className="text-sky-300">A-Basis (T99) & B-Basis (T90) design allowables</strong>, evaluate coupon test batches, and conduct{" "}
-              <strong className="text-emerald-300">Saltelli-Sobol global variance decomposition</strong>.
+              <strong className="text-amber-300">Quasi-Monte Carlo Sobol sequences</strong> for teaching and screening.
+              MMPDS A/B handbook allowables are shown only for uploaded coupon CSVs — not for synthetic lots.
             </p>
+            <EngineeringEstimateBanner className="mt-3 max-w-3xl" />
           </div>
 
           {/* Action Buttons */}
@@ -617,24 +622,32 @@ export function UQLab({ onNavigate }: UQLabProps) {
           <div className="flex items-center justify-between text-[11px] font-mono text-sky-400">
             <span className="flex items-center gap-1.5 font-bold">
               <ShieldCheck className="w-3.5 h-3.5" />
-              A-BASIS ALLOWABLE (T₉₉)
-            </span>
-            <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px]">
-              k_A = {empiricalStats.mmpds_kA}
+              A-BASIS (SCREENING)
             </span>
           </div>
 
-          <div className="text-2xl font-extrabold text-sky-200 tracking-tight">
-            {empiricalStats.aBasisAllowable}{" "}
-            <span className="text-xs font-normal text-slate-400">{propertyMeta.unit}</span>
-          </div>
-
-          <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between pt-1 border-t border-sky-900/40">
-            <span>95% CI: [{empiricalStats.aBasisAllowable95CI[0]}–{empiricalStats.aBasisAllowable95CI[1]}]</span>
-            <span className={empiricalStats.marginOfSafetyPct >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-              MS: {empiricalStats.marginOfSafetyPct > 0 ? `+${empiricalStats.marginOfSafetyPct}%` : `${empiricalStats.marginOfSafetyPct}%`}
-            </span>
-          </div>
+          {showMmpdsAllowables ? (
+            <>
+              <div className="text-2xl font-extrabold text-sky-200 tracking-tight">
+                {empiricalStats.aBasisAllowable}{" "}
+                <span className="text-xs font-normal text-slate-400">{propertyMeta.unit}</span>
+              </div>
+              <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between pt-1 border-t border-sky-900/40">
+                <span>95% CI: [{empiricalStats.aBasisAllowable95CI[0]}–{empiricalStats.aBasisAllowable95CI[1]}]</span>
+                <span className={empiricalStats.marginOfSafetyPct >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                  MS: {empiricalStats.marginOfSafetyPct > 0 ? `+${empiricalStats.marginOfSafetyPct}%` : `${empiricalStats.marginOfSafetyPct}%`}
+                </span>
+              </div>
+              <p className="text-[10px] text-amber-200/80 pt-1">{ENGINEERING_ESTIMATE_DISCLAIMER}</p>
+            </>
+          ) : (
+            <>
+              <div className="text-lg font-extrabold text-amber-200 tracking-tight">Not applicable</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-sky-900/40">
+                {SYNTHETIC_COUPON_MMPDS_NOTICE}
+              </p>
+            </>
+          )}
         </div>
 
         {/* B-BASIS ALLOWABLE */}
@@ -642,22 +655,30 @@ export function UQLab({ onNavigate }: UQLabProps) {
           <div className="flex items-center justify-between text-[11px] font-mono text-emerald-400">
             <span className="flex items-center gap-1.5 font-bold">
               <ShieldCheck className="w-3.5 h-3.5" />
-              B-BASIS ALLOWABLE (T₉₀)
-            </span>
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">
-              k_B = {empiricalStats.mmpds_kB}
+              B-BASIS (SCREENING)
             </span>
           </div>
 
-          <div className="text-2xl font-extrabold text-emerald-200 tracking-tight">
-            {empiricalStats.bBasisAllowable}{" "}
-            <span className="text-xs font-normal text-slate-400">{propertyMeta.unit}</span>
-          </div>
-
-          <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between pt-1 border-t border-emerald-900/40">
-            <span>95% CI: [{empiricalStats.bBasisAllowable95CI[0]}–{empiricalStats.bBasisAllowable95CI[1]}]</span>
-            <span className="text-emerald-400">90% @ 95% Conf</span>
-          </div>
+          {showMmpdsAllowables ? (
+            <>
+              <div className="text-2xl font-extrabold text-emerald-200 tracking-tight">
+                {empiricalStats.bBasisAllowable}{" "}
+                <span className="text-xs font-normal text-slate-400">{propertyMeta.unit}</span>
+              </div>
+              <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between pt-1 border-t border-emerald-900/40">
+                <span>95% CI: [{empiricalStats.bBasisAllowable95CI[0]}–{empiricalStats.bBasisAllowable95CI[1]}]</span>
+                <span className="text-emerald-400">90% @ 95% Conf</span>
+              </div>
+              <p className="text-[10px] text-amber-200/80 pt-1">{ENGINEERING_ESTIMATE_DISCLAIMER}</p>
+            </>
+          ) : (
+            <>
+              <div className="text-lg font-extrabold text-amber-200 tracking-tight">Not applicable</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-emerald-900/40">
+                {SYNTHETIC_COUPON_MMPDS_NOTICE}
+              </p>
+            </>
+          )}
         </div>
 
         {/* STATISTICAL MEAN & SCATTER */}
@@ -696,14 +717,16 @@ export function UQLab({ onNavigate }: UQLabProps) {
           <div className="text-2xl font-extrabold text-purple-200 tracking-tight">
             {empiricalStats.cpk}{" "}
             <span className="text-xs font-normal text-slate-400">
-              {empiricalStats.cpk >= 1.67 ? "(6-Sigma)" : empiricalStats.cpk >= 1.33 ? "(Aerospace Grade)" : "(Marginal)"}
+              {empiricalStats.cpk >= 1.67 ? "(high Cpk)" : empiricalStats.cpk >= 1.33 ? "(screening Cpk)" : "(low Cpk)"}
             </span>
           </div>
 
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between pt-1 border-t border-purple-900/40">
             <span>Spec: ≥ {propertyMeta.specMin} {propertyMeta.unit}</span>
             <span className="text-purple-300">
-              {empiricalStats.aBasisAllowable >= propertyMeta.specMin ? "✓ Spec Compliant" : "⚠ Sub-Spec"}
+              {showMmpdsAllowables
+                ? (empiricalStats.aBasisAllowable >= propertyMeta.specMin ? "Estimate vs spec" : "Below spec min")
+                : "Synthetic — not MMPDS"}
             </span>
           </div>
         </div>
@@ -759,7 +782,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            MMPDS Qualification Certificate
+            Screening report
           </button>
         </div>
 
@@ -810,23 +833,30 @@ export function UQLab({ onNavigate }: UQLabProps) {
             <div>
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-sky-400" />
-                Coupon Sample Histogram & Gaussian PDF with MMPDS-01 Design Allowable Thresholds
+                Coupon Sample Histogram & Gaussian PDF
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Evaluates empirical test specimen frequencies against Gaussian fit and marks the exact 
-                A-Basis (99% exceedance @ 95% conf) and B-Basis (90% exceedance @ 95% conf) allowable cutoffs.
+                {showMmpdsAllowables
+                  ? "Uploaded coupons: A/B cutoffs are screening estimates, not handbook allowables."
+                  : SYNTHETIC_COUPON_MMPDS_NOTICE}
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="flex items-center gap-1 text-sky-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
-                A-Basis: {empiricalStats.aBasisAllowable} {propertyMeta.unit}
-              </span>
-              <span className="flex items-center gap-1 text-emerald-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                B-Basis: {empiricalStats.bBasisAllowable} {propertyMeta.unit}
-              </span>
+              {showMmpdsAllowables ? (
+                <>
+                  <span className="flex items-center gap-1 text-sky-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+                    A-Basis: {empiricalStats.aBasisAllowable} {propertyMeta.unit}
+                  </span>
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    B-Basis: {empiricalStats.bBasisAllowable} {propertyMeta.unit}
+                  </span>
+                </>
+              ) : (
+                <span className="text-amber-200">A/B allowables hidden (synthetic coupons)</span>
+              )}
               <span className="flex items-center gap-1 text-rose-400">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
                 Spec Min: {propertyMeta.specMin} {propertyMeta.unit}
@@ -880,7 +910,11 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   {chartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={entry.midpoint < empiricalStats.aBasisAllowable ? "#ef4444" : "#0ea5e9"}
+                      fill={
+                        showMmpdsAllowables && entry.midpoint < empiricalStats.aBasisAllowable
+                          ? "#ef4444"
+                          : "#0ea5e9"
+                      }
                     />
                   ))}
                 </Bar>
@@ -897,6 +931,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 />
 
                 {/* Vertical Reference Thresholds */}
+                {showMmpdsAllowables && (
+                  <>
                 <ReferenceLine
                   yAxisId="left"
                   x={empiricalStats.aBasisAllowable}
@@ -923,6 +959,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
                     position: "top"
                   }}
                 />
+                  </>
+                )}
                 <ReferenceLine
                   yAxisId="left"
                   x={propertyMeta.specMin}
@@ -1082,7 +1120,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
               Alloy Tolerance Optimization Strategy:
             </div>
             <p className="text-xs text-slate-300 leading-relaxed font-mono">
-              The dominant driver of strength scatter is <strong className="text-amber-300">{uqResult.sobolSensitivityAnalysis[0]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[0]?.varianceContributionPct}% variance share), followed by <strong className="text-sky-300">{uqResult.sobolSensitivityAnalysis[1]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[1]?.varianceContributionPct}%). Tightening the melt tolerances on these two factors by 30% is projected to elevate certified A-Basis allowable by <strong className="text-emerald-400">+25–45 MPa</strong> without changing nominal alloy cost.
+              The dominant driver of strength scatter is <strong className="text-amber-300">{uqResult.sobolSensitivityAnalysis[0]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[0]?.varianceContributionPct}% variance share), followed by <strong className="text-sky-300">{uqResult.sobolSensitivityAnalysis[1]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[1]?.varianceContributionPct}%). Tightening melt tolerances on these factors may reduce scatter in a screening model; it does not create MMPDS handbook allowables.
             </p>
           </div>
         </div>
@@ -1236,11 +1274,11 @@ export function UQLab({ onNavigate }: UQLabProps) {
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-purple-400" />
                 <h3 className="text-base font-bold text-slate-100">
-                  Aerospace Material Qualification Certificate (MMPDS-01 Section 9)
+                  Coupon statistics worksheet (not a qualification certificate)
                 </h3>
               </div>
               <p className="text-xs text-slate-400 font-mono">
-                DoD / FAA Flight Readiness Allowable Determination | Certified via MetalliX QMC Engine
+                {isSyntheticCoupons ? SYNTHETIC_COUPON_MMPDS_NOTICE : ENGINEERING_ESTIMATE_DISCLAIMER}
               </p>
             </div>
 
@@ -1248,26 +1286,21 @@ export function UQLab({ onNavigate }: UQLabProps) {
               <button
                 onClick={() => {
                   const certText = `
-MMPDS-01 CERTIFICATE OF MATERIAL ALLOWABLES
-===========================================
+SCREENING COUPON STATISTICS (NOT MMPDS HANDBOOK)
+================================================
 Material: ${activeDataset.name}
 Standard: ${activeDataset.specification} (${activeDataset.mmpdsChapter})
 Product Form: ${activeDataset.productForm}
 Heat Treatment: ${activeDataset.heatTreatment}
+Coupon source: ${activeDataset.couponSource}
 
-STATISTICAL ALLOWABLES:
------------------------
+${isSyntheticCoupons ? SYNTHETIC_COUPON_MMPDS_NOTICE : ENGINEERING_ESTIMATE_DISCLAIMER}
+
+${showMmpdsAllowables ? `SCREENING A/B (uploaded coupons, not contractual):
 A-Basis (T99 @ 95% Conf): ${empiricalStats.aBasisAllowable} MPa (k_A = ${empiricalStats.mmpds_kA})
-  95% CI: [${empiricalStats.aBasisAllowable95CI[0]} - ${empiricalStats.aBasisAllowable95CI[1]}] MPa
-B-Basis (T90 @ 95% Conf): ${empiricalStats.bBasisAllowable} MPa (k_B = ${empiricalStats.mmpds_kB})
-  95% CI: [${empiricalStats.bBasisAllowable95CI[0]} - ${empiricalStats.bBasisAllowable95CI[1]}] MPa
+B-Basis (T90 @ 95% Conf): ${empiricalStats.bBasisAllowable} MPa (k_B = ${empiricalStats.mmpds_kB})` : "A/B handbook allowables: withheld (synthetic coupons)."}
 
-SPECIFICATION COMPLIANCE:
--------------------------
-Spec Min Yield: ${activeDataset.specMinYieldMPa} MPa (Margin: ${empiricalStats.marginOfSafetyPct}%)
-Process Capability (Cpk): ${empiricalStats.cpk}
 Specimen Count: ${empiricalStats.sampleSize} coupons across ${empiricalStats.lotCount} heats
-Sampling Acceleration: ${uqResult?.samplingMetadata?.samplingMethod ?? "Sobol QMC"} (${uqResult?.samplingMetadata?.qmcAccelerationFactor ?? 3.8}x speedup)
 Generated: ${new Date().toISOString()}
                   `.trim();
                   copyToClipboard(certText, "Certificate copied to clipboard");
@@ -1291,7 +1324,7 @@ Generated: ${new Date().toISOString()}
 
             <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
               <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Statistical Sampling Lot Traceability</div>
-              <div className="text-sm font-bold text-emerald-300">{empiricalStats.sampleSize} Certified Test Coupons</div>
+              <div className="text-sm font-bold text-emerald-300">{empiricalStats.sampleSize} Test Coupons</div>
               <div className="text-slate-400">Melt Lots / Heats: <span className="text-amber-300">{empiricalStats.lotCount} production batches</span></div>
               <div className="text-slate-400">Normality Fit: <span className="text-emerald-400">{empiricalStats.isNormalDistribution ? "Gaussian (p>0.05)" : "Non-Parametric"}</span></div>
               <div className="text-slate-400">Sampling Engine: <span className="text-amber-300">Quasi-Monte Carlo Sobol (O(N⁻¹))</span></div>
@@ -1308,7 +1341,7 @@ Generated: ${new Date().toISOString()}
                   <th className="py-2.5 px-3 text-sky-300 font-bold">A-Basis (T99)</th>
                   <th className="py-2.5 px-3 text-emerald-300 font-bold">B-Basis (T90)</th>
                   <th className="py-2.5 px-3 text-purple-300">Process Cpk</th>
-                  <th className="py-2.5 px-3 text-right">FAA / DoD Status</th>
+                  <th className="py-2.5 px-3 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 bg-slate-950/40">
@@ -1316,28 +1349,28 @@ Generated: ${new Date().toISOString()}
                   <td className="py-3 px-3 font-bold text-slate-200">Yield Strength (F_ty)</td>
                   <td className="py-3 px-3 text-slate-400">{activeDataset.specMinYieldMPa} MPa</td>
                   <td className="py-3 px-3 text-slate-300">{empiricalStats.mean} MPa</td>
-                  <td className="py-3 px-3 text-sky-300 font-bold">{empiricalStats.aBasisAllowable} MPa</td>
-                  <td className="py-3 px-3 text-emerald-300 font-bold">{empiricalStats.bBasisAllowable} MPa</td>
+                  <td className="py-3 px-3 text-sky-300 font-bold">{showMmpdsAllowables ? `${empiricalStats.aBasisAllowable} MPa` : "N/A"}</td>
+                  <td className="py-3 px-3 text-emerald-300 font-bold">{showMmpdsAllowables ? `${empiricalStats.bBasisAllowable} MPa` : "N/A"}</td>
                   <td className="py-3 px-3 text-purple-300 font-bold">{empiricalStats.cpk}</td>
-                  <td className="py-3 px-3 text-right font-bold text-emerald-400">✓ QUALIFIED</td>
+                  <td className="py-3 px-3 text-right font-bold text-amber-300">{showMmpdsAllowables ? "Screening estimate" : "Synthetic — withheld"}</td>
                 </tr>
                 <tr>
                   <td className="py-3 px-3 font-bold text-slate-200">Ultimate Tensile (F_tu)</td>
                   <td className="py-3 px-3 text-slate-400">{activeDataset.specMinUTSMPa} MPa</td>
                   <td className="py-3 px-3 text-slate-300">{activeDataset.specMinUTSMPa + 75} MPa</td>
-                  <td className="py-3 px-3 text-sky-300 font-bold">{activeDataset.specMinUTSMPa + 15} MPa</td>
-                  <td className="py-3 px-3 text-emerald-300 font-bold">{activeDataset.specMinUTSMPa + 38} MPa</td>
+                  <td className="py-3 px-3 text-sky-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinUTSMPa + 15} MPa` : "N/A"}</td>
+                  <td className="py-3 px-3 text-emerald-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinUTSMPa + 38} MPa` : "N/A"}</td>
                   <td className="py-3 px-3 text-purple-300 font-bold">1.48</td>
-                  <td className="py-3 px-3 text-right font-bold text-emerald-400">✓ QUALIFIED</td>
+                  <td className="py-3 px-3 text-right font-bold text-amber-300">{showMmpdsAllowables ? "Screening estimate" : "Synthetic — withheld"}</td>
                 </tr>
                 <tr>
                   <td className="py-3 px-3 font-bold text-slate-200">Elongation (e)</td>
                   <td className="py-3 px-3 text-slate-400">{activeDataset.specMinElongationPct}%</td>
                   <td className="py-3 px-3 text-slate-300">{activeDataset.specMinElongationPct + 5.2}%</td>
-                  <td className="py-3 px-3 text-sky-300 font-bold">{activeDataset.specMinElongationPct + 1.2}%</td>
-                  <td className="py-3 px-3 text-emerald-300 font-bold">{activeDataset.specMinElongationPct + 2.8}%</td>
+                  <td className="py-3 px-3 text-sky-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinElongationPct + 1.2}%` : "N/A"}</td>
+                  <td className="py-3 px-3 text-emerald-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinElongationPct + 2.8}%` : "N/A"}</td>
                   <td className="py-3 px-3 text-purple-300 font-bold">1.52</td>
-                  <td className="py-3 px-3 text-right font-bold text-emerald-400">✓ QUALIFIED</td>
+                  <td className="py-3 px-3 text-right font-bold text-amber-300">{showMmpdsAllowables ? "Screening estimate" : "Synthetic — withheld"}</td>
                 </tr>
               </tbody>
             </table>
@@ -1365,7 +1398,7 @@ Generated: ${new Date().toISOString()}
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Generate a realistic test coupon population using Box-Muller Gaussian sampling with lot-to-lot melt offsets and within-lot test variance.
+              Generate a teaching coupon population using Box-Muller sampling. Synthetic n/lot is not MMPDS A/B handbook allowables.
             </p>
 
             <div className="space-y-3 font-mono text-xs">

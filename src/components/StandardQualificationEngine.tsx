@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { MmpdsBasisResult, QualificationTestEvaluation } from "../types";
 import { generateAerospaceCoCPDF, CoCData } from "../utils/exportAerospaceCoC";
+import { ENGINEERING_ESTIMATE_DISCLAIMER, EngineeringEstimateBanner } from "../utils/engineeringDisclaimer";
 
 // Standard Aerospace & Defense Alloy Presets with Authentic Base Metallurgical Data
 interface AlloyPreset {
@@ -473,7 +474,7 @@ export const StandardQualificationEngine: React.FC = () => {
   const [serviceTempMin, setServiceTempMin] = useState<number>(-54);
   const [serviceTempMax, setServiceTempMax] = useState<number>(350);
   const [operatingStressMpa, setOperatingStressMpa] = useState<number>(550);
-  const [targetApplication, setTargetApplication] = useState<string>("Primary Flight Critical Wing Spar & Lug");
+  const [targetApplication, setTargetApplication] = useState<string>("Structural coupon screening (unlabeled)");
 
   // AI Audit State
   const [isAiAuditing, setIsAiAuditing] = useState<boolean>(false);
@@ -482,9 +483,9 @@ export const StandardQualificationEngine: React.FC = () => {
 
   // Certificate of Conformance (CoC) Export Modal State
   const [showCocModal, setShowCocModal] = useState<boolean>(false);
-  const [cocEngineerName, setCocEngineerName] = useState<string>("Dr. M. C. Erganis, Lead Materials QA");
-  const [cocFacility, setCocFacility] = useState<string>("Advanced Aerospace Metallurgy & Defense Lab (AS9100)");
-  const [cocProgramName, setCocProgramName] = useState<string>("Gen-6 Airframe & Propulsion Qualification");
+  const [cocEngineerName, setCocEngineerName] = useState<string>("Materials engineer (placeholder)");
+  const [cocFacility, setCocFacility] = useState<string>("Engineering screening workbench");
+  const [cocProgramName, setCocProgramName] = useState<string>("Generic structural coupon screening");
   const [cocRevision, setCocRevision] = useState<string>("REV-D2");
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [exportSuccessMsg, setExportSuccessMsg] = useState<string | null>(null);
@@ -596,209 +597,86 @@ export const StandardQualificationEngine: React.FC = () => {
   }, [meanYieldMpa, meanTensileMpa, fractureToughnessMpaM, sampleSizeN, customScatterCv]);
 
   // =========================================================================
-  // QUALIFICATION PROTOCOL & RISK EVALUATION (MIL-STD-810H / AS9100 / STANAG)
+  // QUALIFICATION PROTOCOL CHECKLIST (template only — not auto-PASS)
   // =========================================================================
   const qualificationTests: QualificationTestEvaluation[] = useMemo(() => {
-    const coating = COATING_OPTIONS.find((c) => c.id === selectedCoatingId) || COATING_OPTIONS[0];
-    const isCast = selectedMfgRouteId === "investment_cast";
-    const isLPBFAsBuilt = selectedMfgRouteId === "lpbf_as_built";
-    const isLPBFHip = selectedMfgRouteId === "lpbf_hip_treated";
-
-    // 1. MIL-STD-810H Method 509.7 (Salt Fog Marine Corrosion - 168 to 336h 5% NaCl)
-    let saltFogProb = 92;
-    if (selectedCoatingId === "bare_metal") {
-      saltFogProb = selectedPresetId.includes("inconel") || selectedPresetId.includes("ti-6al-4v") ? 88 : 18;
-    } else {
-      saltFogProb = Math.min(99.4, 75 + (coating.saltFogBonusHrs / 2000) * 24);
-    }
-
-    // 2. MIL-STD-810H Method 516.8 (Mechanical Shock & Pyrotechnic Drop 50g-1000g)
-    // Depends on fracture toughness K_IC and yield-to-tensile ratio
-    const yieldRatio = meanYieldMpa / meanTensileMpa;
-    let shockProb = 85;
-    if (fractureToughnessMpaM >= 60 && yieldRatio <= 0.92) {
-      shockProb = 98.6;
-    } else if (fractureToughnessMpaM >= 40) {
-      shockProb = 91.2;
-    } else {
-      shockProb = isLPBFAsBuilt ? 64 : 76.5;
-    }
-
-    // 3. MIL-STD-810H Method 503.7 (Thermal Shock -54°C to +350°C rapid transition)
-    let thermalShockProb = 94.0;
-    const tempDelta = serviceTempMax - serviceTempMin;
-    if (tempDelta > 450) {
-      thermalShockProb = selectedPresetId.includes("inconel") ? 97.5 : 74.0;
-    } else if (serviceTempMin < -60) {
-      thermalShockProb = selectedPresetId.includes("steel-300m") ? 81.0 : 95.2;
-    }
-
-    // 4. MIL-STD-810H Method 514.8 (Random Vibration & Acoustic High-G Fatigue)
-    const enduranceLimit = meanTensileMpa * 0.45;
-    const stressRatio = operatingStressMpa / enduranceLimit;
-    let vibrationProb = 96.0;
-    if (stressRatio > 1.15) {
-      vibrationProb = 62.0;
-    } else if (stressRatio > 0.95) {
-      vibrationProb = 84.5;
-    } else if (isLPBFAsBuilt) {
-      vibrationProb = 71.0; // unhealed surface pores trigger notch fatigue
-    } else {
-      vibrationProb = 99.1;
-    }
-
-    // 5. AS9100 Rev D & Process Capability (Cpk >= 1.33 / Porosity Threshold)
-    let as9100Prob = 97.0;
-    if (mmpdsStats.cpk >= 1.67) {
-      as9100Prob = 99.5;
-    } else if (mmpdsStats.cpk >= 1.33) {
-      as9100Prob = 94.2;
-    } else if (mmpdsStats.cpk >= 1.0) {
-      as9100Prob = 78.0;
-    } else {
-      as9100Prob = 48.0;
-    }
-
-    // 6. NATO STANAG 4370 (AECTP) / Stress Corrosion Cracking (ASTM G47 / MIL-STD-1568)
-    let natoSccProb = 91.0;
-    if (selectedPresetId === "al-7075-t651" && operatingStressMpa > 280) {
-      natoSccProb = 72.0; // 7075-T6 known SCC sensitivity in ST plane under marine immersion
-    } else if (selectedPresetId.includes("inconel") || selectedPresetId.includes("ti-6al-4v")) {
-      natoSccProb = 99.2;
-    } else {
-      natoSccProb = 89.5;
-    }
-
-    const helperRisk = (p: number): "Low" | "Moderate" | "High" | "Critical" => {
-      if (p >= 95) return "Low";
-      if (p >= 85) return "Moderate";
-      if (p >= 70) return "High";
-      return "Critical";
-    };
-
     return [
       {
         id: "mil-salt-fog",
         standard: "MIL-STD-810H",
         methodName: "Method 509.7: Salt Fog Marine Corrosion (5% NaCl)",
         testCategory: "Salt Fog / Marine",
-        passProbabilityPct: Number(saltFogProb.toFixed(1)),
-        riskLevel: helperRisk(saltFogProb),
-        primaryThreat:
-          saltFogProb < 75
-            ? "Rapid galvanic pitting & intergranular grain boundary attack"
-            : "Surface oxidation & minor galvanic blister risk",
-        criticalThreshold: "168 - 336 hrs Continuous Salt Spray",
-        mitigationRecommendation:
-          selectedCoatingId === "bare_metal"
-            ? "Mandatory: Apply Anodize MIL-A-8625 Type II or Cadmium AMS-QQ-P-416 with epoxy primer."
-            : "Coating barrier adequate. Ensure seal inspection per ASTM B117.",
+        passProbabilityPct: 0,
+        riskLevel: "Low",
+        primaryThreat: "Not evaluated — laboratory salt fog is required",
+        criticalThreshold: "168 - 336 hrs Continuous Salt Spray (user-attested)",
+        mitigationRecommendation: "Checklist item only. This software does not confirm Method 509.7 execution.",
+        executionStatus: "Not executed",
       },
       {
         id: "mil-shock",
         standard: "MIL-STD-810H",
-        methodName: "Method 516.8: Mechanical Shock & Pyrotechnic Drop (100g/6ms)",
+        methodName: "Method 516.8: Mechanical Shock and Pyrotechnic Drop (100g/6ms)",
         testCategory: "Mechanical Shock",
-        passProbabilityPct: Number(shockProb.toFixed(1)),
-        riskLevel: helperRisk(shockProb),
-        primaryThreat:
-          shockProb < 80
-            ? "Dynamic brittle cleavage along grain boundaries or void coalescence"
-            : "Elastic deformation within yield envelope",
-        criticalThreshold: `K_IC: ${fractureToughnessMpaM} MPa√m / Impact: 100g saw-tooth`,
-        mitigationRecommendation:
-          fractureToughnessMpaM < 40
-            ? "Perform over-aging or grain refinement heat treatment to boost toughness above 50 MPa√m."
-            : "Fracture toughness margin robust for flight-critical shock spectrum.",
+        passProbabilityPct: 0,
+        riskLevel: "Low",
+        primaryThreat: "Not evaluated — shock table data is required",
+        criticalThreshold: `User-entered K_IC: ${fractureToughnessMpaM} MPa√m (not a test result)`,
+        mitigationRecommendation: "Checklist item only. Fracture toughness sliders do not constitute Method 516.8 PASS.",
+        executionStatus: "Not executed",
       },
       {
         id: "mil-thermal-shock",
         standard: "MIL-STD-810H",
-        methodName: "Method 503.7: Thermal Shock & Temperature Cycling (-54°C to +350°C)",
+        methodName: "Method 503.7: Thermal Shock and Temperature Cycling",
         testCategory: "Thermal Shock",
-        passProbabilityPct: Number(thermalShockProb.toFixed(1)),
-        riskLevel: helperRisk(thermalShockProb),
-        primaryThreat:
-          thermalShockProb < 85
-            ? "Thermal fatigue cracking from CTE constraint & cryogenic DBTT embrittlement"
-            : "Thermal expansion accommodated",
-        criticalThreshold: `ΔT: ${serviceTempMax - serviceTempMin}°C Range`,
-        mitigationRecommendation:
-          serviceTempMax > 400 && !selectedPresetId.includes("inconel")
-            ? "Select Nickel/Cobalt base superalloy or apply YSZ thermal barrier coating."
-            : "Operating envelope within thermal cycling endurance.",
+        passProbabilityPct: 0,
+        riskLevel: "Low",
+        primaryThreat: "Not evaluated — thermal-cycle testing is required",
+        criticalThreshold: `Entered ΔT: ${serviceTempMax - serviceTempMin}°C (user input)`,
+        mitigationRecommendation: "Checklist item only. Temperature sliders do not confirm Method 503.7.",
+        executionStatus: "Not executed",
       },
       {
         id: "mil-vibration",
         standard: "MIL-STD-810H",
-        methodName: "Method 514.8: High-G Random Vibration & Acoustic Fatigue (12.8 Grms)",
+        methodName: "Method 514.8: High-G Random Vibration and Acoustic Fatigue",
         testCategory: "Vibration / High-G",
-        passProbabilityPct: Number(vibrationProb.toFixed(1)),
-        riskLevel: helperRisk(vibrationProb),
-        primaryThreat:
-          vibrationProb < 80
-            ? "High-cycle fatigue initiation at surface notches or sub-surface pores"
-            : "High-cycle endurance limit S_e > alternating vibration stress",
-        criticalThreshold: `Operating Stress: ${operatingStressMpa} MPa / Se: ${Math.round(meanTensileMpa * 0.45)} MPa`,
-        mitigationRecommendation:
-          isLPBFAsBuilt
-            ? "Mandatory: Perform HIP (Hot Isostatic Pressing) + Controlled Shot Peening (AMS 2430)."
-            : "Apply controlled shot peening (0.008A intensity) to introduce compressive residual stress.",
+        passProbabilityPct: 0,
+        riskLevel: "Low",
+        primaryThreat: "Not evaluated — shaker / acoustic data is required",
+        criticalThreshold: `Entered operating stress: ${operatingStressMpa} MPa (user input)`,
+        mitigationRecommendation: "Checklist item only. This software does not confirm Method 514.8 execution.",
+        executionStatus: "Not executed",
       },
       {
         id: "as9100-cpk",
         standard: "AS9100 Rev D",
-        methodName: "Clause 8.5.1: Process Capability Index (Cpk >= 1.33) & NDT Class AAA",
+        methodName: "Clause 8.5.1: Process Capability Index (Cpk) — template only",
         testCategory: "Process Capability",
-        passProbabilityPct: Number(as9100Prob.toFixed(1)),
-        riskLevel: helperRisk(as9100Prob),
-        primaryThreat:
-          as9100Prob < 85
-            ? "Statistical scatter out of 3-sigma specification limits causing lot rejection"
-            : "Cpk process compliance verified",
-        criticalThreshold: `Current Cpk: ${mmpdsStats.cpk} (Target >= 1.33)`,
-        mitigationRecommendation:
-          mmpdsStats.cpk < 1.33
-            ? `Increase qualification test sample size (N >= 60) and tighten melt chemistry tolerances.`
-            : "Statistical lot release verified for aerospace primary structure production.",
+        passProbabilityPct: 0,
+        riskLevel: "Low",
+        primaryThreat: "Not evaluated — production lot evidence is required",
+        criticalThreshold: `Slider Cpk: ${mmpdsStats.cpk} (not AS9100 evidence)`,
+        mitigationRecommendation: "Checklist item only. Slider Cpk is not an AS9100 lot release.",
+        executionStatus: "Not executed",
       },
       {
         id: "nato-scc",
         standard: "NATO STANAG",
         methodName: "STANAG 4370 / MIL-STD-1568: Environmental Stress Corrosion Cracking (SCC)",
         testCategory: "SCC Threshold",
-        passProbabilityPct: Number(natoSccProb.toFixed(1)),
-        riskLevel: helperRisk(natoSccProb),
-        primaryThreat:
-          natoSccProb < 80
-            ? "Anodic dissolution along grain boundaries under sustained tensile residual stress"
-            : "Passive film repassivation rate exceeds crack tip strain",
-        criticalThreshold: "K_ISCC Threshold vs. Operating Stress",
-        mitigationRecommendation:
-          selectedPresetId === "al-7075-t651"
-            ? "Switch to T73 / T7451 over-aged temper for superior SCC resistance with 10% strength tradeoff."
-            : "SCC immunity validated for NATO operational marine & tropical environments.",
+        passProbabilityPct: 0,
+        riskLevel: "Low",
+        primaryThreat: "Not evaluated — SCC specimens are required",
+        criticalThreshold: "User-attested K_ISCC test only",
+        mitigationRecommendation: "Checklist item only. PREN / alloy presets do not confirm STANAG SCC.",
+        executionStatus: "Not executed",
       },
     ];
-  }, [
-    selectedPresetId,
-    selectedMfgRouteId,
-    selectedCoatingId,
-    meanYieldMpa,
-    meanTensileMpa,
-    fractureToughnessMpaM,
-    serviceTempMin,
-    serviceTempMax,
-    operatingStressMpa,
-    mmpdsStats,
-  ]);
+  }, [fractureToughnessMpaM, serviceTempMin, serviceTempMax, operatingStressMpa, mmpdsStats]);
 
-  // Overall Mean Qualification Readiness Index
-  const overallReadinessIndex = useMemo(() => {
-    if (!qualificationTests.length) return 0;
-    const sum = qualificationTests.reduce((acc, t) => acc + t.passProbabilityPct, 0);
-    return Number((sum / qualificationTests.length).toFixed(1));
-  }, [qualificationTests]);
+  const overallReadinessIndex = 0;
 
   // AI Deep Qualification Audit Handler
   const handleRunAiAudit = async () => {
@@ -823,7 +701,7 @@ export const StandardQualificationEngine: React.FC = () => {
           serviceTempMin,
           serviceTempMax,
           protectiveCoating: activeCoating,
-          targetStandards: "MMPDS-14 (MIL-HDBK-5), MIL-STD-810H (509.7, 516.8, 503.7, 514.8), AS9100 Rev D, NATO STANAG 4370",
+          targetStandards: "Screening checklist only: MIL-STD-810H / AS9100 / STANAG templates (not executed)",
         }),
       });
 
@@ -848,10 +726,11 @@ export const StandardQualificationEngine: React.FC = () => {
     const activeCoating = COATING_OPTIONS.find((c) => c.id === selectedCoatingId)?.name || "Standard Aerospace Anodize";
 
     return {
-      certificateId: `COC-AS9100-${selectedPresetId.toUpperCase().slice(0, 8)}-${Date.now().toString().slice(-6)}`,
+      certificateId: `SCREEN-${selectedPresetId.toUpperCase().slice(0, 8)}-${Date.now().toString().slice(-6)}`,
       revision: cocRevision,
       issueDate: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
       engineerName: cocEngineerName,
+      qaDirectorName: "QA reviewer (placeholder)",
       facility: cocFacility,
       programName: cocProgramName,
       alloyName,
@@ -881,8 +760,8 @@ export const StandardQualificationEngine: React.FC = () => {
     try {
       const payload = generateCoCPayload();
       const doc = generateAerospaceCoCPDF(payload);
-      doc.save(`${alloyName.replace(/[^a-zA-Z0-9]/g, "_")}_AS9100_CoC_Certificate.pdf`);
-      setExportSuccessMsg("Official PDF Certificate of Conformance exported successfully.");
+      doc.save(`${alloyName.replace(/[^a-zA-Z0-9]/g, "_")}_screening_audit.pdf`);
+      setExportSuccessMsg("Screening PDF exported (not a certificate).");
       setTimeout(() => setExportSuccessMsg(null), 4000);
     } catch (err: any) {
       console.error("PDF generation failed:", err);
@@ -896,7 +775,7 @@ export const StandardQualificationEngine: React.FC = () => {
   const handleExportCSV = () => {
     const payload = generateCoCPayload();
     const rows = [
-      ["METALLIX AEROSPACE // CERTIFICATE OF CONFORMANCE DATA PACKAGE"],
+      ["METALLIX SCREENING AUDIT DATA PACKAGE"],
       ["Certificate ID", payload.certificateId],
       ["Revision", payload.revision],
       ["Issue Date", payload.issueDate],
@@ -922,13 +801,13 @@ export const StandardQualificationEngine: React.FC = () => {
       ["K_IC", "Fracture Toughness", payload.fractureToughnessMpaM, payload.fractureToughnessMpaM, payload.fractureToughnessMpaM, "MPa√m"],
       ["C_pk", "Process Capability Index", payload.mmpdsStats.cpk, payload.mmpdsStats.cpk, payload.mmpdsStats.cpk, "-"],
       [],
-      ["MIL-STD-810H & AS9100 QUALIFICATION PROTOCOL RESULTS"],
-      ["Standard", "Test Category", "Pass Probability (%)", "Risk Level", "Threat", "Mitigation"],
+      ["MIL-STD-810H / AS9100 / STANAG PROTOCOL CHECKLIST"],
+      ["Standard", "Test Category", "Execution status", "Attestation", "Threat", "Mitigation"],
       ...payload.qualificationTests.map((t) => [
         t.standard,
         t.testCategory,
-        t.passProbabilityPct,
-        t.riskLevel,
+        t.executionStatus || "Not executed",
+        "User-attested only",
         `"${t.primaryThreat.replace(/"/g, '""')}"`,
         `"${t.mitigationRecommendation.replace(/"/g, '""')}"`,
       ]),
@@ -980,8 +859,9 @@ export const StandardQualificationEngine: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-1">
-                Instant statistical computation of A-Basis / B-Basis design allowables, manufacturing route knockdown factors, and environmental test pass probability scoring for aerospace & defense qualification.
+                Instant statistical screening of A/B-style coupon stats and a MIL-STD-810H / AS9100 / STANAG protocol checklist (not executed by this software).
               </p>
+              <EngineeringEstimateBanner className="mt-3 max-w-3xl" />
             </div>
           </div>
 
@@ -994,38 +874,22 @@ export const StandardQualificationEngine: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-sky-500/20 hover:from-emerald-500/30 hover:to-sky-500/30 border border-emerald-400/50 text-emerald-300 hover:text-emerald-200 text-xs font-mono font-bold transition shadow-[0_0_15px_rgba(16,185,129,0.2)]"
             >
               <FileText className="w-4 h-4 text-emerald-400" />
-              <span>Export CoC & Audit Report</span>
+              <span>Export screening report</span>
             </button>
 
             {/* Gauge */}
             <div className="flex items-center gap-4 bg-[#050810] p-3 rounded-xl border border-[#162032]">
               <div className="text-right font-mono">
-                <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Overall Qualification Index</span>
-                <span
-                  className={`text-xl font-extrabold ${
-                    overallReadinessIndex >= 90
-                      ? "text-emerald-400"
-                      : overallReadinessIndex >= 75
-                      ? "text-amber-400"
-                      : "text-rose-400"
-                  }`}
-                >
-                  {overallReadinessIndex}%
+                <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Protocol checklist</span>
+                <span className="text-xl font-extrabold text-amber-300">
+                  Not executed
                 </span>
                 <span className="text-[9px] text-slate-500 block">
-                  {overallReadinessIndex >= 90 ? "Flight Certified" : "Engineering Mitigations Required"}
+                  User-attested only
                 </span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-[#0c1322] border border-[#1e2d46] flex items-center justify-center">
-                <Award
-                  className={`w-5 h-5 ${
-                    overallReadinessIndex >= 90
-                      ? "text-emerald-400"
-                      : overallReadinessIndex >= 75
-                      ? "text-amber-400"
-                      : "text-rose-400"
-                  }`}
-                />
+                <Award className="w-5 h-5 text-amber-400" />
               </div>
             </div>
           </div>
@@ -1443,10 +1307,10 @@ export const StandardQualificationEngine: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <span>MIL-STD-810H, AS9100 & NATO STANAG Qualification Matrix</span>
+                <span>MIL-STD-810H, AS9100 & NATO STANAG Protocol Checklist</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                Calculated pass probabilities, failure risk mechanisms, and required engineering mitigations.
+                Template rows only. Status is Not executed / user-attested. This software does not confirm environmental testing.
               </p>
             </div>
           </div>
@@ -1458,7 +1322,7 @@ export const StandardQualificationEngine: React.FC = () => {
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 text-xs font-bold transition shadow-[0_0_12px_rgba(56,189,248,0.2)] disabled:opacity-50"
           >
             {isAiAuditing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            <span>{isAiAuditing ? "Auditing Standards..." : "Run AI Regulatory Qualification Audit"}</span>
+                <span>AI Screening Notes</span>
           </button>
         </div>
 
@@ -1467,66 +1331,26 @@ export const StandardQualificationEngine: React.FC = () => {
           {qualificationTests.map((t) => (
             <div
               key={t.id}
-              className={`p-4 rounded-xl border transition relative overflow-hidden flex flex-col justify-between ${
-                t.riskLevel === "Low"
-                  ? "bg-[#050810] border-emerald-500/30"
-                  : t.riskLevel === "Moderate"
-                  ? "bg-[#050810] border-sky-500/30"
-                  : t.riskLevel === "High"
-                  ? "bg-[#050810] border-amber-500/30"
-                  : "bg-[#050810] border-rose-500/30"
-              }`}
+              className="p-4 rounded-xl border transition relative overflow-hidden flex flex-col justify-between bg-[#050810] border-amber-500/30"
             >
               <div>
                 <div className="flex items-center justify-between gap-1 pb-2 border-b border-[#162032]">
                   <span className="text-[10px] px-2 py-0.5 rounded bg-[#0c1322] border border-[#162032] text-sky-300 font-bold">
                     {t.standard}
                   </span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      t.riskLevel === "Low"
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                        : t.riskLevel === "Moderate"
-                        ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
-                        : t.riskLevel === "High"
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                    }`}
-                  >
-                    {t.riskLevel} Risk
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40">
+                    {t.executionStatus || "Not executed"}
                   </span>
                 </div>
 
                 <h4 className="text-xs font-bold text-white mt-2.5 leading-snug">{t.methodName}</h4>
 
-                {/* Pass Probability Progress Bar */}
                 <div className="mt-3 space-y-1">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-400">Pass Probability:</span>
-                    <span
-                      className={`font-bold ${
-                        t.passProbabilityPct >= 90
-                          ? "text-emerald-400"
-                          : t.passProbabilityPct >= 75
-                          ? "text-amber-400"
-                          : "text-rose-400"
-                      }`}
-                    >
-                      {t.passProbabilityPct}%
-                    </span>
+                    <span className="text-slate-400">Execution:</span>
+                    <span className="font-bold text-amber-300">Not executed</span>
                   </div>
-                  <div className="w-full h-1.5 bg-[#0c1322] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        t.passProbabilityPct >= 90
-                          ? "bg-emerald-400"
-                          : t.passProbabilityPct >= 75
-                          ? "bg-amber-400"
-                          : "bg-rose-400"
-                      }`}
-                      style={{ width: `${t.passProbabilityPct}%` }}
-                    />
-                  </div>
+                  <p className="text-[10px] text-slate-500">User-attested only — no software PASS/FAIL.</p>
                 </div>
 
                 {/* Threat & Threshold */}
@@ -1594,14 +1418,15 @@ export const StandardQualificationEngine: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <span>Certificate of Conformance & Regulatory Audit Package</span>
+                    <span>Screening report template</span>
                     <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                      AS9100 / MMPDS-14
+                      Screening template
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Officially compliant aeronautical compliance document generation with digital sign-off and multi-format export.
+                    Screening worksheet export. Not a Certificate of Conformance.
                   </p>
+                  <EngineeringEstimateBanner className="mt-2" />
                 </div>
               </div>
 
@@ -1644,7 +1469,7 @@ export const StandardQualificationEngine: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-slate-400 text-[11px] block">Target Aerospace Program / Airframe:</label>
+                    <label className="text-slate-400 text-[11px] block">Target program / screening example:</label>
                     <input
                       type="text"
                       value={cocProgramName}
@@ -1671,10 +1496,10 @@ export const StandardQualificationEngine: React.FC = () => {
                 <div className="flex justify-between items-start border-b-2 border-[#0f172a] pb-3">
                   <div>
                     <h2 className="text-base font-extrabold text-[#0f172a] tracking-tight">
-                      METALLIX AEROSPACE // CERTIFICATE OF CONFORMANCE
+                      METALLIX ENGINEERING SCREENING WORKSHEET
                     </h2>
                     <span className="text-[10px] text-slate-600 block mt-0.5">
-                      MIL-HDBK-5 / MMPDS-14 / AS9100 REV D AERONAUTICAL QUALIFICATION REPORT
+                    Screening worksheet / protocol checklist template
                     </span>
                   </div>
                   <div className="text-right text-[10px] font-mono">
@@ -1794,9 +1619,9 @@ export const StandardQualificationEngine: React.FC = () => {
                       <div key={t.id} className="p-1.5 border border-slate-300 rounded bg-white text-[9.5px]">
                         <span className="font-bold text-slate-800 block truncate">{t.standard}: {t.testCategory}</span>
                         <div className="flex justify-between items-center mt-1">
-                          <span className="text-slate-600">Pass Probability:</span>
-                          <span className={`font-bold ${t.passProbabilityPct >= 90 ? "text-emerald-700" : "text-amber-700"}`}>
-                            {t.passProbabilityPct}%
+                          <span className="text-slate-600">Status:</span>
+                          <span className="font-bold text-amber-800">
+                            {t.executionStatus || "Not executed"}
                           </span>
                         </div>
                       </div>
@@ -1809,12 +1634,12 @@ export const StandardQualificationEngine: React.FC = () => {
                   <div>
                     <span className="text-[10px] font-bold text-slate-900 block">Lead QA Engineer Sign-off:</span>
                     <span className="text-xs font-serif italic text-slate-800">{cocEngineerName}</span>
-                    <span className="text-[9px] text-slate-500 block">Digital Verification: AS9100 / MIL-HDBK-5 AUDITED</span>
+                    <span className="text-[9px] text-slate-500 block">{ENGINEERING_ESTIMATE_DISCLAIMER}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-600 block">Overall Airworthiness Status:</span>
-                    <span className="text-xs font-bold text-emerald-800 px-2 py-0.5 bg-emerald-100 border border-emerald-400 rounded">
-                      FLIGHT QUALIFIED ({overallReadinessIndex}%)
+                    <span className="text-[10px] text-slate-600 block">Document status:</span>
+                    <span className="text-xs font-bold text-amber-900 px-2 py-0.5 bg-amber-100 border border-amber-400 rounded">
+                      SCREENING TEMPLATE
                     </span>
                   </div>
                 </div>
@@ -1854,7 +1679,7 @@ export const StandardQualificationEngine: React.FC = () => {
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-400 hover:to-sky-400 text-slate-950 text-xs font-extrabold transition shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
                 >
                   {isExportingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  <span>{isExportingPdf ? "Generating PDF..." : "Download Official PDF (CoC)"}</span>
+                  <span>{isExportingPdf ? "Generating PDF..." : "Download screening PDF"}</span>
                 </button>
               </div>
             </div>

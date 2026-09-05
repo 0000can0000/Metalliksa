@@ -36,3 +36,36 @@ This document defines the strict, binding operational and engineering rules for 
 - No mock or arbitrary synthetic data may be passed off as ground truth.
 - Every experimental record in the LPBF database must maintain 5-tier traceability (`Build` $\rightarrow$ `ProcessParams` $\rightarrow$ `Sample` $\rightarrow$ `Properties` $\rightarrow$ `Source` with DOI).
 - Standard testing protocols must explicitly reference applicable standards (ASTM F3055, ASTM B962, ASTM E8/E8M, ASTM E1245).
+
+---
+
+## 5. Rule 5: Mandatory Session Record in `sonkayıtlar` (After Work + Tests)
+- **Trigger**: After an agent (or contributor) finishes a task **and** finishes the tests for that task, it **must record itself** before declaring the work complete.
+- **Location**: All such records go in the [`sonkayıtlar/`](./sonkayıtlar/) directory. Newest entries are prepended to [`sonkayıtlar/LOG.md`](./sonkayıtlar/LOG.md).
+- **Do not skip** this step for “small” fixes, rule/docs edits, or UI work. If tests were not applicable, state that explicitly and still write the record.
+- Each entry must include:
+  1. **Date and time** (ISO local: `YYYY-MM-DD HH:MM`)
+  2. **Task summary** (what was requested / what was done)
+  3. **Files touched** (paths)
+  4. **Tests completed** (commands, browser checks, or “N/A — reason”)
+  5. **Result** (`PASS` / `FAIL` / `PARTIAL`)
+  6. **Agent self-id** (model name if known, otherwise `Cursor agent`)
+- Scientific model proofs remain in [`PROOF.md`](./PROOF.md) (Rule 2). `sonkayıtlar` is the operational work log for every completed agent job.
+
+---
+
+## 6. Rule 6: End-of-Job User Briefing (What Was Done + Where You Stand)
+- **Trigger**: The agent’s **final reply** after every job (complete, partial, or blocked) must tell the user, in the user’s language:
+  1. **What was done** — concrete outcomes (files, features, tests), not a list of tool calls.
+  2. **Where you stand** — what is finished, what is still open, and the natural next step (or “nothing left on this task”).
+- Do not end with only “done” or a dump of diffs. Lead with the briefing, then optional extra detail.
+- The same two points go into the `sonkayıtlar` entry as **Done** and **Where we left off**.
+
+---
+
+## 7. Rule 7: Commit and Push to GitHub After Every Change
+- **Trigger**: After the agent (or contributor) finishes a set of file changes for a task — including “small” fixes, UI, docs, and rule edits — it **must** create a git commit and **push it to GitHub** (`origin`) on the current branch.
+- Do not leave completed work as uncommitted local edits. Do not wait for a second user prompt to commit or push.
+- **Sequence**: (1) finish the work and applicable tests, (2) write the `sonkayıtlar` entry (Rule 5), (3) `git add` only the files for this task (never secrets, `.env`, or bytecode), (4) commit with a concise message that states **why**, (5) `git push` to the tracked remote branch (`git push -u origin HEAD` if upstream is missing).
+- **Forbidden**: `git config` changes, `--no-verify`, force-push to `main`/`master`, interactive rebase, or committing credentials.
+- If push fails (auth, network, no remote), report the error in the user briefing and in `sonkayıtlar`; the local commit must still exist.

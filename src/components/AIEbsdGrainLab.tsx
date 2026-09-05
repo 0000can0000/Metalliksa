@@ -61,7 +61,7 @@ export const MICROSTRUCTURE_PRESETS: MicrostructurePreset[] = [
     id: "ti64-equiaxed-alpha",
     name: "Ti-6Al-4V Forged Equiaxed (α+β Bimodal)",
     alloySystem: "Titanium Alpha+Beta",
-    description: "Bimodal globular primary alpha grains in transformed beta matrix. High ductility, damage tolerance, and AS9100 turbine fan blade spec.",
+    description: "Bimodal globular primary alpha grains in transformed beta matrix. High ductility and damage-tolerance screening example.",
     nominalGrainSize_um: 12.5,
     astm_G: 9.5,
     grainAspectRatio: 1.15,
@@ -508,8 +508,8 @@ export const AIEbsdGrainLab: React.FC = () => {
 
 ---
 
-#### 4. Qualification Sign-off:
-${astmGNumber >= 9 ? "✅ AS9100 / ASTM E112 PASS: Meets aerospace fine-grain criteria for high-cycle fatigue life." : "⚠️ GRAIN COARSENING WARNING: Consider sub-solvus grain-refinement annealing to reach ASTM G ≥ 9."}`;
+#### 4. Screening note:
+${astmGNumber >= 9 ? "Fine ASTM G number in this overlay is a screening indicator only — not an AS9100 / ASTM E112 PASS." : "Coarser ASTM G number in this overlay is a screening indicator only — not a certification fail. Grain-refinement heat treatment may be worth laboratory follow-up."}`;
 
       setAiReport(summary);
       setIsProcessing(false);
@@ -526,7 +526,9 @@ ${astmGNumber >= 9 ? "✅ AS9100 / ASTM E112 PASS: Meets aerospace fine-grain cr
   };
 
   const handleExportEbsdReport = () => {
-    const report = `ASTM E112 / EBSD GRAIN METROLOGY CERTIFICATE
+    const report = `ASTM E112 / EBSD GRAIN SCREENING REPORT
+=====================================================
+Engineering estimate — not for airworthiness, contractual allowables, or NADCAP/AS9100 certification.
 =====================================================
 Sample: ${preset.name}
 Alloy System: ${preset.alloySystem}

@@ -37,11 +37,13 @@ export interface QualificationTestEvaluation {
   standard: "MIL-STD-810H" | "AS9100 Rev D" | "NATO STANAG" | "ASTM / AMS";
   methodName: string;
   testCategory: "Salt Fog / Marine" | "Mechanical Shock" | "Thermal Shock" | "Vibration / High-G" | "Extreme Climatics" | "Process Capability" | "SCC Threshold";
-  passProbabilityPct: number; // 0 to 100
+  /** Kept for payload compatibility; screening templates must not auto-score PASS. */
+  passProbabilityPct: number;
   riskLevel: "Low" | "Moderate" | "High" | "Critical";
   primaryThreat: string;
   criticalThreshold: string;
   mitigationRecommendation: string;
+  executionStatus?: "Not executed" | "User attested";
 }
 
 export interface ElementData {

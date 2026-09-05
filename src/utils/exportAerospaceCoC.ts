@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ENGINEERING_ESTIMATE_DISCLAIMER } from "./engineeringDisclaimer";
 
 export interface LabMultiTestData {
   // Tabor-Cahoon Non-Destructive Tensile Test
@@ -106,6 +107,7 @@ export interface AerospaceAuditReportData {
     primaryThreat: string;
     criticalThreshold: string;
     mitigationRecommendation: string;
+    executionStatus?: string;
   }>;
   
   overallReadinessIndex: number;
@@ -141,26 +143,22 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
 
   // Top Badge / Classification
   doc.setFillColor(30, 41, 59);
-  doc.roundedRect(margin, 6, 68, 5.5, 1, 1, "F");
+  doc.roundedRect(margin, 6, 92, 5.5, 1, 1, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(6.5);
   doc.setTextColor(56, 189, 248); // Cyan
-  doc.text("AS9100 REV D / NADCAP / MMPDS-14 AUDITED", margin + 3, 9.8);
+  doc.text("ENGINEERING SCREENING TEMPLATE (NOT A CERTIFICATE)", margin + 3, 9.8);
 
   // Main Title
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14.5);
-  doc.text("AEROSPACE QUALIFICATION & CONFORMANCE REPORT", margin, 20);
+  doc.text("ENGINEERING SCREENING AUDIT REPORT", margin, 20);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184); // Slate 400
-  doc.text(
-    `Official Airworthiness Certification & Statistical Design Allowables (MMPDS-14 / MIL-HDBK-5)`,
-    margin,
-    26
-  );
+  doc.setTextColor(251, 191, 36); // Amber
+  doc.text(ENGINEERING_ESTIMATE_DISCLAIMER, margin, 26, { maxWidth: contentWidth - 82 });
   doc.text(
     `Criticality: ${data.criticalityLevel}  |  Part No: ${data.partNumber}  |  Heat/Lot: ${data.lotHeatNumber}`,
     margin,
@@ -186,8 +184,8 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.text(`Issue Date: ${data.issueDate}`, pageWidth - margin - 74, 23);
   doc.text(`Facility: ${data.facility}`, pageWidth - margin - 74, 28.5);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(34, 197, 94);
-  doc.text(`STATUS: AIRWORTHINESS CONFORMING`, pageWidth - margin - 74, 34);
+  doc.setTextColor(251, 191, 36);
+  doc.text(`STATUS: SCREENING ESTIMATE ONLY`, pageWidth - margin - 74, 34);
 
   let currentY = 50;
 
@@ -370,28 +368,28 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
       "Non-Destructive σ-ε Curve\nYield, UTS, Hollomon n",
       `R_p0.2: ${lab?.taborTest?.predictedYieldMpa ?? data.meanYieldMpa} MPa | R_m: ${lab?.taborTest?.predictedUtsMpa ?? data.meanTensileMpa} MPa\nStrain Hardening n: ${lab?.taborTest?.strainHardeningExponentN ?? 0.14}`,
       `R_p0.2 ≥ ${data.mmpdsStats.aBasisYield} MPa\nHardness: ${lab?.taborTest?.measuredHardnessHV ?? 330} HV`,
-      "PASSED (99.2% Conf.)",
+      "SCREENING ONLY",
     ],
     [
       "Rapid XRD Diffraction\n(ASTM E975 / Rigaku)",
       "Phase ID & Microstrain\nWilliamson-Hall & σ_res",
       `Primary: ${lab?.xrdAnalysis?.primaryPhase ?? "α-Ti / γ-Ni"} | Sec Phase: ${lab?.xrdAnalysis?.secondaryPhaseFractionPct ?? 8.5}%\nCrystallite: ${lab?.xrdAnalysis?.crystalliteSizeNm ?? 42} nm | ε_micro: ${lab?.xrdAnalysis?.microstrainPct ?? 0.18}%`,
       "Secondary Phase < 12%\nSurface σ_res < +200 MPa",
-      "CONFORMING",
+      "SCREENING ONLY",
     ],
     [
       "EBSD Microtexture\n(ASTM E112 / Oxford)",
       "Grain Size & IPF-Z Texture\nSchmid Factor & HAGB",
       `Grain Size d: ${lab?.ebsdMicrostructure?.meanGrainSizeUm ?? 18.4} µm (ASTM G=${lab?.ebsdMicrostructure?.astmGrainSizeNumberG ?? 8.5})\nHAGB Fraction: ${lab?.ebsdMicrostructure?.hagbFractionPct ?? 78}% | Texture: ${lab?.ebsdMicrostructure?.dominantTextureOrientation ?? "<0001> Basal"}`,
       "ASTM Grain Size G ≥ 7.0\nTaylor Factor M ≤ 3.2",
-      "QUALIFIED",
+      "SCREENING ONLY",
     ],
     [
       "3D LPBF Defect Audit\n(ASTM F3055 / F2924)",
       "Laser VED, Warpage & LoF\nThermal Residual Stress",
       `VED: ${lab?.additiveDefectAudit?.volumetricEnergyDensityJmm3 ?? 62.5} J/mm³ | Max Warpage: ${lab?.additiveDefectAudit?.maxThermalWarpageMm ?? 0.18} mm\nKeyhole Risk: ${lab?.additiveDefectAudit?.keyholeRiskScorePct ?? 4.2}% | LoF Risk: ${lab?.additiveDefectAudit?.lackOfFusionRiskPct ?? 2.1}%`,
       "Max Warpage < 0.35 mm\nPorosity Defect < 0.10%",
-      "AIRWORTHY",
+      "SCREENING ONLY",
     ],
   ];
 
@@ -417,7 +415,7 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.setTextColor(148, 163, 184);
   doc.setFont("helvetica", "normal");
   doc.text(
-    `Page 1 of 2 | AS9100 Rev D & NADCAP Audit Engine | METALLIX Materials AI Platform | Security Hash: SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+    `Page 1 of 2 | ${ENGINEERING_ESTIMATE_DISCLAIMER}`,
     margin,
     290
   );
@@ -437,7 +435,7 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(255, 255, 255);
-  doc.text("SECTION 4: AS9100 / MIL-STD-810H ENVIRONMENTAL QUALIFICATION & SIGN-OFF", margin, 15);
+  doc.text("SECTION 4: ENVIRONMENTAL PROTOCOL CHECKLIST (NOT EXECUTED)", margin, 15);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
@@ -454,18 +452,18 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
-  doc.text("4. MIL-STD-810H & AS9100 ENVIRONMENTAL RISK AUDIT MATRIX", margin, currentY);
+  doc.text("4. MIL-STD-810H / AS9100 / STANAG PROTOCOL CHECKLIST TEMPLATE", margin, currentY);
   currentY += 3.5;
 
   const qualTableHead = [
-    ["Standard & Method", "Evaluation Criterion", "Pass %", "Risk Level", "Engineering Mitigation & Condition"],
+    ["Standard & Method", "Evaluation Criterion", "Status", "Attestation", "Notes"],
   ];
 
   const qualTableBody = data.qualificationTests.map((t) => [
     t.standard + "\n" + t.methodName.split(":")[0],
     t.testCategory + "\n" + t.criticalThreshold,
-    `${t.passProbabilityPct}%`,
-    t.riskLevel,
+    t.executionStatus || "Not executed",
+    "User-attested only",
     t.mitigationRecommendation,
   ]);
 
@@ -493,7 +491,7 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
-    doc.text("5. AI METALLURGICAL QUALIFICATION AUDIT SYNTHESIS", margin, currentY);
+    doc.text("5. ENGINEERING SCREENING NOTES", margin, currentY);
     currentY += 3.5;
 
     doc.setFillColor(248, 250, 252);
@@ -507,7 +505,7 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
     doc.setFont("helvetica", "normal");
     const cleanNotes = data.aiAuditNotes.replace(/[#*`]/g, "").substring(0, 520);
     doc.text(
-      cleanNotes || "AI metallurgical qualification audit indicates all mechanical, microstructural, and environmental criteria meet flight-ready airworthiness specifications.",
+      cleanNotes || ENGINEERING_ESTIMATE_DISCLAIMER,
       margin + 3,
       currentY + 5,
       { maxWidth: contentWidth - 6 }
@@ -526,13 +524,13 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
-  doc.text("AS9100 REV D & NADCAP CONFORMANCE DECLARATION (AIRWORTHINESS STATEMENT):", margin + 4, currentY + 6);
+  doc.text("SCREENING DISCLAIMER (NOT A CERTIFICATE OF CONFORMANCE):", margin + 4, currentY + 6);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.6);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    "It is hereby certified that the materials, mechanical properties, statistical design allowables (MMPDS-14), and environmental stress assessments detailed in this Certificate of Conformance have been manufactured, sampled, and tested in accordance with AS9100 Rev D, ISO 9001, and NADCAP Special Processes requirements. Material meets all specified chemical, mechanical, and non-destructive examination standards for aerospace release.",
+    `${ENGINEERING_ESTIMATE_DISCLAIMER} This document is a laboratory screening template. Protocol rows are checklists only and do not confirm that MIL-STD-810H, AS9100, NADCAP, or STANAG tests were executed. Statistical A/B figures, if shown, are not contractual or handbook allowables unless independently attested from real coupon lots.`,
     margin + 4,
     currentY + 11.5,
     { maxWidth: contentWidth - 8 }
@@ -556,38 +554,38 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.2);
   doc.setTextColor(15, 23, 42);
-  doc.text("QA / AS9100 Quality Director:", margin + 65, signY);
+  doc.text("QA reviewer (placeholder):", margin + 65, signY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.8);
   doc.setTextColor(51, 65, 85);
-  doc.text(data.qaDirectorName || "Dr. H. Vance, AS9100 Lead Auditor", margin + 65, signY + 4.5);
-  doc.text("VERIFIED & AUDITED STAMP", margin + 65, signY + 9);
+  doc.text(data.qaDirectorName || "QA reviewer (placeholder)", margin + 65, signY + 4.5);
+  doc.text("SCREENING SIGN-OFF ONLY", margin + 65, signY + 9);
 
   // 3. Airworthiness Stamp Box (Circular / Hex Badge in PDF)
   const stampX = pageWidth - margin - 52;
   const stampY = signY - 2;
-  doc.setFillColor(240, 253, 244); // Light green
+  doc.setFillColor(255, 251, 235);
   doc.roundedRect(stampX, stampY, 48, 17, 2, 2, "F");
-  doc.setDrawColor(34, 197, 94); // Green border
+  doc.setDrawColor(217, 119, 6);
   doc.setLineWidth(0.8);
   doc.roundedRect(stampX, stampY, 48, 17, 2, 2, "D");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  doc.setTextColor(22, 101, 52);
-  doc.text("NADCAP / AS9100", stampX + 8, stampY + 5);
-  doc.setFontSize(9);
-  doc.text(`${data.overallReadinessIndex}% AIRWORTHY`, stampX + 6, stampY + 10.5);
+  doc.setTextColor(146, 64, 14);
+  doc.text("SCREENING ONLY", stampX + 8, stampY + 5);
+  doc.setFontSize(7);
+  doc.text("NOT CERTIFIED", stampX + 10, stampY + 10.5);
   doc.setFontSize(5.8);
   doc.setFont("helvetica", "normal");
-  doc.text("CLASS 1 FLIGHT RELEASE", stampX + 9, stampY + 14.5);
+  doc.text("CHECKLIST TEMPLATE", stampX + 8, stampY + 14.5);
 
   // Page 2 Footer
   doc.setFontSize(6.2);
   doc.setTextColor(148, 163, 184);
   doc.setFont("helvetica", "normal");
   doc.text(
-    `Page 2 of 2 | Official AS9100 Rev D CoC Certificate | Generated: ${new Date().toISOString()} | METALLIX Engine`,
+    `Page 2 of 2 | ${ENGINEERING_ESTIMATE_DISCLAIMER}`,
     margin,
     290
   );

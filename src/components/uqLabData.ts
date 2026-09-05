@@ -43,6 +43,7 @@ export interface MaterialDataset {
   };
   description: string;
   coupons: CouponTestSpecimen[];
+  couponSource: "synthetic" | "uploaded";
 }
 
 export interface MMPDSEmpiricalAllowableStats {
@@ -330,8 +331,12 @@ export function generateSyntheticCoupons(params: {
   return coupons;
 }
 
+export function isSyntheticCouponDataset(dataset: MaterialDataset): boolean {
+  return dataset.couponSource !== "uploaded";
+}
+
 // --------------------------------------------------------------------------
-// CERTIFIED AEROSPACE DATASETS
+// TEACHING SYNTHETIC DATASETS (not MMPDS handbook lots)
 // --------------------------------------------------------------------------
 
 export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
@@ -358,7 +363,7 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       agingTime_h: 8,
       serviceStress_MPa: 780
     },
-    description: "Certified aerospace production lot heats from aero-engine compressor and turbine rotating rotor disks evaluated across 5 vacuum induction melted (VIM-VAR) master ingots.",
+    description: "Teaching synthetic coupon set (Box-Muller). Not MMPDS handbook allowables.",
     coupons: generateSyntheticCoupons({
       datasetId: "inconel718",
       sampleSize: 42,
@@ -370,7 +375,8 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       meanElongation: 16.4,
       stdElongation: 1.8,
       testStandard: "ASTM E8 / E21"
-    })
+    }),
+    couponSource: "synthetic"
   },
   {
     id: "ti64-ams4928",
@@ -407,7 +413,8 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       meanElongation: 14.8,
       stdElongation: 1.6,
       testStandard: "ASTM E8M"
-    })
+    }),
+    couponSource: "synthetic"
   },
   {
     id: "al7075-t651",
@@ -444,7 +451,8 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       meanElongation: 11.2,
       stdElongation: 1.3,
       testStandard: "ASTM B557 / E8"
-    })
+    }),
+    couponSource: "synthetic"
   },
   {
     id: "steel4340-ams6414",
@@ -481,7 +489,8 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       meanElongation: 12.8,
       stdElongation: 1.2,
       testStandard: "ASTM E8 / E18"
-    })
+    }),
+    couponSource: "synthetic"
   },
   {
     id: "alsi10mg-lpbf-ams4215",
@@ -518,7 +527,8 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       meanElongation: 7.6,
       stdElongation: 1.4,
       testStandard: "ASTM F3318 / E8M"
-    })
+    }),
+    couponSource: "synthetic"
   },
   {
     id: "hastelloy-x-ams5754",
@@ -555,7 +565,8 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
       meanElongation: 43.5,
       stdElongation: 2.8,
       testStandard: "ASTM E8 / E21"
-    })
+    }),
+    couponSource: "synthetic"
   }
 ];
 

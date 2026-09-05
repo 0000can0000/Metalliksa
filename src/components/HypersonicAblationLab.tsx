@@ -90,7 +90,7 @@ export const TPS_DATABASE: TPSMaterial[] = [
     maxServiceTemp_C: 3300,
     airframeBondlineLimit_C: 220,
     description: "High-density continuous woven carbon fabric soaked with resol phenolic resin. High shear and gas erosion resistance.",
-    typicalApplication: "Solid Rocket Motor (SRM) nozzle throat inserts, ICBM/hypersonic RV nose tips.",
+    typicalApplication: "SRM nozzle throat inserts; order-of-magnitude re-entry heat-shield screening (not mission design).",
   },
   {
     id: "silica-phenolic",
@@ -377,8 +377,8 @@ export const HypersonicAblationLab: React.FC = () => {
     setIsAuditing(true);
     setTimeout(() => {
       const summary = `### 🚀 Hypersonic Aerothermal & TPS Engineering Audit Report
-**Classification:** DEFENSE / SPACE AEROSPACE GRADE
-**Mission Profile:** Mach ${machNumber} @ Altitude ${altitudeKm} km | Stagnation Heat Flux: **${aerothermalResults.q_total_MWm2.toFixed(2)} MW/m²**
+**Classification:** ORDER-OF-MAGNITUDE SCREENING MODEL
+**Trajectory snapshot:** Mach ${machNumber} @ Altitude ${altitudeKm} km | Stagnation Heat Flux: **${aerothermalResults.q_total_MWm2.toFixed(2)} MW/m²**
 **Selected TPS Solution:** ${tps.name} (${tpsThicknessMm} mm Initial Thickness)
 
 ---
@@ -396,7 +396,7 @@ export const HypersonicAblationLab: React.FC = () => {
 - **Total Surface Thickness Loss (${flightDurationSec}s):** **${ablationResults.totalSurfaceRecession_mm.toFixed(2)} mm** (${((ablationResults.totalSurfaceRecession_mm / tpsThicknessMm) * 100).toFixed(1)}% of total thickness)
 - **Remaining Protective TPS Margin:** **${ablationResults.remainingTpsThickness_mm.toFixed(2)} mm**
 - **Predicted Airframe Bondline Temperature:** **${ablationResults.estimatedBondlineTemp_C.toFixed(1)} °C** (Allowable Limit: ${tps.airframeBondlineLimit_C} °C)
-- **Airframe Safety Assessment:** ${ablationResults.isAirframeSafe ? "✅ FLIGHT CERTIFIED: Bondline temperature is within structural margin." : "🚨 CRITICAL OVERHEAT: Exceeds airframe adhesive limit! Increase TPS thickness by at least +15 mm."}
+- **Backface temperature check:** ${ablationResults.isAirframeSafe ? "Bondline temperature is within the entered adhesive limit in this screening model." : "Screening result: estimated bondline exceeds the entered adhesive limit. Increase thickness in the model — not a flight-design verdict."}
 
 ---
 
@@ -407,8 +407,8 @@ export const HypersonicAblationLab: React.FC = () => {
 
 ---
 
-#### 4. Directorate Recommendation:
-${ablationResults.isBurnThrough ? "⚠️ IMMEDIATE REDESIGN: Burn-through occurs before mission completion. Transition to MX-4926 3D Carbon-Phenolic or UHTC leading edge." : tps.category === "Ceramic UHTC" ? "🛡️ UHTC provides zero shape change, maintaining aerodynamic lift-to-drag ratio (L/D) for hypersonic glide control." : "✅ PICA/Phenolic system exhibits ideal char retention and low backface thermal signature."}`;
+#### 4. Screening note (not mission design):
+${ablationResults.isBurnThrough ? "Screening result: recession exceeds remaining thickness in this order-of-magnitude model — not a flight-design or burn-through redesign verdict." : tps.category === "Ceramic UHTC" ? "UHTC screening case shows little recession in this simplified model; not a glide-vehicle design recommendation." : "Phenolic/PICA screening case shows char retention in this simplified model; not a flight certification."}`;
 
       setAuditReport(summary);
       setIsAuditing(false);
@@ -439,7 +439,7 @@ ${ablationResults.isBurnThrough ? "⚠️ IMMEDIATE REDESIGN: Burn-through occur
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-400">
-                Pyrolysis kinetics, surface recession, stagnation point Fay-Riddell aerothermal heat flux, and NRT radiation damage.
+                Pyrolysis kinetics, surface recession, and Fay-Riddell stagnation flux — order-of-magnitude screening, not mission design.
               </p>
             </div>
           </div>
@@ -452,7 +452,7 @@ ${ablationResults.isBurnThrough ? "⚠️ IMMEDIATE REDESIGN: Burn-through occur
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-rose-600 hover:from-orange-400 hover:to-rose-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-[0_0_20px_rgba(249,115,22,0.3)] disabled:opacity-50 shrink-0"
           >
             {isAuditing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            <span>Run Hypersonic Mission Audit</span>
+            <span>Run screening estimate</span>
           </button>
         </div>
 

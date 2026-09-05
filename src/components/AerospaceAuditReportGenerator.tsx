@@ -19,7 +19,6 @@ import {
   Box,
   Layers,
   Info,
-  Check,
   ChevronRight,
   Send,
   Zap,
@@ -29,6 +28,7 @@ import {
   AerospaceAuditReportData,
   LabMultiTestData,
 } from "../utils/exportAerospaceCoC";
+import { ENGINEERING_ESTIMATE_DISCLAIMER, EngineeringEstimateBanner } from "../utils/engineeringDisclaimer";
 
 interface AerospacePreset {
   id: string;
@@ -55,9 +55,73 @@ interface AerospacePreset {
   youngsModulusGpa: number;
   labData: LabMultiTestData;
   notes: string;
+  isDemoScenario?: boolean;
 }
 
-const AEROSPACE_PRESETS: AerospacePreset[] = [
+const GENERIC_SCREENING_PRESET: AerospacePreset = {
+  id: "generic-coupon-screening",
+  programTitle: "Generic structural coupon screening",
+  partName: "Unlabeled tensile coupon series",
+  partNumber: "SCR-COUPON-001",
+  cageCode: "N/A (screening)",
+  criticality: "Class 3 (Secondary System)",
+  alloyName: "Ti-6Al-4V Grade 5 (Alpha-Beta Titanium)",
+  category: "Structural coupon screening example",
+  standardSpec: "AMS 4928 (reference spec only — not a qualification)",
+  manufacturingRoute: "Wrought screening coupon",
+  heatTreatmentCondition: "STA (screening example)",
+  protectiveCoating: "None specified (screening)",
+  serviceTempMin: -50,
+  serviceTempMax: 250,
+  operatingStressMpa: 400,
+  meanYieldMpa: 880,
+  meanTensileMpa: 950,
+  fractureToughnessMpaM: 55,
+  sampleSizeN: 12,
+  scatterCvPct: 4.0,
+  densityGcm3: 4.43,
+  youngsModulusGpa: 114,
+  labData: {
+    taborTest: {
+      measuredHardnessHV: 320,
+      predictedYieldMpa: 875,
+      predictedUtsMpa: 945,
+      strainHardeningExponentN: 0.13,
+      fractureToughnessKic: 55,
+      correlationConfidencePct: 80,
+      indentationStandard: "ASTM E384 (screening estimate)",
+    },
+    xrdAnalysis: {
+      primaryPhase: "HCP α-Ti (example)",
+      secondaryPhaseFractionPct: 8.0,
+      crystalliteSizeNm: 40,
+      microstrainPct: 0.18,
+      surfaceResidualStressMpa: -80,
+      standardReference: "XRD screening overlay",
+    },
+    ebsdMicrostructure: {
+      meanGrainSizeUm: 16,
+      astmGrainSizeNumberG: 8.5,
+      hagbFractionPct: 70,
+      dominantTextureOrientation: "Not attested",
+      schmidFactorAverage: 0.4,
+      standardReference: "ASTM E112 screening estimate",
+    },
+    additiveDefectAudit: {
+      volumetricEnergyDensityJmm3: 0,
+      maxThermalWarpageMm: 0,
+      peakTensileStressMpa: 0,
+      keyholeRiskScorePct: 0,
+      lackOfFusionRiskPct: 0,
+      asBuiltVsHipState: "Not an AM lot",
+      standardReference: "Not executed",
+    },
+  },
+  notes: "Generic unlabeled screening example. Not a flight program, CAGE, or certificate.",
+  isDemoScenario: false,
+};
+
+const DEMO_SCENARIO_PRESETS: AerospacePreset[] = [
   {
     id: "f35-bulkhead-ti64",
     programTitle: "Next-Gen Fighter Airframe (JSF/F-35)",
@@ -117,7 +181,7 @@ const AEROSPACE_PRESETS: AerospacePreset[] = [
         standardReference: "MIL-STD-2154 Ultrasonic Class AAA",
       },
     },
-    notes: "Primary airframe structural node carrying main wing spar bending moments. Subject to 9g flight maneuver spectrum.",
+    notes: "DEMO SCENARIO only. Fictional fighter bulkhead example — not a live program record.",
   },
   {
     id: "ariane-rocket-in718",
@@ -304,52 +368,53 @@ const AEROSPACE_PRESETS: AerospacePreset[] = [
   },
 ];
 
+const ALL_PRESETS: AerospacePreset[] = [GENERIC_SCREENING_PRESET, ...DEMO_SCENARIO_PRESETS];
+
 export function AerospaceAuditReportGenerator() {
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("f35-bulkhead-ti64");
+  const [demoScenariosEnabled, setDemoScenariosEnabled] = useState<boolean>(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(GENERIC_SCREENING_PRESET.id);
 
   // Editable Document Metadata
   const [certificateId, setCertificateId] = useState<string>(
-    `AS9100-MMPDS-2026-${Math.floor(100000 + Math.random() * 900000)}`
+    `SCREEN-EST-${Math.floor(100000 + Math.random() * 900000)}`
   );
-  const [lotHeatNumber, setLotHeatNumber] = useState<string>("HEAT-VAR-9482-HT7");
-  const [partNumber, setPartNumber] = useState<string>("WCTB-TI64-FS450-REV7");
-  const [partName, setPartName] = useState<string>("Main Fuselage Station 450 Wing Bulkhead");
-  const [customerPoNumber, setCustomerPoNumber] = useState<string>("PO-LM-2026-88402");
-  const [cageCode, setCageCode] = useState<string>("94117");
-  const [revision, setRevision] = useState<string>("Rev D");
-  const [engineerName, setEngineerName] = useState<string>("Dr. M. Caner Ganis, Lead Metallurgical Auditor");
-  const [qaDirectorName, setQaDirectorName] = useState<string>("Dr. H. Vance, AS9100 / NADCAP Quality Director");
-  const [facility, setFacility] = useState<string>("Aerospace Materials & Qualification Lab #4, METALLIX Systems");
-  const [programName, setProgramName] = useState<string>("Next-Gen Fighter Airframe (JSF/F-35)");
+  const [lotHeatNumber, setLotHeatNumber] = useState<string>("HEAT-SCR-0001");
+  const [partNumber, setPartNumber] = useState<string>(GENERIC_SCREENING_PRESET.partNumber);
+  const [partName, setPartName] = useState<string>(GENERIC_SCREENING_PRESET.partName);
+  const [customerPoNumber, setCustomerPoNumber] = useState<string>("N/A");
+  const [cageCode, setCageCode] = useState<string>(GENERIC_SCREENING_PRESET.cageCode);
+  const [revision, setRevision] = useState<string>("Rev A (screening)");
+  const [engineerName, setEngineerName] = useState<string>("Materials engineer (placeholder)");
+  const [qaDirectorName, setQaDirectorName] = useState<string>("QA reviewer (placeholder)");
+  const [facility, setFacility] = useState<string>("Engineering screening workbench");
+  const [programName, setProgramName] = useState<string>(GENERIC_SCREENING_PRESET.programTitle);
   const [criticalityLevel, setCriticalityLevel] = useState<
     "Class 1 (Flight Critical)" | "Class 2 (Primary Structural)" | "Class 3 (Secondary System)"
-  >("Class 1 (Flight Critical)");
+  >(GENERIC_SCREENING_PRESET.criticality);
 
   // Material & Mechanical Properties
-  const [alloyName, setAlloyName] = useState<string>("Ti-6Al-4V Grade 5 (Alpha-Beta Titanium)");
-  const [standardSpec, setStandardSpec] = useState<string>("AMS 4928 / MIL-T-9047 / MMPDS-14 Ch. 5");
-  const [manufacturingRoute, setManufacturingRoute] = useState<string>("Precision Closed-Die Forged + Vacuum Annealed");
+  const [alloyName, setAlloyName] = useState<string>(GENERIC_SCREENING_PRESET.alloyName);
+  const [standardSpec, setStandardSpec] = useState<string>(GENERIC_SCREENING_PRESET.standardSpec);
+  const [manufacturingRoute, setManufacturingRoute] = useState<string>(GENERIC_SCREENING_PRESET.manufacturingRoute);
   const [heatTreatmentCondition, setHeatTreatmentCondition] = useState<string>(
-    "STA (Solution Treated at 955°C / Overaged at 540°C)"
+    GENERIC_SCREENING_PRESET.heatTreatmentCondition
   );
-  const [protectiveCoating, setProtectiveCoating] = useState<string>(
-    "Titanium Anodize Type II (AMS 2488) + Epoxy Primer"
-  );
-  const [serviceTempMin, setServiceTempMin] = useState<number>(-65);
-  const [serviceTempMax, setServiceTempMax] = useState<number>(380);
-  const [operatingStressMpa, setOperatingStressMpa] = useState<number>(580);
-  const [meanYieldMpa, setMeanYieldMpa] = useState<number>(935);
-  const [meanTensileMpa, setMeanTensileMpa] = useState<number>(1015);
-  const [fractureToughnessMpaM, setFractureToughnessMpaM] = useState<number>(68);
-  const [sampleSizeN, setSampleSizeN] = useState<number>(60);
-  const [scatterCvPct, setScatterCvPct] = useState<number>(2.8);
+  const [protectiveCoating, setProtectiveCoating] = useState<string>(GENERIC_SCREENING_PRESET.protectiveCoating);
+  const [serviceTempMin, setServiceTempMin] = useState<number>(GENERIC_SCREENING_PRESET.serviceTempMin);
+  const [serviceTempMax, setServiceTempMax] = useState<number>(GENERIC_SCREENING_PRESET.serviceTempMax);
+  const [operatingStressMpa, setOperatingStressMpa] = useState<number>(GENERIC_SCREENING_PRESET.operatingStressMpa);
+  const [meanYieldMpa, setMeanYieldMpa] = useState<number>(GENERIC_SCREENING_PRESET.meanYieldMpa);
+  const [meanTensileMpa, setMeanTensileMpa] = useState<number>(GENERIC_SCREENING_PRESET.meanTensileMpa);
+  const [fractureToughnessMpaM, setFractureToughnessMpaM] = useState<number>(GENERIC_SCREENING_PRESET.fractureToughnessMpaM);
+  const [sampleSizeN, setSampleSizeN] = useState<number>(GENERIC_SCREENING_PRESET.sampleSizeN);
+  const [scatterCvPct, setScatterCvPct] = useState<number>(GENERIC_SCREENING_PRESET.scatterCvPct);
 
   // Active Lab Multi-Test Data
-  const [labData, setLabData] = useState<LabMultiTestData>(AEROSPACE_PRESETS[0].labData);
+  const [labData, setLabData] = useState<LabMultiTestData>(GENERIC_SCREENING_PRESET.labData);
 
   // AI Audit State
   const [aiAuditReport, setAiAuditReport] = useState<string | null>(
-    "AIRWORTHINESS AUDIT VERDICT: All tensile yield allowables exceed MMPDS-14 A-Basis criteria with Cpk=1.79. Microstructural EBSD confirms ASTM G=9.1 fine equiaxed grain structure. Stress corrosion cracking threshold exceeds STANAG 4370 requirements. Certified for Class 1 flight release."
+    `SCREENING NOTES (not a certification):\n${ENGINEERING_ESTIMATE_DISCLAIMER}\nEnvironmental protocol rows are a checklist template (Not executed / user-attested only).`
   );
   const [isAiAuditing, setIsAiAuditing] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
@@ -358,7 +423,7 @@ export function AerospaceAuditReportGenerator() {
   // Apply Preset Handler
   const handlePresetSelect = (presetId: string) => {
     setSelectedPresetId(presetId);
-    const preset = AEROSPACE_PRESETS.find((p) => p.id === presetId);
+    const preset = ALL_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
 
     setProgramName(preset.programTitle);
@@ -443,80 +508,83 @@ export function AerospaceAuditReportGenerator() {
       bearingUltimate,
       compressiveYield,
       cpk,
-      status: N >= 30 && cpk >= 1.33 ? "A-Basis Qualified" : "B-Basis Qualified",
+      status: "Screening estimate (not MMPDS handbook)",
     };
   }, [meanYieldMpa, meanTensileMpa, sampleSizeN, scatterCvPct]);
 
-  // Qualification Environmental Protocol List
+  // Qualification protocol checklist (not auto-PASS from sliders)
   const qualificationTests = useMemo(() => {
     return [
       {
         standard: "MIL-STD-810H",
         methodName: "Method 509.7: Salt Fog Marine Corrosion Resistance (336h 5% NaCl)",
         testCategory: "Corrosion & Marine Passivity",
-        passProbabilityPct: 98.4,
-        riskLevel: "Low Risk",
-        primaryThreat: "Micro-pitting under chloride deposit",
-        criticalThreshold: "ASTM B117 / 336h Exposure",
-        mitigationRecommendation: "Protective coating / passivity layer conforms to naval salt spray envelope.",
+        passProbabilityPct: 0,
+        riskLevel: "Not executed",
+        primaryThreat: "Not evaluated in software",
+        criticalThreshold: "User-attested laboratory exposure only",
+        mitigationRecommendation: "Checklist item — this app does not confirm salt-fog testing.",
+        executionStatus: "Not executed",
       },
       {
         standard: "MIL-STD-810H",
         methodName: "Method 516.8: Mechanical Shock & Dynamic Impact (100g / 6ms Sawtooth)",
         testCategory: "Mechanical Dynamic Shock",
-        passProbabilityPct: 99.2,
-        riskLevel: "Low Risk",
-        primaryThreat: "Dynamic brittle micro-cleavage",
-        criticalThreshold: `K_IC: ${fractureToughnessMpaM} MPa√m ≥ 50 MPa√m`,
-        mitigationRecommendation: "High fracture toughness ensures safe containment under explosive shock spectra.",
+        passProbabilityPct: 0,
+        riskLevel: "Not executed",
+        primaryThreat: "Not evaluated in software",
+        criticalThreshold: `Reference K_IC input: ${fractureToughnessMpaM} MPa√m (not a test result)`,
+        mitigationRecommendation: "Checklist item — shock spectra are not confirmed by this software.",
+        executionStatus: "Not executed",
       },
       {
         standard: "MIL-STD-810H",
-        methodName: "Method 503.7: Multi-Cycle Thermal Shock (-54°C to +380°C)",
+        methodName: "Method 503.7: Multi-Cycle Thermal Shock",
         testCategory: "Thermal Expansion & CTE Strain",
-        passProbabilityPct: 96.8,
-        riskLevel: "Low Risk",
-        primaryThreat: "Thermal fatigue cracking from CTE constraints",
-        criticalThreshold: `ΔT: ${serviceTempMax - serviceTempMin}°C Envelope`,
-        mitigationRecommendation: "Solid solution stability validated across complete operational flight temperature range.",
+        passProbabilityPct: 0,
+        riskLevel: "Not executed",
+        primaryThreat: "Not evaluated in software",
+        criticalThreshold: `Entered ΔT: ${serviceTempMax - serviceTempMin}°C (user input, not a test)`,
+        mitigationRecommendation: "Checklist item — thermal-shock testing is not confirmed by this software.",
+        executionStatus: "Not executed",
       },
       {
         standard: "MIL-STD-810H",
-        methodName: "Method 514.8: High-G Random Vibration & Acoustic Fatigue (12.8 Grms)",
+        methodName: "Method 514.8: High-G Random Vibration & Acoustic Fatigue",
         testCategory: "High-Cycle Fatigue (HCF)",
-        passProbabilityPct: 97.5,
-        riskLevel: "Low Risk",
-        primaryThreat: "Sub-surface notch fatigue initiation",
-        criticalThreshold: `Operating Stress: ${operatingStressMpa} MPa / Se: ${Math.round(meanTensileMpa * 0.45)} MPa`,
-        mitigationRecommendation: "Compressive surface residual stress prevents sub-surface fatigue initiation.",
+        passProbabilityPct: 0,
+        riskLevel: "Not executed",
+        primaryThreat: "Not evaluated in software",
+        criticalThreshold: `Entered operating stress: ${operatingStressMpa} MPa (user input)`,
+        mitigationRecommendation: "Checklist item — vibration testing is not confirmed by this software.",
+        executionStatus: "Not executed",
       },
       {
         standard: "AS9100 Rev D",
-        methodName: "Clause 8.5.1: Process Capability Index & Statistical Lot Release (Cpk ≥ 1.33)",
+        methodName: "Clause 8.5.1: Process Capability Index (Cpk) — template only",
         testCategory: "Statistical Process Quality",
-        passProbabilityPct: 99.8,
-        riskLevel: "Low Risk",
-        primaryThreat: "Lot-to-lot chemistry or heat treatment variance",
-        criticalThreshold: `Computed Cpk: ${mmpdsStats.cpk} (Threshold ≥ 1.33)`,
-        mitigationRecommendation: "Cpk demonstrates 6-sigma capable melting and forging process stability.",
+        passProbabilityPct: 0,
+        riskLevel: "Not executed",
+        primaryThreat: "Not evaluated in software",
+        criticalThreshold: `Computed Cpk from sliders: ${mmpdsStats.cpk} (not AS9100 evidence)`,
+        mitigationRecommendation: "Checklist item — Cpk from screening sliders is not an AS9100 lot release.",
+        executionStatus: "Not executed",
       },
       {
         standard: "NATO STANAG",
-        methodName: "STANAG 4370 / ASTM G38: Stress Corrosion Cracking (SCC) Immunity",
+        methodName: "STANAG 4370 / ASTM G38: Stress Corrosion Cracking (SCC) — template only",
         testCategory: "SCC Threshold & Marine Passivity",
-        passProbabilityPct: 98.0,
-        riskLevel: "Low Risk",
-        primaryThreat: "Intergranular stress corrosion cracking under sustained load",
-        criticalThreshold: "K_ISCC Threshold vs. Operating Stress",
-        mitigationRecommendation: "Passive oxide formation rate exceeds crack tip strain rate in marine environments.",
+        passProbabilityPct: 0,
+        riskLevel: "Not executed",
+        primaryThreat: "Not evaluated in software",
+        criticalThreshold: "User-attested SCC test only",
+        mitigationRecommendation: "Checklist item — SCC immunity is not confirmed by this software.",
+        executionStatus: "Not executed",
       },
     ];
-  }, [fractureToughnessMpaM, serviceTempMin, serviceTempMax, operatingStressMpa, meanTensileMpa, mmpdsStats.cpk]);
+  }, [fractureToughnessMpaM, serviceTempMin, serviceTempMax, operatingStressMpa, mmpdsStats.cpk]);
 
-  const overallReadinessIndex = useMemo(() => {
-    const sum = qualificationTests.reduce((acc, t) => acc + t.passProbabilityPct, 0);
-    return Number((sum / qualificationTests.length).toFixed(1));
-  }, [qualificationTests]);
+  const overallReadinessIndex = 0;
 
   // Payload Builder
   const getPayload = (): AerospaceAuditReportData => {
@@ -535,7 +603,7 @@ export function AerospaceAuditReportGenerator() {
       programName,
       criticalityLevel,
       alloyName,
-      category: AEROSPACE_PRESETS.find((p) => p.id === selectedPresetId)?.category || "Aerospace Structural Alloy",
+      category: ALL_PRESETS.find((p) => p.id === selectedPresetId)?.category || "Structural screening example",
       standardSpec,
       manufacturingRoute,
       heatTreatmentCondition,
@@ -547,8 +615,8 @@ export function AerospaceAuditReportGenerator() {
       meanTensileMpa,
       elongationPct: 14,
       fractureToughnessMpaM,
-      youngsModulusGpa: AEROSPACE_PRESETS.find((p) => p.id === selectedPresetId)?.youngsModulusGpa || 114,
-      densityGcm3: AEROSPACE_PRESETS.find((p) => p.id === selectedPresetId)?.densityGcm3 || 4.43,
+      youngsModulusGpa: ALL_PRESETS.find((p) => p.id === selectedPresetId)?.youngsModulusGpa || 114,
+      densityGcm3: ALL_PRESETS.find((p) => p.id === selectedPresetId)?.densityGcm3 || 4.43,
       sampleSizeN,
       scatterCvPct,
       mmpdsStats,
@@ -566,8 +634,8 @@ export function AerospaceAuditReportGenerator() {
     try {
       const payload = getPayload();
       const doc = generateAerospaceCoCPDF(payload);
-      doc.save(`${certificateId}_AS9100_NADCAP_CoC.pdf`);
-      setExportSuccessMsg(`Successfully generated official AS9100 / NADCAP PDF: ${certificateId}_AS9100_NADCAP_CoC.pdf`);
+      doc.save(`${certificateId}_screening_audit.pdf`);
+      setExportSuccessMsg(`Exported screening PDF (not a certificate): ${certificateId}_screening_audit.pdf`);
     } catch (err: any) {
       console.error("PDF generation failed:", err);
       setExportSuccessMsg(`Export error: ${err.message || "Failed to render PDF"}`);
@@ -586,7 +654,7 @@ export function AerospaceAuditReportGenerator() {
     a.download = `${certificateId}_PLM_Dataset.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setExportSuccessMsg(`Exported PLM JSON dataset for Teamcenter / Windchill integration.`);
+    setExportSuccessMsg(`Exported JSON dataset (screening payload, not a CoC).`);
   };
 
   // Run AI Airworthiness Audit Handler
@@ -598,7 +666,7 @@ export function AerospaceAuditReportGenerator() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           alloyName,
-          baseSystem: AEROSPACE_PRESETS.find((p) => p.id === selectedPresetId)?.category || "Aerospace Structural Alloy",
+          baseSystem: ALL_PRESETS.find((p) => p.id === selectedPresetId)?.category || "Structural screening example",
           manufacturingRoute,
           meanYield: meanYieldMpa,
           meanTensile: meanTensileMpa,
@@ -608,7 +676,7 @@ export function AerospaceAuditReportGenerator() {
           serviceTempMin,
           serviceTempMax,
           protectiveCoating,
-          targetStandards: "MMPDS-14 (MIL-HDBK-5), MIL-STD-810H, AS9100 Rev D, NATO STANAG 4370, NADCAP Special Processes",
+          targetStandards: "Screening checklist only: MMPDS-style stats, MIL-STD-810H / AS9100 / STANAG templates (not executed)",
         }),
       });
 
@@ -617,12 +685,11 @@ export function AerospaceAuditReportGenerator() {
       }
 
       const data = await res.json();
-      setAiAuditReport(data.auditReport || "Airworthiness audit verified.");
+      setAiAuditReport(data.auditReport || ENGINEERING_ESTIMATE_DISCLAIMER);
     } catch (err: any) {
       console.error("AI Audit error:", err);
-      // Fallback high-assurance synthesized notes
       setAiAuditReport(
-        `AIRWORTHINESS AUDIT SYNTHESIS (AS9100 Rev D / MMPDS-14):\n- Statistical A-Basis Allowable (F_ty=${mmpdsStats.aBasisYield} MPa) exceeds baseline design requirement by +14.2% margin.\n- Microstructure & Grain Boundary Analysis (ASTM E112) confirms high-angle boundary fraction of 82.4% with optimal resistance to high-cycle fatigue.\n- Environmental testing under MIL-STD-810H Method 509.7 (Salt Fog) and Method 516.8 (Mechanical Shock) confirms 0% crack initiation risk.\n- Ready for flight-critical airframe release under CAGE: ${cageCode}.`
+        `SCREENING SYNTHESIS (not airworthiness):\n- Slider-derived A/B-style numbers (F_ty≈${mmpdsStats.aBasisYield} MPa) are engineering estimates, not MMPDS handbook allowables.\n- Grain-size / EBSD fields are screening overlays, not ASTM E112 certification.\n- MIL-STD-810H methods 509.7 and 516.8 are checklist rows only (Not executed).\n- ${ENGINEERING_ESTIMATE_DISCLAIMER}`
       );
     } finally {
       setIsAiAuditing(false);
@@ -642,18 +709,19 @@ export function AerospaceAuditReportGenerator() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  AS9100 / NADCAP / ASTM Aerospace PDF Qualification Hub
+                  Audit report templates (demo)
                 </h1>
-                <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Flight-Ready CoC
+                <span className="px-2 py-0.5 text-xs font-semibold bg-amber-500/20 text-amber-200 border border-amber-500/40 rounded-full flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Screening only
                 </span>
                 <span className="px-2 py-0.5 text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40 rounded-full">
-                  MMPDS-14 (MIL-HDBK-5)
+                  PDF template
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                One-click official aerospace Certificate of Conformance (CoC), Statistical Design Allowables (A/B-Basis), Multi-Lab NDT (Tabor σ-ε, XRD, EBSD, 3D AM Defect), and MIL-STD-810H Audit Engine.
+                Engineering screening worksheets for coupon metadata, slider-based stats, and protocol checklists. Not a Certificate of Conformance and not NADCAP / AS9100 evidence.
               </p>
+              <EngineeringEstimateBanner className="mt-3 max-w-3xl" />
             </div>
           </div>
 
@@ -669,7 +737,7 @@ export function AerospaceAuditReportGenerator() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              <span>Download Official AS9100 PDF</span>
+              <span>Download screening PDF</span>
             </button>
 
             <button
@@ -691,17 +759,40 @@ export function AerospaceAuditReportGenerator() {
         )}
       </div>
 
-      {/* Flight-Critical Application Presets Selection */}
+      {/* Screening presets + optional DEMO SCENARIO fighter/CAGE examples */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-sky-400" /> Select Aerospace Flight Program / Material Benchmark:
+            <Award className="w-4 h-4 text-sky-400" /> Screening example:
           </span>
-          <span className="text-xs text-slate-500">MMPDS-14 / AS9100 Verified Datasets</span>
+          <label className="flex items-center gap-2 text-xs text-amber-200 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={demoScenariosEnabled}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setDemoScenariosEnabled(enabled);
+                if (!enabled) {
+                  handlePresetSelect(GENERIC_SCREENING_PRESET.id);
+                }
+              }}
+              className="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+            />
+            <span className="font-bold tracking-wide">DEMO SCENARIO</span>
+            <span className="text-slate-500 normal-case font-normal">
+              Unlock fighter / CAGE / Class 1 fiction (not live programs)
+            </span>
+          </label>
         </div>
 
+        {demoScenariosEnabled && (
+          <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-[11px] text-amber-100">
+            DEMO SCENARIO presets include fictional F-35 / launch-vehicle identities and CAGE-like codes. They are teaching templates, not operational records.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {AEROSPACE_PRESETS.map((preset) => {
+          {(demoScenariosEnabled ? ALL_PRESETS : [GENERIC_SCREENING_PRESET]).map((preset) => {
             const isSelected = selectedPresetId === preset.id;
             return (
               <button
@@ -719,12 +810,14 @@ export function AerospaceAuditReportGenerator() {
                   </span>
                   <span
                     className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                      preset.criticality.includes("Flight Critical")
-                        ? "bg-red-500/20 text-red-300 border border-red-500/40"
-                        : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                      preset.isDemoScenario || DEMO_SCENARIO_PRESETS.some((d) => d.id === preset.id)
+                        ? "bg-amber-500/20 text-amber-200 border border-amber-500/40"
+                        : "bg-slate-700/60 text-slate-300 border border-slate-600"
                     }`}
                   >
-                    {preset.criticality.split(" (")[0]}
+                    {preset.isDemoScenario || DEMO_SCENARIO_PRESETS.some((d) => d.id === preset.id)
+                      ? "DEMO"
+                      : "Screening"}
                   </span>
                 </div>
                 <div className="text-[11px] font-medium text-slate-200 mb-0.5 line-clamp-1">
@@ -811,7 +904,7 @@ export function AerospaceAuditReportGenerator() {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">AS9100 QA Director</label>
+                <label className="text-[10px] text-slate-400 block mb-0.5">QA reviewer (placeholder)</label>
                 <input
                   type="text"
                   value={qaDirectorName}
@@ -905,7 +998,7 @@ export function AerospaceAuditReportGenerator() {
           <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-sky-900/50 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-sky-400" /> AI Airworthiness & Metallurgical Audit
+                <Sparkles className="w-4 h-4 text-sky-400" /> AI screening notes
               </span>
               <button
                 onClick={handleRunAiAudit}
@@ -922,21 +1015,22 @@ export function AerospaceAuditReportGenerator() {
           </div>
         </div>
 
-        {/* Right Column: Live AS9100 Certificate of Conformance Interactive Preview (7 cols) */}
+        {/* Right Column: Live screening worksheet preview (7 cols) */}
         <div className="lg:col-span-7">
           <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
             {/* Certificate Header Banner (Aero Style) */}
             <div className="bg-slate-900 p-4 border-b border-sky-500/40 relative">
+              <EngineeringEstimateBanner className="mb-3" />
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[9px] px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/40 rounded font-semibold uppercase">
-                    AS9100 Rev D / NADCAP Airworthiness Certificate
+                    Screening report preview (not a CoC)
                   </span>
                   <h2 className="text-base font-bold text-white tracking-wide mt-1">
-                    CERTIFICATE OF CONFORMANCE & QUALIFICATION (CoC)
+                    ENGINEERING SCREENING WORKSHEET
                   </h2>
                   <p className="text-[10px] text-slate-400">
-                    MMPDS-14 Chapter 9 / MIL-STD-810H Compliance Audit Record
+                    Protocol checklist template — methods not executed by this software
                   </p>
                 </div>
                 <div className="text-right">
@@ -1079,7 +1173,7 @@ export function AerospaceAuditReportGenerator() {
               {/* Certificate Sign-off & Stamp */}
               <div className="border border-slate-800 bg-slate-900/90 rounded-lg p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="space-y-1 text-[11px]">
-                  <div className="font-bold text-white">AS9100 / NADCAP Quality Assurance Statement</div>
+                  <div className="font-bold text-white">Screening statement (not certification)</div>
                   <div className="text-[10px] text-slate-400">
                     Lead Metallurgist: <strong className="text-slate-200">{engineerName}</strong>
                   </div>
@@ -1089,10 +1183,10 @@ export function AerospaceAuditReportGenerator() {
                 </div>
 
                 {/* Digital Stamp of Airworthiness */}
-                <div className="px-4 py-2 bg-emerald-950/80 border-2 border-emerald-500/80 rounded-lg text-center shadow-lg">
-                  <div className="text-[10px] font-bold text-emerald-300 tracking-wider">NADCAP / AS9100</div>
-                  <div className="text-sm font-extrabold text-white">{overallReadinessIndex}% AIRWORTHY</div>
-                  <div className="text-[9px] text-emerald-400 font-mono font-semibold">CLASS 1 RELEASE</div>
+                <div className="px-4 py-2 bg-amber-950/80 border-2 border-amber-500/80 rounded-lg text-center shadow-lg">
+                  <div className="text-[10px] font-bold text-amber-200 tracking-wider">SCREENING ONLY</div>
+                  <div className="text-sm font-extrabold text-white">NOT CERTIFIED</div>
+                  <div className="text-[9px] text-amber-300 font-mono font-semibold">CHECKLIST TEMPLATE</div>
                 </div>
               </div>
             </div>

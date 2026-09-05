@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -15,9 +15,9 @@ import {
   Thermometer,
   Zap,
 } from "lucide-react";
-import { pythonComputationService, PythonLpbfBuildJobResult } from "../../services/pythonComputationService";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "../../store/useLpbfBuildMeshStore";
+import { useLpbfBuildJobPython } from "../../store/useLpbfBuildJobStore";
 import {
   findNearestLiteratureRecord,
   inferSlicerPreset,
@@ -36,58 +36,17 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
   const liveMesh = useLpbfBuildMeshStore((s) => s.mesh);
   const lpbf = specimen.lpbf;
+  const { job, error, busy, roundTripMs, rerun } = useLpbfBuildJobPython();
 
   const materials = useMemo(
     () => mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal),
     [specimen.name, specimen.baseMetal]
   );
 
-  const [job, setJob] = useState<PythonLpbfBuildJobResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [engineMs, setEngineMs] = useState<number | null>(null);
-
-  const runEngines = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    const t0 = performance.now();
-    try {
-      const jobRes = await pythonComputationService.solveLpbfBuildJob({
-        alloyId: materials.alloyId,
-        thermalMaterial: materials.pythonThermal,
-        slicerMaterial: materials.pythonSlicer,
-        laserPower_W: lpbf.laserPower_W,
-        scanSpeed_mm_s: lpbf.scanSpeed_mms,
-        beamDiameter_um: lpbf.beamDiameter_um,
-        preheatTemp_C: lpbf.preheatTemp_C,
-        layerThickness_um: lpbf.layer_um,
-        hatchSpacing_um: lpbf.hatch_um,
-        laserWavelength: "IR_1064nm",
-        preset: liveMesh ? "custom" : inferSlicerPreset(lpbf.cadAssetName),
-        customTriangles: liveMesh?.triangles ?? null,
-        cadAssetName: liveMesh?.name || lpbf.cadAssetName,
-        triangleCountNative: liveMesh?.nativeTriangleCount,
-      });
-      setJob(jobRes);
-      setEngineMs(Math.round(performance.now() - t0));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Python LPBF engines unavailable.");
-    } finally {
-      setBusy(false);
-    }
-  }, [lpbf, materials, liveMesh]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void runEngines();
-    }, 280);
-    return () => clearTimeout(timer);
-  }, [runEngines]);
-
   const thermal = job?.thermal ?? null;
   const slicer = job?.slicer ?? null;
   const decision = job?.verdict ?? null;
-  const litWindow = job?.verdict.literatureWindow;
+  const litWindow = job?.verdict?.literatureWindow;
   const htCohorts = useMemo(() => heatTreatmentCohorts(materials.alloyId), [materials.alloyId]);
   const oriCohorts = useMemo(() => orientationCohorts(materials.alloyId), [materials.alloyId]);
 
@@ -128,15 +87,15 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {engineMs != null && (
+            {roundTripMs != null && (
               <span className="text-[10px] text-slate-500">
-                Round-trip {engineMs} ms
+                Round-trip {roundTripMs} ms
                 {thermal?.computeTimeMs != null ? ` · solver ${thermal.computeTimeMs} ms` : ""}
               </span>
             )}
             <button
               type="button"
-              onClick={() => void runEngines()}
+              onClick={() => void rerun()}
               disabled={busy}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-[11px] font-bold"
             >

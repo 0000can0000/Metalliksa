@@ -193,4 +193,13 @@ This logbook records all empirically tested and mathematically verified models, 
 - **W/D envelope**: Screening Rosenthal vs published single-track W/D within a factor-of-two band (not a calibrated Eagar–Tsai cross-section).
 - **Status**: **PASS** (see `python/test_four_alloy_literature.py`)
 
+---
+
+## Proof Entry 013: Industrial UI displays only Python `job.verdict`
+- **Date**: 2026-09-05
+- **Module**: `useLpbfBuildJobStore.ts` / `LpbfBuildJobRail` / `IndustrialLPBFDecisionLab`
+- **Scope**: Paid Additive Lab path must not re-score printability in TypeScript. Rail badge is `printable` / `risky` / `do-not-print` from `POST /api/python/lpbf-build-job`. Telemetry (VED, \(I_0\), \(\Delta H/h_s\), \(W\), \(D\)) is copied from `job.thermal`. Inverse Alloy suite shares `activeSpecimen.lpbf` but does not show a client regime as an industrial verdict.
+- **Gates**: Same as Proof 011 (`compose_verdict` in `lpbf_build_job_solver.py`). No TypeScript LoF/keyhole remap on the rail.
+- **Status**: **PASS** (`tsc --noEmit`; Python solver tests unchanged)
+
 

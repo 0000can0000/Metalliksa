@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Box, Layers, Sliders, AlertTriangle, Database, ChevronRight } from "lucide-react";
 import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
-import { evaluateLpbfBuildJob, LpbfBuildRegime } from "../physics/lpbfBuildJob";
+import { useLpbfBuildJobPython } from "../store/useLpbfBuildJobStore";
+import type { PrintVerdict } from "../utils/lpbfIndustrialDecision";
 
 export type LpbfBuildJobStage = "cad" | "scan" | "process" | "regime" | "defects" | "record";
 
@@ -36,11 +37,10 @@ export function subTabToBuildJobStage(subTab: string): LpbfBuildJobStage {
   return "record";
 }
 
-function regimeTone(regime: LpbfBuildRegime): string {
-  if (regime === "Stable Conduction") return "text-emerald-300 border-emerald-500/40 bg-emerald-500/10";
-  if (regime === "Keyhole Vaporization") return "text-rose-300 border-rose-500/40 bg-rose-500/10";
-  if (regime === "Lack of Fusion (LoF)") return "text-amber-300 border-amber-500/40 bg-amber-500/10";
-  return "text-orange-300 border-orange-500/40 bg-orange-500/10";
+function verdictTone(verdict: PrintVerdict): string {
+  if (verdict === "printable") return "text-emerald-300 border-emerald-500/40 bg-emerald-500/10";
+  if (verdict === "risky") return "text-amber-300 border-amber-500/40 bg-amber-500/10";
+  return "text-rose-300 border-rose-500/40 bg-rose-500/10";
 }
 
 interface Props {
@@ -51,27 +51,16 @@ interface Props {
 export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStage }) => {
   const specimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+  const { job, error, busy } = useLpbfBuildJobPython();
   const lpbf = specimen.lpbf;
   const activeStage = subTabToBuildJobStage(activeSubTab);
-
-  const metrics = useMemo(
-    () =>
-      evaluateLpbfBuildJob({
-        laserPower_W: lpbf.laserPower_W,
-        scanSpeed_mms: lpbf.scanSpeed_mms,
-        hatch_um: lpbf.hatch_um,
-        layer_um: lpbf.layer_um,
-        beamDiameter_um: lpbf.beamDiameter_um,
-        preheatTemp_C: lpbf.preheatTemp_C,
-        thermalConductivity_k_WmK: lpbf.thermalConductivity_k_WmK,
-        density_rho_kgm3: lpbf.density_rho_kgm3,
-        specificHeat_Cp_JkgK: lpbf.specificHeat_Cp_JkgK,
-        laserAbsorptivity: lpbf.laserAbsorptivity,
-        liquidus_C: specimen.liquidus_C,
-        beamProfile: lpbf.beamProfile,
-      }),
-    [lpbf, specimen.liquidus_C]
-  );
+  const decision = job?.verdict ?? null;
+  const thermal = job?.thermal ?? null;
+  const pp = thermal?.processParameters;
+  const geo = thermal?.meltPoolGeometry;
+  const lofTight =
+    decision != null &&
+    (decision.lofGeometry.widthOverHatch < 1.05 || decision.lofGeometry.depthOverLayer < 1.15);
 
   return (
     <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-3">
@@ -83,8 +72,19 @@ export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStag
             {specimen.name}
           </span>
         </div>
-        <div className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg border ${regimeTone(metrics.regime)}`}>
-          {metrics.regime}
+        <div
+          className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg border ${
+            decision
+              ? verdictTone(decision.verdict)
+              : busy
+                ? "text-slate-300 border-[#162032] bg-[#0c1322]"
+                : error
+                  ? "text-amber-300 border-amber-500/40 bg-amber-500/10"
+                  : "text-slate-400 border-[#162032] bg-[#0c1322]"
+          }`}
+          title={decision?.headline || error || "Waiting for Python /api/python/lpbf-build-job"}
+        >
+          {decision ? decision.verdict : busy ? "Evaluating…" : error ? "Python offline" : "Python pending"}
         </div>
       </div>
 
@@ -164,17 +164,22 @@ export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStag
       <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-400">
         <span className="flex items-center gap-1">
           <Sliders className="w-3 h-3 text-cyan-400" />
-          VED {metrics.ved_J_mm3} J/mm³
+          VED {pp?.volumetricEnergyDensity_J_mm3 ?? "—"} J/mm³
         </span>
-        <span>LED {metrics.led_J_mm} J/mm</span>
-        <span>I₀ {metrics.peakIntensity_MW_cm2} MW/cm²</span>
-        <span>ΔH/hₛ {metrics.normalizedEnthalpy}</span>
-        <span>W {metrics.meltPoolWidth_um} µm · D {metrics.meltPoolDepth_um} µm</span>
-        <span>Ṫ {(metrics.coolingRate_Ks / 1e6).toFixed(2)}×10⁶ K/s</span>
-        {(metrics.hatchExceedsWidth || metrics.layerExceedsDepth) && (
+        <span>LED {pp ? (pp.linearEnergyDensity_J_m / 1000).toFixed(3) : "—"} J/mm</span>
+        <span>I₀ {pp?.peakIntensity_MW_cm2 ?? "—"} MW/cm²</span>
+        <span>ΔH/hₛ {pp?.normalizedEnthalpy ?? "—"}</span>
+        <span>W {geo?.width_um ?? "—"} µm · D {geo?.depth_um ?? "—"} µm</span>
+        <span>
+          Ṫ{" "}
+          {thermal?.solidificationKinetics.coolingRate_K_s != null
+            ? `${(thermal.solidificationKinetics.coolingRate_K_s / 1e6).toFixed(2)}×10⁶ K/s`
+            : "—"}
+        </span>
+        {lofTight && (
           <span className="text-amber-300 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
-            Hatch/layer exceeds melt pool
+            Hatch/layer overlap below Python LoF gates
           </span>
         )}
         <span className="flex items-center gap-1 ml-auto">

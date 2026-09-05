@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 21:15 — Industrial rail uses Python job.verdict only
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Stop TypeScript `evaluateLpbfBuildJob` on the Build Job rail; paid/Industrial path must show only Python `job.verdict`.
+- **Done**: Session store `useLpbfBuildJobStore` + debounced `useLpbfBuildJobPython` is the single fetch. Rail badge is printable/risky/do-not-print. Decision lab reads the same store. Inverse suite no longer prints a client regime. No TS fallback re-score when Python is offline.
+- **Where we left off**: Nothing left on this dual-regime fix. Browser click-through was not available in this session (no browser MCP).
+- **Files**: `src/store/useLpbfBuildJobStore.ts`, `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/LPBFAdditivePhysicsSuite.tsx`, `src/physics/lpbfBuildJob.ts`, `AGENTS.md`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` PASS. `py -3 python/test_lpbf_build_job.py` PASS. Browser N/A — no Cursor browser tools in this session.
+
+---
+
 ## 2026-09-05 20:52 — Hygiene after four-alloy unification
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

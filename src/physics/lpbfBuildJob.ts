@@ -1,6 +1,7 @@
 /**
- * Shared LPBF Build Job metrics.
- * Couples VED with LED, peak intensity I0, and King normalized enthalpy (AGENTS.md).
+ * Client-side energy-density screening (VED, LED, I0, King ΔH/hs).
+ * Not the industrial printability decision. Paid / Additive Lab path uses
+ * POST /api/python/lpbf-build-job → job.verdict only.
  */
 
 export type LpbfBuildRegime =

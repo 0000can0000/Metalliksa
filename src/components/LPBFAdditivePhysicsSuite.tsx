@@ -22,7 +22,6 @@ import {
 import { CandidateAlloySolution, InverseDesignTargets } from "../utils/inverseAlloyOptimizer";
 import { LaserMeltPoolThermalMap } from "./LaserMeltPoolThermalMap";
 import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
-import { evaluateLpbfBuildJob } from "../physics/lpbfBuildJob";
 
 interface Props {
   candidate: CandidateAlloySolution;
@@ -57,24 +56,6 @@ export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }
   const specimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
   const lpbf = specimen.lpbf;
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
-  const buildJobMetrics = useMemo(
-    () =>
-      evaluateLpbfBuildJob({
-        laserPower_W: lpbf.laserPower_W,
-        scanSpeed_mms: lpbf.scanSpeed_mms,
-        hatch_um: lpbf.hatch_um,
-        layer_um: lpbf.layer_um,
-        beamDiameter_um: lpbf.beamDiameter_um,
-        preheatTemp_C: lpbf.preheatTemp_C,
-        thermalConductivity_k_WmK: lpbf.thermalConductivity_k_WmK,
-        density_rho_kgm3: lpbf.density_rho_kgm3,
-        specificHeat_Cp_JkgK: lpbf.specificHeat_Cp_JkgK,
-        laserAbsorptivity: lpbf.laserAbsorptivity,
-        liquidus_C: specimen.liquidus_C,
-        beamProfile: lpbf.beamProfile,
-      }),
-    [lpbf, specimen.liquidus_C]
-  );
   const [atomizationGas, setAtomizationGas] = useState<LPBFProcessParameters["atomizationGas"]>("Argon");
 
   const params: LPBFProcessParameters = {
@@ -381,7 +362,7 @@ export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }
               Rosenthal 3D heat conduction, Eagar-Tsai melt pool geometry ($d/w$), solidification kinetics ($G \times R$), and element vaporization loss model.
             </p>
             <p className="text-[10px] text-sky-300/80 mt-1.5 font-mono">
-              Build Job vector shared with Additive Lab — {specimen.name} · P {lpbf.laserPower_W} W · v {lpbf.scanSpeed_mms} mm/s · h {lpbf.hatch_um} µm · t {lpbf.layer_um} µm · d {lpbf.beamDiameter_um} µm · T₀ {lpbf.preheatTemp_C}°C · {buildJobMetrics.regime}
+              Build Job vector shared with Additive Lab — {specimen.name} · P {lpbf.laserPower_W} W · v {lpbf.scanSpeed_mms} mm/s · h {lpbf.hatch_um} µm · t {lpbf.layer_um} µm · d {lpbf.beamDiameter_um} µm · T₀ {lpbf.preheatTemp_C}°C. Industrial printability is the Python verdict in Additive Lab, not this screening suite.
             </p>
           </div>
 

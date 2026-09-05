@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:43 — Cheap PR checklist automation prompt
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Write a token-cheap English instruction the user can paste into a Cursor Automation (PR opened → checklist comment).
+- **Done**: Delivered the prompt in chat. No automation was saved in this session (editor handoff still unavailable).
+- **Where we left off**: User pastes the prompt in Automations UI, or re-asks in Agents Window to open the editor. Nothing left on the writing task.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — prompt-only; no app code change
+
+---
+
 ## 2026-09-05 19:42 — Retry cheap PR checklist automation
 - **Agent**: Cursor Grok 4.6
 - **Result**: PARTIAL

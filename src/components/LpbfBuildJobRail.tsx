@@ -56,8 +56,11 @@ export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStag
   const activeStage = subTabToBuildJobStage(activeSubTab);
   const decision = job?.verdict ?? null;
   const thermal = job?.thermal ?? null;
+  const slicer = job?.slicer ?? null;
   const pp = thermal?.processParameters;
   const geo = thermal?.meltPoolGeometry;
+  const lof = decision?.lofGeometry;
+  const pv = decision?.literatureWindow;
   const lofTight =
     decision != null &&
     (decision.lofGeometry.widthOverHatch < 1.05 || decision.lofGeometry.depthOverLayer < 1.15);
@@ -82,7 +85,11 @@ export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStag
                   ? "text-amber-300 border-amber-500/40 bg-amber-500/10"
                   : "text-slate-400 border-[#162032] bg-[#0c1322]"
           }`}
-          title={decision?.headline || error || "Waiting for Python /api/python/lpbf-build-job"}
+          title={
+            decision?.headline ||
+            error ||
+            "Waiting for Python /api/python/lpbf-build-job (rosenthal-screening-v1)"
+          }
         >
           {decision ? decision.verdict : busy ? "Evaluating…" : error ? "Python offline" : "Python pending"}
         </div>
@@ -162,6 +169,9 @@ export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStag
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-400">
+        <span className="text-slate-500" title={(job?.assumptions || []).join(" ")}>
+          {job?.modelId || "rosenthal-screening-v1"}
+        </span>
         <span className="flex items-center gap-1">
           <Sliders className="w-3 h-3 text-cyan-400" />
           VED {pp?.volumetricEnergyDensity_J_mm3 ?? "—"} J/mm³
@@ -170,11 +180,31 @@ export const LpbfBuildJobRail: React.FC<Props> = ({ activeSubTab, onNavigateStag
         <span>I₀ {pp?.peakIntensity_MW_cm2 ?? "—"} MW/cm²</span>
         <span>ΔH/hₛ {pp?.normalizedEnthalpy ?? "—"}</span>
         <span>W {geo?.width_um ?? "—"} µm · D {geo?.depth_um ?? "—"} µm</span>
+        <span className={lof && lof.widthOverHatch < 1.05 ? "text-amber-300" : ""}>
+          W/h {lof ? lof.widthOverHatch.toFixed(2) : "—"}
+        </span>
+        <span className={lof && lof.depthOverLayer < 1.15 ? "text-amber-300" : ""}>
+          D/t {lof ? lof.depthOverLayer.toFixed(2) : "—"}
+        </span>
+        <span className={pv && !pv.inside ? "text-amber-300" : "text-slate-400"}>
+          P–v {pv ? (pv.inside ? "inside box" : "outside box") : "—"}
+        </span>
         <span>
           Ṫ{" "}
           {thermal?.solidificationKinetics.coolingRate_K_s != null
             ? `${(thermal.solidificationKinetics.coolingRate_K_s / 1e6).toFixed(2)}×10⁶ K/s`
             : "—"}
+        </span>
+        <span>
+          {slicer?.buildTimeSummary ? `${slicer.buildTimeSummary.totalBuildTime_hr} h` : "— h"}
+          {slicer?.meshMetrics ? ` · ${slicer.meshMetrics.estimatedPartMass_g} g` : ""}
+        </span>
+        <span className={slicer?.geometrySource === "uploaded-stl" ? "text-sky-300" : "text-slate-500"}>
+          {slicer?.geometrySource === "uploaded-stl"
+            ? `STL ${slicer.cadAssetName || "mesh"}`
+            : slicer
+              ? `Demo ${slicer.preset || "CAD"}`
+              : "STL pending"}
         </span>
         {lofTight && (
           <span className="text-amber-300 flex items-center gap-1">

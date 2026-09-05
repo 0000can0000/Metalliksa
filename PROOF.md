@@ -202,4 +202,14 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Gates**: Same as Proof 011 (`compose_verdict` in `lpbf_build_job_solver.py`). No TypeScript LoF/keyhole remap on the rail.
 - **Status**: **PASS** (`tsc --noEmit`; Python solver tests unchanged)
 
+---
+
+## Proof Entry 014: Industrial rail/lab telemetry from Python Build Job
+- **Date**: 2026-09-05
+- **Module**: `LpbfBuildJobRail` / `IndustrialLPBFDecisionLab` / `test_lpbf_build_job.py`
+- **Scope**: Paid path surfaces STL source, `job.verdict`, LoF ratios \(W/h\) and \(D/t\), King \(\Delta H/h_s\), literature P–v box, slicer mass and build hours, and `rosenthal-screening-v1` assumption list. Values are copied from the Python job; TypeScript does not re-gate.
+- **Input (Ti-6Al-4V screening)**: \(P=200\,\text{W}\), \(v=900\,\text{mm/s}\), \(h=100\,\mu\text{m}\), \(t=30\,\mu\text{m}\), demo nozzle CAD.
+- **Expected**: `modelId=rosenthal-screening-v1`; literature box inside; `geometrySource=demo-preset`; `buildTimeSummary.totalBuildTime_hr>0`; `meshMetrics.estimatedPartMass_g>0`; assumptions mention Goldak (not used) and King \(\Delta H/h_s\).
+- **Status**: **PASS** (`python/test_lpbf_build_job.py`; `tsc --noEmit`)
+
 

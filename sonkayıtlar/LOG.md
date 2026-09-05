@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 21:20 — Surface STL + W/h + P–v + mass/time + assumptions
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Show the full Python Build Job stack: STL source, `job.verdict`, W/h, D/t, ΔH/hₛ, literature P–v box, mass/time, and `rosenthal-screening-v1` assumptions.
+- **Done**: Rail chips copy Python LoF ratios, P–v inside/out, hours, grams, STL vs demo, and model id. Decision lab adds ΔH/hₛ + P–v metrics and lists `job.assumptions`. No TypeScript re-score.
+- **Where we left off**: Nothing left on this telemetry pass. Browser click-through N/A (no browser MCP). Next is still a later fidelity flag, not this step.
+- **Files**: `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `python/test_lpbf_build_job.py`, `AGENTS.md`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` PASS; `py -3 python/test_lpbf_build_job.py` PASS. Browser N/A — no Cursor browser tools in this session.
+
+---
+
 ## 2026-09-05 21:15 — Industrial rail uses Python job.verdict only
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

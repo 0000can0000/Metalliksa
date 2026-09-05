@@ -196,6 +196,18 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                 ok={decision.lofGeometry.depthOverLayer >= 1.15}
                 hint="> 1.15"
               />
+              <Metric
+                label="ΔH/hₛ"
+                value={String(thermal.processParameters.normalizedEnthalpy)}
+                ok={thermal.processParameters.normalizedEnthalpy < 30}
+                hint="King onset ~30"
+              />
+              <Metric
+                label="P–v literature"
+                value={decision.literatureWindow.inside ? "Inside box" : "Outside box"}
+                ok={decision.literatureWindow.inside}
+                hint={`${decision.literatureWindow.box.powerMin_W}–${decision.literatureWindow.box.powerMax_W} W`}
+              />
               <Metric label="Recoater" value={shortRisk(thermal.defectDiagnostics.recoaterCrashRisk)} ok={!thermal.defectDiagnostics.recoaterCrashRisk.startsWith("High")} />
               <Metric label="Balling" value={shortRisk(thermal.defectDiagnostics.ballingInstabilityRisk)} ok={!thermal.defectDiagnostics.ballingInstabilityRisk.startsWith("High")} />
             </div>
@@ -340,6 +352,19 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           <Tiny label="LED J/mm" value={(thermal.processParameters.linearEnergyDensity_J_m / 1000).toFixed(3)} />
           <Tiny label="VED J/mm³" value={String(thermal.processParameters.volumetricEnergyDensity_J_mm3)} />
           <Tiny label="Ṫ K/s" value={thermal.solidificationKinetics.coolingRate_K_s.toExponential(1)} />
+        </div>
+      )}
+
+      {job?.assumptions && job.assumptions.length > 0 && (
+        <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-2">
+          <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+            {job.modelId} assumptions
+          </div>
+          <ul className="list-disc pl-5 space-y-1 text-[11px] text-slate-400">
+            {job.assumptions.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

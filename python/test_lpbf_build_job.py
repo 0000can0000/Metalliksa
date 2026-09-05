@@ -38,10 +38,18 @@ def main():
     assert ti["success"]
     assert ti["engine"] == "lpbf_build_job"
     assert ti["modelId"] == "rosenthal-screening-v1"
+    assert len(ti["assumptions"]) >= 4
+    assert any("Goldak" in a for a in ti["assumptions"])
+    assert any("King" in a for a in ti["assumptions"])
     assert "verdict" in ti["verdict"]
     assert ti["verdict"]["verdict"] in ("printable", "risky", "do-not-print")
     assert ti["thermal"]["meltPoolGeometry"]["width_um"] > 0
+    assert ti["verdict"]["lofGeometry"]["widthOverHatch"] > 0
+    assert ti["verdict"]["lofGeometry"]["depthOverLayer"] > 0
+    assert ti["thermal"]["processParameters"]["normalizedEnthalpy"] > 0
     assert ti["slicer"]["geometrySource"] == "demo-preset"
+    assert ti["slicer"]["buildTimeSummary"]["totalBuildTime_hr"] > 0
+    assert ti["slicer"]["meshMetrics"]["estimatedPartMass_g"] > 0
     assert ti["verdict"]["literatureWindow"]["inside"] is True
 
     lof = run_job(

@@ -2,7 +2,6 @@ import {
   HeatTreatmentCondition,
   LPBFAlloyId,
   TraceableLPBFRecord,
-  classifyHatchLayerOverlap,
 } from "../types/lpbfDataFoundation";
 import {
   MASTER_LPBF_REFERENCE_DATASETS,
@@ -286,5 +285,3 @@ export function overlayAnisotropyFromGroundTruth(
 ) {
   return anisotropyOverlayFromGroundTruth(fallback, alloyId);
 }
-
-export { classifyHatchLayerOverlap };

@@ -18,14 +18,13 @@ import math
 import struct
 import time
 
-from four_alloy_materials import four_alloy_slicer_db, slicer_props
+from four_alloy_materials import slicer_props
 
 # Secondary alloys only. The four locked alloys come from four_alloy_materials.py.
 SECONDARY_ALLOY_DB = {
     "CoCrMo": {"density_gcm3": 8.30, "k_WmK": 14.8, "name": "CoCrMo Biomedical ASTM F75"},
     "Scalmalloy": {"density_gcm3": 2.67, "k_WmK": 95.0, "name": "Scalmalloy (Al-Mg-Sc)"},
 }
-ALLOY_DB = {**four_alloy_slicer_db(), **SECONDARY_ALLOY_DB}
 
 def generate_preset_triangles(preset_name: str):
     """Generates 3D benchmark triangle geometry in mm."""
@@ -341,7 +340,7 @@ def solve_slicer(data):
     start_time = time.time()
     preset = data.get("preset", "bracket")
     material = data.get("material", "Inconel 718")
-    mat_info = slicer_props(material) or ALLOY_DB.get(material, ALLOY_DB["Inconel 718"])
+    mat_info = slicer_props(material) or SECONDARY_ALLOY_DB.get(material) or slicer_props("Inconel 718")
 
     laser_power_w = float(data.get("laserPower_W", 285.0))
     scan_speed_mms = float(data.get("scanSpeed_mms", data.get("scanSpeed_mm_s", 960.0)))

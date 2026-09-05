@@ -302,15 +302,6 @@ def slicer_props(name):
     }
 
 
-def four_alloy_slicer_db():
-    db = {}
-    for aid in FOUR_ALLOY_IDS:
-        rec = slicer_props(aid)
-        db[SLICER_NAME[aid]] = rec
-        db[THERMAL_NAME[aid]] = rec
-    return db
-
-
 def marangoni_props(name):
     aid = resolve_alloy_id(name)
     if aid is None:
@@ -334,10 +325,6 @@ def marangoni_props(name):
     }
 
 
-def four_alloy_marangoni_db():
-    return {THERMAL_NAME[aid]: marangoni_props(aid) for aid in FOUR_ALLOY_IDS}
-
-
 def inherent_strain_props(name):
     aid = resolve_alloy_id(name)
     if aid is None:
@@ -357,15 +344,6 @@ def inherent_strain_props(name):
         "absorptivity": s["absorptivity"],
         "cracking_susceptibility": s["cracking_susceptibility"],
     }
-
-
-def four_alloy_inherent_strain_db():
-    db = {}
-    for aid in FOUR_ALLOY_IDS:
-        rec = inherent_strain_props(aid)
-        db[THERMAL_NAME[aid]] = rec
-        db[SLICER_NAME[aid]] = rec
-    return db
 
 
 def evaluate_literature_pv(alloy_id, power_W, speed_mm_s):

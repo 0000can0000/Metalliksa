@@ -30,11 +30,10 @@ import math
 import time
 import random
 
-from four_alloy_materials import four_alloy_marangoni_db, marangoni_props
+from four_alloy_materials import marangoni_props
 
-# Four locked alloys come from four_alloy_materials.py. Scalmalloy stays local.
+# Secondary alloy only. The four locked alloys come from four_alloy_materials.py.
 ALLOY_SURFACE_DATABASE = {
-    **four_alloy_marangoni_db(),
     "Scalmalloy® (Al-Mg-Sc-Zr)": {
         "liquidus_C": 650.0,
         "solidus_C": 580.0,
@@ -68,7 +67,11 @@ def solve_marangoni_flow_and_porosity(payload):
 
     # Extract inputs with robust defaults
     material_name = payload.get("material", "Inconel 718")
-    props = marangoni_props(material_name) or ALLOY_SURFACE_DATABASE.get(material_name, ALLOY_SURFACE_DATABASE["Inconel 718"])
+    props = (
+        marangoni_props(material_name)
+        or ALLOY_SURFACE_DATABASE.get(material_name)
+        or marangoni_props("Inconel 718")
+    )
     
     laser_power_W = float(payload.get("laserPower_W", 285.0))
     scan_speed_mm_s = float(payload.get("scanSpeed_mm_s", 960.0))

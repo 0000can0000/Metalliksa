@@ -1,15 +1,12 @@
 import {
   LPBFAlloyId,
   TraceableLPBFRecord,
-  classifyHatchLayerOverlap,
 } from "../types/lpbfDataFoundation";
 import {
   MASTER_LPBF_REFERENCE_DATASETS,
   loadUserLPBFRecords,
 } from "../data/lpbfReferenceDatasets";
-import type { PythonLPBFResult } from "../services/pythonComputationService";
 import type { BaseMetalType } from "../store/useMaterialSpecimenStore";
-import { evaluateLiteraturePvWindow } from "./lpbfFourAlloySchema";
 
 export type PrintVerdict = "printable" | "risky" | "do-not-print";
 
@@ -94,73 +91,4 @@ function nearestInPool(
     }
   }
   return best;
-}
-
-export interface IndustrialVerdict {
-  verdict: PrintVerdict;
-  headline: string;
-  reasons: string[];
-  lofGeometry: { widthOverHatch: number; depthOverLayer: number };
-}
-
-/** Kept for regression tests. Industrial UI must display Python `solve_lpbf_build_job` instead. */
-export function composeIndustrialVerdict(
-  result: PythonLPBFResult,
-  alloyId?: LPBFAlloyId
-): IndustrialVerdict {
-  const W = result.meltPoolGeometry.width_um;
-  const D = result.meltPoolGeometry.depth_um;
-  const h = result.processParameters.hatchSpacing_um;
-  const t = result.processParameters.layerThickness_um;
-  const geom = classifyHatchLayerOverlap(W, D, h, t);
-  const widthOverHatch = geom.widthOverHatch;
-  const depthOverLayer = geom.depthOverLayer;
-
-  const def = result.defectDiagnostics;
-  const lofFail = def.lackOfFusionStatus === "Fail";
-  const lofWarn = def.lackOfFusionStatus === "Warning";
-  const keyholeHigh = def.keyholePorosityRisk.startsWith("High");
-  const ballingHigh = def.ballingInstabilityRisk.startsWith("High");
-  const recoaterHigh = def.recoaterCrashRisk.startsWith("High");
-  const distortionHigh = def.distortionIndex >= 0.65;
-
-  const reasons: string[] = [];
-  if (lofFail) reasons.push(`Lack of fusion: W/h = ${widthOverHatch.toFixed(2)} (need >1.05) or D/t = ${depthOverLayer.toFixed(2)} (need >1.15).`);
-  else if (lofWarn) reasons.push(`Hatch/layer overlap is marginal (W/h = ${widthOverHatch.toFixed(2)}, D/t = ${depthOverLayer.toFixed(2)}).`);
-  if (keyholeHigh) reasons.push(`Keyhole porosity: ΔH/hₛ = ${result.processParameters.normalizedEnthalpy} (King onset ~30).`);
-  if (ballingHigh) reasons.push(`Plateau–Rayleigh balling: L/W = ${result.meltPoolGeometry.aspectRatio_L_over_W}.`);
-  if (recoaterHigh) reasons.push("Recoater crash / part curl risk from residual stress.");
-  if (distortionHigh) reasons.push(`Inherent-strain distortion index ${def.distortionIndex} (≥0.65).`);
-  const win = alloyId
-    ? evaluateLiteraturePvWindow(
-        alloyId,
-        result.processParameters.laserPower_W,
-        result.processParameters.scanSpeed_mm_s
-      )
-    : null;
-  if (win && !win.inside) {
-    reasons.push(
-      `P–v is outside the ${alloyId} literature box (${win.box.powerMin_W}–${win.box.powerMax_W} W, ${win.box.speedMin_mm_s}–${win.box.speedMax_mm_s} mm/s).`
-    );
-  }
-
-  let verdict: PrintVerdict = "printable";
-  if (lofFail || ballingHigh || (keyholeHigh && result.processParameters.normalizedEnthalpy > 35)) {
-    verdict = "do-not-print";
-  } else if (lofWarn || keyholeHigh || recoaterHigh || distortionHigh || (win && !win.inside)) {
-    verdict = "risky";
-  }
-
-  if (reasons.length === 0) {
-    reasons.push("Conduction-mode melt pool with hatch/layer overlap above LoF gates. VED is not used as the sole criterion.");
-  }
-
-  const headline =
-    verdict === "printable"
-      ? "Printable — stay in the conduction window"
-      : verdict === "risky"
-        ? "Risky — qualify with coupon builds before flight hardware"
-        : "Do not print — change P, v, h, or t before a build";
-
-  return { verdict, headline, reasons, lofGeometry: { widthOverHatch, depthOverLayer } };
 }

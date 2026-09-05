@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 20:52 — Hygiene after four-alloy unification
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Remove leftover four-alloy k/ρ/Cp copies and unused TypeScript printability scoring; keep Python `job.verdict` as the industrial decision.
+- **Done**: Solvers look up Ti-6Al-4V, 316L, AlSi10Mg, and IN718 via `four_alloy_materials.py` only. Secondary alloys stay local. Deleted unused `composeIndustrialVerdict`. One Python `LITERATURE_PV_WINDOWS`. Did not start Eagar–Tsai / Goldak.
+- **Where we left off**: Nothing left on this hygiene task. Next remains a later fidelity flag, not this pass.
+- **Files**: `python/four_alloy_materials.py`, `python/lpbf_thermal_solver.py`, `python/stl_slicer_build_time_solver.py`, `python/marangoni_pore_instability_solver.py`, `python/part_scale_inherent_strain_solver.py`, `src/utils/lpbfIndustrialDecision.ts`, `src/utils/lpbfFourAlloySchema.ts`
+- **Tests**: `py -3 python/test_four_alloy_literature.py` PASS; `py -3 python/test_lpbf_build_job.py` PASS; `py -3 python/test_lpbf_meltpool_accuracy.py` PASS; `npx tsc --noEmit` PASS. Browser N/A — no UI behavior change (still displays Python `job.verdict`).
+
+---
+
 ## 2026-09-05 20:45 — Handoff: Python hygiene in a new Agent window
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

@@ -181,7 +181,11 @@ def calculate_meltpool_physics(
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
     """
-    props = thermal_props(material_name) or THERMOPHYSICAL_DB.get(material_name, THERMOPHYSICAL_DB["Inconel 718"])
+    props = (
+        thermal_props(material_name)
+        or SECONDARY_THERMOPHYSICAL_DB.get(material_name)
+        or thermal_props("Inconel 718")
+    )
     
     P_laser = max(10.0, float(laser_power_W))
     v_scan = max(10.0, float(scan_speed_mm_s)) * 1e-3  # m/s

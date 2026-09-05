@@ -15,7 +15,7 @@ import sys
 import json
 import math
 
-from four_alloy_materials import four_alloy_inherent_strain_db, inherent_strain_props
+from four_alloy_materials import inherent_strain_props
 
 # Secondary alloys only. The four locked alloys come from four_alloy_materials.py.
 SECONDARY_ALLOY_DB = {
@@ -73,9 +73,6 @@ SECONDARY_ALLOY_DB = {
     }
 }
 
-ALLOY_DB = {**four_alloy_inherent_strain_db(), **SECONDARY_ALLOY_DB}
-
-
 def get_alloy_properties(name):
     rec = inherent_strain_props(name)
     if rec:
@@ -83,7 +80,7 @@ def get_alloy_properties(name):
     for k, v in SECONDARY_ALLOY_DB.items():
         if k.lower() in name.lower() or name.lower() in k.lower():
             return v
-    return ALLOY_DB["Inconel 718"]
+    return inherent_strain_props("Inconel 718")
 
 
 def generate_synthetic_cad_mesh(geom_type):

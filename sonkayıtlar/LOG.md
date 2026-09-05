@@ -11,7 +11,7 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 - **Done**: Branch `yeni2`. Filled IN718 DOI coupons. Added literature P–v boxes + dense hull, geometric LoF helper, HT/orientation cohorts, fatigue lab overlay, Ground Truth IN718 + schema panels, industrial verdict uses the literature box.
 - **Where we left off**: Typecheck passed. Browser click-through not available. New-alloy intake still not a product path.
 - **Files**: `src/data/lpbfReferenceDatasets.ts`, `src/types/lpbfDataFoundation.ts`, `src/utils/lpbfFourAlloySchema.ts`, `src/utils/lpbfIndustrialDecision.ts`, `src/components/3d-distortion-lab/LPBFGroundTruthDataLab.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/3d-distortion-lab/AnisotropicMechanicalFatigueLab.tsx`, `PROOF.md`, `sonkayıtlar/LOG.md`
-- **Tests**: `npx tsc --noEmit` — PASS. UI click-through N/A — no browser tools.
+- **Tests**: `npx tsc --noEmit` — PASS. `npx tsx` hatch LoF Fail/Pass, IN718 n=7, Ti-6Al-4V 200 W / 900 mm/s inside box — PASS. UI click-through N/A — no browser tools.
 
 ---
 

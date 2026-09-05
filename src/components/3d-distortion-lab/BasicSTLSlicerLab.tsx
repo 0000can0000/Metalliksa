@@ -54,6 +54,8 @@ import {
   FullStackSliceInfo,
 } from "../../utils/stlParser";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
+import { useLpbfBuildMeshStore } from "../../store/useLpbfBuildMeshStore";
+import { bufferGeometryToSlicerTriangles } from "../../physics/lpbfBuildMesh";
 
 export interface BasicSTLSlicerLabProps {
   initialPower_W?: number;
@@ -105,6 +107,8 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
   const [hatchStrategy, setHatchStrategy] = useState<"meander_67" | "meander_90" | "unidirectional" | "cross_0_90">("meander_67");
   const [contourSkinPasses, setContourSkinPasses] = useState<number>(2);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+  const setFromGeometry = useLpbfBuildMeshStore((s) => s.setFromGeometry);
+  const clearLiveMesh = useLpbfBuildMeshStore((s) => s.clearMesh);
 
   useEffect(() => {
     setLaserPower_W(initialPower_W);
@@ -272,6 +276,7 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
           throw new Error("Empty or invalid STL mesh data.");
         }
         setCustomGeometry(geom);
+        setFromGeometry(file.name, geom);
         setSelectedPreset("custom");
         setActiveLayerIndex(1);
       } catch (err: any) {
@@ -287,6 +292,8 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
     setUploadedFileName(null);
     setSelectedPreset("bracket");
     setActiveLayerIndex(1);
+    clearLiveMesh();
+    updateLpbfProcess({ cadAssetName: "" });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -300,19 +307,8 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
       // If custom mesh, extract triangle vertices
       let customTriangles: number[][][] | null = null;
       if (selectedPreset === "custom" && customGeometry) {
-        const pos = customGeometry.attributes.position;
-        if (pos) {
-          customTriangles = [];
-          const count = Math.min(pos.count / 3, 5000);
-          for (let i = 0; i < count; i++) {
-            const i3 = i * 3;
-            customTriangles.push([
-              [pos.getX(i3), pos.getY(i3), pos.getZ(i3)],
-              [pos.getX(i3 + 1), pos.getY(i3 + 1), pos.getZ(i3 + 1)],
-              [pos.getX(i3 + 2), pos.getY(i3 + 2), pos.getZ(i3 + 2)],
-            ]);
-          }
-        }
+        const extracted = bufferGeometryToSlicerTriangles(customGeometry);
+        customTriangles = extracted.triangles.length > 0 ? extracted.triangles : null;
       }
 
       const payload = {
@@ -325,6 +321,10 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
         recoatTimePerLayer_s,
         hatchStrategy,
         customTriangles,
+        cadAssetName: uploadedFileName || "",
+        triangleCountNative: customGeometry
+          ? Math.floor((customGeometry.attributes.position?.count || 0) / 3)
+          : undefined,
       };
 
       const res = await fetch("/api/python/stl-slicer-build-time", {

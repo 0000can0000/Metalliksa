@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { pythonComputationService, PythonLPBFResult, PythonSTLSlicerResult } from "../../services/pythonComputationService";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
+import { useLpbfBuildMeshStore } from "../../store/useLpbfBuildMeshStore";
 import {
   composeIndustrialVerdict,
   findNearestLiteratureRecord,
@@ -34,6 +35,7 @@ interface Props {
 export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpenGroundTruth }) => {
   const specimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+  const liveMesh = useLpbfBuildMeshStore((s) => s.mesh);
   const lpbf = specimen.lpbf;
 
   const materials = useMemo(
@@ -64,12 +66,15 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           laserWavelength: "IR_1064nm",
         }),
         pythonComputationService.solveSTLSlicerBuildTime({
-          preset: inferSlicerPreset(lpbf.cadAssetName),
+          preset: liveMesh ? "custom" : inferSlicerPreset(lpbf.cadAssetName),
           material: materials.pythonSlicer,
           laserPower_W: lpbf.laserPower_W,
           scanSpeed_mms: lpbf.scanSpeed_mms,
           layerThickness_um: lpbf.layer_um,
           hatchSpacing_um: lpbf.hatch_um,
+          customTriangles: liveMesh?.triangles ?? null,
+          cadAssetName: liveMesh?.name || lpbf.cadAssetName,
+          triangleCountNative: liveMesh?.nativeTriangleCount,
         }),
       ]);
       setThermal(thermalRes);
@@ -80,7 +85,7 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     } finally {
       setBusy(false);
     }
-  }, [lpbf, materials]);
+  }, [lpbf, materials, liveMesh]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -256,16 +261,31 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
             <div className="rounded-lg border border-[#162032] bg-[#060a12] p-2.5 space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
                 <Clock className="w-3.5 h-3.5 text-sky-400" />
-                Preset {inferSlicerPreset(lpbf.cadAssetName)} · {slicer.buildTimeSummary.totalLayers} layers ·{" "}
-                {slicer.buildTimeSummary.totalBuildTime_hr} h
+                {slicer.geometrySource === "uploaded-stl"
+                  ? `Live STL ${liveMesh?.name || slicer.cadAssetName || "mesh"}`
+                  : `Demo preset ${slicer.preset || inferSlicerPreset(lpbf.cadAssetName)}`}{" "}
+                · {slicer.buildTimeSummary.totalLayers} layers · {slicer.buildTimeSummary.totalBuildTime_hr} h
               </div>
               <div className="text-[10px] text-slate-500">
                 Laser {slicer.buildTimeSummary.totalLaserTime_hr} h · Recoat {slicer.buildTimeSummary.totalRecoatTime_hr} h · Peak area{" "}
                 {slicer.buildTimeSummary.peakLayerArea_mm2} mm²
                 {slicer.meshMetrics ? ` · ~${slicer.meshMetrics.estimatedPartMass_g} g` : ""}
+                {slicer.meshMetrics
+                  ? ` · ${slicer.meshMetrics.triangleCount} tris`
+                  : ""}
               </div>
-              {!lpbf.cadAssetName && (
-                <p className="text-[10px] text-amber-300/80">No uploaded STL on the twin — using the rocket-nozzle preset. Open the slicer to bind a CAD file.</p>
+              {liveMesh && liveMesh.nativeTriangleCount > liveMesh.usedTriangleCount && (
+                <p className="text-[10px] text-slate-500">
+                  Uniform subsample {liveMesh.usedTriangleCount} of {liveMesh.nativeTriangleCount} triangles for the Python slicer.
+                </p>
+              )}
+              {!liveMesh && lpbf.cadAssetName && (
+                <p className="text-[10px] text-amber-300/80">
+                  Filename {lpbf.cadAssetName} is on the twin but the triangle buffer is session-only — re-upload the STL in the slicer to slice the live mesh.
+                </p>
+              )}
+              {!liveMesh && !lpbf.cadAssetName && (
+                <p className="text-[10px] text-amber-300/80">No uploaded STL on the twin — using a demo CAD preset. Open the slicer to bind a CAD file.</p>
               )}
             </div>
           )}

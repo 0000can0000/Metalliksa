@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 20:10 — Step 1 live STL into Python slicer
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Wire uploaded STL triangles into the Python slicer so the Build Job mesh, not a filename preset, drives slice area and build time.
+- **Done**: Session mesh store; slicer/decision labs send `customTriangles`; Python reports `geometrySource` uploaded-stl vs demo-preset.
+- **Where we left off**: Step 1 of the locked Python order is done. Next is a single `solve_lpbf_build_job` (do not skip to Eagar–Tsai or inherent strain).
+- **Files**: `src/physics/lpbfBuildMesh.ts`, `src/store/useLpbfBuildMeshStore.ts`, `python/stl_slicer_build_time_solver.py`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/3d-distortion-lab/BasicSTLSlicerLab.tsx`, `src/components/Additive3DDistortionLab.tsx`, `src/components/3d-distortion-lab/CADStlSlicerDistortionLab.tsx`, `src/services/pythonComputationService.ts`, `PROOF.md`, `AGENTS.md`
+- **Tests**: `npx tsc --noEmit`; `py -3 python/test_stl_live_triangles.py`
+
+---
+
 ## 2026-09-05 19:44 — Name cheap PR automation Yardımcım
 - **Agent**: Cursor Grok 4.6
 - **Result**: PARTIAL

@@ -164,3 +164,12 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Pass criterion**: Typecheck clean; IN718 nearest-literature path no longer falls back to a different alloy family.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 010: Live STL triangles into Python slicer
+- **Date**: 2026-09-05
+- **Module**: `stl_slicer_build_time_solver.py` / `useLpbfBuildMeshStore` / `IndustrialLPBFDecisionLab`
+- **Scope**: Build Job CAD geometry. When an STL is uploaded, facet vertices are session-cached and sent as `customTriangles`. Demo presets are used only when no live mesh exists. Plane–triangle slice height remains the mesh Y extent (existing Y-up mapping).
+- **Fixture**: 20 × 10 × 8 mm box via `customTriangles` vs nozzle demo preset — bbox height must follow the box (10 mm), not the ~65 mm nozzle.
+- **Status**: **PASS** (see `python/test_stl_live_triangles.py` and `tsc --noEmit`)
+

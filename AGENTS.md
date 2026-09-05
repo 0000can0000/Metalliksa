@@ -46,4 +46,4 @@
 - **3D Visualization**: Three.js / Canvas with `ResizeObserver` container bounding, requestAnimationFrame cleanup, and WebGL memory disposal (`geometry.dispose()`, `material.dispose()`).
 - **Icons**: Standard imports from `lucide-react`.
 - **State Management**: Centralized reactive Zustand store (`useMaterialSpecimenStore.ts`) ensuring synchronized digital twin state between 3D simulations, slicer distortion models, and metallurgical databases.
-- **LPBF Build Job**: `activeSpecimen.lpbf` holds the live process vector ($P, v, h, t, d$, preheat, scan strategy). Sub-labs and Inverse Alloy LPBF must read/write this vector; do not keep a second copy of machine parameters.
+- **LPBF Build Job**: `activeSpecimen.lpbf` holds the live process vector ($P, v, h, t, d$, preheat, scan strategy). Sub-labs and Inverse Alloy LPBF must read/write this vector; do not keep a second copy of machine parameters. Uploaded STL triangles live in session store `useLpbfBuildMeshStore` (not persisted); Python slicer must receive `customTriangles` when that mesh is present.

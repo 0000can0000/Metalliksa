@@ -1373,7 +1373,7 @@ class PythonComputationService {
    * CAD/STL hatch discretization and LPBF build-time estimate (galvo + recoater).
    */
   async solveSTLSlicerBuildTime(payload: {
-    preset: string;
+    preset?: string;
     material: string;
     laserPower_W: number;
     scanSpeed_mms: number;
@@ -1381,6 +1381,9 @@ class PythonComputationService {
     hatchSpacing_um: number;
     recoatTimePerLayer_s?: number;
     hatchStrategy?: string;
+    customTriangles?: number[][][] | null;
+    cadAssetName?: string;
+    triangleCountNative?: number;
   }): Promise<PythonSTLSlicerResult> {
     const res = await fetch("/api/python/stl-slicer-build-time", {
       method: "POST",
@@ -1388,6 +1391,7 @@ class PythonComputationService {
       body: JSON.stringify({
         recoatTimePerLayer_s: 9,
         hatchStrategy: "meander",
+        preset: payload.preset ?? "nozzle",
         ...payload,
       }),
     });
@@ -1522,6 +1526,9 @@ class PythonComputationService {
 export interface PythonSTLSlicerResult {
   success?: boolean;
   pythonDurationMs?: number;
+  geometrySource?: "uploaded-stl" | "demo-preset";
+  preset?: string;
+  cadAssetName?: string;
   meshMetrics?: {
     sizeX_mm: number;
     sizeY_mm: number;
@@ -1529,6 +1536,7 @@ export interface PythonSTLSlicerResult {
     estimatedSolidVolume_cm3: number;
     estimatedPartMass_g: number;
     triangleCount: number;
+    triangleCountNative?: number;
   };
   buildTimeSummary?: {
     totalLayers: number;

@@ -361,12 +361,31 @@ def main():
     recoat_time_s = float(data.get("recoatTimePerLayer_s", 9.5))
     hatch_strategy = data.get("hatchStrategy", "meander_67")
     custom_triangles = data.get("customTriangles", None)
+    cad_asset_name = data.get("cadAssetName", "")
+    native_triangle_count = data.get("triangleCountNative", None)
 
-    # 1. Retrieve or generate 3D triangle mesh
+    # 1. Live uploaded mesh wins over demo presets
+    triangles = []
     if custom_triangles and len(custom_triangles) > 0:
-        triangles = custom_triangles
+        for tri in custom_triangles:
+            if not isinstance(tri, (list, tuple)) or len(tri) < 3:
+                continue
+            verts = []
+            ok = True
+            for v in tri[:3]:
+                if not isinstance(v, (list, tuple)) or len(v) < 3:
+                    ok = False
+                    break
+                verts.append([float(v[0]), float(v[1]), float(v[2])])
+            if ok:
+                triangles.append(verts)
+        geometry_source = "uploaded-stl"
     else:
         triangles = generate_preset_triangles(preset)
+        geometry_source = "demo-preset"
+
+    if native_triangle_count is None:
+        native_triangle_count = len(triangles)
 
     if not triangles:
         print(json.dumps({"error": "No triangles available for slicing."}))
@@ -455,6 +474,9 @@ def main():
         "success": True,
         "runtime": "CPython 3.10+ (Computational Geometry Engine)",
         "pythonDurationMs": python_duration_ms,
+        "geometrySource": geometry_source,
+        "preset": preset if geometry_source == "demo-preset" else "custom",
+        "cadAssetName": cad_asset_name,
         "meshMetrics": {
             "sizeX_mm": round(dim_x, 1),
             "sizeY_mm": round(dim_y, 1),
@@ -463,6 +485,7 @@ def main():
             "estimatedSolidVolume_cm3": round(solid_volume_cm3, 2),
             "estimatedPartMass_g": round(est_mass_g, 1),
             "triangleCount": len(triangles),
+            "triangleCountNative": int(native_triangle_count),
         },
         "lpbfTelemetry": {
             "volumetricEnergyDensity_J_mm3": round(ved, 1),

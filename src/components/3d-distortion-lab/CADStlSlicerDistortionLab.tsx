@@ -46,6 +46,7 @@ import {
   exportGeometryAsSTL,
   LayerSliceData,
 } from "../../utils/stlParser";
+import { useLpbfBuildMeshStore } from "../../store/useLpbfBuildMeshStore";
 
 export type CADModelType = "bracket" | "turbine" | "nozzle" | "gyroid" | "hip_implant" | "custom_stl";
 export type SlicerHeatmapMode =
@@ -167,6 +168,8 @@ export const CADStlSlicerDistortionLab: React.FC<CADStlSlicerDistortionLabProps>
   scanStrategy: jobScan,
   onProcessChange,
 }) => {
+  const setFromGeometry = useLpbfBuildMeshStore((s) => s.setFromGeometry);
+  const clearLiveMesh = useLpbfBuildMeshStore((s) => s.clearMesh);
   // Model & Material Selection
   const [modelType, setModelType] = useState<CADModelType>("bracket");
   const [selectedAlloyKey, setSelectedAlloyKey] = useState<string>("Inconel 718");
@@ -462,6 +465,7 @@ export const CADStlSlicerDistortionLab: React.FC<CADStlSlicerDistortionLabProps>
         }
         setCustomStlGeometry(geom);
         setModelType("custom_stl");
+        setFromGeometry(file.name, geom);
       } catch (err: any) {
         setFileError(`STL Import Failed: ${err.message}`);
       }
@@ -474,6 +478,8 @@ export const CADStlSlicerDistortionLab: React.FC<CADStlSlicerDistortionLabProps>
     setCustomStlGeometry(null);
     setUploadedFileName(null);
     setModelType("bracket");
+    clearLiveMesh();
+    onProcessChange?.({ cadAssetName: "" });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 

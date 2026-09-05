@@ -53,6 +53,7 @@ import {
   IndustrialLPBFDecisionLab,
 } from "./3d-distortion-lab";
 import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
+import { useLpbfBuildMeshStore } from "../store/useLpbfBuildMeshStore";
 import { LpbfBuildJobRail } from "./LpbfBuildJobRail";
 
 
@@ -387,6 +388,8 @@ export const Additive3DDistortionLab: React.FC = () => {
   const activeSpecimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
   const loadPreset = useMaterialSpecimenStore((s) => s.loadPreset);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+  const setLiveMeshFromGeometry = useLpbfBuildMeshStore((s) => s.setFromGeometry);
+  const clearLiveMesh = useLpbfBuildMeshStore((s) => s.clearMesh);
   const lpbf = activeSpecimen.lpbf;
   const laserPower_W = lpbf.laserPower_W;
   const scanSpeed_mms = lpbf.scanSpeed_mms;
@@ -1005,6 +1008,7 @@ export const Additive3DDistortionLab: React.FC = () => {
         setUploadedFileName(file.name);
         setModelType("custom");
         updateLpbfProcess({ cadAssetName: file.name });
+        setLiveMeshFromGeometry(file.name, parsedGeom);
       } catch (err) {
         console.error("STL parse error", err);
       }
@@ -1016,6 +1020,8 @@ export const Additive3DDistortionLab: React.FC = () => {
     setCustomStlGeometry(null);
     setUploadedFileName(null);
     setModelType("nozzle");
+    clearLiveMesh();
+    updateLpbfProcess({ cadAssetName: "" });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 

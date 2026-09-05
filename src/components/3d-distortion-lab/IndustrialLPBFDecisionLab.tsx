@@ -24,6 +24,7 @@ import {
   mapSpecimenToSolverMaterials,
   PrintVerdict,
 } from "../../utils/lpbfIndustrialDecision";
+import { evaluateLiteraturePvWindow, heatTreatmentCohorts, orientationCohorts } from "../../utils/lpbfFourAlloySchema";
 
 interface Props {
   onOpenSlicer?: () => void;
@@ -88,7 +89,17 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     return () => clearTimeout(timer);
   }, [runEngines]);
 
-  const decision = useMemo(() => (thermal ? composeIndustrialVerdict(thermal) : null), [thermal]);
+  const decision = useMemo(() => {
+    if (!thermal) return null;
+    return composeIndustrialVerdict(thermal, materials.alloyId);
+  }, [thermal, materials.alloyId]);
+
+  const htCohorts = useMemo(() => heatTreatmentCohorts(materials.alloyId), [materials.alloyId]);
+  const oriCohorts = useMemo(() => orientationCohorts(materials.alloyId), [materials.alloyId]);
+  const litWindow = useMemo(
+    () => evaluateLiteraturePvWindow(materials.alloyId, lpbf.laserPower_W, lpbf.scanSpeed_mms),
+    [materials.alloyId, lpbf.laserPower_W, lpbf.scanSpeed_mms]
+  );
 
   const literature = useMemo(
     () =>
@@ -196,7 +207,11 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                   );
                 })}
               </div>
-              <p className="text-[10px] text-slate-500">Click a cell to load P and v into the Build Job store. Gates use W vs h and D vs t, not VED alone.</p>
+              <p className="text-[10px] text-slate-500">
+                Click a cell to load P and v into the Build Job store. Geometric LoF uses W vs h and D vs t. Literature box:{" "}
+                {litWindow.box.powerMin_W}–{litWindow.box.powerMax_W} W · {litWindow.box.speedMin_mm_s}–{litWindow.box.speedMax_mm_s}{" "}
+                mm/s {litWindow.inside ? "(inside)" : "(outside)"}.
+              </p>
               <div className="flex flex-wrap gap-3 text-[10px] text-slate-400">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-500" /> Conduction</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-500" /> Keyhole</span>
@@ -326,7 +341,23 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                   ok={utsOk !== false}
                 />
               </div>
-              {materials.alloyId === "in718" && (MASTER_NOTE_IN718)}
+              {htCohorts.length > 0 && (
+                <div className="text-[10px] text-slate-400 space-y-0.5">
+                  {htCohorts.map((c) => (
+                    <div key={c.label}>
+                      {c.label}: n={c.n}
+                      {c.meanYS != null ? ` · Rp0.2 ${c.meanYS}` : ""}
+                      {c.meanUTS != null ? ` · UTS ${c.meanUTS}` : ""}
+                      {c.meanElong != null ? ` · A ${c.meanElong}%` : ""}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {oriCohorts.length > 0 && (
+                <div className="text-[10px] text-slate-500">
+                  Orientation coupons: {oriCohorts.map((c) => `${c.label} n=${c.n}`).join(" · ")}
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-[11px] text-slate-400">No traceable coupon in the library for this alloy yet.</p>
@@ -349,12 +380,6 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     </div>
   );
 };
-
-const MASTER_NOTE_IN718 = (
-  <p className="text-[10px] text-amber-300/90">
-    IN718 literature rows in Ground Truth are still empty — nearest match may come from another alloy family. Add DOI-backed IN718 coupons when available.
-  </p>
-);
 
 function shortRisk(s: string): string {
   return s.split(" ")[0] || s;

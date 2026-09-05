@@ -102,6 +102,7 @@ export interface LPBFMeasuredProperties {
   hardness_value?: number;
   hardness_scale?: "HV0.3" | "HV0.5" | "HV1" | "HV5" | "HV10" | "HRC";
   youngsModulus_GPa?: number;
+  fatigueLimit_MPa?: number; // Runout screening at ~10^7 cycles when reported (ASTM E466 / equivalent)
   defectMorphology?: "Dense (<0.1% pores)" | "Lack of Fusion (irregular, un-melted powder)" | "Keyhole Pores (spherical, root of melt pool)" | "Gas Porosity / Balling";
   microstructureDescription?: string;
 }
@@ -286,4 +287,30 @@ export function classifyProcessRegime(
   } else {
     return "Stable Conduction";
   }
+}
+
+/**
+ * Geometric LoF gates (Tang / Gong / ISO/ASTM AM density practice):
+ * hatch overlap fails when h > W; layer overlap fails when t > D.
+ */
+export function classifyHatchLayerOverlap(
+  meltPoolWidth_um: number,
+  meltPoolDepth_um: number,
+  hatchSpacing_um: number,
+  layerThickness_um: number
+): {
+  hatchOverlapFail: boolean;
+  layerOverlapFail: boolean;
+  widthOverHatch: number;
+  depthOverLayer: number;
+  status: "Pass" | "Warning" | "Fail";
+} {
+  const widthOverHatch = meltPoolWidth_um / Math.max(1, hatchSpacing_um);
+  const depthOverLayer = meltPoolDepth_um / Math.max(1, layerThickness_um);
+  const hatchOverlapFail = hatchSpacing_um > meltPoolWidth_um;
+  const layerOverlapFail = layerThickness_um > meltPoolDepth_um;
+  let status: "Pass" | "Warning" | "Fail" = "Pass";
+  if (hatchOverlapFail || layerOverlapFail) status = "Fail";
+  else if (widthOverHatch < 1.05 || depthOverLayer < 1.15) status = "Warning";
+  return { hatchOverlapFail, layerOverlapFail, widthOverHatch, depthOverLayer, status };
 }

@@ -53,6 +53,11 @@ import {
   saveUserLPBFRecords,
 } from "../../data/lpbfReferenceDatasets";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
+import {
+  evaluateLiteraturePvWindow,
+  heatTreatmentCohorts,
+  orientationCohorts,
+} from "../../utils/lpbfFourAlloySchema";
 
 export interface LPBFGroundTruthDataLabProps {
   onApplyParametersToSimulation?: (params: {
@@ -148,6 +153,15 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
     return combined.filter((r) => r.params.derived.predictedRegime === regimeFilter);
   }, [selectedAlloy, userRecords, regimeFilter]);
 
+  const schemaPanels = useMemo(() => {
+    const lpbf = useMaterialSpecimenStore.getState().activeSpecimen.lpbf;
+    return {
+      window: evaluateLiteraturePvWindow(selectedAlloy, lpbf.laserPower_W, lpbf.scanSpeed_mms),
+      ht: heatTreatmentCohorts(selectedAlloy),
+      ori: orientationCohorts(selectedAlloy),
+    };
+  }, [selectedAlloy, userRecords]);
+
   // Scatter chart data formatted for Recharts
   const scatterData = useMemo(() => {
     return activeDataset.map((r) => ({
@@ -160,6 +174,10 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
       hardness: r.properties.hardness_value || 0,
       led: r.params.derived.linearEnergyDensity_J_mm,
       aed: r.params.derived.arealEnergyDensity_J_mm2,
+      power: r.params.laserPower_W,
+      speed: r.params.scanSpeed_mm_s,
+      ht: r.sample.heatTreatment,
+      ori: r.sample.buildOrientationDeg,
       regime: r.params.derived.predictedRegime,
       record: r,
     }));
@@ -579,6 +597,17 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
               >
                 AlSi10Mg Aluminum
               </button>
+              <button
+                type="button"
+                onClick={() => setSelectedAlloy("in718")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer ${
+                  selectedAlloy === "in718"
+                    ? "bg-sky-500 text-white shadow-[0_0_10px_rgba(56,189,248,0.4)]"
+                    : "bg-[#0d1524] text-slate-300 hover:bg-slate-800 border border-slate-700"
+                }`}
+              >
+                IN718 Nickel
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -638,6 +667,48 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="p-3 rounded-xl bg-[#090e18] border border-[#162032] text-[11px] font-mono space-y-1">
+              <div className="text-slate-300 font-bold">Literature P–v box</div>
+              <div className="text-slate-400">
+                {schemaPanels.window.box.powerMin_W}–{schemaPanels.window.box.powerMax_W} W · {schemaPanels.window.box.speedMin_mm_s}–
+                {schemaPanels.window.box.speedMax_mm_s} mm/s
+              </div>
+              <div className={schemaPanels.window.inside ? "text-emerald-300" : "text-amber-300"}>
+                Build Job is {schemaPanels.window.inside ? "inside" : "outside"} this box
+              </div>
+              {schemaPanels.window.hull && (
+                <div className="text-slate-500">
+                  Dense conduction hull (n={schemaPanels.window.hull.n}): {schemaPanels.window.hull.powerMin_W}–{schemaPanels.window.hull.powerMax_W} W ·{" "}
+                  {schemaPanels.window.hull.speedMin_mm_s}–{schemaPanels.window.hull.speedMax_mm_s} mm/s
+                </div>
+              )}
+              <p className="text-slate-500">{schemaPanels.window.box.notes}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-[#090e18] border border-[#162032] text-[11px] font-mono space-y-1">
+              <div className="text-slate-300 font-bold">As-built / SR / HIP</div>
+              {schemaPanels.ht.map((c) => (
+                <div key={c.label} className="text-slate-400">
+                  {c.label}: n={c.n}
+                  {c.meanYS != null ? ` · YS ${c.meanYS}` : ""}
+                  {c.meanUTS != null ? ` · UTS ${c.meanUTS}` : ""}
+                  {c.meanElong != null ? ` · A ${c.meanElong}%` : ""}
+                </div>
+              ))}
+            </div>
+            <div className="p-3 rounded-xl bg-[#090e18] border border-[#162032] text-[11px] font-mono space-y-1">
+              <div className="text-slate-300 font-bold">0° / 45° / 90° coupons</div>
+              {schemaPanels.ori.map((c) => (
+                <div key={c.label} className="text-slate-400">
+                  {c.label}: n={c.n}
+                  {c.meanYS != null ? ` · YS ${c.meanYS}` : ""}
+                  {c.meanFatigue != null ? ` · σ_w ${c.meanFatigue}` : ""}
+                </div>
+              ))}
+              <p className="text-slate-500">Fatigue lab reads these DOI rows when YS at 0° and 90° exist.</p>
             </div>
           </div>
 
@@ -788,6 +859,48 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#090e18] border border-[#162032] space-y-3">
+            <h4 className="text-xs font-bold font-mono text-white">P–v map (literature coupons)</h4>
+            <p className="text-[10px] font-mono text-slate-400">
+              Geometric LoF is still W vs h and D vs t on the decision engine. This plot is the DOI coupon cloud, not VED alone.
+            </p>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a2538" />
+                  <XAxis type="number" dataKey="speed" name="v" unit=" mm/s" stroke="#64748b" fontSize={11} />
+                  <YAxis type="number" dataKey="power" name="P" unit=" W" stroke="#64748b" fontSize={11} />
+                  <ZAxis range={[60, 60]} />
+                  <RechartsTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="p-2.5 rounded-lg bg-[#0c1322] border border-sky-400/40 text-xs font-mono shadow-xl space-y-1">
+                            <div className="font-bold text-sky-300">{data.name}</div>
+                            <div>P {data.power} W · v {data.speed} mm/s</div>
+                            <div>{data.ht} · {data.ori}°</div>
+                            <div className="text-slate-400">{data.regime}</div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Scatter
+                    name="Coupons"
+                    data={scatterData}
+                    fill="#38bdf8"
+                    onClick={(e) => {
+                      if (e && e.record) setSelectedRecord(e.record);
+                    }}
+                    className="cursor-pointer"
+                  />
+                </ScatterChart>
+              </ResponsiveContainer>
             </div>
           </div>
 

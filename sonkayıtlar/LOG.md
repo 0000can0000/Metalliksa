@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:45 — Four-alloy LPBF schema on `yeni2`
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Continue on a new branch. Lock Ti-6Al-4V, 316L, AlSi10Mg, IN718: real P–v windows, hatch/layer LoF, HIP/SR/as-built, 0°/45°/90° tied to Ground Truth. New alloys secondary.
+- **Done**: Branch `yeni2`. Filled IN718 DOI coupons. Added literature P–v boxes + dense hull, geometric LoF helper, HT/orientation cohorts, fatigue lab overlay, Ground Truth IN718 + schema panels, industrial verdict uses the literature box.
+- **Where we left off**: Typecheck passed. Browser click-through not available. New-alloy intake still not a product path.
+- **Files**: `src/data/lpbfReferenceDatasets.ts`, `src/types/lpbfDataFoundation.ts`, `src/utils/lpbfFourAlloySchema.ts`, `src/utils/lpbfIndustrialDecision.ts`, `src/components/3d-distortion-lab/LPBFGroundTruthDataLab.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/3d-distortion-lab/AnisotropicMechanicalFatigueLab.tsx`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` — PASS. UI click-through N/A — no browser tools.
+
+---
+
 ## 2026-09-05 19:23 — Commit and push industrial decision engine on `yeni1`
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

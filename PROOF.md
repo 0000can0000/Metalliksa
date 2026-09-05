@@ -137,3 +137,30 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Pass criterion**: VED and \(I_0\) within \(0.5\%\) of closed-form values. Inverse Alloy LPBF sliders and Additive sub-labs read/write the same `activeSpecimen.lpbf` vector; DOI records set `specimenDoi`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 009: Four-alloy LPBF schema (P–v, LoF geometry, HIP/SR, 0/45/90)
+- **Date**: 2026-09-05
+- **Module**: `lpbfReferenceDatasets.ts` / `lpbfFourAlloySchema.ts` / `classifyHatchLayerOverlap`
+- **Scope**: Ti-6Al-4V, 316L, AlSi10Mg, IN718 only. New-alloy intake is secondary.
+- **P–v**: Literature boxes + dense conduction hulls from DOI coupons. Example: Ti-6Al-4V \(P=200\,\text{W}\), \(v=900\,\text{mm/s}\) is inside the 150–280 W / 700–1200 mm/s box.
+- **LoF geometry**: Fail if \(h > W\) or \(t > D\). Check: \(W=90\,\mu\text{m}\), \(h=120\,\mu\text{m}\) → hatch overlap Fail; \(W=130\,\mu\text{m}\), \(h=100\,\mu\text{m}\), \(D=40\,\mu\text{m}\), \(t=30\,\mu\text{m}\) → Pass.
+- **Heat treatment**: As-built vs SR vs HIP (and IN718 STA) cohorts from the same 5-tier records.
+- **Anisotropy**: Fatigue lab overlays 0°/45°/90° YS/UTS/A/fatigue from dense Ground Truth coupons (DOI-backed).
+- **IN718**: Jia & Gu / Chlebus / Trosch rows replace the empty array.
+- **Status**: **PASS** (see `tsc --noEmit` and hatch-overlap numeric check)
+
+---
+
+## Proof Entry 009: Four-Alloy P–v Window, LoF Geometry, HT, and Orientation Schema
+- **Date**: 2026-09-05
+- **Module**: `lpbfFourAlloySchema.ts` / `lpbfReferenceDatasets.ts` / `classifyHatchLayerOverlap`
+- **Scope**: Ti-6Al-4V, 316L, AlSi10Mg, IN718 only. Literature P–v boxes + dense-coupon hull; LoF when \(h>W\) or \(t>D\); As-Built / SR / HIP / STA cohorts; 0°/45°/90° means bound into the fatigue lab.
+- **Input (IN718 Jia conduction)**: \(P=130\,\text{W}\), \(v=600\,\text{mm/s}\), \(h=100\,\mu\text{m}\), \(t=30\,\mu\text{m}\)
+- **Expected VED**: \(E_V = 130/(600\cdot 0.1\cdot 0.03)=72.22\,\text{J/mm}^3\)
+- **Literature box**: IN718 \(120\)–\(300\,\text{W}\), \(550\)–\(1000\,\text{mm/s}\) (Jia, Chlebus, Trosch DOIs).
+- **LoF gate**: \(W/h\ge 1.05\), \(D/t\ge 1.15\); Fail if \(h>W\) or \(t>D\).
+- **Observed**: `tsc --noEmit` zero errors. IN718 master array is non-empty. Fatigue lab overlays Ground Truth 0°/90° YS when coupons exist.
+- **Pass criterion**: Typecheck clean; IN718 nearest-literature path no longer falls back to a different alloy family.
+- **Status**: **PASS**
+

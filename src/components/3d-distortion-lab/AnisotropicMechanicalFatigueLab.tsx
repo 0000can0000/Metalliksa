@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Brain,
   Cpu,
@@ -37,6 +37,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { overlayAnisotropyFromGroundTruth, mapDisplayNameToAlloyId, alloyIdToFatigueDbKey } from "../../utils/lpbfFourAlloySchema";
 
 export interface AlloyAnisotropyData {
   name: string;
@@ -214,7 +215,20 @@ export const AnisotropicMechanicalFatigueLab: React.FC<AnisotropicLabProps> = ({
   const [selectedAlloyKey, setSelectedAlloyKey] = useState<string>(
     ANISOTROPY_ALLOY_DB[currentMaterial] ? currentMaterial : "Inconel 718"
   );
-  const alloy = ANISOTROPY_ALLOY_DB[selectedAlloyKey] || ANISOTROPY_ALLOY_DB["Inconel 718"];
+
+  useEffect(() => {
+    const id = mapDisplayNameToAlloyId(currentMaterial);
+    if (id) setSelectedAlloyKey(alloyIdToFatigueDbKey(id));
+    else if (ANISOTROPY_ALLOY_DB[currentMaterial]) setSelectedAlloyKey(currentMaterial);
+  }, [currentMaterial]);
+
+  const fallbackAlloy = ANISOTROPY_ALLOY_DB[selectedAlloyKey] || ANISOTROPY_ALLOY_DB["Inconel 718"];
+  const gtOverlay = useMemo(() => {
+    const id = mapDisplayNameToAlloyId(selectedAlloyKey);
+    if (!id) return { data: fallbackAlloy, sourced: false, dois: [] as string[] };
+    return overlayAnisotropyFromGroundTruth(id, fallbackAlloy);
+  }, [selectedAlloyKey, fallbackAlloy]);
+  const alloy = gtOverlay.data;
 
   // State condition: As-Built vs Post-Processed (HIP / Stress Relieved / Aged)
   const [materialCondition, setMaterialCondition] = useState<"as-built" | "post-hip">("as-built");
@@ -422,6 +436,9 @@ plt.show()
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 Calculate the effect of $Z$-axis columnar grains and layer interface anisotropy on yield strength, ductility, and Wöhler (S-N) fatigue lifetime.
+                {gtOverlay.sourced
+                  ? " Yield / UTS / elongation / fatigue at 0°–90° are bound to Ground Truth DOI coupons."
+                  : " Waiting for 0° and 90° as-built YS coupons in Ground Truth."}
               </p>
             </div>
           </div>
@@ -481,7 +498,17 @@ plt.show()
               {key}
             </button>
           ))}
+          {gtOverlay.dois.length > 0 && (
+            <span className="text-[9px] text-slate-500 ml-2 truncate max-w-xl">
+              DOI {gtOverlay.dois.slice(0, 3).join(" · ")}
+            </span>
+          )}
         </div>
+        {gtOverlay.sourced && (
+          <div className="text-[10px] text-emerald-300/90 pt-1">
+            Ground-truth DOIs: {gtOverlay.dois.slice(0, 4).join(" · ")}
+          </div>
+        )}
       </div>
 
       {/* THREE VIEW TABS */}

@@ -33,6 +33,16 @@ import {
   pythonComputationService,
   PythonLPBFResult,
 } from "../../services/pythonComputationService";
+import {
+  buildLoftedMeltPoolGeometry,
+  contourToCutFace,
+  disposeObject3D,
+} from "./meltPool3DGeometry";
+import {
+  MELT_POOL_LITERATURE_CASES,
+  regimeFamily,
+  relativeErrorPct,
+} from "../../data/meltPoolLiteratureCases";
 
 export interface MeltPool3DCrossSectionProps {
   initialPower_W?: number;
@@ -96,7 +106,10 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsGroupRef = useRef<THREE.Group | null>(null);
+  const contentGroupRef = useRef<THREE.Group | null>(null);
   const animationFrameId = useRef<number | null>(null);
+  const autoRotateRef = useRef(autoRotate);
+  autoRotateRef.current = autoRotate;
 
   // Execute Python Solver
   const solvePhysics = useCallback(async () => {
@@ -152,34 +165,33 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     return () => clearTimeout(timer);
   }, [solvePhysics]);
 
-  // Regime classification values
+  // Regime from the solver only (King ΔH/hs ≈ 15 / 30). Do not recompute a second threshold.
   const regimeInfo = useMemo(() => {
-    const enthalpy = pyResult?.processParameters?.normalizedEnthalpy || (laserPower_W * 0.45) / (8190 * 435 * 1250 * Math.sqrt(Math.PI * 3e-6 * (scanSpeed_mms * 1e-3) * Math.pow(beamDiameter_um * 0.5e-6, 3)));
-    const d_over_w = pyResult?.meltPoolGeometry?.depthToWidthRatio_D_over_W || 0.45;
-    const isKeyhole = enthalpy > 11.0 || d_over_w > 0.95;
-    const isTransition = enthalpy >= 5.5 && enthalpy <= 11.0 && !isKeyhole;
-    const isConduction = enthalpy < 5.5;
+    const enthalpy = pyResult?.processParameters?.normalizedEnthalpy ?? 0;
+    const d_over_w = pyResult?.meltPoolGeometry?.depthToWidthRatio_D_over_W ?? 0;
+    const family = regimeFamily(pyResult?.meltPoolGeometry?.regime || "Conduction");
+    const isKeyhole = family === "Keyhole";
+    const isTransition = family === "Transition";
+    const isConduction = family === "Conduction";
 
-    let modeName = "Conduction Regime (Stable)";
+    let modeName = pyResult?.meltPoolGeometry?.regime || "Conduction Mode (Stable)";
     let badgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
-    let desc = "Stable, semi-circular melt pool. Shallow depth, minimal vapor recoil pressure, and zero keyhole porosity risk.";
+    let desc = "Stable conduction-mode pool. Width and depth from the T = T_liquidus isotherm of a regularized Rosenthal field (King ΔH/hs < 15).";
     let keyRisk = "Low (ASTM F3055 Compliant)";
 
     if (isKeyhole) {
-      modeName = "Keyhole Regime (Vapor Depression)";
       badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]";
-      desc = "Knudsen recoil pressure (P_recoil) depresses melt surface, opening a deep vapor depression. Entrapped vapor bubbles at the bottom lead to keyhole pores.";
+      desc = "King keyhole onset (ΔH/hs ≥ 30). Extra vapor-depression depth is added on top of the conduction isotherm; recoil can trap keyhole pores.";
       keyRisk = "HIGH (Keyhole Porosity Danger)";
     } else if (isTransition) {
-      modeName = "Transition Mode";
       badgeColor = "bg-amber-500/20 text-amber-300 border-amber-500/40";
-      desc = "Intermediate stage between conduction and deep penetration. Mild vapor pressure depression with increased penetration depth.";
+      desc = "Transition band (15 ≤ ΔH/hs < 30). Mild vapor depression; depth is the liquidus isotherm plus a fractional cavity increment.";
       keyRisk = "Moderate / Near Threshold";
     }
 
     return {
       enthalpy: parseFloat(enthalpy.toFixed(2)),
-      d_over_w: parseFloat(d_over_w.toFixed(2)),
+      d_over_w: parseFloat(Number(d_over_w).toFixed(2)),
       isKeyhole,
       isTransition,
       isConduction,
@@ -188,22 +200,23 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       desc,
       keyRisk,
     };
-  }, [pyResult, laserPower_W, scanSpeed_mms, beamDiameter_um]);
+  }, [pyResult]);
 
-  // Three.js 3D Melt Pool Cross-Section Scene Builder
+  // Persist renderer / camera; only rebuild melt-pool content when results change.
   useEffect(() => {
-    if (!threeMountRef.current) return;
     const container = threeMountRef.current;
+    if (!container) return;
+
     const width = container.clientWidth || 600;
     const height = container.clientHeight || 450;
 
-    // 1. Scene & Renderer
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x060913);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(40, width / height, 1, 3000);
     camera.position.set(240, 160, 260);
+    camera.lookAt(0, -15, 0);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -212,52 +225,115 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     renderer.shadowMap.enabled = true;
     renderer.localClippingEnabled = true;
     rendererRef.current = renderer;
-
     container.innerHTML = "";
     container.appendChild(renderer.domElement);
 
-    // 2. Lights
-    const ambient = new THREE.AmbientLight(0xffffff, 0.65);
-    scene.add(ambient);
-
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
     const dirLight1 = new THREE.DirectionalLight(0xffeedd, 1.4);
     dirLight1.position.set(200, 300, 150);
     scene.add(dirLight1);
-
     const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.7);
     dirLight2.position.set(-200, -100, -150);
     scene.add(dirLight2);
 
-    // 3. Root Object Group for Rotational Orbiting
     const rootGroup = new THREE.Group();
     scene.add(rootGroup);
     controlsGroupRef.current = rootGroup;
 
-    // Set camera target
-    camera.lookAt(0, -15, 0);
+    const content = new THREE.Group();
+    content.add(content);
+    contentGroupRef.current = content;
 
-    // Melt Pool Parameters in Microns (Scaled 1 um = 1 Three unit for convenience)
+    let isDragging = false;
+    let prevMouseX = 0;
+    let prevMouseY = 0;
+    const handleMouseDown = (e: MouseEvent) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !controlsGroupRef.current) return;
+      controlsGroupRef.current.rotation.y += (e.clientX - prevMouseX) * 0.008;
+      controlsGroupRef.current.rotation.x += (e.clientY - prevMouseY) * 0.008;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
+    };
+    const handleMouseUp = () => {
+      isDragging = false;
+    };
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (!cameraRef.current) return;
+      cameraRef.current.fov = Math.max(15, Math.min(85, cameraRef.current.fov + e.deltaY * 0.04));
+      cameraRef.current.updateProjectionMatrix();
+    };
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (!cr || !cameraRef.current || !rendererRef.current) return;
+      const w = Math.max(1, cr.width);
+      const h = Math.max(1, cr.height);
+      cameraRef.current.aspect = w / h;
+      cameraRef.current.updateProjectionMatrix();
+      rendererRef.current.setSize(w, h);
+    });
+    resizeObserver.observe(container);
+
+    const domElement = renderer.domElement;
+    domElement.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    domElement.addEventListener("wheel", handleWheel, { passive: false });
+
+    const animate = () => {
+      animationFrameId.current = requestAnimationFrame(animate);
+      if (autoRotateRef.current && controlsGroupRef.current) {
+        controlsGroupRef.current.rotation.y += 0.006;
+      }
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+      resizeObserver.disconnect();
+      domElement.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      domElement.removeEventListener("wheel", handleWheel);
+      if (contentGroupRef.current) disposeObject3D(contentGroupRef.current);
+      renderer.dispose();
+      if (container.contains(domElement)) container.removeChild(domElement);
+    };
+  }, []);
+
+  useEffect(() => {
+    const content = contentGroupRef.current;
+    const renderer = rendererRef.current;
+    if (!content || !renderer) return;
+
+    disposeObject3D(content);
+    while (content.children.length) content.remove(content.children[0]);
+
     const geom = pyResult?.meltPoolGeometry;
-    const af = geom?.goldakParameters?.semiAxis_af_front_um || (beamDiameter_um * 0.9);
-    const ar = geom?.goldakParameters?.semiAxis_ar_rear_um || (beamDiameter_um * 2.8);
-    const b = geom?.goldakParameters?.semiAxis_b_halfwidth_um || (beamDiameter_um * 0.75);
-    const c = geom?.goldakParameters?.semiAxis_c_depth_um || (layerThickness_um * 1.8);
+    const af = geom?.goldakParameters?.semiAxis_af_front_um || beamDiameter_um * 0.9;
+    const ar = geom?.goldakParameters?.semiAxis_ar_rear_um || beamDiameter_um * 2.8;
+    const b = geom?.goldakParameters?.semiAxis_b_halfwidth_um || beamDiameter_um * 0.75;
+    const c = geom?.goldakParameters?.semiAxis_c_depth_um || layerThickness_um * 1.8;
     const d_kh = geom?.keyholeVaporCavityDepth_um || 0;
     const isKeyhole = regimeInfo.isKeyhole;
+    const Ma = pyResult?.hydrodynamicsAndRecoil?.marangoniNumber ?? 800;
 
-    // Slicing Plane Clipping setup
+    // Clip axes match the mesh: X = scan, Y = depth (negative down), Z = hatch.
     const localClippingPlanes: THREE.Plane[] = [];
     if (slicingPlane === "longitudinal-xz") {
-      // Cut off Y > sliceCutOffset
       localClippingPlanes.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), -sliceCutOffset));
     } else if (slicingPlane === "transverse-yz") {
-      // Cut off X > sliceCutOffset
       localClippingPlanes.push(new THREE.Plane(new THREE.Vector3(1, 0, 0), -sliceCutOffset));
     } else if (slicingPlane === "top-xy") {
-      // Cut off Z (depth)
       localClippingPlanes.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), sliceCutOffset));
     } else if (slicingPlane === "quarter-cutaway") {
-      // Cut front quarter (X > 0 and Z > 0)
       localClippingPlanes.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
     }
 
@@ -277,14 +353,14 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     });
     const substrateMesh = new THREE.Mesh(substrateGeom, substrateMat);
     substrateMesh.position.set(0, -blockHeight / 2, 0);
-    rootGroup.add(substrateMesh);
+    content.add(substrateMesh);
 
     // Substrate Edge Wireframe
     const subEdges = new THREE.EdgesGeometry(substrateGeom);
     const subLineMat = new THREE.LineBasicMaterial({ color: 0x1e293b });
     const subLine = new THREE.LineSegments(subEdges, subLineMat);
     subLine.position.set(0, -blockHeight / 2, 0);
-    rootGroup.add(subLine);
+    content.add(subLine);
 
     // 5. Powder Layer Top Sheet (z = -layerThickness)
     if (showPowderBed) {
@@ -300,7 +376,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       });
       const powderMesh = new THREE.Mesh(powderGeom, powderMat);
       powderMesh.position.set(0, -powderThickness / 2, 0);
-      rootGroup.add(powderMesh);
+      content.add(powderMesh);
 
       // Powder Layer Boundary Line
       const layerLineGeom = new THREE.BufferGeometry().setFromPoints([
@@ -311,98 +387,84 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       ]);
       const layerLineMat = new THREE.LineBasicMaterial({ color: 0xfbbf24 });
       const layerLine = new THREE.LineLoop(layerLineGeom, layerLineMat);
-      rootGroup.add(layerLine);
+      content.add(layerLine);
     }
 
-    // 6. 3D GOLDAK DOUBLE ELLIPSOID MELT POOL MESH GENERATION
-    // Construct parametric Goldak solid geometry
-    const radialSegs = 48;
-    const heightSegs = 36;
-    const vertices: number[] = [];
-    const colors: number[] = [];
-    const indices: number[] = [];
+    if (pyResult) {
+      const meltPoolGeom = buildLoftedMeltPoolGeometry(pyResult);
+      const meltPoolMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.3,
+        metalness: 0.8,
+        wireframe: wireframeMode,
+        side: THREE.DoubleSide,
+        clippingPlanes: localClippingPlanes,
+        clipShadows: true,
+      });
+      content.add(new THREE.Mesh(meltPoolGeom, meltPoolMat));
+    }
 
-    // Parametric mesh: theta (0 to PI/2 down from surface), phi (0 to 2PI around scan axis)
-    for (let j = 0; j <= heightSegs; j++) {
-      const theta = (j / heightSegs) * (Math.PI / 2); // 0 (surface) to PI/2 (bottom apex)
-      const sinTheta = Math.sin(theta);
-      const cosTheta = Math.cos(theta);
-
-      for (let i = 0; i <= radialSegs; i++) {
-        const phi = (i / radialSegs) * Math.PI * 2;
-        const cosPhi = Math.cos(phi);
-        const sinPhi = Math.sin(phi);
-
-        // Goldak scaling: x >= 0 uses af, x < 0 uses ar
-        const isFront = cosPhi >= 0;
-        const a_axis = isFront ? af : ar;
-
-        // Coordinates: X = scan axis, Y = depth down (negative), Z = transverse width
-        const x = sinTheta * cosPhi * a_axis;
-        const y = -cosTheta * c; // depth downward
-        const z = sinTheta * sinPhi * b;
-
-        vertices.push(x, y, z);
-
-        // Temperature Colormap assignment:
-        // Core = bright incandescent solar (Keyhole / liquid center), Rim = liquidus gold -> amber mushy
-        const rNorm = Math.sqrt(Math.pow(x / a_axis, 2) + Math.pow(z / b, 2) + Math.pow(y / c, 2));
-        const color = new THREE.Color();
-
-        if (isKeyhole && rNorm < 0.35 && y > -d_kh) {
-          // Intense white-cyan plasma inside keyhole
-          color.setRGB(0.95, 0.98, 1.0);
-        } else if (rNorm < 0.65) {
-          // High temperature molten metal (Radiant Red-Orange / Gold)
-          color.setRGB(1.0, 0.45 + (1 - rNorm) * 0.4, 0.05 + (1 - rNorm) * 0.3);
-        } else if (rNorm <= 1.0) {
-          // Mushy Zone Front (Solidus to Liquidus)
-          color.setRGB(0.98, 0.58, 0.15);
-        } else {
-          // Heat Affected Zone (HAZ)
-          color.setRGB(0.4, 0.2, 0.6);
+    if (showIsotherms && pyResult) {
+      const longC = pyResult.geometricContours.longitudinalXZ;
+      const transC = pyResult.geometricContours.transverseYZ;
+      const scales = [
+        { s: 1.0, color: 0xf97316, name: "liquidus" },
+        { s: 1.12, color: 0xfbbf24, name: "solidus" },
+        { s: 1.28, color: 0xa855f7, name: "haz" },
+      ];
+      for (const iso of scales) {
+        if (longC.length > 2) {
+          const pts = longC.map((p) => new THREE.Vector3(p.x_um * iso.s, -p.z_depth_um * iso.s, 0));
+          const lg = new THREE.BufferGeometry().setFromPoints(pts);
+          content.add(new THREE.Line(lg, new THREE.LineBasicMaterial({ color: iso.color })));
         }
-
-        colors.push(color.r, color.g, color.b);
+        if (transC.length > 2) {
+          const pts = transC.map((p) => new THREE.Vector3(0, -p.z_depth_um * iso.s, p.y_um * iso.s));
+          const tg = new THREE.BufferGeometry().setFromPoints(pts);
+          content.add(new THREE.Line(tg, new THREE.LineBasicMaterial({ color: iso.color })));
+        }
       }
     }
 
-    // Grid triangles
-    for (let j = 0; j < heightSegs; j++) {
-      for (let i = 0; i < radialSegs; i++) {
-        const a = j * (radialSegs + 1) + i;
-        const b_idx = (j + 1) * (radialSegs + 1) + i;
-        const c_idx = (j + 1) * (radialSegs + 1) + (i + 1);
-        const d_idx = j * (radialSegs + 1) + (i + 1);
-
-        indices.push(a, b_idx, d_idx);
-        indices.push(b_idx, c_idx, d_idx);
+    if (slicingPlane === "longitudinal-xz" && pyResult) {
+      const facePts = [
+        new THREE.Vector2(pyResult.geometricContours.longitudinalXZ[0]?.x_um ?? -af, 0),
+        ...pyResult.geometricContours.longitudinalXZ.map((p) => new THREE.Vector2(p.x_um, -p.z_depth_um)),
+        new THREE.Vector2(pyResult.geometricContours.longitudinalXZ.at(-1)?.x_um ?? ar, 0),
+      ];
+      const face = contourToCutFace(facePts, 0x38bdf8);
+      if (face) {
+        face.rotation.y = 0;
+        content.add(face);
+      }
+    }
+    if (slicingPlane === "transverse-yz" && pyResult) {
+      const facePts = [
+        new THREE.Vector2(pyResult.geometricContours.transverseYZ[0]?.y_um ?? -b, 0),
+        ...pyResult.geometricContours.transverseYZ.map((p) => new THREE.Vector2(p.y_um, -p.z_depth_um)),
+        new THREE.Vector2(pyResult.geometricContours.transverseYZ.at(-1)?.y_um ?? b, 0),
+      ];
+      const face = contourToCutFace(facePts, 0xf59e0b);
+      if (face) {
+        face.rotation.y = Math.PI / 2;
+        content.add(face);
       }
     }
 
-    const meltPoolGeom = new THREE.BufferGeometry();
-    meltPoolGeom.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    meltPoolGeom.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    meltPoolGeom.setIndex(indices);
-    meltPoolGeom.computeVertexNormals();
-
-    const meltPoolMat = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.3,
-      metalness: 0.8,
-      wireframe: wireframeMode,
-      side: THREE.DoubleSide,
-      clippingPlanes: localClippingPlanes,
-      clipShadows: true,
-    });
-
-    const meltPoolMesh = new THREE.Mesh(meltPoolGeom, meltPoolMat);
-    rootGroup.add(meltPoolMesh);
+    if ((slicingPlane === "transverse-yz" || slicingPlane === "quarter-cutaway") && pyResult) {
+      pyResult.geometricContours.multiTrackHatchOverlap.forEach((track) => {
+        if (track.y_center_um === 0) return;
+        const pts = track.contour.map((p) => new THREE.Vector3(0, -p.z_depth_um, p.y_um));
+        if (pts.length < 2) return;
+        const tg = new THREE.BufferGeometry().setFromPoints(pts);
+        content.add(new THREE.Line(tg, new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45 })));
+      });
+    }
 
     // 7. KEYHOLE VAPOR DEPRESSION CAVITY MESH (If in Keyhole or Transition mode)
     if (d_kh > 5 || isKeyhole) {
-      const khDepth = Math.max(d_kh, isKeyhole ? c * 0.75 : c * 0.4);
-      const khRadius = beamDiameter_um * 0.35;
+      const khDepth = Math.max(d_kh, isKeyhole ? c * 0.55 : d_kh);
+      const khRadius = beamDiameter_um * 0.28;
 
       const keyholeConeGeom = new THREE.ConeGeometry(khRadius, khDepth, 32, 16, true);
       keyholeConeGeom.rotateX(Math.PI); // Point down
@@ -419,7 +481,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       });
 
       const keyholeMesh = new THREE.Mesh(keyholeConeGeom, keyholeMat);
-      rootGroup.add(keyholeMesh);
+      content.add(keyholeMesh);
 
       // Trapped Keyhole Bubble / Porosity Sphere at the cavity root
       if (isKeyhole) {
@@ -434,7 +496,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         });
         const bubbleMesh = new THREE.Mesh(bubbleGeom, bubbleMat);
         bubbleMesh.position.set(-af * 0.4, -khDepth * 1.05, 0);
-        rootGroup.add(bubbleMesh);
+        content.add(bubbleMesh);
       }
     }
 
@@ -453,7 +515,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         side: THREE.DoubleSide,
       });
       const beamMesh = new THREE.Mesh(beamGeom, beamMat);
-      rootGroup.add(beamMesh);
+      content.add(beamMesh);
 
       // Central Laser Core Line
       const coreGeom = new THREE.BufferGeometry().setFromPoints([
@@ -465,7 +527,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         linewidth: 2,
       });
       const coreLine = new THREE.Line(coreGeom, coreMat);
-      rootGroup.add(coreLine);
+      content.add(coreLine);
 
       // Keyhole Multi-Reflection Ray-Tracing Bounce Lines
       if (isKeyhole && d_kh > 5) {
@@ -482,109 +544,51 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
           linewidth: 2,
         });
         const rayLine = new THREE.Line(rayGeom, rayLineMat);
-        rootGroup.add(rayLine);
+        content.add(rayLine);
       }
     }
 
     // 9. MARANGONI CONVECTION STREAMLINE VORTICES
     if (showMarangoniVectors) {
       const vortexMat = new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 });
+      const reach = Math.min(1.35, 0.55 + Ma / 8000);
 
       // Left Surface Outward Vortex Loop
       const vortexCurve1 = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, 5),
-        new THREE.Vector3(-af * 0.2, -5, b * 0.4),
-        new THREE.Vector3(-af * 0.5, -c * 0.35, b * 0.7),
-        new THREE.Vector3(-af * 0.7, -c * 0.55, b * 0.3),
+        new THREE.Vector3(-af * 0.2, -5, b * 0.4 * reach),
+        new THREE.Vector3(-af * 0.5, -c * 0.35, b * 0.7 * reach),
+        new THREE.Vector3(-af * 0.7, -c * 0.55, b * 0.3 * reach),
         new THREE.Vector3(-af * 0.4, -c * 0.3, 5),
       ], true);
       const vGeom1 = new THREE.BufferGeometry().setFromPoints(vortexCurve1.getPoints(32));
       const vLine1 = new THREE.Line(vGeom1, vortexMat);
-      rootGroup.add(vLine1);
+      content.add(vLine1);
 
       // Right Surface Outward Vortex Loop
       const vortexCurve2 = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, -5),
-        new THREE.Vector3(-af * 0.2, -5, -b * 0.4),
-        new THREE.Vector3(-af * 0.5, -c * 0.35, -b * 0.7),
-        new THREE.Vector3(-af * 0.7, -c * 0.55, -b * 0.3),
+        new THREE.Vector3(-af * 0.2, -5, -b * 0.4 * reach),
+        new THREE.Vector3(-af * 0.5, -c * 0.35, -b * 0.7 * reach),
+        new THREE.Vector3(-af * 0.7, -c * 0.55, -b * 0.3 * reach),
         new THREE.Vector3(-af * 0.4, -c * 0.3, -5),
       ], true);
       const vGeom2 = new THREE.BufferGeometry().setFromPoints(vortexCurve2.getPoints(32));
       const vLine2 = new THREE.Line(vGeom2, vortexMat);
-      rootGroup.add(vLine2);
+      content.add(vLine2);
     }
 
     // 10. SCAN VELOCITY VECTOR ARROW
     const scanDir = new THREE.Vector3(1, 0, 0);
     const scanOrigin = new THREE.Vector3(af + 25, 0, 0);
     const scanArrow = new THREE.ArrowHelper(scanDir, scanOrigin, 60, 0x10b981, 14, 8);
-    rootGroup.add(scanArrow);
+    content.add(scanArrow);
 
     // 11. Coordinate Axes Helper & Floor Grid
     const grid = new THREE.GridHelper(blockLength, 20, 0x0284c7, 0x1e293b);
     grid.position.y = -blockHeight;
-    rootGroup.add(grid);
+    content.add(grid);
 
-    // Mouse Interaction / Orbit Dragging
-    let isDragging = false;
-    let prevMouseX = 0;
-    let prevMouseY = 0;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !controlsGroupRef.current) return;
-      const deltaX = e.clientX - prevMouseX;
-      const deltaY = e.clientY - prevMouseY;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-
-      controlsGroupRef.current.rotation.y += deltaX * 0.008;
-      controlsGroupRef.current.rotation.x += deltaY * 0.008;
-    };
-
-    const handleMouseUp = () => {
-      isDragging = false;
-    };
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (!cameraRef.current) return;
-      const fov = cameraRef.current.fov + e.deltaY * 0.04;
-      cameraRef.current.fov = Math.max(15, Math.min(85, fov));
-      cameraRef.current.updateProjectionMatrix();
-    };
-
-    const domElement = renderer.domElement;
-    domElement.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    domElement.addEventListener("wheel", handleWheel, { passive: false });
-
-    // Render Animation Loop
-    const animate = () => {
-      animationFrameId.current = requestAnimationFrame(animate);
-      if (autoRotate && controlsGroupRef.current) {
-        controlsGroupRef.current.rotation.y += 0.006;
-      }
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    // Clean up
-    return () => {
-      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      domElement.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      domElement.removeEventListener("wheel", handleWheel);
-      renderer.dispose();
-    };
   }, [
     pyResult,
     slicingPlane,
@@ -594,12 +598,9 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     showLaserRays,
     showMarangoniVectors,
     wireframeMode,
-    autoRotate,
     laserPower_W,
-    scanSpeed_mms,
     beamDiameter_um,
     layerThickness_um,
-    hatchSpacing_um,
     laserWavelength,
     regimeInfo,
   ]);
@@ -716,6 +717,12 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             </button>
           </div>
         </div>
+
+        {errorMsg && (
+          <div className="p-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-200 text-[11px]">
+            Solver error: {errorMsg}
+          </div>
+        )}
 
         {/* Dynamic Transition Banner */}
         <div className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${regimeInfo.badgeColor}`}>
@@ -957,6 +964,15 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
               <div className="flex items-center gap-1.5 text-[11px]">
                 <button
                   type="button"
+                  onClick={() => setShowIsotherms(!showIsotherms)}
+                  className={`px-2 py-1 rounded-lg border transition ${
+                    showIsotherms ? "bg-orange-500/10 text-orange-300 border-orange-500/30" : "bg-slate-900 text-slate-500 border-slate-800"
+                  }`}
+                >
+                  Isotherms
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowMarangoniVectors(!showMarangoniVectors)}
                   className={`px-2 py-1 rounded-lg border transition ${
                     showMarangoniVectors ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-slate-900 text-slate-500 border-slate-800"
@@ -1104,9 +1120,13 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                     <span className="text-slate-400">Knudsen Recoil Pressure:</span>
                     <span className="font-bold text-rose-300">{pyResult.hydrodynamicsAndRecoil.knudsenRecoilPressure_kPa} kPa</span>
                   </div>
-                  <div className="flex justify-between py-0.5">
+                  <div className="flex justify-between py-0.5 border-b border-slate-800/60">
                     <span className="text-slate-400">Volumetric Energy Density (VED):</span>
                     <span className="font-bold text-sky-400">{pyResult.processParameters.volumetricEnergyDensity_J_mm3} J/mm³</span>
+                  </div>
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-slate-400">Peak Intensity (I0):</span>
+                    <span className="font-bold text-rose-300">{pyResult.processParameters.peakIntensity_MW_cm2 ?? "—"} MW/cm²</span>
                   </div>
                 </div>
               </div>
@@ -1185,6 +1205,67 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
               </div>
             )}
           </div>
+
+          {pyResult && (
+            <div className="p-3.5 rounded-xl bg-[#090e18] border border-[#162032] space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-400" />
+                  <h4 className="text-xs font-bold text-white">Literature Benchmarks</h4>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-600">
+                  King / Rosenthal
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                Predicted W, D, and regime versus published single-track anchors. Errors are shown honestly; regime must match the King family.
+              </p>
+              {MELT_POOL_LITERATURE_CASES.map((c) => {
+                const same =
+                  pyResult.material === c.material &&
+                  Math.abs(pyResult.processParameters.laserPower_W - c.laserPower_W) < 1 &&
+                  Math.abs(pyResult.processParameters.scanSpeed_mm_s - c.scanSpeed_mm_s) < 1;
+                const wErr = relativeErrorPct(pyResult.meltPoolGeometry.width_um, c.publishedWidth_um);
+                const dErr = relativeErrorPct(pyResult.meltPoolGeometry.depth_um, c.publishedDepth_um);
+                const predFam = regimeFamily(pyResult.meltPoolGeometry.regime);
+                const regimeOk = predFam === c.publishedRegime;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMaterial(c.material);
+                      setLaserPower_W(c.laserPower_W);
+                      setScanSpeed_mms(c.scanSpeed_mm_s);
+                      setBeamDiameter_um(c.beamDiameter_um);
+                      setPreheatTemp_C(c.preheatTemp_C);
+                      setLayerThickness_um(c.layerThickness_um);
+                      setHatchSpacing_um(c.hatchSpacing_um);
+                    }}
+                    className={`w-full text-left p-2 rounded-lg border ${
+                      same ? "border-sky-500/50 bg-sky-500/10" : "border-slate-800 bg-[#050810]"
+                    }`}
+                  >
+                    <div className="flex justify-between gap-2 text-[10px]">
+                      <span className="text-slate-200 font-bold">{c.label}</span>
+                      <span className={regimeOk && same ? "text-emerald-400" : "text-slate-400"}>
+                        {same ? (regimeOk ? "Regime match" : `Regime ${predFam} vs ${c.publishedRegime}`) : "Load case"}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      {c.material} · {c.laserPower_W} W · {c.scanSpeed_mm_s} mm/s · DOI {c.doi}
+                    </div>
+                    {same && (
+                      <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-slate-300">
+                        <span>W {pyResult.meltPoolGeometry.width_um} vs {c.publishedWidth_um} μm ({wErr >= 0 ? "+" : ""}{wErr.toFixed(0)}%)</span>
+                        <span>D {pyResult.meltPoolGeometry.depth_um} vs {c.publishedDepth_um} μm ({dErr >= 0 ? "+" : ""}{dErr.toFixed(0)}%)</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -109,3 +109,17 @@ This logbook records all empirically tested and mathematically verified models, 
   - JSON Schema validation test: Validated against 12 reference ground truth specimens from Thijs et al., Kasperovich et al., Cherry et al., and Read et al.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 007: Melt-Pool Lab Isotherm Sizing & King Threshold Alignment
+- **Date**: 2026-09-05
+- **Module**: `python/lpbf_thermal_solver.py` / `MeltPool3DCrossSectionLab.tsx`
+- **Academic basis**:
+  - Regularized 3D Rosenthal field for \(T \ge T_\text{liquidus}\) extents (width, depth), with a Stefan latent-heat correction on geometric power.
+  - King / Rubenchik keyhole onset \(\Delta H / h_s \approx 30\) (transition band \(15\)–\(30\)). Previous UI/solver cuts at \(5.5\) / \(11\) were removed so the lab badge matches the solver.
+  - Extra keyhole depth is a semi-empirical vapor-depression increment on top of the conduction isotherm (not CFD).
+- **Functional proof**:
+  - `py -3 python/test_lpbf_meltpool_accuracy.py` — King classifier, contour/slice payload, IN718 / 316L / Ti-6Al-4V order-of-magnitude W–D, LoF vs keyhole presets.
+  - `tsc --noEmit` after TypeScript contour loft + literature panel.
+- **Status**: **PASS**
+

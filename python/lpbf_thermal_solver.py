@@ -214,6 +214,52 @@ THERMOPHYSICAL_DB = {
     }
 }
 
+# King et al. (2014) / Rubenchik: keyhole onset typically ΔH/hs ≈ 25–30.
+ENTHALPY_TRANSITION = 15.0
+ENTHALPY_KEYHOLE = 30.0
+
+
+def classify_enthalpy_regime(normalized_enthalpy: float) -> str:
+    if normalized_enthalpy >= ENTHALPY_KEYHOLE:
+        return "Keyhole Mode (Deep Vapor Cavity)"
+    if normalized_enthalpy >= ENTHALPY_TRANSITION:
+        return "Transition Mode"
+    return "Conduction Mode (Stable)"
+
+
+def rosenthal_temperature_C(x_m, y_m, z_m, T0_C, P_eff, k_th, v_scan, alpha_th, r_reg):
+    """3D Rosenthal moving point source, regularized at the origin (beam radius)."""
+    R = math.sqrt(x_m * x_m + y_m * y_m + z_m * z_m + r_reg * r_reg)
+    arg = -v_scan * (R + x_m) / max(1e-16, 2.0 * alpha_th)
+    arg = max(-45.0, min(20.0, arg))
+    return T0_C + (P_eff / (2.0 * math.pi * k_th * R)) * math.exp(arg)
+
+
+def _binary_extent(pred, lo, hi, iters=18):
+    """Largest value in [lo, hi] where pred is True (pred monotonic True→False)."""
+    if not pred(lo):
+        return 0.0
+    if pred(hi):
+        return hi
+    for _ in range(iters):
+        mid = 0.5 * (lo + hi)
+        if pred(mid):
+            lo = mid
+        else:
+            hi = mid
+    return lo
+
+
+def sample_thermal_slice(eval_T, axis_a, axis_b, na, nb):
+    temps = []
+    for ia in range(na):
+        a = axis_a[0] + (axis_a[1] - axis_a[0]) * ia / max(1, na - 1)
+        for ib in range(nb):
+            b = axis_b[0] + (axis_b[1] - axis_b[0]) * ib / max(1, nb - 1)
+            temps.append(round(float(eval_T(a, b)), 1))
+    return temps
+
+
 def calculate_meltpool_physics(
     material_name: str,
     laser_power_W: float,
@@ -252,20 +298,16 @@ def calculate_meltpool_physics(
     ved_J_mm3 = P_laser / (max(1.0, float(scan_speed_mm_s)) * (float(hatch_spacing_um) * 1e-3) * (float(layer_thickness_um) * 1e-3))
     led_J_m = P_laser / max(1e-4, v_scan)
 
-    # 2. Normalized Enthalpy & Keyhole Criterion (King et al. & Ye et al.)
-    # Delta_H / h_s = (eta * P) / (rho * cp * T_liq * sqrt(pi * alpha * v * r_beam^3))
-    enthalpy_denom = rho * cp * (T_liq - T_preheat) * math.sqrt(math.pi * alpha_th * v_scan * (r_beam ** 3))
+    # 2. Normalized Enthalpy (King / Rubenchik) + peak intensity I0
+    # ΔH/hs = (η P) / (ρ cp (Tliq-T0) sqrt(π α v r^3))
+    enthalpy_denom = rho * cp * max(50.0, T_liq - T_preheat) * math.sqrt(math.pi * alpha_th * v_scan * (r_beam ** 3))
     normalized_enthalpy = (eta_base * P_laser) / max(1e-9, enthalpy_denom)
+    peak_intensity_W_m2 = (4.0 * P_laser) / (math.pi * max(1e-16, d_beam ** 2))
+    peak_intensity_MW_cm2 = peak_intensity_W_m2 * 1e-10
 
-    # 3. Peak Temperature & Vapor Cavity Formation
-    # T_max = T_preheat + (2 * eta * P) / (pi * k * d_beam * sqrt(pi))
-    t_peak_C = T_preheat + (2.0 * eta_base * P_laser) / (math.pi * k_th * d_beam * math.sqrt(math.pi))
-    t_peak_C = min(3900.0, t_peak_C)
-
-    # 4. Multi-Reflection Absorption Enhancement in Deep Keyhole
-    # If vapor depression occurs, multiple bounces increase effective absorption eta_eff
-    if normalized_enthalpy > 6.0:
-        cavity_aspect = min(4.0, (normalized_enthalpy - 6.0) / 4.0)
+    # 3. Multi-reflection absorptivity once a vapor depression can form (ΔH/hs > 15)
+    if normalized_enthalpy > ENTHALPY_TRANSITION:
+        cavity_aspect = min(4.0, (normalized_enthalpy - ENTHALPY_TRANSITION) / 8.0)
         n_reflections = 1.0 + 1.8 * cavity_aspect
         eta_eff = 1.0 - (1.0 - eta_base) ** n_reflections
     else:
@@ -273,47 +315,86 @@ def calculate_meltpool_physics(
         cavity_aspect = 0.0
 
     effective_power = eta_eff * P_laser
+    # Latent-heat (Stefan) correction so the liquidus is not an over-hot Rosenthal tail.
+    Lf = props["latent_heat_fusion_J_kg"]
+    stefan = Lf / max(1.0, cp * max(50.0, T_liq - T_preheat))
+    P_geom = effective_power / (1.0 + 0.55 * stefan)
+    r_reg = max(r_beam / math.sqrt(2.0), 8e-6)
 
-    # 5. Melt Pool Width (W) - Eagar-Tsai / Rosenthal Calibration
+    def T_ros(x_m, y_m, z_m):
+        return rosenthal_temperature_C(x_m, y_m, z_m, T_preheat, P_geom, k_th, v_scan, alpha_th, r_reg)
+
+    # Seed search box from the high-speed Rosenthal width scale
     denom_thermal = rho * cp * max(50.0, T_liq - T_preheat) * v_scan
-    w_analytical = math.sqrt(max(1e-12, (8.0 / (math.pi * math.e)) * (effective_power / denom_thermal)))
-    # Add beam diameter convolution
-    w_melt_m = math.sqrt(w_analytical ** 2 + d_beam ** 2)
-    w_melt_um = w_melt_m * 1e6
+    w_analytical = math.sqrt(max(1e-12, (8.0 / (math.pi * math.e)) * (P_geom / denom_thermal)))
+    search_half_w = max(d_beam * 1.8, w_analytical * 1.8, 50e-6)
+    search_len = max(d_beam * 3.0, w_analytical * 4.5, 80e-6)
+    search_depth = max(d_beam * 2.2, w_analytical * 2.0, 40e-6)
 
-    # 6. Melt Pool Depth (D) & Regime Classification
-    if normalized_enthalpy < 5.5:
-        # Conduction Mode: Semicircular / Ellipsoidal (D ~ 0.35 - 0.55 * W)
-        regime = "Conduction Mode (Stable)"
-        depth_factor = 0.40 + 0.12 * (normalized_enthalpy / 5.5)
-        d_melt_um = w_melt_um * depth_factor
+    t_peak_C = T_preheat + (2.0 * eta_eff * P_laser) / (math.pi * k_th * d_beam * math.sqrt(math.pi))
+    t_peak_C = min(3900.0, t_peak_C)
+
+    # 4. Liquidus extents from the regularized Rosenthal field (conduction baseline)
+    x_front = _binary_extent(lambda x: T_ros(x, 0.0, 0.0) >= T_liq, 0.0, search_len)
+    x_rear = _binary_extent(lambda s: T_ros(-s, 0.0, 0.0) >= T_liq, 0.0, search_len * 1.4)
+    half_w = 0.0
+    for x_probe in (-x_rear * 0.35, -x_rear * 0.15, -x_rear * 0.05, 0.0, x_front * 0.35):
+        half_w = max(half_w, _binary_extent(lambda y: T_ros(x_probe, y, 0.0) >= T_liq, 0.0, search_half_w))
+    d_iso = 0.0
+    for x_probe in (-x_rear * 0.25, -x_rear * 0.1, -x_rear * 0.04, 0.0):
+        d_iso = max(d_iso, _binary_extent(lambda z: T_ros(x_probe, 0.0, z) >= T_liq, 0.0, search_depth))
+
+    if half_w < 8e-6 or d_iso < 3e-6:
+        w_fb = math.sqrt(max(1e-12, w_analytical ** 2 + (0.65 * d_beam) ** 2))
+        half_w = max(half_w, w_fb / 2.0)
+        d_iso = max(d_iso, half_w * (0.38 + 0.10 * min(1.0, normalized_enthalpy / ENTHALPY_TRANSITION)))
+        if x_front < 1e-6:
+            x_front = r_beam * 0.45
+        if x_rear < 1e-6:
+            x_rear = max(w_fb, half_w * 2.2)
+
+    w_melt_m = max(2.0 * half_w, d_beam * 0.55)
+    d_iso = max(d_iso, 4e-6)
+    # Bound the rear tail: Rosenthal over-extends L vs LPBF single-track data.
+    peclet_seed = (v_scan * w_melt_m) / (2.0 * max(1e-12, alpha_th))
+    l_cap = w_melt_m * (1.55 + 0.50 * min(5.0, peclet_seed))
+    l_melt_m = min(max(x_front + x_rear, d_beam), l_cap)
+    if x_front + x_rear > l_melt_m and (x_front + x_rear) > 1e-9:
+        scale_l = l_melt_m / (x_front + x_rear)
+        x_front *= scale_l
+        x_rear *= scale_l
+    x_front = max(x_front, r_beam * 0.35)
+    x_rear = max(r_beam * 0.8, l_melt_m - x_front)
+    l_melt_m = x_front + x_rear
+
+    # Keyhole / transition: Rosenthal is conduction-only; add vapor-depression extra depth.
+    # Extra penetration grows from ΔH/hs = 15 and accelerates past King onset ≈ 30.
+    if normalized_enthalpy < ENTHALPY_TRANSITION:
+        extra = 0.0
         keyhole_porosity_risk = "Negligible (<0.01%)"
         keyhole_depth_um = 0.0
-    elif normalized_enthalpy < 11.0:
-        # Transition Mode: Deepening depression
-        regime = "Transition Mode"
-        transition_interp = (normalized_enthalpy - 5.5) / 5.5
-        depth_factor = 0.52 + 0.45 * transition_interp
-        d_melt_um = w_melt_um * depth_factor
+    elif normalized_enthalpy < ENTHALPY_KEYHOLE:
+        trans = (normalized_enthalpy - ENTHALPY_TRANSITION) / (ENTHALPY_KEYHOLE - ENTHALPY_TRANSITION)
+        extra = d_iso * (0.15 + 0.55 * trans)
         keyhole_porosity_risk = "Low-Moderate (Occasional Fluctuations)"
-        keyhole_depth_um = d_melt_um * 0.35 * transition_interp
+        keyhole_depth_um = extra * 1e6
     else:
-        # Keyhole Mode: Deep vapor depression cavity
-        regime = "Keyhole Mode (Deep Vapor Cavity)"
-        keyhole_factor = 0.95 + 0.55 * math.log10((normalized_enthalpy - 11.0) / 4.0 + 1.0)
-        d_melt_um = w_melt_um * keyhole_factor
+        over = (normalized_enthalpy - ENTHALPY_KEYHOLE) / 10.0
+        extra = d_iso * (0.85 + 0.55 * math.log10(1.0 + max(0.0, over)))
         keyhole_porosity_risk = "High (Vapor Bubble Entrapment / Pore Defect Risk)"
-        keyhole_depth_um = d_melt_um * 0.75
+        keyhole_depth_um = extra * 1e6
 
-    # 7. Melt Pool Length (L) & Elongation (Peclet Number Pe)
+    d_melt_m = d_iso + extra
+    regime = classify_enthalpy_regime(normalized_enthalpy)
+
+    w_melt_um = w_melt_m * 1e6
+    d_melt_um = d_melt_m * 1e6
+    l_melt_um = l_melt_m * 1e6
     peclet_number = (v_scan * w_melt_m) / (2.0 * alpha_th)
-    elongation_factor = 1.6 + 0.55 * min(6.0, peclet_number)
-    l_melt_um = w_melt_um * elongation_factor
 
-    # Goldak Double-Ellipsoid Semi-Axes (front af, rear ar, b, c) in microns
-    goldak_af_um = (l_melt_um * 0.32)
-    goldak_ar_um = (l_melt_um * 0.68)
-    goldak_b_um = (w_melt_um / 2.0)
+    goldak_af_um = max(4.0, x_front * 1e6)
+    goldak_ar_um = max(4.0, x_rear * 1e6)
+    goldak_b_um = w_melt_um / 2.0
     goldak_c_um = d_melt_um
 
     # 8. Marangoni Convection & Knudsen Recoil Pressure
@@ -408,62 +489,82 @@ def calculate_meltpool_physics(
     else:
         recoater_risk = "Low (Safe Thermal Stress Window)"
 
-    # 12. Geometric 2D Contours for 3 Orthogonal Views
-    
-    # A) Top-Down (X-Y) Profile: Teardrop with Front Semi-Ellipse & Rear Chevron Tail
-    top_down_contour = []
+    # 12. Geometric 2D contours from liquidus isolines (plus keyhole extra depth)
+    depth_scale = d_melt_m / max(1e-9, d_iso)
     num_pts = 48
+    top_down_contour = []
     for i in range(num_pts + 1):
-        theta = (2.0 * math.pi * i) / num_pts
-        sin_t = math.sin(theta)
-        cos_t = math.cos(theta)
-        if cos_t >= 0:
-            # Front elliptical cap
-            x_pt = goldak_af_um * cos_t
-            y_pt = goldak_b_um * sin_t
-        else:
-            # Rear elongated teardrop
-            x_pt = -goldak_ar_um * abs(cos_t)
-            # Tapered tail width
-            norm_ratio = min(1.0, abs(x_pt) / max(1.0, goldak_ar_um))
-            tail_taper = max(0.0, 1.0 - (norm_ratio ** 1.3))
-            y_pt = goldak_b_um * sin_t * max(0.05, tail_taper)
-        
-        top_down_contour.append({"x_um": round(float(x_pt), 1), "y_um": round(float(y_pt), 1)})
+        s = i / num_pts
+        x_m = goldak_af_um * 1e-6 - (goldak_af_um + goldak_ar_um) * 1e-6 * s
+        y_half = _binary_extent(lambda y: T_ros(x_m, y, 0.0) >= T_liq, 0.0, search_half_w)
+        x_um = x_m * 1e6
+        y_um = y_half * 1e6
+        top_down_contour.append({"x_um": round(float(x_um), 1), "y_um": round(float(y_um), 1)})
+    # Close teardrop with the opposite (+y then walk back already one-sided; mirror)
+    mirrored = [{"x_um": pt["x_um"], "y_um": -pt["y_um"]} for pt in reversed(top_down_contour[1:-1])]
+    top_down_contour = top_down_contour + mirrored
 
-    # B) Longitudinal (X-Z) Profile: Depth penetration along scan axis
     longitudinal_contour = []
     for i in range(num_pts + 1):
-        s = i / num_pts  # 0 to 1
-        x_pt = goldak_af_um - (goldak_af_um + goldak_ar_um) * s
-        if x_pt >= 0:
-            norm_x = min(1.0, max(0.0, x_pt / max(1.0, goldak_af_um)))
-            z_depth = d_melt_um * math.sqrt(max(0.0, 1.0 - norm_x ** 2))
-        else:
-            norm_x = min(1.0, max(0.0, abs(x_pt) / max(1.0, goldak_ar_um)))
-            # Power law tail depth decay
-            z_depth = d_melt_um * (max(0.0, 1.0 - norm_x) ** 1.4)
-            
+        s = i / num_pts
+        x_m = goldak_af_um * 1e-6 - (goldak_af_um + goldak_ar_um) * 1e-6 * s
+        z_iso = _binary_extent(lambda z: T_ros(x_m, 0.0, z) >= T_liq, 0.0, search_depth)
+        z_depth = z_iso * depth_scale * 1e6
         longitudinal_contour.append({
-            "x_um": round(float(x_pt), 1),
+            "x_um": round(float(x_m * 1e6), 1),
             "z_depth_um": round(float(z_depth), 1),
-            "isKeyhole": keyhole_depth_um > 0 and abs(x_pt) < (r_beam * 1e6 * 0.8)
+            "isKeyhole": keyhole_depth_um > 0 and abs(x_m) < (r_beam * 0.9)
         })
 
-    # C) Transverse (Y-Z) Cross-Section: Single track + Neighboring Hatch Overlap
     transverse_contour = []
     for i in range(33):
         phi = (math.pi * i) / 32.0
-        y_pt = goldak_b_um * math.cos(phi)
-        
+        y_m = (goldak_b_um * 1e-6) * math.cos(phi)
+        z_iso = _binary_extent(lambda z: T_ros(0.0, y_m, z) >= T_liq, 0.0, search_depth)
         if regime.startswith("Keyhole"):
-            # U-shape / Keyhole deeper bottom
-            z_pt = d_melt_um * (max(0.0, math.sin(phi)) ** 0.75)
+            z_pt = z_iso * depth_scale * (max(0.05, math.sin(phi)) ** 0.75)
         else:
-            # Half-ellipse
-            z_pt = d_melt_um * max(0.0, math.sin(phi))
-            
-        transverse_contour.append({"y_um": round(float(y_pt), 1), "z_depth_um": round(float(z_pt), 1)})
+            z_pt = z_iso * depth_scale
+        transverse_contour.append({
+            "y_um": round(float(y_m * 1e6), 1),
+            "z_depth_um": round(float(z_pt * 1e6), 1)
+        })
+
+    T_haz = T_sol * 0.70
+    nx_s, nz_s, ny_s = 36, 24, 28
+    x_span = (-goldak_ar_um * 1.15, goldak_af_um * 1.15)
+    y_span = (-goldak_b_um * 1.25, goldak_b_um * 1.25)
+    z_span = (0.0, d_melt_um * 1.25)
+
+    def T_xz(x_um, z_um):
+        return min(3900.0, T_ros(x_um * 1e-6, 0.0, z_um * 1e-6))
+
+    def T_yz(y_um, z_um):
+        return min(3900.0, T_ros(0.0, y_um * 1e-6, z_um * 1e-6))
+
+    thermal_slices = {
+        "liquidus_C": T_liq,
+        "solidus_C": T_sol,
+        "haz_C": round(T_haz, 1),
+        "xz": {
+            "nx": nx_s,
+            "nz": nz_s,
+            "xMin_um": round(x_span[0], 1),
+            "xMax_um": round(x_span[1], 1),
+            "zMin_um": 0.0,
+            "zMax_um": round(z_span[1], 1),
+            "T_C": sample_thermal_slice(T_xz, x_span, z_span, nx_s, nz_s)
+        },
+        "yz": {
+            "ny": ny_s,
+            "nz": nz_s,
+            "yMin_um": round(y_span[0], 1),
+            "yMax_um": round(y_span[1], 1),
+            "zMin_um": 0.0,
+            "zMax_um": round(z_span[1], 1),
+            "T_C": sample_thermal_slice(T_yz, y_span, z_span, ny_s, nz_s)
+        }
+    }
 
     # Transverse Multi-Track Overlap with left & right hatch lines
     hatch_val_um = float(hatch_spacing_um)
@@ -486,16 +587,16 @@ def calculate_meltpool_physics(
             enth = (eta_base * p_val) / max(1e-9, denom_th)
             
             # Width & Depth proxy
-            eff_p = (1.0 - (1.0 - eta_base) ** 2.2) * p_val if enth > 6.0 else eta_base * p_val
+            eff_p = (1.0 - (1.0 - eta_base) ** 2.2) * p_val if enth > ENTHALPY_TRANSITION else eta_base * p_val
             w_m = math.sqrt(max(1e-12, (8.0 / (math.pi * math.e)) * (eff_p / (rho * cp * max(50.0, T_liq - T_preheat) * v_m))) + d_beam ** 2)
             w_um = w_m * 1e6
             
-            if enth < 5.5:
+            if enth < ENTHALPY_TRANSITION:
                 d_um = w_um * 0.45
                 pt_regime = "Optimal Conduction"
                 color_code = "#10b981"  # Emerald
-            elif enth > 11.0:
-                d_um = w_um * 1.25
+            elif enth > ENTHALPY_KEYHOLE:
+                d_um = w_um * 1.15
                 pt_regime = "Keyhole Defect Zone"
                 color_code = "#ef4444"  # Red
             else:
@@ -524,7 +625,7 @@ def calculate_meltpool_physics(
 
     return {
         "success": True,
-        "engine": "MetalliX-Python-HPC-LPBF-MeltPool-v4.0",
+        "engine": "MetalliX-Python-HPC-LPBF-MeltPool-v5.0",
         "material": material_name,
         "baseMetal": props["base"],
         "laserWavelength": laser_wavelength,
@@ -538,6 +639,7 @@ def calculate_meltpool_physics(
             "effectiveAbsorptivity": round(eta_eff, 3),
             "volumetricEnergyDensity_J_mm3": round(ved_J_mm3, 2),
             "linearEnergyDensity_J_m": round(led_J_m, 1),
+            "peakIntensity_MW_cm2": round(peak_intensity_MW_cm2, 3),
             "normalizedEnthalpy": round(normalized_enthalpy, 2)
         },
         "meltPoolGeometry": {
@@ -590,6 +692,7 @@ def calculate_meltpool_physics(
             "transverseYZ": transverse_contour,
             "multiTrackHatchOverlap": overlap_tracks
         },
+        "thermalSlices": thermal_slices,
         "processWindowMap": {
             "currentOperatingPoint": {
                 "power_W": P_laser,

@@ -1509,6 +1509,7 @@ export interface PythonLPBFResult {
     effectiveAbsorptivity: number;
     volumetricEnergyDensity_J_mm3: number;
     linearEnergyDensity_J_m: number;
+    peakIntensity_MW_cm2?: number;
     normalizedEnthalpy: number;
   };
   meltPoolGeometry: {
@@ -1564,6 +1565,29 @@ export interface PythonLPBFResult {
       y_center_um: number;
       contour: { y_um: number; z_depth_um: number }[];
     }[];
+  };
+  thermalSlices?: {
+    liquidus_C: number;
+    solidus_C: number;
+    haz_C: number;
+    xz: {
+      nx: number;
+      nz: number;
+      xMin_um: number;
+      xMax_um: number;
+      zMin_um: number;
+      zMax_um: number;
+      T_C: number[];
+    };
+    yz: {
+      ny: number;
+      nz: number;
+      yMin_um: number;
+      yMax_um: number;
+      zMin_um: number;
+      zMax_um: number;
+      T_C: number[];
+    };
   };
   processWindowMap: {
     currentOperatingPoint: {

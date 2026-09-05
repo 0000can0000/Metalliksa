@@ -25,6 +25,36 @@ import {
   PrintVerdict,
 } from "../../utils/lpbfIndustrialDecision";
 import { heatTreatmentCohorts, orientationCohorts } from "../../utils/lpbfFourAlloySchema";
+import type { LPBFAlloyId } from "../../types/lpbfDataFoundation";
+import type { LpbfProcessPatch } from "../../store/useMaterialSpecimenStore";
+
+/**
+ * Demo P–v–h–t–d vectors for the two buttons. These only load process inputs;
+ * the printable/do-not-print verdict is always decided by the Python build-job
+ * solver (four_alloy literature boxes + LoF geometry). No TS verdict here.
+ * Verified with python/test_lpbf_build_job.py numbers and solve_lpbf_build_job.
+ */
+const LPBF_DEMO_VECTORS: Record<
+  LPBFAlloyId,
+  { printable: LpbfProcessPatch; lof: LpbfProcessPatch }
+> = {
+  ti6al4v: {
+    printable: { laserPower_W: 200, scanSpeed_mms: 1000, hatch_um: 100, layer_um: 30, beamDiameter_um: 80 },
+    lof: { laserPower_W: 120, scanSpeed_mms: 1600, hatch_um: 180, layer_um: 60, beamDiameter_um: 80 },
+  },
+  ss316l: {
+    printable: { laserPower_W: 180, scanSpeed_mms: 900, hatch_um: 90, layer_um: 30, beamDiameter_um: 80 },
+    lof: { laserPower_W: 110, scanSpeed_mms: 1500, hatch_um: 180, layer_um: 60, beamDiameter_um: 80 },
+  },
+  alsi10mg: {
+    printable: { laserPower_W: 340, scanSpeed_mms: 1100, hatch_um: 110, layer_um: 30, beamDiameter_um: 100 },
+    lof: { laserPower_W: 200, scanSpeed_mms: 1800, hatch_um: 200, layer_um: 60, beamDiameter_um: 100 },
+  },
+  in718: {
+    printable: { laserPower_W: 190, scanSpeed_mms: 900, hatch_um: 90, layer_um: 30, beamDiameter_um: 80 },
+    lof: { laserPower_W: 90, scanSpeed_mms: 1400, hatch_um: 140, layer_um: 50, beamDiameter_um: 80 },
+  },
+};
 
 interface Props {
   onOpenSlicer?: () => void;
@@ -42,6 +72,8 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     () => mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal),
     [specimen.name, specimen.baseMetal]
   );
+
+  const demoVectors = LPBF_DEMO_VECTORS[materials.alloyId] ?? LPBF_DEMO_VECTORS.in718;
 
   const thermal = job?.thermal ?? null;
   const slicer = job?.slicer ?? null;
@@ -93,6 +125,20 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                 {thermal?.computeTimeMs != null ? ` · solver ${thermal.computeTimeMs} ms` : ""}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => updateLpbfProcess(demoVectors.lof)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-400/40 text-rose-200 text-[11px] font-bold"
+            >
+              LoF demo
+            </button>
+            <button
+              type="button"
+              onClick={() => updateLpbfProcess(demoVectors.printable)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/15 border border-sky-400/40 text-sky-200 text-[11px] font-bold"
+            >
+              Printable demo
+            </button>
             <button
               type="button"
               onClick={() => void rerun()}

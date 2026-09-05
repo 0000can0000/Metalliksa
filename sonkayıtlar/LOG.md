@@ -4,6 +4,15 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 22:22 — Two demo buttons (LoF / Printable) on Industrial Decision lab
+- **Agent**: Cursor Claude Opus 4.8
+- **Result**: PASS
+- **Task**: Tiny UI only on `IndustrialLPBFDecisionLab` — add English "LoF demo" and "Printable demo" buttons. Same specimen/mesh. Each writes `activeSpecimen.lpbf` (P,v,h,t,d) via `updateLpbfProcess`, then the existing Python `solveLpbfBuildJob` runs. UI still shows Python `job.verdict` only; no TS verdict.
+- **Done**: Added alloy-aware `LPBF_DEMO_VECTORS` (ti6al4v/ss316l/alsi10mg/in718) with numbers verified against `four_alloy` literature P–v boxes and `solve_lpbf_build_job`. Both buttons call `updateLpbfProcess(demoVectors.*)`; verdict is untouched. Verified per alloy: Printable → `printable`/`risky` inside box; LoF → `do-not-print` outside box (default in718: risky vs do-not-print). No hardcoded verdict in TypeScript; no Eagar–Tsai/Goldak/STL/alloy changes.
+- **Where we left off**: Nothing left on this task.
+- **Files**: `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_lpbf_build_job.py` PASS; `npx tsc --noEmit` PASS.
+
 ## 2026-09-05 21:24 — Audit: live STL drives Build Job slicer (no change needed)
 - **Agent**: Cursor Claude Opus 4.8
 - **Result**: PASS

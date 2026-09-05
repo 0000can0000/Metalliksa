@@ -134,6 +134,6 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Expected \(I_0\)**: \(4P/(\pi d^2)\) with \(d=80\,\mu\text{m}=0.008\,\text{cm}\) → \(3.979\,\text{MW/cm}^2\)
 - **Literature**: King et al. keyhole onset \(\Delta H/h_s \approx 30\); LoF when \(h>W\) or \(t>D\) (AGENTS.md).
 - **Observed**: `evaluateLpbfBuildJob` VED \(74.07\), \(I_0\) \(3.979\) MW/cm² (0% deviation). `tsc --noEmit` zero errors.
-- **Pass criterion**: VED and \(I_0\) within \(0.5\%\) of closed-form values.
+- **Pass criterion**: VED and \(I_0\) within \(0.5\%\) of closed-form values. Inverse Alloy LPBF sliders and Additive sub-labs read/write the same `activeSpecimen.lpbf` vector; DOI records set `specimenDoi`.
 - **Status**: **PASS**
 

@@ -43,7 +43,7 @@ import { LPBFAdditivePhysicsSuite } from "./LPBFAdditivePhysicsSuite";
 import { HeatTreatmentAgingSimulator } from "./HeatTreatmentAgingSimulator";
 import { SendToModuleButton } from "./SendToModuleButton";
 import { createPipelinePayloadFromCandidate, setActivePipelineMaterial } from "../utils/materialDataPipeline";
-import { useMaterialSpecimenStore, SPECIMEN_PRESETS, BaseMetalType } from "../store/useMaterialSpecimenStore";
+import { useMaterialSpecimenStore, BaseMetalType } from "../store/useMaterialSpecimenStore";
 import { Gauge } from "lucide-react";
 
 interface InverseAlloyStudioProps {

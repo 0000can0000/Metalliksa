@@ -4,6 +4,15 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:42 — Inverse LPBF unused import + Proof 008 store binding
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Finish Priority-1 single Build Job product line; Inverse Alloy LPBF already on `useMaterialSpecimenStore.lpbf`.
+- **Done**: Removed unused `SPECIMEN_PRESETS` import. Proof Entry 008 now states Inverse + Additive sub-labs share `activeSpecimen.lpbf` including DOI. Re-ran `tsc --noEmit`.
+- **Where we left off**: Product flow is live on `yeni1`. Browser click-through was not available (no browser MCP).
+- **Files**: `src/components/InverseAlloyStudio.tsx`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` — PASS
+
 ## 2026-09-05 19:35 — Single LPBF Build Job digital twin
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

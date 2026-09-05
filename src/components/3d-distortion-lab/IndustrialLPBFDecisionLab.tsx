@@ -27,36 +27,8 @@ import {
 } from "../../utils/lpbfIndustrialDecision";
 import { mapActionableReasons, modelHonestyLine, toActionableHeadline } from "../../utils/lpbfActionableReasons";
 import { heatTreatmentCohorts, orientationCohorts } from "../../utils/lpbfFourAlloySchema";
-import type { LPBFAlloyId } from "../../types/lpbfDataFoundation";
-import type { LpbfProcessPatch } from "../../store/useMaterialSpecimenStore";
-
-/**
- * Demo P–v–h–t–d vectors for the two buttons. These only load process inputs;
- * the printable/do-not-print verdict is always decided by the Python build-job
- * solver (four_alloy literature boxes + LoF geometry). No TS verdict here.
- * Verified with python/test_lpbf_build_job.py numbers and solve_lpbf_build_job.
- */
-const LPBF_DEMO_VECTORS: Record<
-  LPBFAlloyId,
-  { printable: LpbfProcessPatch; lof: LpbfProcessPatch }
-> = {
-  ti6al4v: {
-    printable: { laserPower_W: 200, scanSpeed_mms: 1000, hatch_um: 100, layer_um: 30, beamDiameter_um: 80 },
-    lof: { laserPower_W: 120, scanSpeed_mms: 1600, hatch_um: 180, layer_um: 60, beamDiameter_um: 80 },
-  },
-  ss316l: {
-    printable: { laserPower_W: 180, scanSpeed_mms: 900, hatch_um: 90, layer_um: 30, beamDiameter_um: 80 },
-    lof: { laserPower_W: 110, scanSpeed_mms: 1500, hatch_um: 180, layer_um: 60, beamDiameter_um: 80 },
-  },
-  alsi10mg: {
-    printable: { laserPower_W: 340, scanSpeed_mms: 1100, hatch_um: 110, layer_um: 30, beamDiameter_um: 100 },
-    lof: { laserPower_W: 200, scanSpeed_mms: 1800, hatch_um: 200, layer_um: 60, beamDiameter_um: 100 },
-  },
-  in718: {
-    printable: { laserPower_W: 190, scanSpeed_mms: 900, hatch_um: 90, layer_um: 30, beamDiameter_um: 80 },
-    lof: { laserPower_W: 90, scanSpeed_mms: 1400, hatch_um: 140, layer_um: 50, beamDiameter_um: 80 },
-  },
-};
+import type { PythonLpbfScreeningGate } from "../../services/pythonComputationService";
+import { LPBF_DEMO_VECTORS } from "../../utils/lpbfDemoVectors";
 
 interface Props {
   onOpenSlicer?: () => void;
@@ -187,6 +159,8 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           headline={toActionableHeadline(decision.headline)}
           reasons={mapActionableReasons(decision.reasons)}
           modelId={job?.modelId}
+          gates={decision.gates}
+          dominantGate={decision.dominantGate}
         />
       )}
 
@@ -481,13 +455,35 @@ const VerdictBanner: React.FC<{
   headline: string;
   reasons: string[];
   modelId?: string;
-}> = ({ verdict, headline, reasons, modelId }) => (
+  gates?: PythonLpbfScreeningGate[];
+  dominantGate?: string;
+}> = ({ verdict, headline, reasons, modelId, gates, dominantGate }) => (
   <div className={`rounded-2xl border p-4 ${verdictTone(verdict)}`}>
     <div className="flex items-center gap-2 font-bold text-sm">
       {verdict === "printable" ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
       {headline}
     </div>
     <p className="mt-1 text-[10px] opacity-80">{modelHonestyLine(modelId)}</p>
+    {gates && gates.length > 0 && (
+      <div className="mt-2 flex flex-wrap gap-1">
+        {gates.map((g) => (
+          <span
+            key={g.id}
+            title={g.note}
+            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+              g.status === "fail"
+                ? "border-rose-400/50 text-rose-100"
+                : g.status === "warn"
+                  ? "border-amber-400/50 text-amber-100"
+                  : "border-white/20 text-white/70"
+            } ${dominantGate === g.id ? "ring-1 ring-white/60" : ""}`}
+          >
+            {g.id} {g.status}
+            {typeof g.measured === "number" ? ` ${g.measured}` : ""}
+          </span>
+        ))}
+      </div>
+    )}
     <ul className="mt-2 space-y-1 text-[11px] opacity-90 list-disc pl-5">
       {reasons.map((r) => (
         <li key={r}>{r}</li>

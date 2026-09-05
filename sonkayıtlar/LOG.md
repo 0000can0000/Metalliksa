@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 23:20 — Engineering-usable LPBF screening rail
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Raise the Additive LPBF rail to process-engineer screening quality: structured Python gates, gate-aware suggested vector, job ticket UI.
+- **Done**: `compose_verdict` now returns `gates`, `dominantGate`, `suggestedPatch` (LoF → box mid + conduction hatch/layer; keyhole → box min P / max v). Rail shows headline, gate chips, Apply suggested vector, Copy job, literature-padded P/v sliders, Load conduction vector. Decision lab shows the same gates. No TypeScript re-score.
+- **Where we left off**: Nothing left on this task. Refresh Additive LPBF. Screening only — not Goldak qualification.
+- **Files**: `python/lpbf_build_job_solver.py`, `python/test_lpbf_build_job.py`, `src/services/pythonComputationService.ts`, `src/utils/lpbfDemoVectors.ts`, `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_lpbf_build_job.py` PASS (conduction, LoF, keyhole patch). `npx tsc --noEmit` PASS. Browser click-through N/A — no browser MCP.
+
+---
+
 ## 2026-09-05 23:06 — Agent npm run dev exited
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

@@ -51,6 +51,9 @@ def main():
     assert ti["slicer"]["buildTimeSummary"]["totalBuildTime_hr"] > 0
     assert ti["slicer"]["meshMetrics"]["estimatedPartMass_g"] > 0
     assert ti["verdict"]["literatureWindow"]["inside"] is True
+    assert "gates" in ti["verdict"] and len(ti["verdict"]["gates"]) >= 5
+    assert ti["verdict"]["dominantGate"] != "lof_wh"
+    assert "suggestedPatch" in ti["verdict"]
 
     lof = run_job(
         {
@@ -66,6 +69,27 @@ def main():
     )
     assert lof["verdict"]["verdict"] in ("risky", "do-not-print"), lof["verdict"]
     assert lof["verdict"]["literatureWindow"]["inside"] is False
+    assert lof["verdict"]["dominantGate"] in ("lof_wh", "lof_dt", "literature_pv", "balling")
+    assert lof["verdict"]["suggestedPatch"] is not None
+
+    kh = run_job(
+        {
+            "alloyId": "ti6al4v",
+            "laserPower_W": 400,
+            "scanSpeed_mm_s": 400,
+            "beamDiameter_um": 80,
+            "preheatTemp_C": 80,
+            "layerThickness_um": 30,
+            "hatchSpacing_um": 100,
+            "preset": "nozzle",
+        }
+    )
+    assert kh["verdict"]["dominantGate"] == "keyhole", kh["verdict"]
+    patch = kh["verdict"]["suggestedPatch"]
+    assert patch is not None
+    assert patch["scanSpeed_mms"] >= kh["thermal"]["processParameters"]["scanSpeed_mm_s"]
+    assert patch["laserPower_W"] <= kh["thermal"]["processParameters"]["laserPower_W"]
+    assert patch["hatch_um"] == 100
 
     print("PASS: solve_lpbf_build_job returns Python verdict")
     return 0

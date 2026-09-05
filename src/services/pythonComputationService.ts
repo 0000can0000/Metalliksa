@@ -1591,6 +1591,25 @@ export interface PythonSTLSlicerResult {
   };
 }
 
+export type PythonLpbfGateStatus = "pass" | "warn" | "fail";
+
+export interface PythonLpbfScreeningGate {
+  id: string;
+  status: PythonLpbfGateStatus;
+  measured: number;
+  required: number | null;
+  unit: string;
+  note: string;
+}
+
+export interface PythonLpbfSuggestedPatch {
+  laserPower_W: number;
+  scanSpeed_mms: number;
+  hatch_um: number;
+  layer_um: number;
+  beamDiameter_um: number;
+}
+
 export interface PythonLpbfBuildJobVerdict {
   verdict: "printable" | "risky" | "do-not-print";
   headline: string;
@@ -1601,6 +1620,9 @@ export interface PythonLpbfBuildJobVerdict {
     alloyId: string;
     box: { powerMin_W: number; powerMax_W: number; speedMin_mm_s: number; speedMax_mm_s: number };
   };
+  gates?: PythonLpbfScreeningGate[];
+  dominantGate?: string;
+  suggestedPatch?: PythonLpbfSuggestedPatch | null;
 }
 
 export interface PythonLpbfBuildJobResult {

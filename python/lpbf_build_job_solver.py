@@ -10,9 +10,70 @@ import json
 import sys
 import time
 
-from four_alloy_materials import ALLOY_MATERIALS, evaluate_literature_pv, resolve_alloy_id
+from four_alloy_materials import (
+    ALLOY_MATERIALS,
+    LITERATURE_PV_WINDOWS,
+    evaluate_literature_pv,
+    resolve_alloy_id,
+)
 from lpbf_thermal_solver import calculate_meltpool_physics
 from stl_slicer_build_time_solver import solve_slicer
+
+# Hatch/layer used with literature-box mid P–v when LoF is the dominant gate.
+# Matches src/utils/lpbfDemoVectors.ts printable demos (inputs only).
+_LOF_HT = {
+    "ti6al4v": {"hatch_um": 100, "layer_um": 30, "beamDiameter_um": 80},
+    "ss316l": {"hatch_um": 90, "layer_um": 30, "beamDiameter_um": 80},
+    "alsi10mg": {"hatch_um": 110, "layer_um": 30, "beamDiameter_um": 100},
+    "in718": {"hatch_um": 90, "layer_um": 30, "beamDiameter_um": 80},
+}
+
+
+def _gate(gid, status, measured, required, unit, note):
+    return {
+        "id": gid,
+        "status": status,
+        "measured": measured,
+        "required": required,
+        "unit": unit,
+        "note": note,
+    }
+
+
+def _suggested_patch(thermal, alloy_id, dominant_gate, verdict):
+    if verdict == "printable" or dominant_gate in (None, "none"):
+        return None
+    box = LITERATURE_PV_WINDOWS[alloy_id]
+    mid_p = int(round((box["powerMin_W"] + box["powerMax_W"]) / 2.0))
+    mid_v = int(round((box["speedMin_mm_s"] + box["speedMax_mm_s"]) / 2.0))
+    pp = thermal["processParameters"]
+    cur_h = float(pp["hatchSpacing_um"])
+    cur_t = float(pp["layerThickness_um"])
+    cur_d = float(pp["beamDiameter_um"])
+    ht = _LOF_HT.get(alloy_id, {"hatch_um": 100, "layer_um": 30, "beamDiameter_um": cur_d})
+    if dominant_gate == "keyhole":
+        return {
+            "laserPower_W": int(box["powerMin_W"]),
+            "scanSpeed_mms": int(box["speedMax_mm_s"]),
+            "hatch_um": int(round(cur_h)),
+            "layer_um": int(round(cur_t)),
+            "beamDiameter_um": int(round(cur_d)),
+        }
+    if dominant_gate in ("lof_wh", "lof_dt"):
+        return {
+            "laserPower_W": mid_p,
+            "scanSpeed_mms": mid_v,
+            "hatch_um": ht["hatch_um"],
+            "layer_um": ht["layer_um"],
+            "beamDiameter_um": ht["beamDiameter_um"],
+        }
+    return {
+        "laserPower_W": mid_p,
+        "scanSpeed_mms": mid_v,
+        "hatch_um": int(round(cur_h)),
+        "layer_um": int(round(cur_t)),
+        "beamDiameter_um": int(round(cur_d)),
+    }
 
 
 def compose_verdict(thermal, alloy_id):
@@ -80,15 +141,70 @@ def compose_verdict(thermal, alloy_id):
         "do-not-print": "Do not print — change P, v, h, or t before a build",
     }[verdict]
 
+    lw = round(width_over_hatch, 3)
+    dt = round(depth_over_layer, 3)
+    lw_status = "fail" if width_over_hatch < 1.05 else ("warn" if lof_warn else "pass")
+    dt_status = "fail" if depth_over_layer < 1.15 else ("warn" if lof_warn else "pass")
+    kh_status = "fail" if (keyhole_high and dh > 35) else ("warn" if keyhole_high else "pass")
+    ball_status = "fail" if balling_high else "pass"
+    lit_status = "pass" if win["inside"] else "warn"
+    rec_status = "warn" if recoater_high else "pass"
+    dist_status = "warn" if distortion_high else "pass"
+    aspect = float(thermal["meltPoolGeometry"]["aspectRatio_L_over_W"])
+
+    gates = [
+        _gate("lof_wh", lw_status, lw, 1.05, "1", "Melt-pool width vs hatch (LoF)."),
+        _gate("lof_dt", dt_status, dt, 1.15, "1", "Melt-pool depth vs layer (LoF)."),
+        _gate("keyhole", kh_status, dh, 30.0, "1", "King ΔH/hₛ onset ~30; do-not-print if High and >35."),
+        _gate("balling", ball_status, aspect, None, "1", "Plateau–Rayleigh L/W from Rosenthal length."),
+        _gate(
+            "literature_pv",
+            lit_status,
+            1.0 if win["inside"] else 0.0,
+            1.0,
+            "inside",
+            "Four-alloy literature P–v box (not a machine envelope).",
+        ),
+        _gate(
+            "recoater",
+            rec_status,
+            float(def_["distortionIndex"]),
+            None,
+            "index",
+            "Residual-stress heuristic, not a recoater-blade simulation.",
+        ),
+        _gate(
+            "distortion",
+            dist_status,
+            float(def_["distortionIndex"]),
+            0.65,
+            "index",
+            "Inherent-strain screening index, not Goldak FEA.",
+        ),
+    ]
+    dominant = "none"
+    for g in gates:
+        if g["status"] == "fail":
+            dominant = g["id"]
+            break
+    if dominant == "none":
+        for g in gates:
+            if g["status"] == "warn":
+                dominant = g["id"]
+                break
+
     return {
         "verdict": verdict,
         "headline": headline,
         "reasons": reasons,
         "lofGeometry": {
-            "widthOverHatch": round(width_over_hatch, 3),
-            "depthOverLayer": round(depth_over_layer, 3),
+            "widthOverHatch": lw,
+            "depthOverLayer": dt,
         },
         "literatureWindow": win,
+        "gates": gates,
+        "dominantGate": dominant,
+        "suggestedPatch": _suggested_patch(thermal, alloy_id, dominant, verdict),
     }
 
 

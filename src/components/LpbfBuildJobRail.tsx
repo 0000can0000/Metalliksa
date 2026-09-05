@@ -1,11 +1,13 @@
-import React from "react";
-import { Box, Layers, Sliders, AlertTriangle, Database, ChevronRight, Undo2 } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Box, Layers, Sliders, AlertTriangle, Database, ChevronRight, Undo2, Copy, Check } from "lucide-react";
 import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
 import { useLpbfBuildJobPython } from "../store/useLpbfBuildJobStore";
 import type { LPBFAlloyId } from "../types/lpbfDataFoundation";
 import type { PrintVerdict } from "../utils/lpbfIndustrialDecision";
 import { mapSpecimenToSolverMaterials } from "../utils/lpbfIndustrialDecision";
-import { mapActionableReasons, modelHonestyLine } from "../utils/lpbfActionableReasons";
+import { mapActionableReasons, modelHonestyLine, toActionableHeadline } from "../utils/lpbfActionableReasons";
+import { LITERATURE_PV_WINDOWS } from "../utils/lpbfFourAlloySchema";
+import { LPBF_DEMO_VECTORS } from "../utils/lpbfDemoVectors";
 
 const LPBF_JOB_ALLOYS: { alloyId: LPBFAlloyId; presetId: string; label: string }[] = [
   { alloyId: "ti6al4v", presetId: "ti-6al-4v", label: "Ti-6Al-4V" },
@@ -28,7 +30,7 @@ export const LPBF_BUILD_JOB_STAGES: {
   label: string;
   subTab: string;
 }[] = [
-  { id: "alloy", step: "1", label: "Alloy + vector", subTab: "industrial-decision" },
+  { id: "alloy", step: "1", label: "Alloy + P, v, h, t", subTab: "industrial-decision" },
   { id: "cad", step: "2", label: "STL (optional)", subTab: "basic-stl-slicer" },
   { id: "process", step: "3", label: "Python decision", subTab: "industrial-decision" },
   { id: "record", step: "4", label: "Literature + save", subTab: "ground-truth-foundation" },
@@ -49,6 +51,20 @@ export function subTabToBuildJobStage(
     return focusedStage === "alloy" ? "alloy" : "process";
   }
   return "process";
+}
+
+function gateChipTone(status: string): string {
+  if (status === "fail") return "text-rose-200 border-rose-500/40 bg-rose-500/10";
+  if (status === "warn") return "text-amber-200 border-amber-500/40 bg-amber-500/10";
+  return "text-slate-400 border-[#162032] bg-[#0c1322]";
+}
+
+function screeningAlloyWarning(name: string, baseMetal: string, alloyId: LPBFAlloyId): string | null {
+  const n = `${name} ${baseMetal}`.toLowerCase();
+  if (n.includes("cocr") || n.includes("hastelloy") || n.includes("scalmalloy") || n.includes("copper")) {
+    return `Screening uses solver alloy ${alloyId}; this specimen is not one of the four locked LPBF alloys.`;
+  }
+  return null;
 }
 
 function verdictTone(verdict: PrintVerdict): string {
@@ -74,8 +90,18 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
   const loadPreset = useMaterialSpecimenStore((s) => s.loadPreset);
   const { job, error, busy } = useLpbfBuildJobPython();
+  const [copied, setCopied] = useState(false);
   const lpbf = specimen.lpbf;
   const activeAlloyId = mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal).alloyId;
+  const alloyWarn = screeningAlloyWarning(specimen.name, specimen.baseMetal, activeAlloyId);
+  const pvBox = LITERATURE_PV_WINDOWS[activeAlloyId];
+  const pPad = Math.round((pvBox.powerMax_W - pvBox.powerMin_W) * 0.25) || 40;
+  const vPad = Math.round((pvBox.speedMax_mm_s - pvBox.speedMin_mm_s) * 0.25) || 80;
+  const pMin = Math.min(lpbf.laserPower_W, Math.max(50, pvBox.powerMin_W - pPad));
+  const pMax = Math.max(lpbf.laserPower_W, pvBox.powerMax_W + pPad);
+  const vMin = Math.min(lpbf.scanSpeed_mms, Math.max(100, pvBox.speedMin_mm_s - vPad));
+  const vMax = Math.max(lpbf.scanSpeed_mms, pvBox.speedMax_mm_s + vPad);
+  const demo = LPBF_DEMO_VECTORS[activeAlloyId] ?? LPBF_DEMO_VECTORS.in718;
   const activeStage = subTabToBuildJobStage(activeSubTab, focusedWizardStage);
   const inAdvanced = isAdvancedLpbfSubTab(activeSubTab);
   const decision = job?.verdict ?? null;
@@ -89,6 +115,47 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
     decision != null &&
     (decision.lofGeometry.widthOverHatch < 1.05 || decision.lofGeometry.depthOverLayer < 1.15);
   const actionable = decision ? mapActionableReasons(decision.reasons).slice(0, 3) : [];
+  const gates = decision?.gates ?? [];
+  const suggested = decision?.suggestedPatch;
+  const alloyLabel = LPBF_JOB_ALLOYS.find((a) => a.alloyId === activeAlloyId)?.label ?? activeAlloyId;
+  const jobLine = useMemo(
+    () =>
+      [
+        alloyLabel,
+        `${lpbf.laserPower_W} W`,
+        `${lpbf.scanSpeed_mms} mm/s`,
+        `h ${lpbf.hatch_um} µm`,
+        `t ${lpbf.layer_um} µm`,
+        `d ${lpbf.beamDiameter_um} µm`,
+        `preheat ${lpbf.preheatTemp_C} °C`,
+        decision ? `verdict ${decision.verdict}` : "verdict pending",
+        decision?.dominantGate ? `gate ${decision.dominantGate}` : "",
+        job?.modelId || "rosenthal-screening-v1",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    [
+      alloyLabel,
+      lpbf.laserPower_W,
+      lpbf.scanSpeed_mms,
+      lpbf.hatch_um,
+      lpbf.layer_um,
+      lpbf.beamDiameter_um,
+      lpbf.preheatTemp_C,
+      decision,
+      job?.modelId,
+    ]
+  );
+
+  const copyJob = async () => {
+    try {
+      await navigator.clipboard.writeText(jobLine);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-3">
@@ -100,7 +167,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
             {specimen.name}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 justify-end">
           {inAdvanced && onBackToDecision && (
             <button
               type="button"
@@ -111,8 +178,10 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
               Back to decision
             </button>
           )}
-          <div
-            className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg border ${
+          <button
+            type="button"
+            onClick={() => onNavigateStage("industrial-decision", "process")}
+            className={`text-left text-[10px] font-mono font-bold px-2 py-1 rounded-lg border max-w-[420px] ${
               decision
                 ? verdictTone(decision.verdict)
                 : busy
@@ -121,22 +190,56 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
                     ? "text-amber-300 border-amber-500/40 bg-amber-500/10"
                     : "text-slate-400 border-[#162032] bg-[#0c1322]"
             }`}
-            title={
-              decision?.headline ||
-              error ||
-              "Waiting for Python /api/python/lpbf-build-job (rosenthal-screening-v1)"
-            }
+            title={modelHonestyLine(job?.modelId)}
           >
             {decision
-              ? decision.verdict
+              ? toActionableHeadline(decision.headline)
               : busy
                 ? "Evaluating…"
                 : error
                   ? "Python offline — no industrial verdict"
                   : "Python pending"}
-          </div>
+          </button>
+          {suggested && decision && decision.verdict !== "printable" && (
+            <button
+              type="button"
+              onClick={() => updateLpbfProcess(suggested)}
+              className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg border border-sky-500/40 text-sky-200 bg-sky-500/10"
+              title="Literature-box screening suggestion from Python — not a go-build stamp"
+            >
+              Apply suggested vector
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void copyJob()}
+            className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-lg border border-[#162032] text-slate-300 bg-[#0c1322]"
+            title={jobLine}
+          >
+            {copied ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3" />}
+            Copy job
+          </button>
         </div>
       </div>
+
+      {gates.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {gates.map((g) => (
+            <span
+              key={g.id}
+              title={g.note}
+              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${gateChipTone(g.status)} ${
+                decision?.dominantGate === g.id ? "ring-1 ring-sky-400/70" : ""
+              }`}
+            >
+              {g.id} {g.status}
+              {g.id === "lof_wh" || g.id === "lof_dt" || g.id === "keyhole"
+                ? ` ${g.measured}`
+                : ""}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {LPBF_BUILD_JOB_STAGES.map((stage, idx) => (
@@ -161,10 +264,16 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
       </div>
 
       <p className="text-[10px] text-slate-500 font-mono">
-        Checklist: pick Ti-6Al-4V, 316L, AlSi10Mg, or IN718 · P–v–h–t–d on this panel · STL optional
+        Workstation: four alloys · live P–v–h–t–d · STL optional
         {slicer?.geometrySource === "uploaded-stl" ? " (mesh loaded)" : " (cube screening if empty)"} ·
-        step 3 is Python `job.verdict` only.
+        printability is Python `job.verdict` only (rosenthal-screening-v1).
       </p>
+      {alloyWarn && (
+        <p className="text-[10px] text-amber-200 font-mono flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3 shrink-0" />
+          {alloyWarn}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wide mr-1">Alloy</span>
@@ -182,23 +291,34 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
             {a.label}
           </button>
         ))}
-        <span className="text-[10px] text-slate-500 font-mono truncate max-w-[220px]">{specimen.name}</span>
+        <button
+          type="button"
+          onClick={() => updateLpbfProcess(demo.printable)}
+          className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-emerald-500/30 text-emerald-200 bg-emerald-500/10"
+          title="Loads the shared conduction demo vector; Python re-scores"
+        >
+          Load conduction vector
+        </button>
+        <span className="text-[10px] text-sky-200 font-mono">
+          {alloyLabel} · {lpbf.laserPower_W} W · {lpbf.scanSpeed_mms} mm/s · h {lpbf.hatch_um} · t {lpbf.layer_um} · d{" "}
+          {lpbf.beamDiameter_um}
+        </span>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <JobSlider
           label="P (W)"
           value={lpbf.laserPower_W}
-          min={100}
-          max={800}
+          min={pMin}
+          max={pMax}
           step={10}
           onChange={(v) => updateLpbfProcess({ laserPower_W: v })}
         />
         <JobSlider
           label="v (mm/s)"
           value={lpbf.scanSpeed_mms}
-          min={200}
-          max={2500}
+          min={vMin}
+          max={vMax}
           step={10}
           onChange={(v) => updateLpbfProcess({ scanSpeed_mms: v })}
         />

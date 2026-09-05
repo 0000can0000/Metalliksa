@@ -10,31 +10,9 @@ import json
 import sys
 import time
 
+from four_alloy_materials import ALLOY_MATERIALS, evaluate_literature_pv, resolve_alloy_id
 from lpbf_thermal_solver import calculate_meltpool_physics
 from stl_slicer_build_time_solver import solve_slicer
-
-LITERATURE_PV_WINDOWS = {
-    "ti6al4v": {"powerMin_W": 150, "powerMax_W": 280, "speedMin_mm_s": 700, "speedMax_mm_s": 1200},
-    "ss316l": {"powerMin_W": 150, "powerMax_W": 230, "speedMin_mm_s": 600, "speedMax_mm_s": 1000},
-    "alsi10mg": {"powerMin_W": 280, "powerMax_W": 380, "speedMin_mm_s": 900, "speedMax_mm_s": 1400},
-    "in718": {"powerMin_W": 120, "powerMax_W": 300, "speedMin_mm_s": 550, "speedMax_mm_s": 1000},
-}
-
-ALLOY_MATERIALS = {
-    "ti6al4v": {"thermal": "Ti-6Al-4V", "slicer": "Ti-6Al-4V ELI"},
-    "ss316l": {"thermal": "316L Stainless Steel", "slicer": "SS 316L"},
-    "alsi10mg": {"thermal": "AlSi10Mg", "slicer": "AlSi10Mg"},
-    "in718": {"thermal": "Inconel 718", "slicer": "Inconel 718"},
-}
-
-
-def evaluate_literature_pv(alloy_id, power_W, speed_mm_s):
-    box = LITERATURE_PV_WINDOWS.get(alloy_id, LITERATURE_PV_WINDOWS["in718"])
-    inside = (
-        box["powerMin_W"] <= power_W <= box["powerMax_W"]
-        and box["speedMin_mm_s"] <= speed_mm_s <= box["speedMax_mm_s"]
-    )
-    return {"inside": inside, "box": box, "alloyId": alloy_id}
 
 
 def compose_verdict(thermal, alloy_id):
@@ -116,9 +94,7 @@ def compose_verdict(thermal, alloy_id):
 
 def solve_lpbf_build_job(data):
     t0 = time.time()
-    alloy_id = str(data.get("alloyId") or "in718")
-    if alloy_id not in ALLOY_MATERIALS:
-        alloy_id = "in718"
+    alloy_id = resolve_alloy_id(data.get("alloyId") or "in718") or "in718"
     mats = ALLOY_MATERIALS[alloy_id]
     thermal_mat = data.get("thermalMaterial") or mats["thermal"]
     slicer_mat = data.get("slicerMaterial") or mats["slicer"]

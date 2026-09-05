@@ -15,86 +15,10 @@ import sys
 import json
 import math
 
-# Comprehensive Metallurgical AM Alloy Database
-ALLOY_DB = {
-    "Inconel 718": {
-        "E_GPa": 205.0,
-        "nu": 0.29,
-        "CTE_10e6": 13.0,
-        "yield_MPa": 1180.0,
-        "uts_MPa": 1420.0,
-        "k_WmK": 11.4,
-        "Tm_C": 1336.0,
-        "Tsol_C": 1260.0,
-        "rho_kgm3": 8190.0,
-        "absorptivity": 0.52,
-        "cracking_susceptibility": "High"
-    },
-    "Ti-6Al-4V": {
-        "E_GPa": 114.0,
-        "nu": 0.34,
-        "CTE_10e6": 8.6,
-        "yield_MPa": 950.0,
-        "uts_MPa": 1050.0,
-        "k_WmK": 6.7,
-        "Tm_C": 1660.0,
-        "Tsol_C": 1604.0,
-        "rho_kgm3": 4430.0,
-        "absorptivity": 0.65,
-        "cracking_susceptibility": "Moderate"
-    },
-    "Ti-6Al-4V ELI": {
-        "E_GPa": 114.0,
-        "nu": 0.34,
-        "CTE_10e6": 8.6,
-        "yield_MPa": 920.0,
-        "uts_MPa": 1000.0,
-        "k_WmK": 6.7,
-        "Tm_C": 1660.0,
-        "Tsol_C": 1604.0,
-        "rho_kgm3": 4430.0,
-        "absorptivity": 0.65,
-        "cracking_susceptibility": "Moderate"
-    },
-    "SS 316L": {
-        "E_GPa": 193.0,
-        "nu": 0.30,
-        "CTE_10e6": 16.0,
-        "yield_MPa": 530.0,
-        "uts_MPa": 650.0,
-        "k_WmK": 16.3,
-        "Tm_C": 1400.0,
-        "Tsol_C": 1375.0,
-        "rho_kgm3": 7990.0,
-        "absorptivity": 0.58,
-        "cracking_susceptibility": "Low"
-    },
-    "316L Stainless Steel": {
-        "E_GPa": 193.0,
-        "nu": 0.30,
-        "CTE_10e6": 16.0,
-        "yield_MPa": 530.0,
-        "uts_MPa": 650.0,
-        "k_WmK": 16.3,
-        "Tm_C": 1400.0,
-        "Tsol_C": 1375.0,
-        "rho_kgm3": 7990.0,
-        "absorptivity": 0.58,
-        "cracking_susceptibility": "Low"
-    },
-    "AlSi10Mg": {
-        "E_GPa": 70.0,
-        "nu": 0.33,
-        "CTE_10e6": 21.0,
-        "yield_MPa": 240.0,
-        "uts_MPa": 390.0,
-        "k_WmK": 113.0,
-        "Tm_C": 660.0,
-        "Tsol_C": 570.0,
-        "rho_kgm3": 2680.0,
-        "absorptivity": 0.30,
-        "cracking_susceptibility": "Moderate"
-    },
+from four_alloy_materials import four_alloy_inherent_strain_db, inherent_strain_props
+
+# Secondary alloys only. The four locked alloys come from four_alloy_materials.py.
+SECONDARY_ALLOY_DB = {
     "CoCrMo": {
         "E_GPa": 230.0,
         "nu": 0.30,
@@ -149,9 +73,14 @@ ALLOY_DB = {
     }
 }
 
+ALLOY_DB = {**four_alloy_inherent_strain_db(), **SECONDARY_ALLOY_DB}
+
 
 def get_alloy_properties(name):
-    for k, v in ALLOY_DB.items():
+    rec = inherent_strain_props(name)
+    if rec:
+        return rec
+    for k, v in SECONDARY_ALLOY_DB.items():
         if k.lower() in name.lower() or name.lower() in k.lower():
             return v
     return ALLOY_DB["Inconel 718"]

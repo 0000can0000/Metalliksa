@@ -18,104 +18,10 @@ import json
 import math
 import time
 
-# Comprehensive High-Temperature Thermophysical Alloy Database
-THERMOPHYSICAL_DB = {
-    "Inconel 718": {
-        "base": "Ni",
-        "liquidus_C": 1336.0,
-        "solidus_C": 1260.0,
-        "boiling_C": 2850.0,
-        "density_kg_m3": 8190.0,
-        "density_liquid_kg_m3": 7450.0,
-        "thermal_conductivity_W_mK": 11.4,
-        "thermal_conductivity_liquid_W_mK": 29.0,
-        "specific_heat_J_kgK": 435.0,
-        "specific_heat_liquid_J_kgK": 730.0,
-        "latent_heat_fusion_J_kg": 270000.0,
-        "latent_heat_vap_J_kg": 6400000.0,
-        "absorptivity_IR": 0.38,
-        "absorptivity_Green": 0.58,
-        "surface_tension_N_m": 1.78,
-        "d_gamma_dT_N_mK": -0.00040,  # Negative: outwards Marangoni flow
-        "viscosity_Pa_s": 0.0055,
-        "thermal_expansion_1_K": 13.0e-6,
-        "youngs_modulus_GPa": 205.0,
-        "poissons_ratio": 0.29,
-        "pdas_A1": 80.0,
-        "sdas_B1": 42.0
-    },
-    "Ti-6Al-4V": {
-        "base": "Ti",
-        "liquidus_C": 1660.0,
-        "solidus_C": 1604.0,
-        "boiling_C": 3287.0,
-        "density_kg_m3": 4430.0,
-        "density_liquid_kg_m3": 3950.0,
-        "thermal_conductivity_W_mK": 6.7,
-        "thermal_conductivity_liquid_W_mK": 23.0,
-        "specific_heat_J_kgK": 526.0,
-        "specific_heat_liquid_J_kgK": 830.0,
-        "latent_heat_fusion_J_kg": 290000.0,
-        "latent_heat_vap_J_kg": 8900000.0,
-        "absorptivity_IR": 0.35,
-        "absorptivity_Green": 0.52,
-        "surface_tension_N_m": 1.55,
-        "d_gamma_dT_N_mK": -0.00028,
-        "viscosity_Pa_s": 0.0042,
-        "thermal_expansion_1_K": 8.6e-6,
-        "youngs_modulus_GPa": 114.0,
-        "poissons_ratio": 0.34,
-        "pdas_A1": 65.0,
-        "sdas_B1": 35.0
-    },
-    "316L Stainless Steel": {
-        "base": "Fe",
-        "liquidus_C": 1400.0,
-        "solidus_C": 1375.0,
-        "boiling_C": 2814.0,
-        "density_kg_m3": 7990.0,
-        "density_liquid_kg_m3": 6980.0,
-        "thermal_conductivity_W_mK": 16.3,
-        "thermal_conductivity_liquid_W_mK": 31.0,
-        "specific_heat_J_kgK": 500.0,
-        "specific_heat_liquid_J_kgK": 780.0,
-        "latent_heat_fusion_J_kg": 270000.0,
-        "latent_heat_vap_J_kg": 6250000.0,
-        "absorptivity_IR": 0.42,
-        "absorptivity_Green": 0.62,
-        "surface_tension_N_m": 1.70,
-        "d_gamma_dT_N_mK": -0.00045,
-        "viscosity_Pa_s": 0.0060,
-        "thermal_expansion_1_K": 16.0e-6,
-        "youngs_modulus_GPa": 193.0,
-        "poissons_ratio": 0.30,
-        "pdas_A1": 95.0,
-        "sdas_B1": 48.0
-    },
-    "AlSi10Mg": {
-        "base": "Al",
-        "liquidus_C": 595.0,
-        "solidus_C": 557.0,
-        "boiling_C": 2470.0,
-        "density_kg_m3": 2680.0,
-        "density_liquid_kg_m3": 2390.0,
-        "thermal_conductivity_W_mK": 130.0,
-        "thermal_conductivity_liquid_W_mK": 85.0,
-        "specific_heat_J_kgK": 910.0,
-        "specific_heat_liquid_J_kgK": 1180.0,
-        "latent_heat_fusion_J_kg": 397000.0,
-        "latent_heat_vap_J_kg": 10500000.0,
-        "absorptivity_IR": 0.18,
-        "absorptivity_Green": 0.38,
-        "surface_tension_N_m": 0.85,
-        "d_gamma_dT_N_mK": -0.00035,
-        "viscosity_Pa_s": 0.0013,
-        "thermal_expansion_1_K": 20.5e-6,
-        "youngs_modulus_GPa": 70.0,
-        "poissons_ratio": 0.33,
-        "pdas_A1": 45.0,
-        "sdas_B1": 22.0
-    },
+from four_alloy_materials import four_alloy_thermophysical_db, thermal_props
+
+# Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
+SECONDARY_THERMOPHYSICAL_DB = {
     "CoCrMo": {
         "base": "Co",
         "liquidus_C": 1395.0,
@@ -214,6 +120,8 @@ THERMOPHYSICAL_DB = {
     }
 }
 
+THERMOPHYSICAL_DB = {**four_alloy_thermophysical_db(), **SECONDARY_THERMOPHYSICAL_DB}
+
 # King et al. (2014) / Rubenchik: keyhole onset typically ΔH/hs ≈ 25–30.
 ENTHALPY_TRANSITION = 15.0
 ENTHALPY_KEYHOLE = 30.0
@@ -273,7 +181,7 @@ def calculate_meltpool_physics(
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
     """
-    props = THERMOPHYSICAL_DB.get(material_name, THERMOPHYSICAL_DB["Inconel 718"])
+    props = thermal_props(material_name) or THERMOPHYSICAL_DB.get(material_name, THERMOPHYSICAL_DB["Inconel 718"])
     
     P_laser = max(10.0, float(laser_power_W))
     v_scan = max(10.0, float(scan_speed_mm_s)) * 1e-3  # m/s

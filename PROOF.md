@@ -183,4 +183,14 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Fixture**: Ti-6Al-4V \(200\,\text{W}\), \(900\,\text{mm/s}\) inside box; IN718 \(90\,\text{W}\), \(1400\,\text{mm/s}\) outside box and not printable.
 - **Status**: **PASS** (see `python/test_lpbf_build_job.py` and `tsc --noEmit`)
 
+---
+
+## Proof Entry 012: Shared four-alloy materials + literature W/D or class
+- **Date**: 2026-09-05
+- **Module**: `python/four_alloy_materials.py` / `test_four_alloy_literature.py`
+- **Scope**: One thermophysical source for Ti-6Al-4V, 316L, AlSi10Mg, IN718. Thermal, slicer, Marangoni, inherent-strain, and build-job solvers resolve those alloys from this file. Eagar–Tsai is not in this step.
+- **Class checks**: Ti-6Al-4V \(200\,\text{W}/900\,\text{mm/s}\) Transition; 316L \(200\,\text{W}/800\,\text{mm/s}\) Transition; IN718 \(285\,\text{W}/960\,\text{mm/s}\) Keyhole; AlSi10Mg Read window class Conduction (no published W/D).
+- **W/D envelope**: Screening Rosenthal vs published single-track W/D within a factor-of-two band (not a calibrated Eagar–Tsai cross-section).
+- **Status**: **PASS** (see `python/test_four_alloy_literature.py`)
+
 

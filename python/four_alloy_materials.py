@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""
+Single source for the four locked LPBF alloys: Ti-6Al-4V, 316L, AlSi10Mg, IN718.
+
+Thermal, slicer, Marangoni, and inherent-strain solvers look up this file.
+Do not copy k, ρ, Cp, or P–v boxes into other Python modules.
+Secondary alloys (CoCrMo, Scalmalloy, Cu, Hastelloy) stay local to those solvers.
+"""
+
+FOUR_ALLOY_IDS = ("ti6al4v", "ss316l", "alsi10mg", "in718")
+
+# Canonical display names used by the Rosenthal thermal solver.
+THERMAL_NAME = {
+    "ti6al4v": "Ti-6Al-4V",
+    "ss316l": "316L Stainless Steel",
+    "alsi10mg": "AlSi10Mg",
+    "in718": "Inconel 718",
+}
+
+SLICER_NAME = {
+    "ti6al4v": "Ti-6Al-4V ELI",
+    "ss316l": "SS 316L",
+    "alsi10mg": "AlSi10Mg",
+    "in718": "Inconel 718",
+}
+
+ALLOY_MATERIALS = {
+    aid: {"thermal": THERMAL_NAME[aid], "slicer": SLICER_NAME[aid]} for aid in FOUR_ALLOY_IDS
+}
+
+# Literature P–v boxes (machine-class typical). Same numbers as lpbfFourAlloySchema.ts.
+LITERATURE_PV_WINDOWS = {
+    "ti6al4v": {"powerMin_W": 150, "powerMax_W": 280, "speedMin_mm_s": 700, "speedMax_mm_s": 1200},
+    "ss316l": {"powerMin_W": 150, "powerMax_W": 230, "speedMin_mm_s": 600, "speedMax_mm_s": 1000},
+    "alsi10mg": {"powerMin_W": 280, "powerMax_W": 380, "speedMin_mm_s": 900, "speedMax_mm_s": 1400},
+    "in718": {"powerMin_W": 120, "powerMax_W": 300, "speedMin_mm_s": 550, "speedMax_mm_s": 1000},
+}
+
+_ALIAS = {
+    "ti6al4v": "ti6al4v",
+    "ti-6al-4v": "ti6al4v",
+    "ti-6al-4v eli": "ti6al4v",
+    "ti-6al-4v eli grade 23": "ti6al4v",
+    "ti64": "ti6al4v",
+    "ss316l": "ss316l",
+    "316l": "ss316l",
+    "ss 316l": "ss316l",
+    "316l stainless steel": "ss316l",
+    "alsi10mg": "alsi10mg",
+    "alsi10mg aluminum": "alsi10mg",
+    "in718": "in718",
+    "inconel 718": "in718",
+    "inconel 718 (ams 5662)": "in718",
+}
+
+
+def resolve_alloy_id(name):
+    if name is None:
+        return None
+    key = str(name).strip().lower().replace("_", "-")
+    key = " ".join(key.split())
+    compact = key.replace(" ", "").replace("-", "")
+    if key in _ALIAS:
+        return _ALIAS[key]
+    if compact in _ALIAS:
+        return _ALIAS[compact]
+    return None
+
+
+# Thermophysical screening constants (solid k, Cp used in Rosenthal / King ΔH/hs).
+_THERMAL = {
+    "in718": {
+        "base": "Ni",
+        "liquidus_C": 1336.0,
+        "solidus_C": 1260.0,
+        "boiling_C": 2850.0,
+        "density_kg_m3": 8190.0,
+        "density_liquid_kg_m3": 7450.0,
+        "thermal_conductivity_W_mK": 11.4,
+        "thermal_conductivity_liquid_W_mK": 29.0,
+        "specific_heat_J_kgK": 435.0,
+        "specific_heat_liquid_J_kgK": 730.0,
+        "latent_heat_fusion_J_kg": 270000.0,
+        "latent_heat_vap_J_kg": 6400000.0,
+        "absorptivity_IR": 0.38,
+        "absorptivity_Green": 0.58,
+        "surface_tension_N_m": 1.78,
+        "d_gamma_dT_N_mK": -0.00040,
+        "viscosity_Pa_s": 0.0055,
+        "thermal_expansion_1_K": 13.0e-6,
+        "youngs_modulus_GPa": 205.0,
+        "poissons_ratio": 0.29,
+        "pdas_A1": 80.0,
+        "sdas_B1": 42.0,
+    },
+    "ti6al4v": {
+        "base": "Ti",
+        "liquidus_C": 1660.0,
+        "solidus_C": 1604.0,
+        "boiling_C": 3287.0,
+        "density_kg_m3": 4430.0,
+        "density_liquid_kg_m3": 3950.0,
+        "thermal_conductivity_W_mK": 6.7,
+        "thermal_conductivity_liquid_W_mK": 23.0,
+        "specific_heat_J_kgK": 526.0,
+        "specific_heat_liquid_J_kgK": 830.0,
+        "latent_heat_fusion_J_kg": 290000.0,
+        "latent_heat_vap_J_kg": 8900000.0,
+        "absorptivity_IR": 0.35,
+        "absorptivity_Green": 0.52,
+        "surface_tension_N_m": 1.55,
+        "d_gamma_dT_N_mK": -0.00028,
+        "viscosity_Pa_s": 0.0042,
+        "thermal_expansion_1_K": 8.6e-6,
+        "youngs_modulus_GPa": 114.0,
+        "poissons_ratio": 0.34,
+        "pdas_A1": 65.0,
+        "sdas_B1": 35.0,
+    },
+    "ss316l": {
+        "base": "Fe",
+        "liquidus_C": 1400.0,
+        "solidus_C": 1375.0,
+        "boiling_C": 2814.0,
+        "density_kg_m3": 7990.0,
+        "density_liquid_kg_m3": 6980.0,
+        "thermal_conductivity_W_mK": 16.3,
+        "thermal_conductivity_liquid_W_mK": 31.0,
+        "specific_heat_J_kgK": 500.0,
+        "specific_heat_liquid_J_kgK": 780.0,
+        "latent_heat_fusion_J_kg": 270000.0,
+        "latent_heat_vap_J_kg": 6250000.0,
+        "absorptivity_IR": 0.42,
+        "absorptivity_Green": 0.62,
+        "surface_tension_N_m": 1.70,
+        "d_gamma_dT_N_mK": -0.00045,
+        "viscosity_Pa_s": 0.0060,
+        "thermal_expansion_1_K": 16.0e-6,
+        "youngs_modulus_GPa": 193.0,
+        "poissons_ratio": 0.30,
+        "pdas_A1": 95.0,
+        "sdas_B1": 48.0,
+    },
+    "alsi10mg": {
+        "base": "Al",
+        "liquidus_C": 595.0,
+        "solidus_C": 557.0,
+        "boiling_C": 2470.0,
+        "density_kg_m3": 2680.0,
+        "density_liquid_kg_m3": 2390.0,
+        "thermal_conductivity_W_mK": 130.0,
+        "thermal_conductivity_liquid_W_mK": 85.0,
+        "specific_heat_J_kgK": 910.0,
+        "specific_heat_liquid_J_kgK": 1180.0,
+        "latent_heat_fusion_J_kg": 397000.0,
+        "latent_heat_vap_J_kg": 10500000.0,
+        "absorptivity_IR": 0.18,
+        "absorptivity_Green": 0.38,
+        "surface_tension_N_m": 0.85,
+        "d_gamma_dT_N_mK": -0.00035,
+        "viscosity_Pa_s": 0.0013,
+        "thermal_expansion_1_K": 20.5e-6,
+        "youngs_modulus_GPa": 70.0,
+        "poissons_ratio": 0.33,
+        "pdas_A1": 45.0,
+        "sdas_B1": 22.0,
+    },
+}
+
+_MARANGONI = {
+    "in718": {"critical_Ma": 4500.0, "sulfur_activity_factor": 0.000035, "d_gamma_dT_pure_N_mK": -0.00042, "absorptivity": 0.42},
+    "ti6al4v": {"critical_Ma": 3800.0, "sulfur_activity_factor": 0.000015, "d_gamma_dT_pure_N_mK": -0.00028, "absorptivity": 0.38},
+    "ss316l": {"critical_Ma": 4200.0, "sulfur_activity_factor": 0.000048, "d_gamma_dT_pure_N_mK": -0.00045, "absorptivity": 0.44},
+    "alsi10mg": {"critical_Ma": 3200.0, "sulfur_activity_factor": 0.000010, "d_gamma_dT_pure_N_mK": -0.00018, "absorptivity": 0.18},
+}
+
+_ISM = {
+    "in718": {
+        "yield_MPa": 1180.0,
+        "uts_MPa": 1420.0,
+        "absorptivity": 0.52,
+        "cracking_susceptibility": "High",
+    },
+    "ti6al4v": {
+        "yield_MPa": 950.0,
+        "uts_MPa": 1050.0,
+        "absorptivity": 0.65,
+        "cracking_susceptibility": "Moderate",
+    },
+    "ss316l": {
+        "yield_MPa": 530.0,
+        "uts_MPa": 650.0,
+        "absorptivity": 0.58,
+        "cracking_susceptibility": "Low",
+    },
+    "alsi10mg": {
+        "yield_MPa": 240.0,
+        "uts_MPa": 390.0,
+        "absorptivity": 0.30,
+        "cracking_susceptibility": "Moderate",
+    },
+}
+
+# Screening Rosenthal vs published single-track W/D, or King class when W/D is not claimed.
+LITERATURE_MELT_POOL_CASES = [
+    {
+        "id": "ti64-rosenthal-proof003",
+        "alloy_id": "ti6al4v",
+        "label": "Ti-6Al-4V Rosenthal asymptotic",
+        "laserPower_W": 200,
+        "scanSpeed_mm_s": 900,
+        "beamDiameter_um": 80,
+        "preheatTemp_C": 150,
+        "layerThickness_um": 30,
+        "hatchSpacing_um": 100,
+        "publishedWidth_um": 125.0,
+        "publishedDepth_um": 62.5,
+        "publishedRegime": "Transition",
+        "source": "Rosenthal 3D moving source high-speed asymptotic (PROOF 003)",
+        "doi": "10.1063/1.1712881",
+        "check": "wd",
+    },
+    {
+        "id": "ss316l-king-window",
+        "alloy_id": "ss316l",
+        "label": "316L King-style P-v window",
+        "laserPower_W": 200,
+        "scanSpeed_mm_s": 800,
+        "beamDiameter_um": 70,
+        "preheatTemp_C": 80,
+        "layerThickness_um": 30,
+        "hatchSpacing_um": 100,
+        "publishedWidth_um": 140.0,
+        "publishedDepth_um": 70.0,
+        "publishedRegime": "Transition",
+        "source": "King et al., J. Mater. Process. Technol. (2014) — normalized-enthalpy map",
+        "doi": "10.1016/j.jmatprotec.2014.04.021",
+        "check": "wd",
+    },
+    {
+        "id": "in718-eos-like",
+        "alloy_id": "in718",
+        "label": "IN718 typical LPBF track",
+        "laserPower_W": 285,
+        "scanSpeed_mm_s": 960,
+        "beamDiameter_um": 80,
+        "preheatTemp_C": 80,
+        "layerThickness_um": 40,
+        "hatchSpacing_um": 110,
+        "publishedWidth_um": 160.0,
+        "publishedDepth_um": 90.0,
+        "publishedRegime": "Keyhole",
+        "source": "Typical IN718 single-track window near King ΔH/hs ≈ 30 onset",
+        "doi": "10.1016/j.jmatprotec.2014.04.021",
+        "check": "wd",
+    },
+    {
+        "id": "alsi10mg-read-window",
+        "alloy_id": "alsi10mg",
+        "label": "AlSi10Mg Read-style P-v window",
+        "laserPower_W": 370,
+        "scanSpeed_mm_s": 1300,
+        "beamDiameter_um": 100,
+        "preheatTemp_C": 150,
+        "layerThickness_um": 30,
+        "hatchSpacing_um": 130,
+        "publishedWidth_um": None,
+        "publishedDepth_um": None,
+        "publishedRegime": "Conduction",
+        "source": "Read et al., Mater. Des. (2015) process window — class only (no published W/D)",
+        "doi": "10.1016/j.matdes.2014.09.044",
+        "check": "class",
+    },
+]
+
+
+def thermal_props(name):
+    aid = resolve_alloy_id(name)
+    if aid is None:
+        return None
+    return _THERMAL[aid]
+
+
+def four_alloy_thermophysical_db():
+    db = {}
+    for aid in FOUR_ALLOY_IDS:
+        props = _THERMAL[aid]
+        db[THERMAL_NAME[aid]] = props
+        db[SLICER_NAME[aid]] = props
+    return db
+
+
+def slicer_props(name):
+    aid = resolve_alloy_id(name)
+    if aid is None:
+        return None
+    t = _THERMAL[aid]
+    return {
+        "density_gcm3": round(t["density_kg_m3"] / 1000.0, 3),
+        "k_WmK": t["thermal_conductivity_W_mK"],
+        "name": SLICER_NAME[aid],
+    }
+
+
+def four_alloy_slicer_db():
+    db = {}
+    for aid in FOUR_ALLOY_IDS:
+        rec = slicer_props(aid)
+        db[SLICER_NAME[aid]] = rec
+        db[THERMAL_NAME[aid]] = rec
+    return db
+
+
+def marangoni_props(name):
+    aid = resolve_alloy_id(name)
+    if aid is None:
+        return None
+    t = _THERMAL[aid]
+    m = _MARANGONI[aid]
+    return {
+        "liquidus_C": t["liquidus_C"],
+        "solidus_C": t["solidus_C"],
+        "boiling_C": t["boiling_C"],
+        "density_kg_m3": t["density_kg_m3"],
+        "liquid_density_kg_m3": t["density_liquid_kg_m3"],
+        "thermal_conductivity_W_mK": t["thermal_conductivity_liquid_W_mK"],
+        "specific_heat_J_kgK": t["specific_heat_liquid_J_kgK"],
+        "viscosity_Pa_s": t["viscosity_Pa_s"],
+        "surface_tension_pure_N_m": t["surface_tension_N_m"],
+        "d_gamma_dT_pure_N_mK": m["d_gamma_dT_pure_N_mK"],
+        "critical_Ma": m["critical_Ma"],
+        "absorptivity": m["absorptivity"],
+        "sulfur_activity_factor": m["sulfur_activity_factor"],
+    }
+
+
+def four_alloy_marangoni_db():
+    return {THERMAL_NAME[aid]: marangoni_props(aid) for aid in FOUR_ALLOY_IDS}
+
+
+def inherent_strain_props(name):
+    aid = resolve_alloy_id(name)
+    if aid is None:
+        return None
+    t = _THERMAL[aid]
+    s = _ISM[aid]
+    return {
+        "E_GPa": t["youngs_modulus_GPa"],
+        "nu": t["poissons_ratio"],
+        "CTE_10e6": t["thermal_expansion_1_K"] * 1e6,
+        "yield_MPa": s["yield_MPa"],
+        "uts_MPa": s["uts_MPa"],
+        "k_WmK": t["thermal_conductivity_W_mK"],
+        "Tm_C": t["liquidus_C"],
+        "Tsol_C": t["solidus_C"],
+        "rho_kgm3": t["density_kg_m3"],
+        "absorptivity": s["absorptivity"],
+        "cracking_susceptibility": s["cracking_susceptibility"],
+    }
+
+
+def four_alloy_inherent_strain_db():
+    db = {}
+    for aid in FOUR_ALLOY_IDS:
+        rec = inherent_strain_props(aid)
+        db[THERMAL_NAME[aid]] = rec
+        db[SLICER_NAME[aid]] = rec
+    return db
+
+
+def evaluate_literature_pv(alloy_id, power_W, speed_mm_s):
+    aid = resolve_alloy_id(alloy_id) or "in718"
+    box = LITERATURE_PV_WINDOWS[aid]
+    inside = (
+        box["powerMin_W"] <= power_W <= box["powerMax_W"]
+        and box["speedMin_mm_s"] <= speed_mm_s <= box["speedMax_mm_s"]
+    )
+    return {"inside": inside, "box": box, "alloyId": aid}
+
+
+def regime_family(regime):
+    r = str(regime).lower()
+    if "keyhole" in r:
+        return "Keyhole"
+    if "transition" in r:
+        return "Transition"
+    return "Conduction"

@@ -30,68 +30,11 @@ import math
 import time
 import random
 
-# Thermophysical & Surfactant Constants Database
+from four_alloy_materials import four_alloy_marangoni_db, marangoni_props
+
+# Four locked alloys come from four_alloy_materials.py. Scalmalloy stays local.
 ALLOY_SURFACE_DATABASE = {
-    "Inconel 718": {
-        "liquidus_C": 1336.0,
-        "solidus_C": 1260.0,
-        "boiling_C": 2850.0,
-        "density_kg_m3": 8190.0,
-        "liquid_density_kg_m3": 7450.0,
-        "thermal_conductivity_W_mK": 29.0,
-        "specific_heat_J_kgK": 730.0,
-        "viscosity_Pa_s": 0.0055,
-        "surface_tension_pure_N_m": 1.78,
-        "d_gamma_dT_pure_N_mK": -0.00042, # standard negative (outward flow)
-        "critical_Ma": 4500.0,
-        "absorptivity": 0.42,
-        "sulfur_activity_factor": 0.000035, # ppm coefficient for positive d_gamma/dT inversion
-    },
-    "Ti-6Al-4V": {
-        "liquidus_C": 1660.0,
-        "solidus_C": 1604.0,
-        "boiling_C": 3287.0,
-        "density_kg_m3": 4430.0,
-        "liquid_density_kg_m3": 3950.0,
-        "thermal_conductivity_W_mK": 23.0,
-        "specific_heat_J_kgK": 830.0,
-        "viscosity_Pa_s": 0.0042,
-        "surface_tension_pure_N_m": 1.55,
-        "d_gamma_dT_pure_N_mK": -0.00028,
-        "critical_Ma": 3800.0,
-        "absorptivity": 0.38,
-        "sulfur_activity_factor": 0.000015,
-    },
-    "316L Stainless Steel": {
-        "liquidus_C": 1400.0,
-        "solidus_C": 1375.0,
-        "boiling_C": 2814.0,
-        "density_kg_m3": 7990.0,
-        "liquid_density_kg_m3": 6980.0,
-        "thermal_conductivity_W_mK": 31.0,
-        "specific_heat_J_kgK": 780.0,
-        "viscosity_Pa_s": 0.0060,
-        "surface_tension_pure_N_m": 1.70,
-        "d_gamma_dT_pure_N_mK": -0.00045,
-        "critical_Ma": 4200.0,
-        "absorptivity": 0.44,
-        "sulfur_activity_factor": 0.000048, # Strong surfactant effect in steel (Heiple-Roper effect)
-    },
-    "AlSi10Mg": {
-        "liquidus_C": 595.0,
-        "solidus_C": 557.0,
-        "boiling_C": 2470.0,
-        "density_kg_m3": 2680.0,
-        "liquid_density_kg_m3": 2350.0,
-        "thermal_conductivity_W_mK": 130.0,
-        "specific_heat_J_kgK": 960.0,
-        "viscosity_Pa_s": 0.0013,
-        "surface_tension_pure_N_m": 0.86,
-        "d_gamma_dT_pure_N_mK": -0.00018,
-        "critical_Ma": 3200.0,
-        "absorptivity": 0.18,
-        "sulfur_activity_factor": 0.000010,
-    },
+    **four_alloy_marangoni_db(),
     "Scalmalloy® (Al-Mg-Sc-Zr)": {
         "liquidus_C": 650.0,
         "solidus_C": 580.0,
@@ -125,7 +68,7 @@ def solve_marangoni_flow_and_porosity(payload):
 
     # Extract inputs with robust defaults
     material_name = payload.get("material", "Inconel 718")
-    props = ALLOY_SURFACE_DATABASE.get(material_name, ALLOY_SURFACE_DATABASE["Inconel 718"])
+    props = marangoni_props(material_name) or ALLOY_SURFACE_DATABASE.get(material_name, ALLOY_SURFACE_DATABASE["Inconel 718"])
     
     laser_power_W = float(payload.get("laserPower_W", 285.0))
     scan_speed_mm_s = float(payload.get("scanSpeed_mm_s", 960.0))

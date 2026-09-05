@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 20:50 — Shared four-alloy materials + literature W/D or class
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: One materials file for Ti-6Al-4V, 316L, AlSi10Mg, IN718; literature W/D envelope or King class tests. Not Eagar–Tsai.
+- **Done**: `python/four_alloy_materials.py` is the lookup for thermal, slicer, Marangoni, inherent strain, and build-job P–v boxes. Tests require class match on all four alloys and factor-of-two W/D on Ti64 / 316L / IN718.
+- **Where we left off**: This locked-Python step is done on `yeni1`. Next is still not Eagar–Tsai unless the user unlocks it (fidelity flag / Goldak).
+- **Files**: `python/four_alloy_materials.py`, `python/test_four_alloy_literature.py`, `python/lpbf_thermal_solver.py`, `python/lpbf_build_job_solver.py`, `python/stl_slicer_build_time_solver.py`, `python/marangoni_pore_instability_solver.py`, `python/part_scale_inherent_strain_solver.py`, `AGENTS.md`, `PROOF.md`
+- **Tests**: `py -3 python/test_four_alloy_literature.py` PASS; `py -3 python/test_lpbf_meltpool_accuracy.py` PASS; `py -3 python/test_lpbf_build_job.py` PASS; `npx tsc --noEmit` PASS. Browser click-through N/A — no UI behavior change.
+
+---
+
 ## 2026-09-05 20:30 — Step 2 single Python Build Job verdict
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

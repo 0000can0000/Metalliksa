@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:38 — Cursor Automation for cheap PR checklist
+- **Agent**: Cursor Grok 4.6
+- **Result**: PARTIAL
+- **Task**: Create a token-cheap Cursor Automation: non-draft PR opened → short domain checklist comment; skip install; no code rewrite.
+- **Done**: Confirmed intended trigger/tools/prompt shape. Automations editor handoff is not available in this chat session (`open_automation` / Agents Window tools missing). GitHub CLI (`gh`) is not on PATH, so repo picker was not resolved here.
+- **Where we left off**: User must re-run the request in the Agents Window so the editor can open with the draft. No automation was saved.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — editor handoff unavailable; no app code change
+
+---
+
 ## 2026-09-05 19:45 — Four-alloy LPBF schema on `yeni2`
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

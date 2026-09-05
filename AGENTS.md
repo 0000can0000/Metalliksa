@@ -13,8 +13,8 @@
      - **Academic Validation**: Grounded in peer-reviewed additive manufacturing / metallurgical literature (e.g., Rosenthal moving heat source, Eagar-Tsai 3D solution, normalized enthalpy, ASTM/ISO standard testing methods).
      - **Functional Validation**: Clean `tsc --noEmit` validation, `npm run build` production bundling, and entries logged in [`PROOF.md`](./PROOF.md).
 3. **Session Self-Record (`sonkayıtlar`)**:
-   - After the task is done **and** tests for that task are finished, the agent **must write a record of itself** in [`sonkayıtlar/LOG.md`](./sonkayıtlar/LOG.md) (newest first). See Rule 5 in [`RULES.md`](./RULES.md).
-   - Do not mark the job complete until that log entry exists.
+   - When the job **stops** — including unfinished, interrupted, blocked, or backgrounded work — the agent **must write a record** in [`sonkayıtlar/LOG.md`](./sonkayıtlar/LOG.md) (newest first). Do not wait for tests or a clean finish. See Rule 5 in [`RULES.md`](./RULES.md).
+   - Use **Result** `PARTIAL` when the job was cut off. The log must exist even if the rest of the task never ran.
 4. **End-of-Job User Briefing**:
    - The final message must state **what was done** and **where the user stands** (finished vs remaining, next step). See Rule 6 in [`RULES.md`](./RULES.md).
 5. **Commit and Push to GitHub**:

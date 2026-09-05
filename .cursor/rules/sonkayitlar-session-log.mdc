@@ -1,13 +1,13 @@
 ---
-description: After every job, log to sonkayıtlar and tell the user what was done and where they stand
+description: Log every job to sonkayıtlar even if work is interrupted mid-task
 alwaysApply: true
 ---
 
 # Session close-out
 
-When the job ends (success, partial, or blocked):
+When the job **stops** (success, partial, blocked, **interrupted**, user-backgrounded, or abandoned):
 
-1. **Record yourself** in `sonkayıtlar/LOG.md` (newest first). If no tests applied, write `N/A` plus why.
+1. **Record yourself immediately** in `sonkayıtlar/LOG.md` (newest first). Incomplete work still gets an entry (`PARTIAL`). If no tests applied or tests never ran, write `N/A` plus why. Do not skip the log because the job was cut off.
 2. **Tell the user** in their language, in the final reply:
    - **What was done**
    - **Where you stand** (what is finished, what is still open, next step — or that nothing is left)

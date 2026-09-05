@@ -1,8 +1,26 @@
 # Latest records (`sonkayıtlar`)
 
-Operational log of completed agent jobs **after** work and tests. Newest entries first. Scientific model proofs remain in [`PROOF.md`](../PROOF.md). Required by Rule 5 in [`RULES.md`](../RULES.md).
+Operational log of agent jobs **whether they finished or stopped mid-task**. Newest entries first. Scientific model proofs remain in [`PROOF.md`](../PROOF.md). Required by Rule 5 in [`RULES.md`](../RULES.md).
 
 ---
+
+## 2026-09-05 19:07 — Log interrupted jobs in sonkayıtlar
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Even if work is cut off mid-job, it must still enter `sonkayıtlar`.
+- **Done**: Rule 5 now triggers on stop (interrupt, background, block, abandon), not only on clean finish. Mirrored in `AGENTS.md` and the Cursor session rule.
+- **Where we left off**: Nothing left on this request after commit/push of the rule.
+- **Files**: `RULES.md`, `AGENTS.md`, `.cursor/rules/sonkayitlar-session-log.mdc`, `sonkayıtlar/LOG.md`
+- **Tests**: N/A — policy/docs only.
+
+## 2026-09-05 19:07 — GitHub push backgrounded mid-turn (prior job)
+- **Agent**: Cursor Grok 4.6
+- **Result**: PARTIAL
+- **Task**: Commit Rule 7 + claim hygiene and push `yeni1` to GitHub. The turn was cut off while `git push` was still running in the background.
+- **Done**: Local commit `5c80b7c` existed. Terminal later showed `156233f..5c80b7c HEAD -> yeni1` on `origin`.
+- **Where we left off**: Push had been backgrounded before the user briefing; remote tracking was set. Follow-up was this interrupt-log rule.
+- **Files**: (prior commit) claim hygiene + Rule 7
+- **Tests**: N/A — git push; no app tests in that turn.
 
 ## 2026-09-05 19:06 — Rule 7 commit/push + claim hygiene on GitHub
 - **Agent**: Cursor Grok 4.6

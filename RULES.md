@@ -39,10 +39,11 @@ This document defines the strict, binding operational and engineering rules for 
 
 ---
 
-## 5. Rule 5: Mandatory Session Record in `sonkayıtlar` (After Work + Tests)
-- **Trigger**: After an agent (or contributor) finishes a task **and** finishes the tests for that task, it **must record itself** before declaring the work complete.
+## 5. Rule 5: Mandatory Session Record in `sonkayıtlar` (Even If Work Stops Mid-Job)
+- **Trigger**: Write a `sonkayıtlar` entry whenever an agent job **stops**, not only when it finishes cleanly. This includes success, tests not run, **interrupted / backgrounded / user-stopped work**, blocked tools, auth failures, partial edits, and abandoned follow-ups.
+- **Do not wait** for tests or a “complete” state. An incomplete job is still a job: log it immediately with **Result** `PARTIAL` (or `FAIL` if it broke).
 - **Location**: All such records go in the [`sonkayıtlar/`](./sonkayıtlar/) directory. Newest entries are prepended to [`sonkayıtlar/LOG.md`](./sonkayıtlar/LOG.md).
-- **Do not skip** this step for “small” fixes, rule/docs edits, or UI work. If tests were not applicable, state that explicitly and still write the record.
+- **Do not skip** this step for “small” fixes, rule/docs edits, UI work, or half-finished work. If tests were not applicable or never ran, state that explicitly and still write the record.
 - Each entry must include:
   1. **Date and time** (ISO local: `YYYY-MM-DD HH:MM`)
   2. **Task summary** (what was requested / what was done)
@@ -50,7 +51,8 @@ This document defines the strict, binding operational and engineering rules for 
   4. **Tests completed** (commands, browser checks, or “N/A — reason”)
   5. **Result** (`PASS` / `FAIL` / `PARTIAL`)
   6. **Agent self-id** (model name if known, otherwise `Cursor agent`)
-- Scientific model proofs remain in [`PROOF.md`](./PROOF.md) (Rule 2). `sonkayıtlar` is the operational work log for every completed agent job.
+  7. **Done** and **Where we left off** (what landed vs what was cut off — required when the job did not finish)
+- Scientific model proofs remain in [`PROOF.md`](./PROOF.md) (Rule 2). `sonkayıtlar` is the operational work log for every agent job, complete or not.
 
 ---
 

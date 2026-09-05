@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:44 — Name cheap PR automation Yardımcım
+- **Agent**: Cursor Grok 4.6
+- **Result**: PARTIAL
+- **Task**: Rename the planned Cursor Automation to Yardımcım.
+- **Done**: Name locked as Yardımcım. Editor handoff still unavailable; nothing saved in Cursor Automations.
+- **Where we left off**: User sets Name = Yardımcım in Automations UI (or re-asks in Agents Window). Prompt from prior turn still applies.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — naming only; no app code change
+
+---
+
 ## 2026-09-05 19:43 — Cheap PR checklist automation prompt
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

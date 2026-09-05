@@ -175,6 +175,13 @@ export const RosenthalLaserProfileMeltPoolLab: React.FC<RosenthalLabProps> = ({
 
   // 3. Laser Spot Profile Dimensions & Optics
   const [beamDiameter_D4sigma_um, setBeamDiameter_D4sigma_um] = useState<number>(initialSpotRadius_um * 2); // D_4sigma = 2*w0
+
+  useEffect(() => {
+    setLaserPower_W(initialPower_W);
+    setScanSpeed_mms(initialSpeed_mms);
+    setPreheatTemp_C(initialPreheat_C);
+    setBeamDiameter_D4sigma_um(initialSpotRadius_um * 2);
+  }, [initialPower_W, initialSpeed_mms, initialPreheat_C, initialSpotRadius_um]);
   const [beamProfileType, setBeamProfileType] = useState<BeamProfileType>("gaussian");
   const [beamQuality_M2, setBeamQuality_M2] = useState<number>(1.15); // M^2 beam propagation factor
   const [focalShift_DeltaZ_um, setFocalShift_DeltaZ_um] = useState<number>(0); // Defocus distance [-200 to +200 um]

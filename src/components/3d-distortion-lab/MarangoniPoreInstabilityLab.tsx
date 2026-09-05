@@ -135,6 +135,14 @@ export const MarangoniPoreInstabilityLab: React.FC<MarangoniLabProps> = ({
   const [surfactantSulfur_ppm, setSurfactantSulfur_ppm] = useState<number>(15);
   const [shieldingGas, setShieldingGas] = useState<string>("Argon (Ar)");
 
+  useEffect(() => {
+    setLaserPower_W(initialPower_W);
+    setScanSpeed_mms(initialSpeed_mms);
+    setBeamDiameter_um(initialBeamDiameter_um);
+    setPreheatTemp_C(initialPreheat_C);
+    setSelectedMaterial(initialMaterial);
+  }, [initialPower_W, initialSpeed_mms, initialBeamDiameter_um, initialPreheat_C, initialMaterial]);
+
   // Visualization View Modes
   const [displayScalar, setDisplayScalar] = useState<
     "pore-prob" | "temperature" | "velocity" | "downward-drag" | "vorticity"

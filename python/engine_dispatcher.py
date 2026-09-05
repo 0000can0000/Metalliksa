@@ -35,6 +35,10 @@ def get_system_status():
                 "available": os.path.exists(os.path.join(os.path.dirname(__file__), "lpbf_thermal_solver.py")),
                 "description": "3D Goldak moving laser melt pool, thermal gradient G, solidification rate R, cooling rate G*R & Hunt microstructure"
             },
+            "lpbf_build_job_solver": {
+                "available": os.path.exists(os.path.join(os.path.dirname(__file__), "lpbf_build_job_solver.py")),
+                "description": "Single LPBF Build Job: Rosenthal screening, STL slicer, literature P-v box, print verdict"
+            },
             "inverse_alloy_optimizer": {
                 "available": os.path.exists(os.path.join(os.path.dirname(__file__), "inverse_alloy_optimizer.py")),
                 "description": "Multi-Objective Pareto Genetic Algorithm (NSGA-II) for superalloy & HEA chemistry inverse optimization"

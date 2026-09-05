@@ -173,3 +173,14 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Fixture**: 20 × 10 × 8 mm box via `customTriangles` vs nozzle demo preset — bbox height must follow the box (10 mm), not the ~65 mm nozzle.
 - **Status**: **PASS** (see `python/test_stl_live_triangles.py` and `tsc --noEmit`)
 
+---
+
+## Proof Entry 011: Single Python `solve_lpbf_build_job` verdict
+- **Date**: 2026-09-05
+- **Module**: `lpbf_build_job_solver.py` / `IndustrialLPBFDecisionLab`
+- **Scope**: One CPython job returns Rosenthal screening + slicer + `printable` / `risky` / `do-not-print`. UI displays `verdict`; it does not call `composeIndustrialVerdict`.
+- **Gates**: LoF Fail or high balling or (high keyhole and \(\Delta H/h_s > 35\)) → do-not-print. Outside literature P–v box → at least risky. Model id `rosenthal-screening-v1`.
+- **Fixture**: Ti-6Al-4V \(200\,\text{W}\), \(900\,\text{mm/s}\) inside box; IN718 \(90\,\text{W}\), \(1400\,\text{mm/s}\) outside box and not printable.
+- **Status**: **PASS** (see `python/test_lpbf_build_job.py` and `tsc --noEmit`)
+
+

@@ -337,34 +337,22 @@ def calculate_exact_cross_sectional_area(segments):
 
     return round(total_area, 2), round(total_perim, 2), loops
 
-def main():
+def solve_slicer(data):
+    """Slice live triangles or a demo preset. Returns a result dict (may contain error)."""
     start_time = time.time()
-    raw_input = sys.stdin.read().strip()
-    if not raw_input:
-        print(json.dumps({"error": "Empty payload provided to Python STL Slicer Solver."}))
-        sys.exit(1)
-
-    try:
-        data = json.loads(raw_input)
-    except Exception as e:
-        print(json.dumps({"error": f"Invalid JSON input: {str(e)}"}))
-        sys.exit(1)
-
     preset = data.get("preset", "bracket")
     material = data.get("material", "Inconel 718")
     mat_info = ALLOY_DB.get(material, ALLOY_DB["Inconel 718"])
 
     laser_power_w = float(data.get("laserPower_W", 285.0))
-    scan_speed_mms = float(data.get("scanSpeed_mms", 960.0))
+    scan_speed_mms = float(data.get("scanSpeed_mms", data.get("scanSpeed_mm_s", 960.0)))
     layer_thickness_um = float(data.get("layerThickness_um", 40.0))
     hatch_spacing_um = float(data.get("hatchSpacing_um", 110.0))
     recoat_time_s = float(data.get("recoatTimePerLayer_s", 9.5))
-    hatch_strategy = data.get("hatchStrategy", "meander_67")
     custom_triangles = data.get("customTriangles", None)
     cad_asset_name = data.get("cadAssetName", "")
     native_triangle_count = data.get("triangleCountNative", None)
 
-    # 1. Live uploaded mesh wins over demo presets
     triangles = []
     if custom_triangles and len(custom_triangles) > 0:
         for tri in custom_triangles:
@@ -388,10 +376,8 @@ def main():
         native_triangle_count = len(triangles)
 
     if not triangles:
-        print(json.dumps({"error": "No triangles available for slicing."}))
-        sys.exit(1)
+        return {"error": "No triangles available for slicing."}
 
-    # 2. Compute 3D Mesh Bounding Box
     all_x = [v[0] for t in triangles for v in t]
     all_y = [v[1] for t in triangles for v in t]
     all_z = [v[2] for t in triangles for v in t]
@@ -406,7 +392,6 @@ def main():
 
     bounding_volume_cm3 = (dim_x * dim_y * dim_z) / 1000.0
 
-    # 3. Stack Slicing Parameters
     t_layer_mm = layer_thickness_um * 1e-3
     hatch_mm = hatch_spacing_um * 1e-3
     total_layers = max(1, int(round(dim_y / t_layer_mm)))
@@ -414,11 +399,10 @@ def main():
     max_samples = 120
     step = max(1, total_layers // max_samples)
 
-    # Physical energy metrics
     ved = laser_power_w / (scan_speed_mms * hatch_mm * t_layer_mm)
     aed = laser_power_w / (scan_speed_mms * hatch_mm)
     led = laser_power_w / scan_speed_mms
-    scan_density = 1.0 / hatch_mm  # mm/mm2
+    scan_density = 1.0 / hatch_mm
 
     slices = []
     cumulative_time_s = 0.0
@@ -470,7 +454,7 @@ def main():
 
     python_duration_ms = round((time.time() - start_time) * 1000, 2)
 
-    result = {
+    return {
         "success": True,
         "runtime": "CPython 3.10+ (Computational Geometry Engine)",
         "pythonDurationMs": python_duration_ms,
@@ -513,6 +497,22 @@ def main():
         "sampleCount": len(slices),
     }
 
+def main():
+    raw_input = sys.stdin.read().strip()
+    if not raw_input:
+        print(json.dumps({"error": "Empty payload provided to Python STL Slicer Solver."}))
+        sys.exit(1)
+
+    try:
+        data = json.loads(raw_input)
+    except Exception as e:
+        print(json.dumps({"error": f"Invalid JSON input: {str(e)}"}))
+        sys.exit(1)
+
+    result = solve_slicer(data)
+    if result.get("error"):
+        print(json.dumps(result))
+        sys.exit(1)
     print(json.dumps(result))
 
 if __name__ == "__main__":

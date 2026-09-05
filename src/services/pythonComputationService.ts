@@ -1402,6 +1402,40 @@ class PythonComputationService {
   }
 
   /**
+   * Single Build Job: Rosenthal screening + slicer + print verdict (Python owns the decision).
+   */
+  async solveLpbfBuildJob(payload: {
+    alloyId: string;
+    thermalMaterial?: string;
+    slicerMaterial?: string;
+    laserPower_W: number;
+    scanSpeed_mm_s: number;
+    beamDiameter_um: number;
+    preheatTemp_C?: number;
+    layerThickness_um: number;
+    hatchSpacing_um: number;
+    laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm";
+    preset?: string;
+    customTriangles?: number[][][] | null;
+    cadAssetName?: string;
+    triangleCountNative?: number;
+  }): Promise<PythonLpbfBuildJobResult> {
+    const res = await fetch("/api/python/lpbf-build-job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new Error(`LPBF build-job proxy error: HTTP ${res.status}`);
+    }
+    const parsed = await res.json();
+    if (parsed?.error || parsed?.success === false) {
+      throw new Error(parsed.error || "Python LPBF build-job failed.");
+    }
+    return parsed;
+  }
+
+  /**
    * Automatically identify the most likely equivalent circuit components from uploaded impedance data
    * using the Bisquert Transmission Line Model (TLM) in the Python computation service.
    */
@@ -1548,6 +1582,30 @@ export interface PythonSTLSlicerResult {
     peakLayerArea_mm2: number;
     meanLayerArea_mm2: number;
   };
+}
+
+export interface PythonLpbfBuildJobVerdict {
+  verdict: "printable" | "risky" | "do-not-print";
+  headline: string;
+  reasons: string[];
+  lofGeometry: { widthOverHatch: number; depthOverLayer: number };
+  literatureWindow: {
+    inside: boolean;
+    alloyId: string;
+    box: { powerMin_W: number; powerMax_W: number; speedMin_mm_s: number; speedMax_mm_s: number };
+  };
+}
+
+export interface PythonLpbfBuildJobResult {
+  success: boolean;
+  engine: string;
+  modelId: string;
+  assumptions: string[];
+  alloyId: string;
+  computeTimeMs: number;
+  thermal: PythonLPBFResult;
+  slicer: PythonSTLSlicerResult;
+  verdict: PythonLpbfBuildJobVerdict;
 }
 
 export interface PythonLPBFResult {

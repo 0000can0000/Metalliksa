@@ -51,6 +51,7 @@ WARM_MODULE_NAMES = [
     "marangoni_pore_instability_solver",
     "part_scale_inherent_strain_solver",
     "stl_slicer_build_time_solver",
+    "lpbf_build_job_solver",
     "tafel_corrosion_rate_solver",
     "engine_dispatcher",
 ]

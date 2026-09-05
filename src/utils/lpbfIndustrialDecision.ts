@@ -103,6 +103,7 @@ export interface IndustrialVerdict {
   lofGeometry: { widthOverHatch: number; depthOverLayer: number };
 }
 
+/** Kept for regression tests. Industrial UI must display Python `solve_lpbf_build_job` instead. */
 export function composeIndustrialVerdict(
   result: PythonLPBFResult,
   alloyId?: LPBFAlloyId

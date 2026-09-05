@@ -40,6 +40,7 @@ physicsRouter.get("/api/python/status", (_req: Request, res: Response) => {
       cnls_fitting_solver: { available: true },
       xrd_peak_deconvolution: { available: true },
       lpbf_thermal_solver: { available: true },
+      lpbf_build_job_solver: { available: true },
       inverse_alloy_optimizer: { available: true },
       pourbaix_solver: { available: true },
       kinetics_ttt_cct_solver: { available: true },
@@ -86,6 +87,10 @@ physicsRouter.post("/api/python/marangoni-pore-instability", (req: Request, res:
 
 physicsRouter.post("/api/python/stl-slicer-build-time", (req: Request, res: Response) => {
   return handlePythonDispatch("python/stl_slicer_build_time_solver.py", req.body, res);
+});
+
+physicsRouter.post("/api/python/lpbf-build-job", (req: Request, res: Response) => {
+  return handlePythonDispatch("python/lpbf_build_job_solver.py", req.body, res, 40000);
 });
 
 physicsRouter.post("/api/python/part-scale-inherent-strain", (req: Request, res: Response) => {

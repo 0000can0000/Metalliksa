@@ -4,6 +4,28 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 20:30 — Step 2 single Python Build Job verdict
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: One `solve_lpbf_build_job`; industrial UI displays the Python verdict and does not re-score printability.
+- **Done**: Combined Rosenthal + slicer solver, `/api/python/lpbf-build-job`, Industrial Decision Lab reads `job.verdict`.
+- **Where we left off**: Step 2 of the locked Python order is done on `yeni1`. Next is shared four-alloy materials + literature W/D tests (not Eagar–Tsai yet).
+- **Files**: `python/lpbf_build_job_solver.py`, `python/stl_slicer_build_time_solver.py`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/services/pythonComputationService.ts`, `routes/physics.ts`
+- **Tests**: `npx tsc --noEmit`; `py -3 python/test_lpbf_build_job.py`; `py -3 python/test_stl_live_triangles.py`
+
+---
+
+## 2026-09-05 20:22 — Fast-forward yeni2 onto yeni1
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Point `yeni2` at `yeni1` and keep working on `yeni1`.
+- **Done**: Fast-forward `37001af` → `2514cf9` on `yeni2`; pushed `origin/yeni2`; checked out `yeni1`.
+- **Where we left off**: `yeni1` and `yeni2` are the same tip. Continue on `yeni1`. Next: `solve_lpbf_build_job`.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — git fast-forward only
+
+---
+
 ## 2026-09-05 20:10 — Step 1 live STL into Python slicer
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

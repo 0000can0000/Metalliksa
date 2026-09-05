@@ -15,17 +15,16 @@ import {
   Thermometer,
   Zap,
 } from "lucide-react";
-import { pythonComputationService, PythonLPBFResult, PythonSTLSlicerResult } from "../../services/pythonComputationService";
+import { pythonComputationService, PythonLpbfBuildJobResult } from "../../services/pythonComputationService";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "../../store/useLpbfBuildMeshStore";
 import {
-  composeIndustrialVerdict,
   findNearestLiteratureRecord,
   inferSlicerPreset,
   mapSpecimenToSolverMaterials,
   PrintVerdict,
 } from "../../utils/lpbfIndustrialDecision";
-import { evaluateLiteraturePvWindow, heatTreatmentCohorts, orientationCohorts } from "../../utils/lpbfFourAlloySchema";
+import { heatTreatmentCohorts, orientationCohorts } from "../../utils/lpbfFourAlloySchema";
 
 interface Props {
   onOpenSlicer?: () => void;
@@ -43,8 +42,7 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     [specimen.name, specimen.baseMetal]
   );
 
-  const [thermal, setThermal] = useState<PythonLPBFResult | null>(null);
-  const [slicer, setSlicer] = useState<PythonSTLSlicerResult | null>(null);
+  const [job, setJob] = useState<PythonLpbfBuildJobResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [engineMs, setEngineMs] = useState<number | null>(null);
@@ -54,31 +52,23 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     setError(null);
     const t0 = performance.now();
     try {
-      const [thermalRes, slicerRes] = await Promise.all([
-        pythonComputationService.solveLPBFThermalPhysics({
-          material: materials.pythonThermal,
-          laserPower_W: lpbf.laserPower_W,
-          scanSpeed_mm_s: lpbf.scanSpeed_mms,
-          beamDiameter_um: lpbf.beamDiameter_um,
-          preheatTemp_C: lpbf.preheatTemp_C,
-          layerThickness_um: lpbf.layer_um,
-          hatchSpacing_um: lpbf.hatch_um,
-          laserWavelength: "IR_1064nm",
-        }),
-        pythonComputationService.solveSTLSlicerBuildTime({
-          preset: liveMesh ? "custom" : inferSlicerPreset(lpbf.cadAssetName),
-          material: materials.pythonSlicer,
-          laserPower_W: lpbf.laserPower_W,
-          scanSpeed_mms: lpbf.scanSpeed_mms,
-          layerThickness_um: lpbf.layer_um,
-          hatchSpacing_um: lpbf.hatch_um,
-          customTriangles: liveMesh?.triangles ?? null,
-          cadAssetName: liveMesh?.name || lpbf.cadAssetName,
-          triangleCountNative: liveMesh?.nativeTriangleCount,
-        }),
-      ]);
-      setThermal(thermalRes);
-      setSlicer(slicerRes);
+      const jobRes = await pythonComputationService.solveLpbfBuildJob({
+        alloyId: materials.alloyId,
+        thermalMaterial: materials.pythonThermal,
+        slicerMaterial: materials.pythonSlicer,
+        laserPower_W: lpbf.laserPower_W,
+        scanSpeed_mm_s: lpbf.scanSpeed_mms,
+        beamDiameter_um: lpbf.beamDiameter_um,
+        preheatTemp_C: lpbf.preheatTemp_C,
+        layerThickness_um: lpbf.layer_um,
+        hatchSpacing_um: lpbf.hatch_um,
+        laserWavelength: "IR_1064nm",
+        preset: liveMesh ? "custom" : inferSlicerPreset(lpbf.cadAssetName),
+        customTriangles: liveMesh?.triangles ?? null,
+        cadAssetName: liveMesh?.name || lpbf.cadAssetName,
+        triangleCountNative: liveMesh?.nativeTriangleCount,
+      });
+      setJob(jobRes);
       setEngineMs(Math.round(performance.now() - t0));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Python LPBF engines unavailable.");
@@ -94,17 +84,12 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
     return () => clearTimeout(timer);
   }, [runEngines]);
 
-  const decision = useMemo(() => {
-    if (!thermal) return null;
-    return composeIndustrialVerdict(thermal, materials.alloyId);
-  }, [thermal, materials.alloyId]);
-
+  const thermal = job?.thermal ?? null;
+  const slicer = job?.slicer ?? null;
+  const decision = job?.verdict ?? null;
+  const litWindow = job?.verdict.literatureWindow;
   const htCohorts = useMemo(() => heatTreatmentCohorts(materials.alloyId), [materials.alloyId]);
   const oriCohorts = useMemo(() => orientationCohorts(materials.alloyId), [materials.alloyId]);
-  const litWindow = useMemo(
-    () => evaluateLiteraturePvWindow(materials.alloyId, lpbf.laserPower_W, lpbf.scanSpeed_mms),
-    [materials.alloyId, lpbf.laserPower_W, lpbf.scanSpeed_mms]
-  );
 
   const literature = useMemo(
     () =>
@@ -137,9 +122,9 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
               <Gauge className="w-3.5 h-3.5" />
               Industrial decision engine
             </div>
-            <h2 className="text-lg font-bold text-white mt-1">Python Goldak + P–v window + build time</h2>
+            <h2 className="text-lg font-bold text-white mt-1">Python Build Job verdict</h2>
             <p className="text-[11px] text-slate-400 mt-1 max-w-2xl">
-              Decision outputs only: safe process window, printability (LoF / recoater), warpage index, and nearest ASTM-traceable coupon. Analytical Rosenthal labs remain under Advanced physics.
+              One Python call owns printability (LoF, keyhole, balling, recoater, literature P–v). The UI does not re-score. Melt pool is Rosenthal screening, not Goldak FEA. Analytical labs remain under Advanced physics.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -166,8 +151,8 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>
-            {error} Start the Vite/API stack so <code className="text-amber-100">/api/python/lpbf-thermal-solver</code> can reach{" "}
-            <code className="text-amber-100">python/lpbf_thermal_solver.py</code>.
+            {error} Start the Vite/API stack so <code className="text-amber-100">/api/python/lpbf-build-job</code> can reach{" "}
+            <code className="text-amber-100">python/lpbf_build_job_solver.py</code>.
           </span>
         </div>
       )}
@@ -214,8 +199,9 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
               </div>
               <p className="text-[10px] text-slate-500">
                 Click a cell to load P and v into the Build Job store. Geometric LoF uses W vs h and D vs t. Literature box:{" "}
-                {litWindow.box.powerMin_W}–{litWindow.box.powerMax_W} W · {litWindow.box.speedMin_mm_s}–{litWindow.box.speedMax_mm_s}{" "}
-                mm/s {litWindow.inside ? "(inside)" : "(outside)"}.
+                {litWindow
+                  ? `${litWindow.box.powerMin_W}–${litWindow.box.powerMax_W} W · ${litWindow.box.speedMin_mm_s}–${litWindow.box.speedMax_mm_s} mm/s ${litWindow.inside ? "(inside)" : "(outside)"}.`
+                  : "waiting for Python."}
               </p>
               <div className="flex flex-wrap gap-3 text-[10px] text-slate-400">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-500" /> Conduction</span>
@@ -387,7 +373,7 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
 
       {thermal && (
         <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-          <Tiny label="Engine" value="Python HPC" icon={<Cpu className="w-3 h-3" />} />
+          <Tiny label="Engine" value={job?.modelId || "Python"} icon={<Cpu className="w-3 h-3" />} />
           <Tiny label="Regime" value={thermal.meltPoolGeometry.regime} icon={<Zap className="w-3 h-3" />} />
           <Tiny label="W×D (µm)" value={`${thermal.meltPoolGeometry.width_um}×${thermal.meltPoolGeometry.depth_um}`} icon={<Layers className="w-3 h-3" />} />
           <Tiny label="ΔH/hₛ" value={String(thermal.processParameters.normalizedEnthalpy)} icon={<Activity className="w-3 h-3" />} />

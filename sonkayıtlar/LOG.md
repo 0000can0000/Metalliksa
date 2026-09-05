@@ -4,6 +4,71 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 23:06 — Agent npm run dev exited
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Background `npm run dev` (agent spawn) exited 1 after Vite reloaded orchestrator/Python files.
+- **Done**: `:3000` still answers; `POST /api/python/lpbf-build-job` 200 (`lpbf_build_job`, `risky`). Did not start a second stack.
+- **Where we left off**: API is up. Refresh Additive LPBF if the amber banner remains.
+- **Files**: none
+- **Tests**: `POST /api/python/lpbf-build-job` 200
+
+---
+
+## 2026-09-05 23:05 — Step-1 alloy pick + build-job 404
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Let the engineer pick a common LPBF alloy on the process-job rail; fix the amber Decision-lab error pointing at `lpbf_build_job_solver.py`.
+- **Done**: Rail chips for Ti-6Al-4V, 316L, AlSi10Mg, IN718 call `loadPreset` (same four-alloy Python table). Live Express was still the old process without `POST /api/python/lpbf-build-job` (HTTP 404). Restarted `npm run dev`; skipped UNIX sockets on Windows; HTTP IPC daemon is online. Probe: success, `rosenthal-screening-v1`, verdict `risky` for the Ti-6Al-4V demo vector.
+- **Where we left off**: Nothing left on this pair of fixes. Browser click-through N/A (no browser MCP). User did not ask to commit.
+- **Files**: `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `server/processOrchestrator.ts`, `python/persistent_ipc_service.py`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` PASS. `POST /api/python/lpbf-build-job` PASS after restart.
+
+---
+
+## 2026-09-05 23:05 — Alloy picker + build-job 404
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Add four-alloy selection on LPBF rail step 1; fix Industrial Decision banner pointing at `python/lpbf_build_job_solver.py`.
+- **Done**: Rail now has Ti-6Al-4V / 316L / AlSi10Mg / IN718 buttons that `loadPreset` into `activeSpecimen`. The amber error was Express 404: the long-lived Node process never registered `POST /api/python/lpbf-build-job`. Restarted the stack; Windows IPC skips missing `AF_UNIX` and uses HTTP 5055. Probe: HTTP 200, `engine=lpbf_build_job`, `verdict=risky`.
+- **Where we left off**: Refresh the Additive LPBF page so the rail picker and Python verdict load. No git commit (prompt did not ask).
+- **Files**: `src/components/LpbfBuildJobRail.tsx`, `src/services/pythonComputationService.ts`, `routes/physics.ts`, `server/processOrchestrator.ts`, `python/persistent_ipc_service.py`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` PASS; `py -3 python/test_lpbf_build_job.py` PASS; `POST /api/python/lpbf-build-job` 200. Browser click-through N/A — no browser MCP.
+
+
+## 2026-09-05 22:59 — Recall last user request
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User asked whether the last UI request was remembered (new chat).
+- **Done**: Confirmed last message (22:58): Step 1 `Alloy + vector` must include alloy pick; fix amber `python/lpbf_build_job_solver.py` error on Industrial Decision lab.
+- **Where we left off**: Not implemented in this chat. Waiting to start those two UI/error fixes.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — recall only.
+
+---
+
+## 2026-09-05 22:50 — LPBF process-job wizard UX
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Make `3d-distortion-lab` a 4-step LPBF process job (Alloy → STL → Python decision → Literature) with Advanced physics collapsed; actionable Python reasons; literature I₀/ΔH matching; Send-to Additive; optional PSD on save.
+- **Done**: Wizard rail is 4 steps with a single P–v panel on `activeSpecimen.lpbf`. The 12-lab bar is an Advanced accordion; deep-link `activeSubTab` (query/hash/events) still opens labs. Verdict UI maps Python reasons to actions without re-scoring. Nearest literature uses I₀ and ΔH/hₛ when present; DOI dots overlay the 7×7 map. Inverse Send-to opens Additive; Inverse no longer shows a green industrial printable badge. Save-run PSD/lot fields start empty.
+- **Where we left off**: Faz 5 in-wizard DOE scan was skipped. Browser click-through not run (no browser tools in this session). No git commit (prompt did not ask).
+- **Files**: `src/components/Additive3DDistortionLab.tsx`, `src/components/LpbfBuildJobRail.tsx`, `src/utils/lpbfActionableReasons.ts`, `src/utils/lpbfIndustrialDecision.ts`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/3d-distortion-lab/LPBFGroundTruthDataLab.tsx`, `src/utils/materialDataPipeline.ts`, `src/components/SendToModuleModal.tsx`, `src/components/InverseAlloyStudio.tsx`, `src/components/LPBFAdditivePhysicsSuite.tsx`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` PASS. Browser verification N/A — no browser MCP. Regime labels unchanged (no PROOF.md science claim).
+
+---
+
+## 2026-09-05 22:35 — LPBF wizard: spawn new agent
+- **Agent**: Cursor Grok 4.6
+- **Result**: PARTIAL
+- **Task**: Open the LPBF process-job wizard plan in a new agent (Alloy → STL → Decision → Literature; Advanced labs hidden).
+- **Done**: Launched a background implementation agent with the approved plan (wizard shell, actionable reasons, literature nearest, Send-to Additive, optional PSD fields). This chat did not edit LPBF UI source.
+- **Where we left off**: Implementation runs on [LPBF process wizard](d7123b79-0264-4642-bde3-104f077ba6e1). Faz 5 DOE is out of first pass. User asked not to commit from this prompt.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — spawn only; implementing agent will run tsc/tests.
+
+---
+
 ## 2026-09-05 22:22 — Two demo buttons (LoF / Printable) on Industrial Decision lab
 - **Agent**: Cursor Claude Opus 4.8
 - **Result**: PASS

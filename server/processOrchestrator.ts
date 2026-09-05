@@ -1,4 +1,5 @@
 import path from "path";
+import os from "os";
 import net from "net";
 import http from "http";
 import { spawn, ChildProcess, spawnSync } from "child_process";
@@ -77,7 +78,11 @@ export class PersistentPythonIPCSupervisor {
   private lastError: string | null = null;
 
   constructor() {
-    this.socketPath = process.env.METALLIX_IPC_SOCK || "/tmp/metallix_python_ipc.sock";
+    this.socketPath =
+      process.env.METALLIX_IPC_SOCK ||
+      (process.platform === "win32"
+        ? path.join(os.tmpdir(), "metallix_python_ipc.sock")
+        : "/tmp/metallix_python_ipc.sock");
     this.httpPort = parseInt(process.env.METALLIX_IPC_PORT || "5055", 10);
     this.httpHost = process.env.METALLIX_IPC_HOST || "127.0.0.1";
 
@@ -105,20 +110,23 @@ export class PersistentPythonIPCSupervisor {
 
     // Capture stdout for readiness signal
     this.child.stdout?.on("data", (data) => {
-      const line = data.toString().trim();
-      try {
-        const parsed = JSON.parse(line);
-        if (parsed.status === "ready") {
-          this.isReady = true;
-          this.isRestarting = false;
-          this.restartAttempts = 0;
-          this.warmModules = parsed.modulesWarm ? Array(parsed.modulesWarm).fill("module") : [];
-          console.log(
-            `[Python-Supervisor] Daemon ONLINE. UNIX socket: ${this.socketPath} | HTTP: http://${this.httpHost}:${this.httpPort} (${parsed.modulesWarm || 15} modules warm in RAM)`
-          );
+      for (const line of data.toString().split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed.status === "ready") {
+            this.isReady = true;
+            this.isRestarting = false;
+            this.restartAttempts = 0;
+            this.warmModules = parsed.modulesWarm ? Array(parsed.modulesWarm).fill("module") : [];
+            console.log(
+              `[Python-Supervisor] Daemon ONLINE. UNIX socket: ${this.socketPath} | HTTP: http://${this.httpHost}:${this.httpPort} (${parsed.modulesWarm || 15} modules warm in RAM)`
+            );
+          }
+        } catch {
+          // Non-JSON informational log
         }
-      } catch {
-        // Non-JSON informational log
       }
     });
 
@@ -358,26 +366,31 @@ export class PersistentPythonIPCSupervisor {
   ): Promise<PythonExecResult> {
     const t0 = Date.now();
 
-    // 1. Try UNIX domain socket IPC (lowest latency, zero TCP overhead)
-    try {
-      const result = await this.executeViaUnixSocket(scriptRelativePath, inputJson, args, timeoutMs);
-      this.recordSuccess(Date.now() - t0);
-      return result;
-    } catch (unixErr: any) {
-      // 2. Fallback to HTTP microservice loopback
+    const skipUnix = process.platform === "win32";
+    let unixErr: unknown = skipUnix ? new Error("UNIX domain sockets skipped on win32") : null;
+
+    if (!skipUnix) {
       try {
-        const httpResult = await this.executeViaHttp(scriptRelativePath, inputJson, args, timeoutMs);
+        const result = await this.executeViaUnixSocket(scriptRelativePath, inputJson, args, timeoutMs);
         this.recordSuccess(Date.now() - t0);
-        return httpResult;
-      } catch (httpErr: any) {
-        // 3. Fallback to ad-hoc process spawn if daemon is reloading
-        console.warn(
-          `[Python-Supervisor] IPC channels unavailable (${unixErr?.message || unixErr}). Falling back to ad-hoc spawn...`
-        );
-        const spawnResult = await this.executeViaAdHocSpawn(scriptRelativePath, inputJson, args, timeoutMs);
-        this.recordSuccess(Date.now() - t0);
-        return spawnResult;
+        return result;
+      } catch (err) {
+        unixErr = err;
       }
+    }
+
+    try {
+      const httpResult = await this.executeViaHttp(scriptRelativePath, inputJson, args, timeoutMs);
+      this.recordSuccess(Date.now() - t0);
+      return httpResult;
+    } catch (httpErr: any) {
+      const unixMsg = unixErr instanceof Error ? unixErr.message : String(unixErr);
+      console.warn(
+        `[Python-Supervisor] IPC channels unavailable (${unixMsg} / ${httpErr?.message || httpErr}). Falling back to ad-hoc spawn...`
+      );
+      const spawnResult = await this.executeViaAdHocSpawn(scriptRelativePath, inputJson, args, timeoutMs);
+      this.recordSuccess(Date.now() - t0);
+      return spawnResult;
     }
   }
 

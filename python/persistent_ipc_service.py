@@ -558,9 +558,17 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 def run_services():
     """Starts both UNIX socket IPC and HTTP microservice."""
-    # 1. Start UNIX domain socket IPC
-    ipc_server = UnixIPCServer(UNIX_SOCKET_PATH, registry)
-    ipc_server.start()
+    # 1. Start UNIX domain socket IPC (skipped on Windows — AF_UNIX bind is unreliable)
+    ipc_server = None
+    if os.name != "nt":
+        try:
+            ipc_server = UnixIPCServer(UNIX_SOCKET_PATH, registry)
+            ipc_server.start()
+        except Exception as e:
+            sys.stderr.write(f"[PersistentIPC] UNIX socket unavailable ({e}); HTTP loopback only.\n")
+            ipc_server = None
+    else:
+        sys.stderr.write("[PersistentIPC] UNIX socket skipped on Windows; HTTP loopback only.\n")
 
     # 2. Start HTTP microservice
     try:
@@ -575,7 +583,8 @@ def run_services():
     # Handle graceful termination signals
     def handle_signal(sig, frame):
         sys.stderr.write(f"\n[PersistentIPC] Received signal {sig}, shutting down cleanly...\n")
-        ipc_server.stop()
+        if ipc_server:
+            ipc_server.stop()
         registry.shutdown()
         if httpd:
             threading.Thread(target=httpd.shutdown).start()

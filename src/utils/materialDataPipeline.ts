@@ -9,7 +9,8 @@ export type ModuleTargetId =
   | "alloy-builder"
   | "icme-motor"
   | "phase-diagram"
-  | "database";
+  | "database"
+  | "3d-distortion-lab";
 
 export interface PipelineXRDPeak {
   twoTheta: number;

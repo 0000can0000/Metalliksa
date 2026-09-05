@@ -773,12 +773,12 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
                   </div>
 
                   <div className="p-2.5 bg-[#0c1322] rounded-lg border border-[#162032] space-y-1">
-                    <span className="text-[10px] text-slate-400 font-mono block">LPBF Printability:</span>
+                    <span className="text-[10px] text-slate-400 font-mono block">Alloy cracking screen:</span>
                     <div className="text-sm font-bold text-cyan-400 font-mono">
                       {activeCandidate.lpbfPrintabilityScore} / 100
                     </div>
                     <div className="text-[10px] text-slate-500">
-                      Cracking Risk: {activeCandidate.solidificationCrackingSusceptibility}
+                      Chemistry / freezing-range screen only. Industrial printability is the Python verdict in Additive LPBF Lab.
                     </div>
                   </div>
                 </div>
@@ -866,6 +866,7 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
           <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/30 text-[11px] font-mono text-sky-200">
             Build Job process vector (P, v, h, t, d, preheat) is shared with 3D LPBF Simulation via{" "}
             <strong>useMaterialSpecimenStore.lpbf</strong>. Changing sliders here updates the digital twin job.
+            Industrial printability is <strong>not</strong> decided here — use Send to Module → Additive LPBF Process Job.
           </div>
           {/* Candidate selector pills inside LPBF suite */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-[#090e18] border border-[#162032]">

@@ -15,6 +15,7 @@ import {
   Atom,
   Clock,
   ShieldCheck,
+  Box,
 } from "lucide-react";
 import {
   PipelineMaterialPayload,
@@ -134,6 +135,22 @@ export const SendToModuleModal: React.FC<SendToModuleModalProps> = ({
         `T_liq: ${payload.icmeProfile.liquidusTemp_C}°C`,
         `T_sol: ${payload.icmeProfile.solidusTemp_C}°C`,
         `CE: ${payload.icmeProfile.carbonEquivalent || "N/A"}%`,
+      ],
+    },
+    {
+      id: "3d-distortion-lab" as ModuleTargetId,
+      name: "Additive LPBF Process Job",
+      category: "Laser Powder Bed Fusion",
+      icon: Box,
+      color: "text-cyan-300",
+      borderColor: "border-cyan-500/30 hover:border-cyan-400/70",
+      bgColor: "bg-cyan-500/10",
+      badge: "Python verdict / 5-tier",
+      description: `Opens the Additive 3D LPBF wizard (alloy + process vector → optional STL → Python printability → literature DOI). Industrial verdict lives there — this transfer does not stamp printable.`,
+      highlights: [
+        `Alloy: ${payload.name}`,
+        `σy: ${payload.yieldStrength} MPa`,
+        "Shared twin vector",
       ],
     },
     {

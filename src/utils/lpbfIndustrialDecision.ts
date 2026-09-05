@@ -1,6 +1,7 @@
 import {
   LPBFAlloyId,
   TraceableLPBFRecord,
+  calculatePeakLaserIntensity,
 } from "../types/lpbfDataFoundation";
 import {
   MASTER_LPBF_REFERENCE_DATASETS,
@@ -50,25 +51,64 @@ export interface LiteratureMatch {
   distance: number;
 }
 
+export interface LiteratureLiveDerived {
+  peakIntensity_MW_cm2?: number;
+  normalizedEnthalpy?: number;
+  beamDiameter_um?: number;
+}
+
+export interface LiteratureOverlayPoint {
+  power_W: number;
+  speed_mm_s: number;
+  doi: string;
+  citation: string;
+  sampleCode: string;
+}
+
+function alloyRecordPool(alloyId: LPBFAlloyId): TraceableLPBFRecord[] {
+  return [
+    ...(MASTER_LPBF_REFERENCE_DATASETS[alloyId] || []),
+    ...loadUserLPBFRecords().filter((r) => r.build.alloyId === alloyId),
+  ];
+}
+
+export function literatureOverlayPoints(alloyId: LPBFAlloyId): LiteratureOverlayPoint[] {
+  return alloyRecordPool(alloyId).map((r) => ({
+    power_W: r.params.laserPower_W,
+    speed_mm_s: r.params.scanSpeed_mm_s,
+    doi: r.source.doi || "",
+    citation: r.source.citation,
+    sampleCode: r.sample.sampleCode,
+  }));
+}
+
 export function findNearestLiteratureRecord(
   alloyId: LPBFAlloyId,
   power_W: number,
   speed_mm_s: number,
   hatch_um: number,
-  layer_um: number
+  layer_um: number,
+  live?: LiteratureLiveDerived
 ): LiteratureMatch | null {
-  const pool: TraceableLPBFRecord[] = [
-    ...(MASTER_LPBF_REFERENCE_DATASETS[alloyId] || []),
-    ...loadUserLPBFRecords().filter((r) => r.build.alloyId === alloyId),
-  ];
+  const pool = alloyRecordPool(alloyId);
 
   if (pool.length === 0) {
     const fallback = Object.values(MASTER_LPBF_REFERENCE_DATASETS).flat();
     if (fallback.length === 0) return null;
-    return nearestInPool(fallback, power_W, speed_mm_s, hatch_um, layer_um);
+    return nearestInPool(fallback, power_W, speed_mm_s, hatch_um, layer_um, live);
   }
 
-  return nearestInPool(pool, power_W, speed_mm_s, hatch_um, layer_um);
+  return nearestInPool(pool, power_W, speed_mm_s, hatch_um, layer_um, live);
+}
+
+function livePeakIntensity(power_W: number, live?: LiteratureLiveDerived): number | undefined {
+  if (live?.peakIntensity_MW_cm2 != null && Number.isFinite(live.peakIntensity_MW_cm2)) {
+    return live.peakIntensity_MW_cm2;
+  }
+  if (live?.beamDiameter_um != null && live.beamDiameter_um > 0) {
+    return calculatePeakLaserIntensity(power_W, live.beamDiameter_um);
+  }
+  return undefined;
 }
 
 function nearestInPool(
@@ -76,16 +116,29 @@ function nearestInPool(
   power_W: number,
   speed_mm_s: number,
   hatch_um: number,
-  layer_um: number
+  layer_um: number,
+  live?: LiteratureLiveDerived
 ): LiteratureMatch | null {
+  const liveI0 = livePeakIntensity(power_W, live);
+  const liveDh = live?.normalizedEnthalpy;
   let best: LiteratureMatch | null = null;
   for (const record of pool) {
     const p = record.params;
-    const distance =
+    let distance =
       Math.abs(p.laserPower_W - power_W) / Math.max(1, power_W) +
       Math.abs(p.scanSpeed_mm_s - speed_mm_s) / Math.max(1, speed_mm_s) +
       Math.abs(p.hatchSpacing_um - hatch_um) / Math.max(1, hatch_um) +
       Math.abs(p.layerThickness_um - layer_um) / Math.max(1, layer_um);
+
+    const recI0 = p.derived?.peakLaserIntensity_MW_cm2;
+    if (liveI0 != null && recI0 != null && recI0 > 0) {
+      distance += Math.abs(recI0 - liveI0) / Math.max(1, liveI0);
+    }
+    const recDh = p.derived?.normalizedEnthalpy_dH_hs;
+    if (liveDh != null && recDh != null && recDh > 0) {
+      distance += Math.abs(recDh - liveDh) / Math.max(1, liveDh);
+    }
+
     if (!best || distance < best.distance) {
       best = { record, distance };
     }

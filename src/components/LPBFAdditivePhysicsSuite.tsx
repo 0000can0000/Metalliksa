@@ -6,7 +6,6 @@ import {
   Layers,
   Thermometer,
   ShieldAlert,
-  CheckCircle2,
   AlertTriangle,
   Info,
   TrendingDown,
@@ -367,20 +366,10 @@ export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }
           </div>
 
           <div
-            className={`px-3 py-1.5 rounded-lg border font-mono text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto ${
-              lpbfPhysics.processStatus === "Optimal"
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/10"
-                : lpbfPhysics.processStatus === "Warning"
-                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                : "bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm shadow-rose-500/20 animate-pulse"
-            }`}
+            className="px-3 py-1.5 rounded-lg border font-mono text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto bg-slate-500/15 text-slate-200 border-slate-500/40"
           >
-            {lpbfPhysics.processStatus === "Optimal" ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-            )}
-            <span>{lpbfPhysics.processRegime}</span>
+            <AlertTriangle className="w-4 h-4 text-slate-400" />
+            <span>Screening: {lpbfPhysics.processRegime}</span>
           </div>
         </div>
 

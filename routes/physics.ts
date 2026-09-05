@@ -9,9 +9,17 @@ async function handlePythonDispatch(scriptPath: string, payload: any, res: Respo
     if (!pyRes.stdout && pyRes.stderr) {
       console.warn(`[Python stderr: ${scriptPath}]`, pyRes.stderr);
     }
+    const stdout = (pyRes.stdout || "").trim();
+    if (!stdout) {
+      return res.status(500).json({
+        error: pyRes.stderr?.trim() || `Python ${scriptPath} returned empty stdout (exit ${pyRes.exitCode}).`,
+        script: scriptPath,
+        stderr: pyRes.stderr,
+      });
+    }
     let parsed: any;
     try {
-      parsed = JSON.parse(pyRes.stdout || "{}");
+      parsed = JSON.parse(stdout);
     } catch {
       parsed = { rawOutput: pyRes.stdout, stderr: pyRes.stderr, durationMs: pyRes.durationMs };
     }

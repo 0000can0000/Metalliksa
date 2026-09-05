@@ -142,6 +142,10 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
   const [formCitation, setFormCitation] = useState<string>("In-house ASTM E8 qualification test");
   const [formDoi, setFormDoi] = useState<string>("10.1016/j.actamat.2026.internal");
   const [formStandard, setFormStandard] = useState<string>("ASTM B962 / ASTM E8");
+  const [formPowderLot, setFormPowderLot] = useState<string>("");
+  const [formPowderD10, setFormPowderD10] = useState<string>("");
+  const [formPowderD50, setFormPowderD50] = useState<string>("");
+  const [formPowderD90, setFormPowderD90] = useState<string>("");
 
   // Filtered dataset combining literature + user records for selected alloy
   const activeDataset = useMemo(() => {
@@ -262,11 +266,11 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
             ? "316L Stainless Steel"
             : "AlSi10Mg Aluminum",
         machineModel: formMachine,
-        powderLotNumber: "LOT-CUSTOM-01",
+        powderLotNumber: formPowderLot.trim() || "Not recorded",
         powderAtomization: "Gas Atomized (GA)",
-        powderD10_um: 18,
-        powderD50_um: 35,
-        powderD90_um: 50,
+        powderD10_um: formPowderD10.trim() ? Number(formPowderD10) : 0,
+        powderD50_um: formPowderD50.trim() ? Number(formPowderD50) : 0,
+        powderD90_um: formPowderD90.trim() ? Number(formPowderD90) : 0,
         buildDate: new Date().toISOString().split("T")[0],
         facility: "User Additive Laboratory",
       },
@@ -451,7 +455,7 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                 ASTM F3055 / ASTM B962 / ASTM E8
               </span>
               <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-mono">
-                5-Tier Relational Schema
+                Literature + 5-tier
               </span>
             </div>
             <h2 className="text-xl lg:text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
@@ -1723,6 +1727,46 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                       <option value="ss316l">316L Stainless Steel</option>
                       <option value="alsi10mg">AlSi10Mg Aluminum</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Powder lot (optional)</label>
+                    <input
+                      type="text"
+                      value={formPowderLot}
+                      onChange={(e) => setFormPowderLot(e.target.value)}
+                      placeholder="Not recorded"
+                      className="w-full bg-[#080d17] border border-slate-700 rounded-lg p-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">D10 (µm, optional)</label>
+                    <input
+                      type="number"
+                      value={formPowderD10}
+                      onChange={(e) => setFormPowderD10(e.target.value)}
+                      placeholder="empty"
+                      className="w-full bg-[#080d17] border border-slate-700 rounded-lg p-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">D50 (µm, optional)</label>
+                    <input
+                      type="number"
+                      value={formPowderD50}
+                      onChange={(e) => setFormPowderD50(e.target.value)}
+                      placeholder="empty"
+                      className="w-full bg-[#080d17] border border-slate-700 rounded-lg p-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">D90 (µm, optional)</label>
+                    <input
+                      type="number"
+                      value={formPowderD90}
+                      onChange={(e) => setFormPowderD90(e.target.value)}
+                      placeholder="empty"
+                      className="w-full bg-[#080d17] border border-slate-700 rounded-lg p-2 text-white"
+                    />
                   </div>
                 </div>
               </div>

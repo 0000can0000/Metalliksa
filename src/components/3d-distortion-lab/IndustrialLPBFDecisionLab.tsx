@@ -21,9 +21,11 @@ import { useLpbfBuildJobPython } from "../../store/useLpbfBuildJobStore";
 import {
   findNearestLiteratureRecord,
   inferSlicerPreset,
+  literatureOverlayPoints,
   mapSpecimenToSolverMaterials,
   PrintVerdict,
 } from "../../utils/lpbfIndustrialDecision";
+import { mapActionableReasons, modelHonestyLine, toActionableHeadline } from "../../utils/lpbfActionableReasons";
 import { heatTreatmentCohorts, orientationCohorts } from "../../utils/lpbfFourAlloySchema";
 import type { LPBFAlloyId } from "../../types/lpbfDataFoundation";
 import type { LpbfProcessPatch } from "../../store/useMaterialSpecimenStore";
@@ -89,10 +91,26 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
         lpbf.laserPower_W,
         lpbf.scanSpeed_mms,
         lpbf.hatch_um,
-        lpbf.layer_um
+        lpbf.layer_um,
+        {
+          peakIntensity_MW_cm2: thermal?.processParameters.peakIntensity_MW_cm2,
+          normalizedEnthalpy: thermal?.processParameters.normalizedEnthalpy,
+          beamDiameter_um: lpbf.beamDiameter_um,
+        }
       ),
-    [materials.alloyId, lpbf.laserPower_W, lpbf.scanSpeed_mms, lpbf.hatch_um, lpbf.layer_um]
+    [
+      materials.alloyId,
+      lpbf.laserPower_W,
+      lpbf.scanSpeed_mms,
+      lpbf.hatch_um,
+      lpbf.layer_um,
+      lpbf.beamDiameter_um,
+      thermal?.processParameters.peakIntensity_MW_cm2,
+      thermal?.processParameters.normalizedEnthalpy,
+    ]
   );
+
+  const litPoints = useMemo(() => literatureOverlayPoints(materials.alloyId), [materials.alloyId]);
 
   const yieldOk =
     literature && literature.record.properties.yieldStrength_MPa
@@ -156,14 +174,20 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>
-            {error} Start the Vite/API stack so <code className="text-amber-100">/api/python/lpbf-build-job</code> can reach{" "}
-            <code className="text-amber-100">python/lpbf_build_job_solver.py</code>.
+            {error} Industrial verdict needs <code className="text-amber-100">POST /api/python/lpbf-build-job</code>{" "}
+            (Express + <code className="text-amber-100">python/lpbf_build_job_solver.py</code>). Restart{" "}
+            <code className="text-amber-100">npm run dev</code> if this route 404s.
           </span>
         </div>
       )}
 
       {decision && thermal && (
-        <VerdictBanner verdict={decision.verdict} headline={decision.headline} reasons={decision.reasons} />
+        <VerdictBanner
+          verdict={decision.verdict}
+          headline={toActionableHeadline(decision.headline)}
+          reasons={mapActionableReasons(decision.reasons)}
+          modelId={job?.modelId}
+        />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -175,7 +199,8 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           </div>
           {thermal?.processWindowMap ? (
             <>
-              <div className="grid grid-cols-7 gap-1">
+              <div className="relative">
+                <div className="grid grid-cols-7 gap-1">
                 {thermal.processWindowMap.grid.map((pt, idx) => {
                   const isCurrent =
                     Math.abs(pt.power_W - lpbf.laserPower_W) < 45 &&
@@ -201,9 +226,31 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                     </button>
                   );
                 })}
+                </div>
+                {litPoints.length > 0 && (() => {
+                  const powers = thermal.processWindowMap.grid.map((g) => g.power_W);
+                  const speeds = thermal.processWindowMap.grid.map((g) => g.speed_mm_s);
+                  const pMin = Math.min(...powers);
+                  const pMax = Math.max(...powers);
+                  const vMin = Math.min(...speeds);
+                  const vMax = Math.max(...speeds);
+                  return litPoints.map((pt, i) => {
+                    const x = pMax === pMin ? 50 : ((pt.power_W - pMin) / (pMax - pMin)) * 100;
+                    const y = vMax === vMin ? 50 : ((pt.speed_mm_s - vMin) / (vMax - vMin)) * 100;
+                    if (x < -8 || x > 108 || y < -8 || y > 108) return null;
+                    return (
+                      <span
+                        key={`${pt.doi}-${i}`}
+                        title={`${pt.sampleCode} · DOI ${pt.doi || "—"} · ${pt.citation}`}
+                        className="absolute w-2 h-2 rounded-full bg-sky-300 border border-white pointer-events-auto z-20"
+                        style={{ left: `calc(${x}% - 4px)`, top: `calc(${y}% - 4px)` }}
+                      />
+                    );
+                  });
+                })()}
               </div>
               <p className="text-[10px] text-slate-500">
-                Click a cell to load P and v into the Build Job store. Geometric LoF uses W vs h and D vs t. Literature box:{" "}
+                Click a cell to load P and v into the Build Job store. Geometric LoF uses W vs h and D vs t. Sky dots are literature coupons (DOI tooltip). Nearest match uses P, v, h, t plus I₀ / ΔH/hₛ when recorded. Literature box:{" "}
                 {litWindow
                   ? `${litWindow.box.powerMin_W}–${litWindow.box.powerMax_W} W · ${litWindow.box.speedMin_mm_s}–${litWindow.box.speedMax_mm_s} mm/s ${litWindow.inside ? "(inside)" : "(outside)"}.`
                   : "waiting for Python."}
@@ -213,6 +260,7 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-500" /> Keyhole</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500" /> LoF</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-purple-500" /> Balling</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-300" /> Literature DOI</span>
               </div>
             </>
           ) : (
@@ -406,6 +454,7 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
             {job.modelId} assumptions
           </div>
+          <p className="text-[10px] text-slate-500">{modelHonestyLine(job.modelId)}</p>
           <ul className="list-disc pl-5 space-y-1 text-[11px] text-slate-400">
             {job.assumptions.map((line) => (
               <li key={line}>{line}</li>
@@ -427,16 +476,18 @@ function verdictTone(v: PrintVerdict): string {
   return "border-rose-500/40 bg-rose-500/10 text-rose-100";
 }
 
-const VerdictBanner: React.FC<{ verdict: PrintVerdict; headline: string; reasons: string[] }> = ({
-  verdict,
-  headline,
-  reasons,
-}) => (
+const VerdictBanner: React.FC<{
+  verdict: PrintVerdict;
+  headline: string;
+  reasons: string[];
+  modelId?: string;
+}> = ({ verdict, headline, reasons, modelId }) => (
   <div className={`rounded-2xl border p-4 ${verdictTone(verdict)}`}>
     <div className="flex items-center gap-2 font-bold text-sm">
       {verdict === "printable" ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
       {headline}
     </div>
+    <p className="mt-1 text-[10px] opacity-80">{modelHonestyLine(modelId)}</p>
     <ul className="mt-2 space-y-1 text-[11px] opacity-90 list-disc pl-5">
       {reasons.map((r) => (
         <li key={r}>{r}</li>

@@ -24,11 +24,11 @@ import {
   Trash2,
   ThermometerSnowflake,
   Waves,
-  ShieldAlert,
   Focus,
   GitFork,
   Scissors,
   Database,
+  ChevronDown,
 } from "lucide-react";
 import {
   parseSTL,
@@ -54,7 +54,112 @@ import {
 } from "./3d-distortion-lab";
 import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "../store/useLpbfBuildMeshStore";
-import { LpbfBuildJobRail } from "./LpbfBuildJobRail";
+import { LpbfBuildJobRail, isAdvancedLpbfSubTab, type LpbfBuildJobStage } from "./LpbfBuildJobRail";
+
+type LpbfDistortionSubTab =
+  | "industrial-decision"
+  | "ground-truth-foundation"
+  | "basic-stl-slicer"
+  | "3d-macro-distortion"
+  | "3d-cross-section-melt-pool"
+  | "marangoni-pore-heatmap"
+  | "rosenthal-laser-profile"
+  | "solidification-front-cet"
+  | "multi-track-accumulation"
+  | "anisotropic-fatigue-estimator"
+  | "operando-synchrotron"
+  | "2d-thermal-melt-pool";
+
+const LPBF_SUB_TAB_IDS: LpbfDistortionSubTab[] = [
+  "industrial-decision",
+  "ground-truth-foundation",
+  "basic-stl-slicer",
+  "3d-macro-distortion",
+  "3d-cross-section-melt-pool",
+  "marangoni-pore-heatmap",
+  "rosenthal-laser-profile",
+  "solidification-front-cet",
+  "multi-track-accumulation",
+  "anisotropic-fatigue-estimator",
+  "operando-synchrotron",
+  "2d-thermal-melt-pool",
+];
+
+function isLpbfDistortionSubTab(value: string): value is LpbfDistortionSubTab {
+  return (LPBF_SUB_TAB_IDS as string[]).includes(value);
+}
+
+const ADVANCED_PHYSICS_LABS: {
+  id: LpbfDistortionSubTab;
+  label: string;
+  badge: string;
+  icon: React.ElementType;
+  activeClass: string;
+}[] = [
+  {
+    id: "3d-macro-distortion",
+    label: "3D CAD/STL Distortion & Residual Stress FEA",
+    badge: "ASTM F3055",
+    icon: Box,
+    activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
+  },
+  {
+    id: "3d-cross-section-melt-pool",
+    label: "3D Cross-Sectional Melt Pool & Keyhole Studio",
+    badge: "Python HPC",
+    icon: Zap,
+    activeClass: "bg-sky-500/20 text-sky-200 border-sky-400/50",
+  },
+  {
+    id: "marangoni-pore-heatmap",
+    label: "3D Marangoni Flow & Gas Entrapment Heatmap",
+    badge: "Navier–Stokes",
+    icon: Waves,
+    activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
+  },
+  {
+    id: "rosenthal-laser-profile",
+    label: "Rosenthal Laser Spot & Absorption Melt Pool",
+    badge: "Rosenthal + Python",
+    icon: Focus,
+    activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
+  },
+  {
+    id: "solidification-front-cet",
+    label: "Solidification Front Anisotropy (G×R) & CET Mapper",
+    badge: "Hunt CET",
+    icon: GitFork,
+    activeClass: "bg-purple-500/20 text-purple-200 border-purple-400/50",
+  },
+  {
+    id: "multi-track-accumulation",
+    label: "Multi-Track Scan Strategy & Thermal Accumulation",
+    badge: "Hatch & Dwell",
+    icon: Waves,
+    activeClass: "bg-amber-500/20 text-amber-200 border-amber-400/50",
+  },
+  {
+    id: "anisotropic-fatigue-estimator",
+    label: "Anisotropic Mechanical & S-N Fatigue",
+    badge: "Hill'48 + Python",
+    icon: Compass,
+    activeClass: "bg-purple-500/20 text-purple-200 border-purple-400/50",
+  },
+  {
+    id: "operando-synchrotron",
+    label: "High-Speed Operando Synchrotron X-Ray Workbench",
+    badge: "APS / ESRF",
+    icon: Camera,
+    activeClass: "bg-pink-500/20 text-pink-200 border-pink-400/50",
+  },
+  {
+    id: "2d-thermal-melt-pool",
+    label: "Thermal Melt Pool & Solidification Front Lab",
+    badge: "2D Rosenthal",
+    icon: Flame,
+    activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
+  },
+];
 
 
 export type HeatmapMode =
@@ -345,20 +450,40 @@ export const LPBF_ALLOY_PRESETS: LpbfAlloyPreset[] = [
 
 export const Additive3DDistortionLab: React.FC = () => {
   // Navigation Sub-tab
-  const [activeSubTab, setActiveSubTab] = useState<
-    | "industrial-decision"
-    | "ground-truth-foundation"
-    | "basic-stl-slicer"
-    | "3d-macro-distortion"
-    | "3d-cross-section-melt-pool"
-    | "marangoni-pore-heatmap"
-    | "rosenthal-laser-profile"
-    | "solidification-front-cet"
-    | "multi-track-accumulation"
-    | "anisotropic-fatigue-estimator"
-    | "operando-synchrotron"
-    | "2d-thermal-melt-pool"
-  >("industrial-decision");
+  const [activeSubTab, setActiveSubTab] = useState<LpbfDistortionSubTab>("industrial-decision");
+  const [focusedWizardStage, setFocusedWizardStage] = useState<LpbfBuildJobStage>("process");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    const applySubTab = (raw?: string) => {
+      if (!raw || !isLpbfDistortionSubTab(raw)) return;
+      setActiveSubTab(raw);
+      if (isAdvancedLpbfSubTab(raw)) {
+        setAdvancedOpen(true);
+        return;
+      }
+      if (raw === "basic-stl-slicer") setFocusedWizardStage("cad");
+      else if (raw === "ground-truth-foundation") setFocusedWizardStage("record");
+      else setFocusedWizardStage("process");
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    applySubTab(params.get("lpbfSubTab") || params.get("activeSubTab") || undefined);
+    const hash = window.location.hash.replace(/^#/, "");
+    if (hash.startsWith("lpbf=")) applySubTab(hash.slice(5));
+    else applySubTab(hash);
+
+    const onNav = (e: Event) => {
+      const detail = (e as CustomEvent<{ subTab?: string; lpbfSubTab?: string; activeSubTab?: string }>).detail;
+      applySubTab(detail?.subTab || detail?.lpbfSubTab || detail?.activeSubTab);
+    };
+    window.addEventListener("metallix-lpbf-subtab", onNav);
+    window.addEventListener("metallix-navigate-tab", onNav);
+    return () => {
+      window.removeEventListener("metallix-lpbf-subtab", onNav);
+      window.removeEventListener("metallix-navigate-tab", onNav);
+    };
+  }, []);
 
   // 3D Canvas Ref
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -1075,208 +1200,66 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
     <div className="space-y-6 max-w-7xl mx-auto font-mono">
       <LpbfBuildJobRail
         activeSubTab={activeSubTab}
-        onNavigateStage={(subTab) => setActiveSubTab(subTab as typeof activeSubTab)}
+        focusedWizardStage={focusedWizardStage}
+        onNavigateStage={(subTab, stage) => {
+          setFocusedWizardStage(stage);
+          setActiveSubTab(subTab as LpbfDistortionSubTab);
+        }}
+        onBackToDecision={() => {
+          setFocusedWizardStage("process");
+          setActiveSubTab("industrial-decision");
+        }}
       />
 
-      {/* Sub-Module Navigation Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 bg-[#090e18] border border-[#1e2d46] rounded-2xl overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("industrial-decision")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition cursor-pointer ${
-            activeSubTab === "industrial-decision"
-              ? "bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.35)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4 text-emerald-400" />
-          <span>Industrial Decision Engine</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-300 border border-emerald-400/20 hidden lg:inline-block">
-            Python P–v
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ground-truth-foundation")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition cursor-pointer ${
-            activeSubTab === "ground-truth-foundation"
-              ? "bg-sky-500/25 text-sky-200 border border-sky-400/50 shadow-[0_0_15px_rgba(56,189,248,0.35)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Database className="w-4 h-4 text-sky-400" />
-          <span>Ground Truth &amp; Process Foundation</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-sky-400/10 text-sky-300 border border-sky-400/20 hidden lg:inline-block">
-            Literature &amp; VED
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("basic-stl-slicer")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "basic-stl-slicer"
-              ? "bg-cyan-500/25 text-cyan-200 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Scissors className="w-4 h-4 text-cyan-400" />
-          <span>Basic STL Slice &amp; LPBF Build Time</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20 hidden lg:inline-block">
-            2D Slicer
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("3d-macro-distortion")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "3d-macro-distortion"
-              ? "bg-cyan-500/20 text-cyan-200 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Box className="w-4 h-4 text-cyan-400" />
-          <span>3D CAD/STL Distortion &amp; Residual Stress FEA</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20 hidden lg:inline-block">
-            ASTM F3055
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("3d-cross-section-melt-pool")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "3d-cross-section-melt-pool"
-              ? "bg-sky-500/20 text-sky-200 border border-sky-400/50 shadow-[0_0_15px_rgba(2,132,199,0.3)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Zap className="w-4 h-4 text-sky-400" />
-          <span>3D Cross-Sectional Melt Pool & Keyhole Studio</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-sky-400/10 text-sky-300 border border-sky-400/20 hidden lg:inline-block">
-            Python HPC
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("marangoni-pore-heatmap")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "marangoni-pore-heatmap"
-              ? "bg-cyan-500/20 text-cyan-200 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.35)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Waves className="w-4 h-4 text-cyan-400" />
-          <span>3D Marangoni Flow &amp; Gas Entrapment Heatmap</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20 hidden lg:inline-block">
-            Python 3D Navier-Stokes
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("rosenthal-laser-profile")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "rosenthal-laser-profile"
-              ? "bg-cyan-500/20 text-cyan-200 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Focus className="w-4 h-4 text-cyan-400" />
-          <span>Rosenthal Laser Spot &amp; Absorption Melt Pool</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20 hidden lg:inline-block">
-            Rosenthal + Python
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("solidification-front-cet")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "solidification-front-cet"
-              ? "bg-purple-500/20 text-purple-200 border border-purple-400/50 shadow-[0_0_15px_rgba(168,85,247,0.35)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <GitFork className="w-4 h-4 text-purple-400" />
-          <span>Solidification Front Anisotropy (G×R) &amp; CET Mapper</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-purple-400/10 text-purple-300 border border-purple-400/20 hidden lg:inline-block">
-            Hunt CET + Multi-Track
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("multi-track-accumulation")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "multi-track-accumulation"
-              ? "bg-amber-500/20 text-amber-200 border border-amber-400/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Waves className="w-4 h-4 text-amber-400" />
-          <span>Multi-Track Scan Strategy &amp; Thermal Accumulation</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-amber-400/10 text-amber-300 border border-amber-400/20 hidden lg:inline-block">
-            Hatch &amp; Dwell
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("anisotropic-fatigue-estimator")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "anisotropic-fatigue-estimator"
-              ? "bg-purple-500/20 text-purple-200 border border-purple-400/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Compass className="w-4 h-4 text-purple-400" />
-          <span>Anisotropic Mechanical &amp; S-N Fatigue</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-purple-400/10 text-purple-300 border border-purple-400/20 hidden lg:inline-block">
-            Hill'48 + Python
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("operando-synchrotron")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "operando-synchrotron"
-              ? "bg-pink-500/20 text-pink-200 border border-pink-400/50 shadow-[0_0_15px_rgba(244,114,182,0.3)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Camera className="w-4 h-4 text-pink-400" />
-          <span>High-Speed Operando Synchrotron X-Ray Workbench</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-pink-400/10 text-pink-300 border border-pink-400/20 hidden lg:inline-block">
-            APS / ESRF
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("2d-thermal-melt-pool")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition ${
-            activeSubTab === "2d-thermal-melt-pool"
-              ? "bg-cyan-500/20 text-cyan-200 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-          }`}
-        >
-          <Flame className="w-4 h-4 text-cyan-400" />
-          <span>Thermal Melt Pool & Solidification Front Lab</span>
-          <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20 hidden lg:inline-block">
-            2D Rosenthal
-          </span>
-        </button>
-      </div>
+      <details
+        className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-2"
+        open={advancedOpen || isAdvancedLpbfSubTab(activeSubTab)}
+        onToggle={(e) => setAdvancedOpen((e.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary className="cursor-pointer list-none flex items-center gap-2 px-2 py-2 text-xs font-mono font-bold text-slate-300">
+          <ChevronDown className="w-4 h-4 text-slate-500" />
+          Advanced physics
+          <span className="text-[10px] font-normal text-slate-500">Melt pool 3D, Rosenthal, Marangoni, CET, fatigue, operando, 2D thermal, CAD distortion</span>
+        </summary>
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 p-1.5">
+          {ADVANCED_PHYSICS_LABS.map((lab) => {
+            const Icon = lab.icon;
+            const active = activeSubTab === lab.id;
+            return (
+              <button
+                key={lab.id}
+                type="button"
+                onClick={() => {
+                  setAdvancedOpen(true);
+                  setActiveSubTab(lab.id);
+                }}
+                className={`flex-1 min-w-[220px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition border ${
+                  active
+                    ? lab.activeClass
+                    : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border-transparent"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{lab.label}</span>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10 hidden lg:inline-block">
+                  {lab.badge}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </details>
 
       {activeSubTab === "industrial-decision" ? (
         <IndustrialLPBFDecisionLab
-          onOpenSlicer={() => setActiveSubTab("basic-stl-slicer")}
-          onOpenGroundTruth={() => setActiveSubTab("ground-truth-foundation")}
+          onOpenSlicer={() => {
+            setFocusedWizardStage("cad");
+            setActiveSubTab("basic-stl-slicer");
+          }}
+          onOpenGroundTruth={() => {
+            setFocusedWizardStage("record");
+            setActiveSubTab("ground-truth-foundation");
+          }}
         />
       ) : activeSubTab === "ground-truth-foundation" ? (
         <LPBFGroundTruthDataLab

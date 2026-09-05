@@ -1426,7 +1426,14 @@ class PythonComputationService {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      throw new Error(`LPBF build-job proxy error: HTTP ${res.status}`);
+      let detail = `LPBF build-job proxy error: HTTP ${res.status}`;
+      try {
+        const failed = await res.json();
+        if (failed?.error) detail = String(failed.error);
+      } catch {
+        /* keep HTTP status text */
+      }
+      throw new Error(detail);
     }
     const parsed = await res.json();
     if (parsed?.error || parsed?.success === false) {

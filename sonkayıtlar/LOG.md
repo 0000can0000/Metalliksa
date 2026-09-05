@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 21:24 — Audit: live STL drives Build Job slicer (no change needed)
+- **Agent**: Cursor Claude Opus 4.8
+- **Result**: PASS
+- **Task**: Gap-fill only — ensure every STL upload path feeds the session mesh so `POST /api/python/lpbf-build-job` carries `customTriangles`; when a mesh is present `slicer.geometrySource` must be `uploaded-stl` with matching bbox/time, else `demo-preset`.
+- **Done**: Audited all three STL upload handlers (`Additive3DDistortionLab.handleStlUpload`, `CADStlSlicerDistortionLab.handleFileUpload`, `BasicSTLSlicerLab.handleFileUpload`) — each calls `setFromGeometry`/`setLiveMeshFromGeometry` alongside `cadAssetName`, and every clear handler pairs `cadAssetName: ""` with `clearLiveMesh()`. `parseSTLAsync`/STL parsing exists only in those three files. The Build Job POST is centralized in `useLpbfBuildJobStore.buildJobKey`, which always reads `useLpbfBuildMeshStore` and sets `customTriangles` + `preset: "custom"` when a mesh exists; it is the sole caller of `solveLpbfBuildJob`. Python solver already maps live triangles to `geometrySource: "uploaded-stl"` and derives bbox/mass/time from them. No upload path skips the mesh or omits `customTriangles`, so no code change.
+- **Where we left off**: Nothing left — wiring already correct and covered by tests. Browser click-through N/A (no browser MCP).
+- **Files**: `sonkayıtlar/LOG.md` (audit only; no source change)
+- **Tests**: `py -3 python/test_stl_live_triangles.py` PASS; `py -3 python/test_lpbf_build_job.py` PASS; `npx tsc --noEmit` PASS.
+
+---
+
 ## 2026-09-05 21:20 — Surface STL + W/h + P–v + mass/time + assumptions
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

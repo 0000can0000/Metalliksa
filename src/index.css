@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    background-color: #070b12;
+    color: #e2e8f0;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* Aerospace Minimalist Scrollbars */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090e18;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #38bdf8;
+  }
+}
+
+/* Android & Mobile Safe Area Utilities */
+.pb-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Aerospace Ice-Blue Minimalist utilities */
+.glow-ice {
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+}
+
+.glow-ice-sm {
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.3);
+}
+
+.aero-panel {
+  background-color: #0c121e;
+  border-color: #1a2538;
+}
+
+.aero-input {
+  background-color: #090e18;
+  border-color: #1a2538;
+  color: #f1f5f9;
+}
+.aero-input:focus {
+  border-color: #38bdf8;
+  outline: none;
+}
+
+@keyframes laserScan {
+  0% {
+    top: 0%;
+  }
+  50% {
+    top: 98%;
+  }
+  100% {
+    top: 0%;
+  }
+}
+
+.animate-laserScan {
+  position: absolute;
+  animation: laserScan 2.4s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+

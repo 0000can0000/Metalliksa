@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Sparkles,
   FlaskConical,
@@ -43,11 +43,29 @@ import { LPBFAdditivePhysicsSuite } from "./LPBFAdditivePhysicsSuite";
 import { HeatTreatmentAgingSimulator } from "./HeatTreatmentAgingSimulator";
 import { SendToModuleButton } from "./SendToModuleButton";
 import { createPipelinePayloadFromCandidate, setActivePipelineMaterial } from "../utils/materialDataPipeline";
-import { useMaterialSpecimenStore, SPECIMEN_PRESETS } from "../store/useMaterialSpecimenStore";
+import { useMaterialSpecimenStore, SPECIMEN_PRESETS, BaseMetalType } from "../store/useMaterialSpecimenStore";
 import { Gauge } from "lucide-react";
 
 interface InverseAlloyStudioProps {
   onNavigate?: (tabId: string) => void;
+}
+
+function inverseMatrixToBaseMetal(matrix: InverseDesignTargets["baseMatrix"]): BaseMetalType | undefined {
+  if (matrix === "Nickel") return "Ni";
+  if (matrix === "Titanium") return "Ti";
+  if (matrix === "Steel") return "Fe";
+  if (matrix === "Aluminum") return "Al";
+  if (matrix === "Refractory") return "Refractory";
+  return undefined;
+}
+
+function pushCandidateToBuildJob(cand: CandidateAlloySolution, targets: InverseDesignTargets) {
+  useMaterialSpecimenStore.getState().updateComposition(
+    cand.compositionWt,
+    cand.name,
+    inverseMatrixToBaseMetal(targets.baseMatrix),
+    `Alloy Designer: ${cand.archetype}`
+  );
 }
 
 export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNavigate }) => {
@@ -181,6 +199,11 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
       candidateSolutions[0]
     );
   }, [candidateSolutions, selectedCandidateId]);
+
+  useEffect(() => {
+    if (activeTab !== "lpbf-physics") return;
+    pushCandidateToBuildJob(activeCandidate, targets);
+  }, [activeTab, activeCandidate, targets]);
 
   // Hume Rothery Explorer States
   const [solventSymbol, setSolventSymbol] = useState<string>("Ni");
@@ -549,12 +572,7 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
                       key={cand.id}
                       onClick={() => {
                         setSelectedCandidateId(cand.id);
-                        useMaterialSpecimenStore.getState().updateComposition(
-                          cand.compositionWt,
-                          cand.name,
-                          targets.baseMatrix === "Nickel" ? "Ni" : undefined,
-                          `Alloy Designer: ${cand.archetype}`
-                        );
+                        pushCandidateToBuildJob(cand, targets);
                       }}
                       className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between space-y-3 ${
                         isSelected
@@ -845,6 +863,10 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
          ========================================================================= */}
       {activeTab === "lpbf-physics" && (
         <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/30 text-[11px] font-mono text-sky-200">
+            Build Job process vector (P, v, h, t, d, preheat) is shared with 3D LPBF Simulation via{" "}
+            <strong>useMaterialSpecimenStore.lpbf</strong>. Changing sliders here updates the digital twin job.
+          </div>
           {/* Candidate selector pills inside LPBF suite */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-[#090e18] border border-[#162032]">
             <div className="flex items-center gap-2">
@@ -857,7 +879,10 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
               {candidateSolutions.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => setSelectedCandidateId(c.id)}
+                  onClick={() => {
+                    setSelectedCandidateId(c.id);
+                    pushCandidateToBuildJob(c, targets);
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
                     selectedCandidateId === c.id
                       ? "bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold shadow-sm shadow-rose-500/20"

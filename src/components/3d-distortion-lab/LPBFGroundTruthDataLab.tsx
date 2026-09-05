@@ -60,6 +60,8 @@ export interface LPBFGroundTruthDataLabProps {
     speed_mms: number;
     hatch_um: number;
     layer_um: number;
+    beam_um?: number;
+    doi?: string;
     material: string;
   }) => void;
 }
@@ -76,10 +78,23 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<TraceableLPBFRecord | null>(null);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
 
-  // Load user records on mount
+  // Load user records on mount and seed calculator/form from Build Job store
   useEffect(() => {
     const saved = loadUserLPBFRecords();
     setUserRecords(saved);
+    const lpbf = useMaterialSpecimenStore.getState().activeSpecimen.lpbf;
+    setCalcPower_W(lpbf.laserPower_W);
+    setCalcSpeed_mm_s(lpbf.scanSpeed_mms);
+    setCalcHatch_um(lpbf.hatch_um);
+    setCalcLayer_um(lpbf.layer_um);
+    setCalcSpot_um(lpbf.beamDiameter_um);
+    setCalcAbsorptivity(lpbf.laserAbsorptivity);
+    setFormPower(lpbf.laserPower_W);
+    setFormSpeed(lpbf.scanSpeed_mms);
+    setFormHatch(lpbf.hatch_um);
+    setFormLayer(lpbf.layer_um);
+    setFormSpot(lpbf.beamDiameter_um);
+    if (lpbf.specimenDoi) setFormDoi(lpbf.specimenDoi);
   }, []);
 
   // Derived Quantities Interactive Sandbox State
@@ -296,6 +311,14 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
     setUserRecords(updated);
     saveUserLPBFRecords(updated);
     setSelectedRecord(newRec);
+    useMaterialSpecimenStore.getState().updateLpbfProcess({
+      laserPower_W: formPower,
+      scanSpeed_mms: formSpeed,
+      hatch_um: formHatch,
+      layer_um: formLayer,
+      beamDiameter_um: formSpot,
+      specimenDoi: formDoi,
+    });
     setSyncNotice(`✅ Record ${formSampleCode} saved with 5-tier traceability!`);
     setTimeout(() => setSyncNotice(null), 4000);
   };
@@ -314,6 +337,13 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
           recommendedScanSpeed_mms: rec.params.scanSpeed_mm_s,
           recommendedHatch_um: rec.params.hatchSpacing_um,
           recommendedLayer_um: rec.params.layerThickness_um,
+          laserPower_W: rec.params.laserPower_W,
+          scanSpeed_mms: rec.params.scanSpeed_mm_s,
+          hatch_um: rec.params.hatchSpacing_um,
+          layer_um: rec.params.layerThickness_um,
+          beamDiameter_um: rec.params.beamSpotDiameter_um,
+          preheatTemp_C: rec.params.baseplatePreheat_C,
+          specimenDoi: rec.source.doi,
         },
       });
       setSyncNotice(`Pushed ${rec.sample.sampleCode} to Active Specimen & Digital Twin!`);
@@ -877,6 +907,8 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                                   speed_mms: rec.params.scanSpeed_mm_s,
                                   hatch_um: rec.params.hatchSpacing_um,
                                   layer_um: rec.params.layerThickness_um,
+                                  beam_um: rec.params.beamSpotDiameter_um,
+                                  doi: rec.source.doi,
                                   material: rec.build.alloyName,
                                 });
                               }

@@ -123,3 +123,17 @@ This logbook records all empirically tested and mathematically verified models, 
   - `tsc --noEmit` after TypeScript contour loft + literature panel.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 008: Shared Build Job Energy Vector (VED + LED + \(I_0\) + King \(\Delta H/h_s\))
+- **Date**: 2026-09-05
+- **Module**: `src/physics/lpbfBuildJob.ts` / `useMaterialSpecimenStore.lpbf`
+- **Scope**: Single process vector \(P,v,h,t,d\) for the LPBF digital twin. Regime uses hatch/layer vs melt-pool size (LoF), King enthalpy + \(I_0\) (keyhole), and LED/speed (balling) — not VED alone.
+- **Input (Ti-6Al-4V)**: \(P=200\,\text{W}\), \(v=900\,\text{mm/s}\), \(h=100\,\mu\text{m}\), \(t=30\,\mu\text{m}\), \(d=80\,\mu\text{m}\)
+- **Expected VED**: \(E_V = 200/(900\cdot0.1\cdot0.03) = 74.07\,\text{J/mm}^3\)
+- **Expected \(I_0\)**: \(4P/(\pi d^2)\) with \(d=80\,\mu\text{m}=0.008\,\text{cm}\) → \(3.979\,\text{MW/cm}^2\)
+- **Literature**: King et al. keyhole onset \(\Delta H/h_s \approx 30\); LoF when \(h>W\) or \(t>D\) (AGENTS.md).
+- **Observed**: `evaluateLpbfBuildJob` VED \(74.07\), \(I_0\) \(3.979\) MW/cm² (0% deviation). `tsc --noEmit` zero errors.
+- **Pass criterion**: VED and \(I_0\) within \(0.5\%\) of closed-form values.
+- **Status**: **PASS**
+

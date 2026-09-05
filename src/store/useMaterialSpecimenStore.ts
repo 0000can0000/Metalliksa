@@ -4,6 +4,82 @@ import { setActivePipelineMaterial, PipelineMaterialPayload } from "../utils/mat
 
 export type BaseMetalType = "Ni" | "Fe" | "Ti" | "Al" | "Cu" | "Co" | "Mg" | "Refractory" | "Other";
 
+export type LpbfScanStrategy = "island" | "meander-67" | "stripe";
+export type LpbfBeamProfile = "gaussian" | "flat-top";
+
+export interface LpbfSpecimenState {
+  recommendedLaserPower_W: number;
+  recommendedScanSpeed_mms: number;
+  recommendedHatch_um: number;
+  recommendedLayer_um: number;
+  recommendedPreheatTemp_C: number;
+  thermalConductivity_k_WmK: number;
+  density_rho_kgm3: number;
+  specificHeat_Cp_JkgK: number;
+  laserAbsorptivity: number;
+  thermalExpansion_CTE_10e6: number;
+  criticalGradient_G_Km: number;
+  hotTearingSusceptibility: "Low" | "Moderate" | "High";
+  crackingMechanism: string;
+  mitigationRecommendation: string;
+  /** Active Build Job process vector — single source for all LPBF sub-labs */
+  laserPower_W: number;
+  scanSpeed_mms: number;
+  hatch_um: number;
+  layer_um: number;
+  beamDiameter_um: number;
+  preheatTemp_C: number;
+  scanStrategy: LpbfScanStrategy;
+  beamProfile: LpbfBeamProfile;
+  cadAssetName: string;
+  specimenDoi: string;
+}
+
+export type LpbfProcessPatch = Partial<
+  Pick<
+    LpbfSpecimenState,
+    | "laserPower_W"
+    | "scanSpeed_mms"
+    | "hatch_um"
+    | "layer_um"
+    | "beamDiameter_um"
+    | "preheatTemp_C"
+    | "scanStrategy"
+    | "beamProfile"
+    | "cadAssetName"
+    | "specimenDoi"
+  >
+>;
+
+export function withLpbfProcessDefaults(lpbf: Partial<LpbfSpecimenState> & Pick<LpbfSpecimenState, "recommendedLaserPower_W" | "recommendedScanSpeed_mms" | "recommendedHatch_um" | "recommendedLayer_um" | "recommendedPreheatTemp_C">): LpbfSpecimenState {
+  return {
+    recommendedLaserPower_W: lpbf.recommendedLaserPower_W,
+    recommendedScanSpeed_mms: lpbf.recommendedScanSpeed_mms,
+    recommendedHatch_um: lpbf.recommendedHatch_um,
+    recommendedLayer_um: lpbf.recommendedLayer_um,
+    recommendedPreheatTemp_C: lpbf.recommendedPreheatTemp_C,
+    thermalConductivity_k_WmK: lpbf.thermalConductivity_k_WmK ?? 11.5,
+    density_rho_kgm3: lpbf.density_rho_kgm3 ?? 8200,
+    specificHeat_Cp_JkgK: lpbf.specificHeat_Cp_JkgK ?? 435,
+    laserAbsorptivity: lpbf.laserAbsorptivity ?? 0.58,
+    thermalExpansion_CTE_10e6: lpbf.thermalExpansion_CTE_10e6 ?? 13,
+    criticalGradient_G_Km: lpbf.criticalGradient_G_Km ?? 1.5e7,
+    hotTearingSusceptibility: lpbf.hotTearingSusceptibility ?? "Moderate",
+    crackingMechanism: lpbf.crackingMechanism ?? "",
+    mitigationRecommendation: lpbf.mitigationRecommendation ?? "",
+    laserPower_W: lpbf.laserPower_W ?? lpbf.recommendedLaserPower_W,
+    scanSpeed_mms: lpbf.scanSpeed_mms ?? lpbf.recommendedScanSpeed_mms,
+    hatch_um: lpbf.hatch_um ?? lpbf.recommendedHatch_um,
+    layer_um: lpbf.layer_um ?? lpbf.recommendedLayer_um,
+    beamDiameter_um: lpbf.beamDiameter_um ?? 80,
+    preheatTemp_C: lpbf.preheatTemp_C ?? lpbf.recommendedPreheatTemp_C,
+    scanStrategy: lpbf.scanStrategy ?? "meander-67",
+    beamProfile: lpbf.beamProfile ?? "gaussian",
+    cadAssetName: lpbf.cadAssetName ?? "",
+    specimenDoi: lpbf.specimenDoi ?? "",
+  };
+}
+
 export interface ActiveSpecimenState {
   id: string;
   name: string;
@@ -27,23 +103,8 @@ export interface ActiveSpecimenState {
   youngsModulus_GPa: number;
   elongation_pct: number;
   
-  // 3D LPBF Additive & Melt Pool Parameters (Propagated directly to Tab 3)
-  lpbf: {
-    recommendedLaserPower_W: number;
-    recommendedScanSpeed_mms: number;
-    recommendedHatch_um: number;
-    recommendedLayer_um: number;
-    recommendedPreheatTemp_C: number;
-    thermalConductivity_k_WmK: number;
-    density_rho_kgm3: number;
-    specificHeat_Cp_JkgK: number;
-    laserAbsorptivity: number;
-    thermalExpansion_CTE_10e6: number;
-    criticalGradient_G_Km: number;
-    hotTearingSusceptibility: "Low" | "Moderate" | "High";
-    crackingMechanism: string;
-    mitigationRecommendation: string;
-  };
+  // 3D LPBF Additive & Melt Pool Parameters (single Build Job source)
+  lpbf: LpbfSpecimenState;
   
   // Crystallography & XRD (Propagated directly to XRD Lab)
   xrd: {
@@ -73,6 +134,7 @@ export interface MaterialSpecimenStore {
     sourceTab?: string
   ) => void;
   setSpecimen: (specimen: Partial<ActiveSpecimenState>) => void;
+  updateLpbfProcess: (patch: LpbfProcessPatch) => void;
   loadPreset: (presetId: string) => void;
   resetToDefault: () => void;
 }
@@ -360,7 +422,7 @@ export function deriveSpecimenProperties(
     density_gcm3,
     youngsModulus_GPa,
     elongation_pct,
-    lpbf: {
+    lpbf: withLpbfProcessDefaults({
       recommendedLaserPower_W,
       recommendedScanSpeed_mms,
       recommendedHatch_um: 100,
@@ -375,7 +437,7 @@ export function deriveSpecimenProperties(
       hotTearingSusceptibility,
       crackingMechanism,
       mitigationRecommendation,
-    },
+    }),
     xrd: {
       crystalSystem,
       spaceGroup,
@@ -491,10 +553,24 @@ export const useMaterialSpecimenStore = create<MaterialSpecimenStore>()(
       activeSpecimen: INITIAL_SPECIMEN,
 
       updateComposition: (newComposition, customName, forcedBaseMetal, sourceTab = "Alloy Formulator (Tab 1)") => {
+        const previousProcess = get().activeSpecimen?.lpbf;
         const derived = deriveSpecimenProperties(newComposition, customName, forcedBaseMetal);
         const nextSpecimen: ActiveSpecimenState = {
           id: `specimen-${Date.now()}`,
           ...derived,
+          lpbf: withLpbfProcessDefaults({
+            ...derived.lpbf,
+            laserPower_W: previousProcess?.laserPower_W,
+            scanSpeed_mms: previousProcess?.scanSpeed_mms,
+            hatch_um: previousProcess?.hatch_um,
+            layer_um: previousProcess?.layer_um,
+            beamDiameter_um: previousProcess?.beamDiameter_um,
+            preheatTemp_C: previousProcess?.preheatTemp_C,
+            scanStrategy: previousProcess?.scanStrategy,
+            beamProfile: previousProcess?.beamProfile,
+            cadAssetName: previousProcess?.cadAssetName,
+            specimenDoi: previousProcess?.specimenDoi,
+          }),
           sourceTab,
           lastModified: Date.now(),
           isCustomModified: true,
@@ -598,6 +674,20 @@ export const useMaterialSpecimenStore = create<MaterialSpecimenStore>()(
           activeSpecimen: {
             ...state.activeSpecimen,
             ...partial,
+            lpbf: partial.lpbf
+              ? withLpbfProcessDefaults({ ...state.activeSpecimen.lpbf, ...partial.lpbf })
+              : state.activeSpecimen.lpbf,
+            lastModified: Date.now(),
+            isCustomModified: true,
+          },
+        }));
+      },
+
+      updateLpbfProcess: (patch) => {
+        set((state) => ({
+          activeSpecimen: {
+            ...state.activeSpecimen,
+            lpbf: withLpbfProcessDefaults({ ...state.activeSpecimen.lpbf, ...patch }),
             lastModified: Date.now(),
             isCustomModified: true,
           },
@@ -608,6 +698,14 @@ export const useMaterialSpecimenStore = create<MaterialSpecimenStore>()(
         const preset = SPECIMEN_PRESETS[presetId];
         if (!preset) return;
         get().updateComposition(preset.composition, preset.name, preset.base, `Preset (${preset.name})`);
+        const rec = get().activeSpecimen.lpbf;
+        get().updateLpbfProcess({
+          laserPower_W: rec.recommendedLaserPower_W,
+          scanSpeed_mms: rec.recommendedScanSpeed_mms,
+          hatch_um: rec.recommendedHatch_um,
+          layer_um: rec.recommendedLayer_um,
+          preheatTemp_C: rec.recommendedPreheatTemp_C,
+        });
       },
 
       resetToDefault: () => {
@@ -615,8 +713,26 @@ export const useMaterialSpecimenStore = create<MaterialSpecimenStore>()(
       },
     }),
     {
-      name: "metallix_active_material_specimen_v1",
+      name: "metallix_active_material_specimen_v2",
+      version: 2,
       partialize: (state) => ({ activeSpecimen: state.activeSpecimen }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<MaterialSpecimenStore> | undefined;
+        const specimen = persistedState?.activeSpecimen;
+        if (!specimen) return current;
+        return {
+          ...current,
+          ...persistedState,
+          activeSpecimen: {
+            ...current.activeSpecimen,
+            ...specimen,
+            lpbf: withLpbfProcessDefaults({
+              ...current.activeSpecimen.lpbf,
+              ...specimen.lpbf,
+            }),
+          },
+        };
+      },
     }
   )
 );

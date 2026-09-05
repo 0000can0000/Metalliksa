@@ -320,6 +320,15 @@ export const SolidificationFrontCETLab: React.FC<SolidificationCETLabProps> = ({
     }
   }, [currentMaterial]);
 
+  useEffect(() => {
+    setLaserPower_W(currentPower_W);
+    setScanSpeed_mms(currentSpeed_mms);
+    setHatchSpacing_um(currentHatch_um);
+    setBeamDiameter_um(currentBeamDiameter_um);
+    setBedPreheat_C(currentPreheat_C);
+    setLayerThickness_um(currentLayer_um);
+  }, [currentPower_W, currentSpeed_mms, currentHatch_um, currentBeamDiameter_um, currentPreheat_C, currentLayer_um]);
+
   // Update nucleation site density when alloy changes
   const effectiveN0_m3 = useMemo(() => {
     return Math.pow(10, inoculantBoost_logN0);

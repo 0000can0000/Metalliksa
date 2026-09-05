@@ -208,12 +208,21 @@ export const ThermalMeltPoolVisualization: React.FC = () => {
     };
   }, [activeSpecimen]);
 
-  // Primary Laser & Process Parameters
-  const [laserPower_W, setLaserPower_W] = useState<number>(() => activeUniversalThermalAlloy.defaultPower_W);
-  const [scanSpeed_mms, setScanSpeed_mms] = useState<number>(() => activeUniversalThermalAlloy.defaultSpeed_mms);
-  const [beamSpotRadius_um, setBeamSpotRadius_um] = useState<number>(() => activeUniversalThermalAlloy.defaultSpot_um / 2); // radius r0
-  const [preheatTemp_C, setPreheatTemp_C] = useState<number>(80);
-  const [beamProfile, setBeamProfile] = useState<"gaussian" | "top-hat">("gaussian");
+  const lpbfJob = useMaterialSpecimenStore((s) => s.activeSpecimen.lpbf);
+  const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+
+  // Primary Laser & Process Parameters — Build Job store
+  const laserPower_W = lpbfJob.laserPower_W;
+  const scanSpeed_mms = lpbfJob.scanSpeed_mms;
+  const beamSpotRadius_um = lpbfJob.beamDiameter_um / 2;
+  const preheatTemp_C = lpbfJob.preheatTemp_C;
+  const beamProfile = lpbfJob.beamProfile === "flat-top" ? "top-hat" : "gaussian";
+  const setLaserPower_W = (v: number) => updateLpbfProcess({ laserPower_W: v });
+  const setScanSpeed_mms = (v: number) => updateLpbfProcess({ scanSpeed_mms: v });
+  const setBeamSpotRadius_um = (v: number) => updateLpbfProcess({ beamDiameter_um: Math.round(v * 2) });
+  const setPreheatTemp_C = (v: number) => updateLpbfProcess({ preheatTemp_C: v });
+  const setBeamProfile = (v: "gaussian" | "top-hat") =>
+    updateLpbfProcess({ beamProfile: v === "top-hat" ? "flat-top" : "gaussian" });
 
   // Visualization Modes & Toggles
   const [viewPlane, setViewPlane] = useState<ViewPlane>("xy-longitudinal");
@@ -238,28 +247,9 @@ export const ThermalMeltPoolVisualization: React.FC = () => {
 
   const handleSelectAlloy = (aId: string) => {
     setSelectedAlloyId(aId);
-    if (aId === "active-universal-specimen") {
-      setLaserPower_W(activeUniversalThermalAlloy.defaultPower_W);
-      setScanSpeed_mms(activeUniversalThermalAlloy.defaultSpeed_mms);
-      setBeamSpotRadius_um(activeUniversalThermalAlloy.defaultSpot_um / 2);
-      return;
-    }
-    const item = THERMAL_ALLOYS.find((a) => a.id === aId);
-    if (item) {
-      setLaserPower_W(item.defaultPower_W);
-      setScanSpeed_mms(item.defaultSpeed_mms);
-      setBeamSpotRadius_um(item.defaultSpot_um / 2);
-    }
   };
 
-  // Instantly propagate active specimen changes from Tab 1 into the thermal simulation
-  useEffect(() => {
-    if (selectedAlloyId === "active-universal-specimen") {
-      setLaserPower_W(activeUniversalThermalAlloy.defaultPower_W);
-      setScanSpeed_mms(activeUniversalThermalAlloy.defaultSpeed_mms);
-      setBeamSpotRadius_um(activeUniversalThermalAlloy.defaultSpot_um / 2);
-    }
-  }, [activeSpecimen.lastModified, activeUniversalThermalAlloy, selectedAlloyId]);
+  // Process vector lives in useMaterialSpecimenStore.lpbf — do not reset on composition ticks.
 
   // -------------------------------------------------------------
   // ANALYTICAL 3D ROSENTHAL / MODIFIED EAGAR-TSAI THERMAL SOLVER

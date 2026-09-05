@@ -53,6 +53,7 @@ import {
   LayerSliceData,
   FullStackSliceInfo,
 } from "../../utils/stlParser";
+import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 
 export interface BasicSTLSlicerLabProps {
   initialPower_W?: number;
@@ -103,6 +104,15 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
   const [recoatTimePerLayer_s, setRecoatTimePerLayer_s] = useState<number>(9.5);
   const [hatchStrategy, setHatchStrategy] = useState<"meander_67" | "meander_90" | "unidirectional" | "cross_0_90">("meander_67");
   const [contourSkinPasses, setContourSkinPasses] = useState<number>(2);
+  const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+
+  useEffect(() => {
+    setLaserPower_W(initialPower_W);
+    setScanSpeed_mms(initialSpeed_mms);
+    setLayerThickness_um(initialLayer_um);
+    setHatchSpacing_um(initialHatch_um);
+    setSelectedMaterial(initialMaterial);
+  }, [initialPower_W, initialSpeed_mms, initialLayer_um, initialHatch_um, initialMaterial]);
 
   // Slicer Interactive Scrubbing State
   const [activeLayerIndex, setActiveLayerIndex] = useState<number>(1);
@@ -251,6 +261,7 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
 
     setUploadError(null);
     setUploadedFileName(file.name);
+    updateLpbfProcess({ cadAssetName: file.name });
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -1566,6 +1577,7 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                     onClick={() => {
                       setLayerThickness_um(t);
                       setActiveLayerIndex(1);
+                      updateLpbfProcess({ layer_um: t });
                     }}
                     className={`py-1 rounded-lg text-xs font-mono transition ${
                       layerThickness_um === t
@@ -1591,7 +1603,11 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                 max={200}
                 step={5}
                 value={hatchSpacing_um}
-                onChange={(e) => setHatchSpacing_um(parseInt(e.target.value, 10))}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setHatchSpacing_um(v);
+                  updateLpbfProcess({ hatch_um: v });
+                }}
                 className="w-full h-1.5 bg-[#0c1424] rounded-lg appearance-none cursor-pointer accent-emerald-400"
               />
               <div className="flex justify-between text-[10px] text-slate-500 font-mono">
@@ -1613,7 +1629,11 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                 max={600}
                 step={10}
                 value={laserPower_W}
-                onChange={(e) => setLaserPower_W(parseInt(e.target.value, 10))}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setLaserPower_W(v);
+                  updateLpbfProcess({ laserPower_W: v });
+                }}
                 className="w-full h-1.5 bg-[#0c1424] rounded-lg appearance-none cursor-pointer accent-amber-400"
               />
             </div>
@@ -1630,7 +1650,11 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                 max={2000}
                 step={20}
                 value={scanSpeed_mms}
-                onChange={(e) => setScanSpeed_mms(parseInt(e.target.value, 10))}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setScanSpeed_mms(v);
+                  updateLpbfProcess({ scanSpeed_mms: v });
+                }}
                 className="w-full h-1.5 bg-[#0c1424] rounded-lg appearance-none cursor-pointer accent-sky-400"
               />
             </div>
@@ -1665,7 +1689,17 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                   <button
                     key={strat.id}
                     type="button"
-                    onClick={() => setHatchStrategy(strat.id as any)}
+                    onClick={() => {
+                      setHatchStrategy(strat.id as any);
+                      updateLpbfProcess({
+                        scanStrategy:
+                          strat.id === "unidirectional"
+                            ? "stripe"
+                            : strat.id === "meander_67"
+                              ? "meander-67"
+                              : "island",
+                      });
+                    }}
                     className={`p-2 rounded-xl text-left text-xs font-mono transition ${
                       hatchStrategy === strat.id
                         ? "bg-cyan-500/25 text-cyan-200 border border-cyan-400/50 font-bold"

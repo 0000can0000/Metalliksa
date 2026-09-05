@@ -4,6 +4,15 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-05 19:35 — Single LPBF Build Job digital twin
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: One Build Job line (STL → scan → P–v–h–t–d → regime → pores/distortion/Ṫ → DOI specimen) with `useMaterialSpecimenStore.lpbf` as the only process vector, including Inverse Alloy LPBF.
+- **Done**: Store now holds live P, v, h, t, d, preheat, scan strategy, CAD name, DOI. 3D LPBF Simulation shows a persistent Build Job rail; sub-labs and Inverse Alloy LPBF read/write the same vector. Rosenthal props were wired to that vector.
+- **Where we left off**: Nothing left on this task. Browser click-through was not available in this session (no browser MCP); typecheck and closed-form VED/\(I_0\) checks passed.
+- **Files**: `src/store/useMaterialSpecimenStore.ts`, `src/physics/lpbfBuildJob.ts`, `src/components/LpbfBuildJobRail.tsx`, `src/components/Additive3DDistortionLab.tsx`, `src/components/LPBFAdditivePhysicsSuite.tsx`, `src/components/InverseAlloyStudio.tsx`, `src/components/3d-distortion-lab/*`, `src/components/LaserMeltPoolThermalMap.tsx`, `AGENTS.md`, `PROOF.md`
+- **Tests**: `npx tsc --noEmit` — PASS. `npx tsx` evaluateLpbfBuildJob Ti-6Al-4V 200 W / 900 mm/s / 100 / 30 / 80 → VED 74.07 J/mm³, I₀ 3.979 MW/cm² — PASS.
+
 ## 2026-09-05 19:07 — Log interrupted jobs in sonkayıtlar
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

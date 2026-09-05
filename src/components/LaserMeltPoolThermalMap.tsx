@@ -108,6 +108,18 @@ export const LaserMeltPoolThermalMap: React.FC<Props> = ({
   useEffect(() => {
     setPreheatTemp_C(initialPreheatTemp);
   }, [initialPreheatTemp]);
+  useEffect(() => {
+    setLayerThickness_um(initialLayerThickness);
+  }, [initialLayerThickness]);
+  useEffect(() => {
+    setHatchSpacing_um(initialHatchSpacing);
+  }, [initialHatchSpacing]);
+  useEffect(() => {
+    setLayerThickness_um(initialLayerThickness);
+  }, [initialLayerThickness]);
+  useEffect(() => {
+    setHatchSpacing_um(initialHatchSpacing);
+  }, [initialHatchSpacing]);
 
   // Execute Python LPBF Solver
   const runPythonSolver = useCallback(async () => {

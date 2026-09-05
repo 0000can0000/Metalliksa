@@ -85,6 +85,15 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const [selectedMaterial, setSelectedMaterial] = useState<string>(initialMaterial);
   const [laserWavelength, setLaserWavelength] = useState<"IR_1064nm" | "Green_515nm" | "Blue_450nm">("IR_1064nm");
 
+  useEffect(() => {
+    setLaserPower_W(initialPower_W);
+    setScanSpeed_mms(initialSpeed_mms);
+    setBeamDiameter_um(initialBeamDiameter_um);
+    setPreheatTemp_C(initialPreheat_C);
+    setLayerThickness_um(initialLayer_um);
+    setHatchSpacing_um(initialHatch_um);
+  }, [initialPower_W, initialSpeed_mms, initialBeamDiameter_um, initialPreheat_C, initialLayer_um, initialHatch_um]);
+
   // 3D Visualization Controls
   const [slicingPlane, setSlicingPlane] = useState<SlicingPlane>("quarter-cutaway");
   const [sliceCutOffset, setSliceCutOffset] = useState<number>(0); // -100 to +100 um
@@ -110,6 +119,24 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const animationFrameId = useRef<number | null>(null);
   const autoRotateRef = useRef(autoRotate);
   autoRotateRef.current = autoRotate;
+
+  useEffect(() => {
+    setLaserPower_W(initialPower_W);
+    setScanSpeed_mms(initialSpeed_mms);
+    setBeamDiameter_um(initialBeamDiameter_um);
+    setPreheatTemp_C(initialPreheat_C);
+    setLayerThickness_um(initialLayer_um);
+    setHatchSpacing_um(initialHatch_um);
+    setSelectedMaterial(initialMaterial);
+  }, [
+    initialPower_W,
+    initialSpeed_mms,
+    initialBeamDiameter_um,
+    initialPreheat_C,
+    initialLayer_um,
+    initialHatch_um,
+    initialMaterial,
+  ]);
 
   // Execute Python Solver
   const solvePhysics = useCallback(async () => {

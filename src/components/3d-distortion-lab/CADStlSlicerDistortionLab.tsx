@@ -140,7 +140,33 @@ const AM_ALLOY_PRESETS: Record<string, AlloyDefinition> = {
   },
 };
 
-export const CADStlSlicerDistortionLab: React.FC = () => {
+export interface CADStlSlicerDistortionLabProps {
+  laserPower_W?: number;
+  scanSpeed_mms?: number;
+  hatchSpacing_um?: number;
+  layerThickness_um?: number;
+  bedPreheat_C?: number;
+  scanStrategy?: "island" | "meander-67" | "stripe";
+  onProcessChange?: (p: {
+    laserPower_W?: number;
+    scanSpeed_mms?: number;
+    hatch_um?: number;
+    layer_um?: number;
+    preheatTemp_C?: number;
+    scanStrategy?: "island" | "meander-67" | "stripe";
+    cadAssetName?: string;
+  }) => void;
+}
+
+export const CADStlSlicerDistortionLab: React.FC<CADStlSlicerDistortionLabProps> = ({
+  laserPower_W: jobPower,
+  scanSpeed_mms: jobSpeed,
+  hatchSpacing_um: jobHatch,
+  layerThickness_um: jobLayer,
+  bedPreheat_C: jobPreheat,
+  scanStrategy: jobScan,
+  onProcessChange,
+}) => {
   // Model & Material Selection
   const [modelType, setModelType] = useState<CADModelType>("bracket");
   const [selectedAlloyKey, setSelectedAlloyKey] = useState<string>("Inconel 718");
@@ -153,12 +179,14 @@ export const CADStlSlicerDistortionLab: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AM Machine & Process Parameters
-  const [laserPower_W, setLaserPower_W] = useState<number>(285);
-  const [scanSpeed_mms, setScanSpeed_mms] = useState<number>(960);
-  const [layerThickness_um, setLayerThickness_um] = useState<number>(40);
-  const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(110);
-  const [bedPreheat_C, setBedPreheat_C] = useState<number>(80);
-  const [scanStrategy, setScanStrategy] = useState<"meander_67" | "meander_90" | "island_5x5" | "unidirectional">("meander_67");
+  const [laserPower_W, setLaserPower_W] = useState<number>(jobPower ?? 285);
+  const [scanSpeed_mms, setScanSpeed_mms] = useState<number>(jobSpeed ?? 960);
+  const [layerThickness_um, setLayerThickness_um] = useState<number>(jobLayer ?? 40);
+  const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(jobHatch ?? 110);
+  const [bedPreheat_C, setBedPreheat_C] = useState<number>(jobPreheat ?? 80);
+  const [scanStrategy, setScanStrategy] = useState<"meander_67" | "meander_90" | "island_5x5" | "unidirectional">(
+    jobScan === "island" ? "island_5x5" : jobScan === "stripe" ? "unidirectional" : "meander_67"
+  );
   const [boundaryCondition, setBoundaryCondition] = useState<BoundaryConditionMode>("as_built_clamped");
   const [supportDensity_pct, setSupportDensity_pct] = useState<number>(35);
 
@@ -179,6 +207,17 @@ export const CADStlSlicerDistortionLab: React.FC = () => {
   const [isSolving, setIsSolving] = useState<boolean>(false);
   const [solverResult, setSolverResult] = useState<any>(null);
   const [solverError, setSolverError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (jobPower != null) setLaserPower_W(jobPower);
+    if (jobSpeed != null) setScanSpeed_mms(jobSpeed);
+    if (jobLayer != null) setLayerThickness_um(jobLayer);
+    if (jobHatch != null) setHatchSpacing_um(jobHatch);
+    if (jobPreheat != null) setBedPreheat_C(jobPreheat);
+    if (jobScan === "island") setScanStrategy("island_5x5");
+    else if (jobScan === "stripe") setScanStrategy("unidirectional");
+    else if (jobScan === "meander-67") setScanStrategy("meander_67");
+  }, [jobPower, jobSpeed, jobLayer, jobHatch, jobPreheat, jobScan]);
 
   // Three.js Canvas Refs
   const mountRef = useRef<HTMLDivElement>(null);
@@ -411,6 +450,7 @@ export const CADStlSlicerDistortionLab: React.FC = () => {
 
     setFileError(null);
     setUploadedFileName(file.name);
+    onProcessChange?.({ cadAssetName: file.name });
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -1628,7 +1668,13 @@ Verified by MetalliX Python Inherent Strain FEA Engine
               <label className="text-[11px] text-slate-400">Inter-Layer Scan Strategy:</label>
               <select
                 value={scanStrategy}
-                onChange={(e) => setScanStrategy(e.target.value as any)}
+                onChange={(e) => {
+                  const next = e.target.value as typeof scanStrategy;
+                  setScanStrategy(next);
+                  const mapped =
+                    next === "island_5x5" ? "island" : next === "unidirectional" ? "stripe" : "meander-67";
+                  onProcessChange?.({ scanStrategy: mapped });
+                }}
                 className="w-full bg-[#0c1424] border border-[#1e2d46] text-white text-xs rounded-xl px-3 py-2 font-mono focus:outline-none focus:border-cyan-400"
               >
                 <option value="meander_67">67° Alternating Stripe Meander (Low Anisotropy)</option>
@@ -1651,7 +1697,11 @@ Verified by MetalliX Python Inherent Strain FEA Engine
                   max={600}
                   step={10}
                   value={laserPower_W}
-                  onChange={(e) => setLaserPower_W(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    setLaserPower_W(v);
+                    onProcessChange?.({ laserPower_W: v });
+                  }}
                   className="w-full accent-cyan-400"
                 />
               </div>
@@ -1667,7 +1717,11 @@ Verified by MetalliX Python Inherent Strain FEA Engine
                   max={2000}
                   step={20}
                   value={scanSpeed_mms}
-                  onChange={(e) => setScanSpeed_mms(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    setScanSpeed_mms(v);
+                    onProcessChange?.({ scanSpeed_mms: v });
+                  }}
                   className="w-full accent-cyan-400"
                 />
               </div>
@@ -1686,7 +1740,11 @@ Verified by MetalliX Python Inherent Strain FEA Engine
                   max={100}
                   step={10}
                   value={layerThickness_um}
-                  onChange={(e) => setLayerThickness_um(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    setLayerThickness_um(v);
+                    onProcessChange?.({ layer_um: v });
+                  }}
                   className="w-full accent-sky-400"
                 />
               </div>
@@ -1702,7 +1760,11 @@ Verified by MetalliX Python Inherent Strain FEA Engine
                   max={450}
                   step={25}
                   value={bedPreheat_C}
-                  onChange={(e) => setBedPreheat_C(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    setBedPreheat_C(v);
+                    onProcessChange?.({ preheatTemp_C: v });
+                  }}
                   className="w-full accent-amber-400"
                 />
               </div>

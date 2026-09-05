@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { CandidateAlloySolution, InverseDesignTargets } from "../utils/inverseAlloyOptimizer";
 import { LaserMeltPoolThermalMap } from "./LaserMeltPoolThermalMap";
+import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
+import { evaluateLpbfBuildJob } from "../physics/lpbfBuildJob";
 
 interface Props {
   candidate: CandidateAlloySolution;
@@ -38,20 +40,69 @@ export interface LPBFProcessParameters {
   atomizationGas: "Argon" | "Nitrogen" | "VIGA_Vacuum";
 }
 
+function scanStrategyToSuite(s: LpbfScanStrategy): LPBFProcessParameters["scanStrategy"] {
+  if (s === "island") return "island_67";
+  if (s === "stripe") return "stripe_unidirectional";
+  return "meander_90";
+}
+
+function scanStrategyFromSuite(s: LPBFProcessParameters["scanStrategy"]): LpbfScanStrategy {
+  if (s === "island_67") return "island";
+  if (s === "stripe_unidirectional") return "stripe";
+  return "meander-67";
+}
+
 export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }) => {
   const [activeSubTab, setActiveSubTab] = useState<"thermal-map" | "process-window" | "scan-rheology">("thermal-map");
+  const specimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
+  const lpbf = specimen.lpbf;
+  const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+  const buildJobMetrics = useMemo(
+    () =>
+      evaluateLpbfBuildJob({
+        laserPower_W: lpbf.laserPower_W,
+        scanSpeed_mms: lpbf.scanSpeed_mms,
+        hatch_um: lpbf.hatch_um,
+        layer_um: lpbf.layer_um,
+        beamDiameter_um: lpbf.beamDiameter_um,
+        preheatTemp_C: lpbf.preheatTemp_C,
+        thermalConductivity_k_WmK: lpbf.thermalConductivity_k_WmK,
+        density_rho_kgm3: lpbf.density_rho_kgm3,
+        specificHeat_Cp_JkgK: lpbf.specificHeat_Cp_JkgK,
+        laserAbsorptivity: lpbf.laserAbsorptivity,
+        liquidus_C: specimen.liquidus_C,
+        beamProfile: lpbf.beamProfile,
+      }),
+    [lpbf, specimen.liquidus_C]
+  );
+  const [atomizationGas, setAtomizationGas] = useState<LPBFProcessParameters["atomizationGas"]>("Argon");
 
-  // LPBF Machine Parameters state
-  const [params, setParams] = useState<LPBFProcessParameters>(() => ({
-    laserPower_W: 280,
-    scanSpeed_mms: 950,
-    hatchSpacing_um: 90,
-    layerThickness_um: 40,
-    beamDiameter_um: 80,
-    preheatTemp_C: candidate.scheilKou.recommendedPreheatTemp_C || 80,
-    scanStrategy: "island_67",
-    atomizationGas: "Argon",
-  }));
+  const params: LPBFProcessParameters = {
+    laserPower_W: lpbf.laserPower_W,
+    scanSpeed_mms: lpbf.scanSpeed_mms,
+    hatchSpacing_um: lpbf.hatch_um,
+    layerThickness_um: lpbf.layer_um,
+    beamDiameter_um: lpbf.beamDiameter_um,
+    preheatTemp_C: lpbf.preheatTemp_C,
+    scanStrategy: scanStrategyToSuite(lpbf.scanStrategy),
+    atomizationGas,
+  };
+
+  const setParams = (
+    updater: LPBFProcessParameters | ((prev: LPBFProcessParameters) => LPBFProcessParameters)
+  ) => {
+    const next = typeof updater === "function" ? updater(params) : updater;
+    setAtomizationGas(next.atomizationGas);
+    updateLpbfProcess({
+      laserPower_W: next.laserPower_W,
+      scanSpeed_mms: next.scanSpeed_mms,
+      hatch_um: next.hatchSpacing_um,
+      layer_um: next.layerThickness_um,
+      beamDiameter_um: next.beamDiameter_um,
+      preheatTemp_C: next.preheatTemp_C,
+      scanStrategy: scanStrategyFromSuite(next.scanStrategy),
+    });
+  };
 
   // Element Vaporization Loss state
   const comp = candidate.compositionWt;
@@ -329,6 +380,9 @@ export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }
             <p className="text-xs text-slate-400 mt-1">
               Rosenthal 3D heat conduction, Eagar-Tsai melt pool geometry ($d/w$), solidification kinetics ($G \times R$), and element vaporization loss model.
             </p>
+            <p className="text-[10px] text-sky-300/80 mt-1.5 font-mono">
+              Build Job vector shared with Additive Lab — {specimen.name} · P {lpbf.laserPower_W} W · v {lpbf.scanSpeed_mms} mm/s · h {lpbf.hatch_um} µm · t {lpbf.layer_um} µm · d {lpbf.beamDiameter_um} µm · T₀ {lpbf.preheatTemp_C}°C · {buildJobMetrics.regime}
+            </p>
           </div>
 
           <div
@@ -566,6 +620,29 @@ export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }
             <div className="flex justify-between text-[9px] text-slate-500 font-mono">
               <span>20 μm</span>
               <span>80 μm</span>
+            </div>
+          </div>
+
+          {/* Slider 4b: Beam Diameter */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs font-mono">
+              <span className="text-slate-300">Beam Diameter (d)</span>
+              <strong className="text-cyan-400">{params.beamDiameter_um} μm</strong>
+            </div>
+            <input
+              type="range"
+              min="40"
+              max="140"
+              step="5"
+              value={params.beamDiameter_um}
+              onChange={(e) =>
+                setParams((p) => ({ ...p, beamDiameter_um: parseInt(e.target.value) }))
+              }
+              className="w-full h-1.5 bg-[#162032] rounded-lg appearance-none cursor-pointer accent-cyan-400"
+            />
+            <div className="flex justify-between text-[9px] text-slate-500 font-mono">
+              <span>40 μm</span>
+              <span>140 μm</span>
             </div>
           </div>
 

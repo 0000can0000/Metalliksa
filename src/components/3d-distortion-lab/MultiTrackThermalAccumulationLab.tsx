@@ -125,6 +125,13 @@ export const MultiTrackThermalAccumulationLab: React.FC<MultiTrackLabProps> = ({
   const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(currentHatch_um);
   const [preheatTemp_C, setPreheatTemp_C] = useState<number>(currentPreheat_C);
 
+  useEffect(() => {
+    if (currentPower_W != null) setLaserPower_W(currentPower_W);
+    if (currentSpeed_mms != null) setScanSpeed_mms(currentSpeed_mms);
+    if (currentHatch_um != null) setHatchSpacing_um(currentHatch_um);
+    if (currentPreheat_C != null) setPreheatTemp_C(currentPreheat_C);
+  }, [currentPower_W, currentSpeed_mms, currentHatch_um, currentPreheat_C]);
+
   // Advanced Scan Strategy Controls
   const [scanStrategy, setScanStrategy] = useState<ScanStrategyType>("meander");
   const [numTracks, setNumTracks] = useState<number>(14); // 6 to 24 tracks

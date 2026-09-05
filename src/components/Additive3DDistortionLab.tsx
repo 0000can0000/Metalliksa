@@ -51,7 +51,8 @@ import {
   BasicSTLSlicerLab,
   LPBFGroundTruthDataLab,
 } from "./3d-distortion-lab";
-import { useMaterialSpecimenStore } from "../store/useMaterialSpecimenStore";
+import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
+import { LpbfBuildJobRail } from "./LpbfBuildJobRail";
 
 
 export type HeatmapMode =
@@ -354,7 +355,7 @@ export const Additive3DDistortionLab: React.FC = () => {
     | "anisotropic-fatigue-estimator"
     | "operando-synchrotron"
     | "2d-thermal-melt-pool"
-  >("ground-truth-foundation");
+  >("basic-stl-slicer");
 
   // 3D Canvas Ref
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -363,16 +364,7 @@ export const Additive3DDistortionLab: React.FC = () => {
   const [modelType, setModelType] = useState<"nozzle" | "turbine" | "bracket" | "gyroid" | "custom">("nozzle");
   const [activeHeatmap, setActiveHeatmap] = useState<HeatmapMode>("residual-stress");
 
-  // LPBF Process Parameters
-  const [laserPower_W, setLaserPower_W] = useState<number>(285);
-  const [scanSpeed_mms, setScanSpeed_mms] = useState<number>(960);
-  const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(110);
-  const [layerThickness_um, setLayerThickness_um] = useState<number>(40);
-  const [beamSpotRadius_um, setBeamSpotRadius_um] = useState<number>(45); // r0 laser spot radius
-  const [beamProfileMode, setBeamProfileMode] = useState<"gaussian" | "flat-top">("gaussian");
   const [recoaterBladeType, setRecoaterBladeType] = useState<"ceramic_rigid" | "silicone_flexible">("ceramic_rigid");
-  const [bedPreheat_C, setBedPreheat_C] = useState<number>(200); // Baseplate preheat
-  const [scanStrategy, setScanStrategy] = useState<"island" | "meander-67" | "stripe">("meander-67");
 
   // Viewport toggles
   const [showWireframe, setShowWireframe] = useState<boolean>(false);
@@ -389,8 +381,19 @@ export const Additive3DDistortionLab: React.FC = () => {
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
   const [auditReport, setAuditReport] = useState<string | null>(null);
 
-  // Universal Specimen State from single reactive Zustand store
+  // Universal Specimen State from single reactive Zustand store (Build Job process vector)
   const activeSpecimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
+  const loadPreset = useMaterialSpecimenStore((s) => s.loadPreset);
+  const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
+  const lpbf = activeSpecimen.lpbf;
+  const laserPower_W = lpbf.laserPower_W;
+  const scanSpeed_mms = lpbf.scanSpeed_mms;
+  const hatchSpacing_um = lpbf.hatch_um;
+  const layerThickness_um = lpbf.layer_um;
+  const beamSpotRadius_um = lpbf.beamDiameter_um / 2;
+  const beamProfileMode = lpbf.beamProfile;
+  const bedPreheat_C = lpbf.preheatTemp_C;
+  const scanStrategy = lpbf.scanStrategy;
   const [selectedAlloyId, setSelectedAlloyId] = useState<string>("active-universal-specimen");
 
   const activeUniversalAlloy = useMemo<LpbfAlloyPreset>(() => {
@@ -427,34 +430,32 @@ export const Additive3DDistortionLab: React.FC = () => {
     return LPBF_ALLOY_PRESETS.find((a) => a.id === selectedAlloyId) || activeUniversalAlloy;
   }, [selectedAlloyId, activeUniversalAlloy]);
 
-  // Sync alloy defaults on selection
+  const PRESET_ID_MAP: Record<string, string> = {
+    "in718-lpbf": "inconel-718",
+    "ti64-eli-lpbf": "ti-6al-4v",
+    "ss316l-lpbf": "ss-316l",
+    "scalmalloy-lpbf": "alsi10mg",
+  };
+
   const handleSelectAlloy = (aId: string) => {
     setSelectedAlloyId(aId);
-    if (aId === "active-universal-specimen") {
-      setLaserPower_W(activeUniversalAlloy.recommendedLaserPower_W);
-      setScanSpeed_mms(activeUniversalAlloy.recommendedSpeed_mms);
-      setHatchSpacing_um(activeUniversalAlloy.recommendedHatch_um);
-      setLayerThickness_um(activeUniversalAlloy.recommendedLayer_um);
+    if (aId === "active-universal-specimen") return;
+    const mapped = PRESET_ID_MAP[aId];
+    if (mapped) {
+      loadPreset(mapped);
+      setSelectedAlloyId("active-universal-specimen");
       return;
     }
     const item = LPBF_ALLOY_PRESETS.find((a) => a.id === aId);
     if (item) {
-      setLaserPower_W(item.recommendedLaserPower_W);
-      setScanSpeed_mms(item.recommendedSpeed_mms);
-      setHatchSpacing_um(item.recommendedHatch_um);
-      setLayerThickness_um(item.recommendedLayer_um);
+      updateLpbfProcess({
+        laserPower_W: item.recommendedLaserPower_W,
+        scanSpeed_mms: item.recommendedSpeed_mms,
+        hatch_um: item.recommendedHatch_um,
+        layer_um: item.recommendedLayer_um,
+      });
     }
   };
-
-  // Keep parameters synchronized whenever user modifies active specimen in Tab 1
-  useEffect(() => {
-    if (selectedAlloyId === "active-universal-specimen") {
-      setLaserPower_W(activeUniversalAlloy.recommendedLaserPower_W);
-      setScanSpeed_mms(activeUniversalAlloy.recommendedSpeed_mms);
-      setHatchSpacing_um(activeUniversalAlloy.recommendedHatch_um);
-      setLayerThickness_um(activeUniversalAlloy.recommendedLayer_um);
-    }
-  }, [activeSpecimen.lastModified, activeUniversalAlloy, selectedAlloyId]);
 
   // THERMAL & DEFECT PHYSICS COMPUTATIONS:
   // 1. Volumetric Energy Density (VED):
@@ -1001,6 +1002,7 @@ export const Additive3DDistortionLab: React.FC = () => {
         setCustomStlGeometry(parsedGeom);
         setUploadedFileName(file.name);
         setModelType("custom");
+        updateLpbfProcess({ cadAssetName: file.name });
       } catch (err) {
         console.error("STL parse error", err);
       }
@@ -1063,6 +1065,11 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-mono">
+      <LpbfBuildJobRail
+        activeSubTab={activeSubTab}
+        onNavigateStage={(subTab) => setActiveSubTab(subTab as typeof activeSubTab)}
+      />
+
       {/* Sub-Module Navigation Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 bg-[#090e18] border border-[#1e2d46] rounded-2xl overflow-x-auto">
         <button
@@ -1245,10 +1252,14 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
       {activeSubTab === "ground-truth-foundation" ? (
         <LPBFGroundTruthDataLab
           onApplyParametersToSimulation={(p) => {
-            setLaserPower_W(p.power_W);
-            setScanSpeed_mms(p.speed_mms);
-            setHatchSpacing_um(p.hatch_um);
-            setLayerThickness_um(p.layer_um);
+            updateLpbfProcess({
+              laserPower_W: p.power_W,
+              scanSpeed_mms: p.speed_mms,
+              hatch_um: p.hatch_um,
+              layer_um: p.layer_um,
+              beamDiameter_um: p.beam_um,
+              specimenDoi: p.doi,
+            });
           }}
         />
       ) : activeSubTab === "3d-cross-section-melt-pool" ? (
@@ -1261,12 +1272,14 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           initialHatch_um={hatchSpacing_um}
           initialMaterial={alloy.name}
           onParametersChange={(p) => {
-            setLaserPower_W(p.laserPower_W);
-            setScanSpeed_mms(p.scanSpeed_mm_s);
-            setBeamSpotRadius_um(Math.round(p.beamDiameter_um / 2));
-            setBedPreheat_C(p.preheatTemp_C);
-            setLayerThickness_um(p.layerThickness_um);
-            setHatchSpacing_um(p.hatchSpacing_um);
+            updateLpbfProcess({
+              laserPower_W: p.laserPower_W,
+              scanSpeed_mms: p.scanSpeed_mm_s,
+              beamDiameter_um: p.beamDiameter_um,
+              preheatTemp_C: p.preheatTemp_C,
+              layer_um: p.layerThickness_um,
+              hatch_um: p.hatchSpacing_um,
+            });
           }}
         />
       ) : activeSubTab === "marangoni-pore-heatmap" ? (
@@ -1277,24 +1290,27 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           initialPreheat_C={bedPreheat_C}
           initialMaterial={alloy.name}
           onApplyParameters={(p) => {
-            setLaserPower_W(p.power_W);
-            setScanSpeed_mms(p.speed_mms);
-            setBedPreheat_C(p.preheat_C);
+            updateLpbfProcess({
+              laserPower_W: p.power_W,
+              scanSpeed_mms: p.speed_mms,
+              preheatTemp_C: p.preheat_C,
+            });
           }}
         />
       ) : activeSubTab === "rosenthal-laser-profile" ? (
         <RosenthalLaserProfileMeltPoolLab
-          currentPower_W={laserPower_W}
-          currentSpeed_mms={scanSpeed_mms}
-          currentBeamDiameter_um={beamSpotRadius_um * 2}
-          currentPreheat_C={bedPreheat_C}
-          currentLayer_um={layerThickness_um}
-          currentMaterial={alloy.name}
-          onApplyCalibratedParams={(p) => {
-            setLaserPower_W(p.laserPower_W);
-            setScanSpeed_mms(p.scanSpeed_mm_s);
-            setBeamSpotRadius_um(Math.round(p.beamDiameter_um / 2));
-            setBedPreheat_C(p.preheatTemp_C);
+          initialPower_W={laserPower_W}
+          initialSpeed_mms={scanSpeed_mms}
+          initialSpotRadius_um={beamSpotRadius_um}
+          initialPreheat_C={bedPreheat_C}
+          initialMaterial={alloy.name}
+          onApplyCalculatedParams={(p) => {
+            updateLpbfProcess({
+              laserPower_W: p.laserPower_W,
+              scanSpeed_mms: p.scanSpeed_mms,
+              beamDiameter_um: Math.round(p.beamSpotRadius_um * 2),
+              preheatTemp_C: p.preheatTemp_C,
+            });
           }}
         />
       ) : activeSubTab === "solidification-front-cet" ? (
@@ -1307,10 +1323,12 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           currentLayer_um={layerThickness_um}
           currentMaterial={alloy.name}
           onApplyParameters={(p) => {
-            setLaserPower_W(p.power_W);
-            setScanSpeed_mms(p.speed_mms);
-            setHatchSpacing_um(p.hatch_um);
-            setBedPreheat_C(p.preheat_C);
+            updateLpbfProcess({
+              laserPower_W: p.power_W,
+              scanSpeed_mms: p.speed_mms,
+              hatch_um: p.hatch_um,
+              preheatTemp_C: p.preheat_C,
+            });
           }}
         />
       ) : activeSubTab === "multi-track-accumulation" ? (
@@ -1321,7 +1339,13 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           currentPreheat_C={bedPreheat_C}
           currentMaterial={alloy.name}
           onApplyStrategy={(strat) => {
-            // Apply scan parameters
+            const mapped: LpbfScanStrategy =
+              strat.scanStrategy === "chessboard"
+                ? "island"
+                : strat.scanStrategy === "stripes" || strat.scanStrategy === "unidirectional"
+                  ? "stripe"
+                  : "meander-67";
+            updateLpbfProcess({ scanStrategy: mapped });
           }}
         />
       ) : activeSubTab === "anisotropic-fatigue-estimator" ? (
@@ -1335,14 +1359,24 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           currentBeamDiameter_um={beamSpotRadius_um * 2}
           currentMaterial={alloy.name}
           onApplyCalibratedParams={(p) => {
-            setLaserPower_W(p.laserPower_W);
-            setScanSpeed_mms(p.scanSpeed_mm_s);
+            updateLpbfProcess({
+              laserPower_W: p.laserPower_W,
+              scanSpeed_mms: p.scanSpeed_mm_s,
+            });
           }}
         />
       ) : activeSubTab === "2d-thermal-melt-pool" ? (
         <ThermalMeltPoolVisualization />
       ) : activeSubTab === "3d-macro-distortion" ? (
-        <CADStlSlicerDistortionLab />
+        <CADStlSlicerDistortionLab
+          laserPower_W={laserPower_W}
+          scanSpeed_mms={scanSpeed_mms}
+          hatchSpacing_um={hatchSpacing_um}
+          layerThickness_um={layerThickness_um}
+          bedPreheat_C={bedPreheat_C}
+          scanStrategy={scanStrategy}
+          onProcessChange={(p) => updateLpbfProcess(p)}
+        />
       ) : activeSubTab === "basic-stl-slicer" ? (
         <BasicSTLSlicerLab
           initialPower_W={laserPower_W}
@@ -1351,10 +1385,12 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           initialHatch_um={hatchSpacing_um}
           initialMaterial={alloy.name}
           onApplyParametersToLPBF={(p) => {
-            setLaserPower_W(p.laserPower_W);
-            setScanSpeed_mms(p.scanSpeed_mms);
-            setLayerThickness_um(p.layerThickness_um);
-            setHatchSpacing_um(p.hatchSpacing_um);
+            updateLpbfProcess({
+              laserPower_W: p.laserPower_W,
+              scanSpeed_mms: p.scanSpeed_mms,
+              layer_um: p.layerThickness_um,
+              hatch_um: p.hatchSpacing_um,
+            });
           }}
         />
       ) : (
@@ -1607,7 +1643,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
           {(hotTearingAnalysis.isCritical || hotTearingAnalysis.isWarning) && (
             <button
               type="button"
-              onClick={() => setBedPreheat_C(hotTearingAnalysis.recommendedPreheat_C)}
+              onClick={() => updateLpbfProcess({ preheatTemp_C: hotTearingAnalysis.recommendedPreheat_C })}
               className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-[11px] font-bold transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
             >
               <ThermometerSnowflake className="w-3.5 h-3.5" />
@@ -1958,7 +1994,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                 max="800"
                 step="10"
                 value={laserPower_W}
-                onChange={(e) => setLaserPower_W(parseFloat(e.target.value))}
+                onChange={(e) => updateLpbfProcess({ laserPower_W: parseFloat(e.target.value) })}
                 className="w-full accent-cyan-400 cursor-pointer"
               />
               <div className="flex justify-between text-[10px] text-slate-500">
@@ -1991,7 +2027,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                 max="2500"
                 step="50"
                 value={scanSpeed_mms}
-                onChange={(e) => setScanSpeed_mms(parseFloat(e.target.value))}
+                onChange={(e) => updateLpbfProcess({ scanSpeed_mms: parseFloat(e.target.value) })}
                 className="w-full accent-blue-400 cursor-pointer"
               />
               <div className="flex justify-between text-[10px] text-slate-500">
@@ -2022,7 +2058,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                   max="180"
                   step="5"
                   value={hatchSpacing_um}
-                  onChange={(e) => setHatchSpacing_um(parseFloat(e.target.value))}
+                  onChange={(e) => updateLpbfProcess({ hatch_um: parseFloat(e.target.value) })}
                   className="w-full accent-cyan-400 cursor-pointer mt-1"
                 />
               </div>
@@ -2046,7 +2082,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                   max="90"
                   step="5"
                   value={layerThickness_um}
-                  onChange={(e) => setLayerThickness_um(parseFloat(e.target.value))}
+                  onChange={(e) => updateLpbfProcess({ layer_um: parseFloat(e.target.value) })}
                   className="w-full accent-cyan-400 cursor-pointer mt-1"
                 />
               </div>
@@ -2080,7 +2116,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                 max="500"
                 step="25"
                 value={bedPreheat_C}
-                onChange={(e) => setBedPreheat_C(parseFloat(e.target.value))}
+                onChange={(e) => updateLpbfProcess({ preheatTemp_C: parseFloat(e.target.value) })}
                 className="w-full accent-amber-400 cursor-pointer"
               />
               <span className="text-[10px] text-slate-500 block">
@@ -2110,7 +2146,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                   <button
                     key={st.id}
                     type="button"
-                    onClick={() => setScanStrategy(st.id as any)}
+                    onClick={() => updateLpbfProcess({ scanStrategy: st.id as LpbfScanStrategy })}
                     className={`py-1.5 px-2 rounded-lg text-center font-bold text-[10px] transition ${
                       scanStrategy === st.id
                         ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
@@ -2295,8 +2331,10 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                         // Automatically adjust scan speed and laser power to bring into safe zone
                         const targetPower = Math.round(laserPower_W * 0.82);
                         const targetSpeed = Math.min(2500, Math.round(scanSpeed_mms * 1.25));
-                        setLaserPower_W(targetPower);
-                        setScanSpeed_mms(targetSpeed);
+                        updateLpbfProcess({
+                          laserPower_W: targetPower,
+                          scanSpeed_mms: targetSpeed,
+                        });
                       }}
                       className="w-full py-1.5 px-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 text-[10px] font-bold transition flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
                     >

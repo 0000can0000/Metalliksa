@@ -161,6 +161,12 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           modelId={job?.modelId}
           gates={decision.gates}
           dominantGate={decision.dominantGate}
+          pPrintable={job?.uq?.P_printable}
+          dhMean={job?.uq?.normalizedEnthalpy.mean}
+          dhStd={job?.uq?.normalizedEnthalpy.std}
+          ambenchMape={job?.ambench?.overallMeanMape_pct ?? null}
+          murakamiStatus={job?.murakami?.status}
+          qualStatus={job?.qualification?.status}
         />
       )}
 
@@ -457,13 +463,48 @@ const VerdictBanner: React.FC<{
   modelId?: string;
   gates?: PythonLpbfScreeningGate[];
   dominantGate?: string;
-}> = ({ verdict, headline, reasons, modelId, gates, dominantGate }) => (
+  pPrintable?: number;
+  dhMean?: number;
+  dhStd?: number;
+  ambenchMape?: number | null;
+  murakamiStatus?: string;
+  qualStatus?: string;
+}> = ({
+  verdict,
+  headline,
+  reasons,
+  modelId,
+  gates,
+  dominantGate,
+  pPrintable,
+  dhMean,
+  dhStd,
+  ambenchMape,
+  murakamiStatus,
+  qualStatus,
+}) => (
   <div className={`rounded-2xl border p-4 ${verdictTone(verdict)}`}>
     <div className="flex items-center gap-2 font-bold text-sm">
       {verdict === "printable" ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
       {headline}
     </div>
     <p className="mt-1 text-[10px] opacity-80">{modelHonestyLine(modelId)}</p>
+    {(pPrintable != null || dhMean != null) && (
+      <p className="mt-1 text-[11px] font-mono opacity-95">
+        {pPrintable != null ? `P(printable) ${(pPrintable * 100).toFixed(0)}%` : null}
+        {pPrintable != null && dhMean != null ? " · " : null}
+        {dhMean != null ? `ΔH/hₛ ${dhMean.toFixed(1)}±${(dhStd ?? 0).toFixed(1)} (UQ lit-default)` : null}
+      </p>
+    )}
+    {(ambenchMape != null || murakamiStatus || qualStatus) && (
+      <p className="mt-1 text-[10px] font-mono opacity-80">
+        {ambenchMape != null ? `NIST AMB2018-02 mean MAPE ${ambenchMape}% (IN625 CBM)` : null}
+        {ambenchMape != null && (murakamiStatus || qualStatus) ? " · " : null}
+        {murakamiStatus ? `Murakami ${murakamiStatus}` : null}
+        {murakamiStatus && qualStatus ? " · " : null}
+        {qualStatus ? `Qualification ${qualStatus}` : null}
+      </p>
+    )}
     {gates && gates.length > 0 && (
       <div className="mt-2 flex flex-wrap gap-1">
         {gates.map((g) => (

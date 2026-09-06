@@ -129,6 +129,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
         `d ${lpbf.beamDiameter_um} µm`,
         `preheat ${lpbf.preheatTemp_C} °C`,
         decision ? `verdict ${decision.verdict}` : "verdict pending",
+        job?.uq ? `P(printable) ${(job.uq.P_printable * 100).toFixed(0)}%` : "",
         decision?.dominantGate ? `gate ${decision.dominantGate}` : "",
         job?.modelId || "rosenthal-screening-v1",
       ]
@@ -143,6 +144,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
       lpbf.beamDiameter_um,
       lpbf.preheatTemp_C,
       decision,
+      job?.uq,
       job?.modelId,
     ]
   );
@@ -238,6 +240,32 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
                 : ""}
             </span>
           ))}
+          {job?.uq && (
+            <span
+              title={job.uq.note}
+              className="text-[9px] font-mono px-1.5 py-0.5 rounded border text-violet-200 border-violet-500/40 bg-violet-500/10"
+            >
+              P(printable) {(job.uq.P_printable * 100).toFixed(0)}% · ΔH{" "}
+              {job.uq.normalizedEnthalpy.mean.toFixed(1)}±{job.uq.normalizedEnthalpy.std.toFixed(1)} · dom{" "}
+              {job.uq.dominantUncertainty}
+            </span>
+          )}
+          {job?.ambench?.overallMeanMape_pct != null && (
+            <span
+              title={job.ambench.disclaimer}
+              className="text-[9px] font-mono px-1.5 py-0.5 rounded border text-sky-200 border-sky-500/40 bg-sky-500/10"
+            >
+              NIST AMB2018-02 MAPE {job.ambench.overallMeanMape_pct}% (IN625)
+            </span>
+          )}
+          {job?.murakami && (
+            <span
+              title={job.murakami.note}
+              className="text-[9px] font-mono px-1.5 py-0.5 rounded border text-slate-400 border-[#162032] bg-[#0c1322]"
+            >
+              Murakami {job.murakami.status}
+            </span>
+          )}
         </div>
       )}
 

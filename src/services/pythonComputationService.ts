@@ -1432,6 +1432,13 @@ class PythonComputationService {
     inclineAngle_deg?: number;
     downskinOverhang_deg?: number;
     maxTriangles?: number;
+    enableUq?: boolean;
+    uqSamples?: number;
+    includeAmbench?: boolean;
+    defectSqrtAreas_um?: number[] | null;
+    hardness_HV?: number;
+    ctDetectionThreshold_um?: number;
+    gitSha?: string;
   }): Promise<PythonLpbfBuildJobResult> {
     const res = await fetch("/api/python/lpbf-build-job", {
       method: "POST",
@@ -1642,6 +1649,67 @@ export interface PythonLpbfBuildJobVerdict {
   gates?: PythonLpbfScreeningGate[];
   dominantGate?: string;
   suggestedPatch?: PythonLpbfSuggestedPatch | null;
+  uq?: {
+    P_printable: number;
+    normalizedEnthalpy: { mean: number; std: number; unit: string };
+    dominantUncertainty: string;
+    nSamples: number;
+  };
+}
+
+export interface PythonLpbfUqBlock {
+  enabled: boolean;
+  nSamples: number;
+  seed: number;
+  bands: Record<string, number>;
+  calibration: string;
+  P_printable: number;
+  counts: { printable: number; risky: number; do_not_print: number };
+  normalizedEnthalpy: { mean: number; std: number; unit: string };
+  sobolProxy: Record<string, number>;
+  dominantUncertainty: string;
+  note: string;
+}
+
+export interface PythonLpbfAmbenchBlock {
+  source: {
+    challenge: string;
+    doi: string;
+    url: string;
+    alloy: string;
+    citation: string;
+  };
+  model: string;
+  disclaimer: string;
+  cases: Array<{
+    caseId: string;
+    nist: { length_um: number; width_um: number; depth_um: number };
+    predicted: { length_um: number; width_um: number; depth_um: number };
+    mape_pct: { length: number | null; width: number | null; depth: number | null; mean: number | null };
+  }>;
+  overallMeanMape_pct: number | null;
+  alloyCoverage?: { status: string; note: string };
+  fourAlloyCoverage?: Record<string, { status: string; note: string }>;
+}
+
+export interface PythonLpbfMurakamiBlock {
+  status: string;
+  fatigueLimit_MPa?: number | null;
+  fatigueLimit_internal_MPa?: number;
+  fatigueLimit_surface_MPa?: number;
+  gumbel?: Record<string, number | string> | null;
+  note: string;
+  ctDetectionThreshold_um?: number | null;
+}
+
+export interface PythonLpbfQualificationBlock {
+  status: string;
+  screeningOnly: boolean;
+  alloyId: string;
+  standards: string[];
+  couponPlan: string[];
+  traceability: { inputHash: string; gitSha?: string | null; note: string };
+  note: string;
 }
 
 export interface PythonLpbfBuildJobResult {
@@ -1661,6 +1729,10 @@ export interface PythonLpbfBuildJobResult {
   thermal: PythonLPBFResult;
   slicer: PythonSTLSlicerResult;
   verdict: PythonLpbfBuildJobVerdict;
+  uq?: PythonLpbfUqBlock | null;
+  ambench?: PythonLpbfAmbenchBlock | null;
+  murakami?: PythonLpbfMurakamiBlock | null;
+  qualification?: PythonLpbfQualificationBlock | null;
 }
 
 export interface PythonLPBFResult {

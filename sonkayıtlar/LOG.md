@@ -4,6 +4,28 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-06 22:20 — LPBF Faz 3+4 (UQ, NIST, Murakami, qualification)
+- **Agent**: Cursor Auto (Composer)
+- **Result**: PASS
+- **Task**: MetalliX LPBF Faz 3+4: literature UQ on build-job; NIST AMB2018-02; Murakami/Gumbel; AMS/ASTM qualification template; verdict label + P(printable); dört alaşım; sayı uydurma yok.
+- **Done**: lpbf_screening_uq.py MC + Sobol-proxy; 
+ist_ambench_2018_02.py Table 4 CBM; murakami_fatigue_screening.py; build-job/schema/TS/rail/Decision lab wired; PROOF 016.
+- **Where we left off**: Nothing left on this task. Commit/push yeni1 then main sync.
+- **Files**: python/lpbf_screening_uq.py, python/nist_ambench_2018_02.py, python/murakami_fatigue_screening.py, python/lpbf_build_job_solver.py, python/lpbf_build_job_schema.py, python/lpbf_thermal_solver.py, python/test_lpbf_build_job.py, src/services/pythonComputationService.ts, src/store/useLpbfBuildJobStore.ts, src/components/LpbfBuildJobRail.tsx, src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx, PROOF.md, sonkayıtlar/LOG.md
+- **Tests**: py -3 python/test_lpbf_build_job.py PASS (Phase 0–4); 
+px tsc --noEmit PASS
+
+## 2026-09-06 22:06 — Force push nedir (soru)
+- **Agent**: Cursor Auto (Composer)
+- **Result**: PASS
+- **Task**: Kullanıcı “Force push ne demek” diye sordu; Git kavramı açıklaması.
+- **Done**: Force push’ın (`--force` / `--force-with-lease`) ne yaptığı, normal push’tan farkı ve riskleri anlatıldı.
+- **Where we left off**: Nothing left on this task. Kod değişikliği yok.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — yalnızca kavramsal cevap
+
+---
+
 ## 2026-09-06 21:10 — LPBF Faz 0→2 + serbest iyileştirme
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

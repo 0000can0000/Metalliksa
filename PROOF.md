@@ -224,5 +224,17 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Fixtures**: `python/test_lpbf_build_job.py` (seed, Tang, DOIs, incline R, triangle cap, downskin); `python/test_four_alloy_literature.py`; `python/test_lpbf_meltpool_accuracy.py`; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 016: LPBF Build Job Phase 3→4 (UQ, NIST AMB2018-02, Murakami, qualification)
+- **Date**: 2026-09-06
+- **Module**: `lpbf_screening_uq.py` / `nist_ambench_2018_02.py` / `murakami_fatigue_screening.py` / `lpbf_build_job_solver.py`
+- **Scope**: Phase 3–4 screening. Verdict remains Python-only. No invented defect sizes. NIST numbers from Lane et al. IMMI 2020 Table 4 (IN625 CBM).
+- **Phase 3 (UQ)**: Literature-default Monte Carlo (\(P\pm3\%\), absorptivity \(\pm15\%\), spot \(\pm7.5\%\), \(k\pm12\%\), density \(\pm10\%\)); seeded; outputs `P(printable)`, \(\Delta H/h_s\) mean±std, Pearson Sobol-proxy. UI shows discrete verdict label **and** `P(printable)`.
+- **Phase 4a (NIST)**: AMB2018-02 / CHAL-AMB2018-02-MP CBM means (A/B/C). DOI `10.1007/s40192-020-00169-1`. Four-alloy coverage: Ti64/316L/AlSi10Mg `no_coverage`; IN718 `proxy_only`. Example screening MAPE vs Rosenthal+IN625 props ≈ **51%** overall (not a qualification gate).
+- **Phase 4b/c**: Murakami √area + Gumbel when `defectSqrtAreas_um` supplied; else `data_not_supplied`. Qualification block `not_executed` + AMS/ASTM list + input hash.
+- **Fixtures**: `python/test_lpbf_build_job.py` Phase 0–4 (UQ n=24 seed reproducibility, NIST table values, Murakami empty/filled); `npx tsc --noEmit`.
+- **Status**: **PASS**
+
 
 

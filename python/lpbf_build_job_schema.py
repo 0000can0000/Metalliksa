@@ -40,6 +40,13 @@ class LpbfBuildJobRequest(BaseModel):
     inclineAngle_deg: float = 0.0
     surfaceIncline_deg: Optional[float] = None
     downskinOverhang_deg: Optional[float] = None
+    enableUq: bool = True
+    uqSamples: int = Field(64, ge=8, le=500)
+    includeAmbench: bool = True
+    defectSqrtAreas_um: Optional[List[float]] = None
+    hardness_HV: Optional[float] = None
+    ctDetectionThreshold_um: Optional[float] = None
+    gitSha: Optional[str] = None
 
     @field_validator("customTriangles")
     @classmethod

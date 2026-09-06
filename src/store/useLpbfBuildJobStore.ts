@@ -56,6 +56,9 @@ function buildJobKey(): { key: string; payload: Parameters<typeof pythonComputat
     scanRotation_deg: 67,
     hatchDwell_ms: 0,
     inclineAngle_deg: lpbf.inclineAngle_deg ?? 0,
+    enableUq: true,
+    uqSamples: 48,
+    includeAmbench: true,
     ...(lpbf.downskinOverhang_deg > 0
       ? { downskinOverhang_deg: lpbf.downskinOverhang_deg }
       : {}),

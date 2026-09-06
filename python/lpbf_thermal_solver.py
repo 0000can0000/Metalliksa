@@ -185,15 +185,20 @@ def calculate_meltpool_physics(
     laser_wavelength: str = "IR_1064nm",
     incline_angle_deg: float = 0.0,
     process_seed: int = 42,
+    prop_overrides: dict | None = None,
 ):
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
+    Optional prop_overrides merge onto the resolved thermophysical dict (UQ / AM-Bench).
     """
-    props = (
+    base = (
         thermal_props(material_name)
         or SECONDARY_THERMOPHYSICAL_DB.get(material_name)
         or thermal_props("Inconel 718")
     )
+    props = dict(base)
+    if prop_overrides:
+        props.update(prop_overrides)
     
     P_laser = max(10.0, float(laser_power_W))
     v_scan = max(10.0, float(scan_speed_mm_s)) * 1e-3  # m/s

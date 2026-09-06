@@ -6,6 +6,7 @@ The industrial UI must display this verdict. TypeScript must not re-decide print
 Fidelity flag (Eagar–Tsai / Goldak source) is reserved for a later step.
 """
 
+import hashlib
 import json
 import sys
 import time
@@ -15,9 +16,13 @@ from four_alloy_materials import (
     LITERATURE_PV_WINDOWS,
     evaluate_literature_pv,
     resolve_alloy_id,
+    thermal_props,
 )
 from lpbf_build_job_schema import LpbfBuildJobRequest
+from lpbf_screening_uq import apply_uq_prop_scales, run_screening_uq
 from lpbf_thermal_solver import calculate_meltpool_physics
+from murakami_fatigue_screening import build_qualification_block, evaluate_murakami_block
+from nist_ambench_2018_02 import coverage_for_alloy, run_ambench_validation
 from stl_slicer_build_time_solver import solve_slicer
 
 # Hatch/layer used with literature-box mid P–v when LoF is the dominant gate.
@@ -340,6 +345,95 @@ def solve_lpbf_build_job(data):
         alloy_id,
         extras={"downskinOverhang_deg": downskin_deg},
     )
+
+    # --- Faz 3: literature-default Monte Carlo UQ ---
+    uq_block = None
+    enable_uq = bool(data.get("enableUq", True))
+    uq_n = int(data.get("uqSamples", 64))
+    if enable_uq:
+        base_props = thermal_props(thermal_mat) or {}
+
+        def _thermal_runner(p_w, beam_um, scale_overrides):
+            concrete = apply_uq_prop_scales(base_props, scale_overrides)
+            return calculate_meltpool_physics(
+                thermal_mat,
+                p_w,
+                speed,
+                beam_um,
+                preheat,
+                layer,
+                hatch,
+                wavelength,
+                incline_angle_deg=incline_deg,
+                process_seed=process_seed,
+                prop_overrides=concrete or None,
+            )
+
+        def _verdict_runner(th):
+            return compose_verdict(th, alloy_id, extras={"downskinOverhang_deg": downskin_deg})
+
+        uq_block = run_screening_uq(
+            base_power_W=power,
+            base_beam_um=beam,
+            thermal_runner=_thermal_runner,
+            verdict_fn=_verdict_runner,
+            n_samples=uq_n,
+            seed=process_seed,
+        )
+        decision["uq"] = {
+            "P_printable": uq_block["P_printable"],
+            "normalizedEnthalpy": uq_block["normalizedEnthalpy"],
+            "dominantUncertainty": uq_block["dominantUncertainty"],
+            "nSamples": uq_block["nSamples"],
+        }
+
+    # --- Faz 4a: NIST AM-Bench (IN625 CBM Table 4) ---
+    ambench = None
+    if bool(data.get("includeAmbench", True)):
+
+        def _amb_thermal(p_w, v_mms, beam_um, overrides):
+            return calculate_meltpool_physics(
+                "Inconel 718",
+                p_w,
+                v_mms,
+                beam_um,
+                25.0,
+                40.0,
+                100.0,
+                "IR_1064nm",
+                incline_angle_deg=0.0,
+                process_seed=process_seed,
+                prop_overrides=overrides,
+            )
+
+        ambench = run_ambench_validation(_amb_thermal)
+        ambench["alloyCoverage"] = coverage_for_alloy(alloy_id)
+
+    # --- Faz 4b/c: Murakami + qualification template ---
+    murakami = evaluate_murakami_block(
+        data.get("defectSqrtAreas_um"),
+        hardness_HV=data.get("hardness_HV"),
+        ct_detection_threshold_um=data.get("ctDetectionThreshold_um"),
+    )
+    hash_src = json.dumps(
+        {
+            "alloyId": alloy_id,
+            "P": power,
+            "v": speed,
+            "h": hatch,
+            "t": layer,
+            "d": beam,
+            "seed": process_seed,
+        },
+        sort_keys=True,
+    )
+    input_hash = hashlib.sha256(hash_src.encode("utf-8")).hexdigest()[:16]
+    qualification = build_qualification_block(
+        alloy_id,
+        input_hash=input_hash,
+        git_sha=data.get("gitSha"),
+    )
+
     elapsed = round((time.time() - t0) * 1000.0, 1)
     thermal["computeTimeMs"] = elapsed
 
@@ -364,6 +458,20 @@ def solve_lpbf_build_job(data):
         assumptions.append(
             f"Solidification rate R = v·cos(θ) with surface incline θ={incline_deg:.1f}°."
         )
+    if uq_block:
+        assumptions.append(
+            f"UQ: literature-default MC n={uq_block['nSamples']} "
+            f"(P±{uq_block['bands']['power_rel']*100:.0f}%, A±{uq_block['bands']['absorptivity_rel']*100:.0f}%); "
+            "not machine-calibrated. Verdict label + P(printable) both reported."
+        )
+    if ambench:
+        assumptions.append(
+            "NIST AMB2018-02 IN625 CBM Table 4 attached for screening MAPE "
+            f"(doi:{ambench['source']['doi']}); four-alloy direct coverage is limited."
+        )
+    assumptions.append(
+        "Murakami/qualification blocks are SCREENING ONLY; defect √area not invented when absent."
+    )
 
     return {
         "success": True,
@@ -382,6 +490,10 @@ def solve_lpbf_build_job(data):
         "thermal": thermal,
         "slicer": slicer,
         "verdict": decision,
+        "uq": uq_block,
+        "ambench": ambench,
+        "murakami": murakami,
+        "qualification": qualification,
     }
 
 

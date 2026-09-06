@@ -10,9 +10,10 @@ SOLVER = os.path.join(HERE, "lpbf_build_job_solver.py")
 
 
 def run_job(payload):
+    body = {"enableUq": False, "includeAmbench": False, **payload}
     proc = subprocess.run(
         [sys.executable, SOLVER],
-        input=json.dumps(payload),
+        input=json.dumps(body),
         capture_output=True,
         text=True,
         cwd=HERE,
@@ -179,7 +180,88 @@ def main():
         g["id"] == "downskin" and g["status"] == "fail" for g in ds["verdict"]["gates"]
     ), ds["verdict"]
 
-    print("PASS: solve_lpbf_build_job Phase 0-2 (Tang, seed, strategy DOIs, k_eff, R*cos(theta), pydantic/cap)")
+    # --- Phase 3+4: UQ + NIST AM-Bench + Murakami empty + qualification ---
+    uq = run_job(
+        {
+            "alloyId": "ti6al4v",
+            "laserPower_W": 200,
+            "scanSpeed_mm_s": 900,
+            "beamDiameter_um": 80,
+            "preheatTemp_C": 150,
+            "layerThickness_um": 30,
+            "hatchSpacing_um": 100,
+            "processSeed": 42,
+            "enableUq": True,
+            "uqSamples": 24,
+            "includeAmbench": True,
+        }
+    )
+    assert uq["uq"] is not None
+    assert uq["uq"]["enabled"] is True
+    assert uq["uq"]["nSamples"] == 24
+    assert 0.0 <= uq["uq"]["P_printable"] <= 1.0
+    assert "mean" in uq["uq"]["normalizedEnthalpy"]
+    assert "std" in uq["uq"]["normalizedEnthalpy"]
+    assert "absorptivity" in uq["uq"]["sobolProxy"]
+    assert uq["verdict"].get("uq", {}).get("P_printable") == uq["uq"]["P_printable"]
+    assert any("UQ:" in a for a in uq["assumptions"])
+
+    assert uq["ambench"] is not None
+    assert uq["ambench"]["source"]["doi"] == "10.1007/s40192-020-00169-1"
+    assert uq["ambench"]["source"]["alloy"] == "IN625"
+    assert len(uq["ambench"]["cases"]) == 3
+    assert uq["ambench"]["cases"][0]["nist"]["length_um"] == 659.0
+    assert uq["ambench"]["cases"][1]["nist"]["width_um"] == 133.0
+    assert uq["ambench"]["cases"][2]["nist"]["depth_um"] == 60.0
+    assert uq["ambench"]["overallMeanMape_pct"] is not None
+    assert uq["ambench"]["alloyCoverage"]["status"] == "no_coverage"
+
+    assert uq["murakami"]["status"] == "data_not_supplied"
+    assert uq["murakami"]["fatigueLimit_MPa"] is None
+    assert uq["qualification"]["status"] == "not_executed"
+    assert uq["qualification"]["screeningOnly"] is True
+    assert len(uq["qualification"]["standards"]) >= 1
+    assert uq["qualification"]["traceability"]["inputHash"]
+
+    mur = run_job(
+        {
+            "alloyId": "in718",
+            "laserPower_W": 285,
+            "scanSpeed_mm_s": 960,
+            "beamDiameter_um": 80,
+            "layerThickness_um": 40,
+            "hatchSpacing_um": 110,
+            "enableUq": False,
+            "includeAmbench": True,
+            "defectSqrtAreas_um": [40.0, 55.0, 62.0, 48.0, 70.0],
+            "hardness_HV": 400,
+            "ctDetectionThreshold_um": 30,
+        }
+    )
+    assert mur["murakami"]["status"] == "screening_estimate"
+    assert mur["murakami"]["fatigueLimit_internal_MPa"] > 0
+    assert mur["ambench"]["alloyCoverage"]["status"] == "proxy_only"
+
+    # UQ reproducibility with same seed
+    uq2 = run_job(
+        {
+            "alloyId": "ti6al4v",
+            "laserPower_W": 200,
+            "scanSpeed_mm_s": 900,
+            "beamDiameter_um": 80,
+            "preheatTemp_C": 150,
+            "layerThickness_um": 30,
+            "hatchSpacing_um": 100,
+            "processSeed": 42,
+            "enableUq": True,
+            "uqSamples": 24,
+            "includeAmbench": False,
+        }
+    )
+    assert uq2["uq"]["P_printable"] == uq["uq"]["P_printable"]
+    assert uq2["uq"]["normalizedEnthalpy"]["mean"] == uq["uq"]["normalizedEnthalpy"]["mean"]
+
+    print("PASS: solve_lpbf_build_job Phase 0-4 (UQ, NIST AMB2018-02, Murakami, qualification)")
     return 0
 
 

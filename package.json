@@ -3,13 +3,16 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": {
+    "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "sbom": "py -3 python/generate_sbom.py",
+    "test:lpbf": "py -3 python/test_lpbf_build_job.py",
+    "test:lpbf:slow": "py -3 python/test_lpbf_build_job.py --slow"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

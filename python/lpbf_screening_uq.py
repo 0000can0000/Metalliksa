@@ -3,8 +3,10 @@
 Literature-default Monte Carlo UQ for LPBF build-job screening.
 
 Perturbs P, absorptivity, spot, k, and density with published-typical ± bands.
-Not machine-calibrated. Seeded for bit reproducibility. Sobol-like ranks are
-Pearson correlations of standardized inputs vs outcome (screening proxy, not Saltelli).
+Not machine-calibrated. Seeded for bit reproducibility.
+
+Screening sensitivity uses Spearman |ρ| share vs verdict score (still a proxy —
+not Saltelli / full Sobol'). Labelled screeningSensitivity / sobolProxy for UI.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ UQ_BANDS = {
     "density_rel": 0.10,
 }
 
-DEFAULT_UQ_SAMPLES = 64
+DEFAULT_UQ_SAMPLES = 96
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
@@ -52,6 +54,29 @@ def _pearson(xs: List[float], ys: List[float]) -> float:
     if dx < 1e-12 or dy < 1e-12:
         return 0.0
     return num / (dx * dy)
+
+
+def _rankdata(vals: List[float]) -> List[float]:
+    """Average ranks for ties (1-based)."""
+    n = len(vals)
+    order = sorted(range(n), key=lambda i: vals[i])
+    ranks = [0.0] * n
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and vals[order[j + 1]] == vals[order[i]]:
+            j += 1
+        avg = 0.5 * (i + j) + 1.0
+        for k in range(i, j + 1):
+            ranks[order[k]] = avg
+        i = j + 1
+    return ranks
+
+
+def _spearman(xs: List[float], ys: List[float]) -> float:
+    if len(xs) < 3 or len(xs) != len(ys):
+        return 0.0
+    return _pearson(_rankdata(xs), _rankdata(ys))
 
 
 def _verdict_score(v: str) -> float:
@@ -131,17 +156,17 @@ def run_screening_uq(
     dh_mu, dh_sigma = _mean_std(dh_vals)
     p_printable = printable / float(n)
 
-    sobol_proxy = {
-        "power": round(abs(_pearson(z_power, scores)), 4),
-        "absorptivity": round(abs(_pearson(z_abs, scores)), 4),
-        "spot": round(abs(_pearson(z_spot, scores)), 4),
-        "conductivity": round(abs(_pearson(z_k, scores)), 4),
-        "density": round(abs(_pearson(z_rho, scores)), 4),
+    # Spearman |ρ| share — still a screening proxy, not Saltelli Sobol'.
+    sensitivity_raw = {
+        "power": round(abs(_spearman(z_power, scores)), 4),
+        "absorptivity": round(abs(_spearman(z_abs, scores)), 4),
+        "spot": round(abs(_spearman(z_spot, scores)), 4),
+        "conductivity": round(abs(_spearman(z_k, scores)), 4),
+        "density": round(abs(_spearman(z_rho, scores)), 4),
     }
-    # Normalize to share of L1 so UI can show percentages.
-    ssum = sum(sobol_proxy.values()) or 1.0
-    sobol_share = {k: round(v / ssum, 4) for k, v in sobol_proxy.items()}
-    dominant = max(sobol_share.items(), key=lambda kv: kv[1])[0]
+    ssum = sum(sensitivity_raw.values()) or 1.0
+    sensitivity_share = {k: round(v / ssum, 4) for k, v in sensitivity_raw.items()}
+    dominant = max(sensitivity_share.items(), key=lambda kv: kv[1])[0]
 
     return {
         "enabled": True,
@@ -156,11 +181,14 @@ def run_screening_uq(
             "std": round(dh_sigma, 3),
             "unit": "1",
         },
-        "sobolProxy": sobol_share,
+        "sensitivityMethod": "spearman-proxy",
+        "screeningSensitivity": sensitivity_share,
+        # Alias for older UI / tests.
+        "sobolProxy": sensitivity_share,
         "dominantUncertainty": dominant,
         "note": (
-            "Monte Carlo with literature ± bands; SobolProxy is |Pearson| share vs verdict score, "
-            "not full Saltelli indices. SCREENING ONLY — not machine-calibrated."
+            "Monte Carlo with literature ± bands; screeningSensitivity is |Spearman ρ| share "
+            "vs verdict score (proxy — not Saltelli Sobol'). SCREENING ONLY — not machine-calibrated."
         ),
     }
 

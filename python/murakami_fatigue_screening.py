@@ -8,7 +8,47 @@ No defect sizes → data_not_supplied (nothing invented).
 from __future__ import annotations
 
 import math
+import re
 from typing import Any, Dict, List, Optional
+
+# Screening defaults when HV not supplied (literature-typical as-built / STA ranges).
+ALLOY_HV_DEFAULTS = {
+    "ti6al4v": 340.0,
+    "ss316l": 210.0,
+    "alsi10mg": 120.0,
+    "in718": 380.0,
+}
+
+PASTE_HINT = (
+    "Paste √area values in µm: one per line, or CSV / whitespace / semicolon separated. "
+    "Example: 40, 55, 62, 48, 70"
+)
+
+
+def parse_defect_sqrt_areas_text(text: Optional[str]) -> List[float]:
+    """Parse pasted CSV / whitespace / line-separated √area (µm). Empty → []."""
+    if not text or not str(text).strip():
+        return []
+    parts = re.split(r"[\s,;|/]+", str(text).strip())
+    out: List[float] = []
+    for p in parts:
+        if not p:
+            continue
+        try:
+            v = float(p)
+        except ValueError:
+            continue
+        if v > 0:
+            out.append(v)
+    return out
+
+
+def resolve_hardness_HV(hardness_HV: Optional[float], alloy_id: Optional[str] = None) -> tuple[Optional[float], str]:
+    if hardness_HV is not None:
+        return float(hardness_HV), "user_override"
+    if alloy_id and alloy_id in ALLOY_HV_DEFAULTS:
+        return ALLOY_HV_DEFAULTS[alloy_id], "alloy_default"
+    return None, "none"
 
 
 def gumbel_fit_maxima(samples: List[float]) -> Optional[Dict[str, float]]:
@@ -43,13 +83,21 @@ def evaluate_murakami_block(
     defect_sqrt_areas_um: Optional[List[float]],
     hardness_HV: Optional[float] = None,
     ct_detection_threshold_um: Optional[float] = None,
+    alloy_id: Optional[str] = None,
+    defect_paste: Optional[str] = None,
 ) -> Dict[str, Any]:
-    if not defect_sqrt_areas_um:
+    defects = list(defect_sqrt_areas_um or [])
+    if not defects and defect_paste:
+        defects = parse_defect_sqrt_areas_text(defect_paste)
+
+    if not defects:
         return {
             "status": "data_not_supplied",
             "fatigueLimit_MPa": None,
             "gumbel": None,
             "ctDetectionThreshold_um": ct_detection_threshold_um,
+            "pasteHint": PASTE_HINT,
+            "alloyHvDefaults": dict(ALLOY_HV_DEFAULTS),
             "note": (
                 "Murakami √area screening requires measured defect √area list (µm). "
                 "No sizes invented. SCREENING ONLY when supplied."
@@ -60,22 +108,27 @@ def evaluate_murakami_block(
             ],
         }
 
-    gumbel = gumbel_fit_maxima(list(defect_sqrt_areas_um))
-    hv = 350.0 if hardness_HV is None else float(hardness_HV)
+    gumbel = gumbel_fit_maxima(defects)
+    hv, hv_source = resolve_hardness_HV(hardness_HV, alloy_id)
+    if hv is None:
+        hv, hv_source = 350.0, "generic_fallback"
     if gumbel is None:
-        char = max(float(x) for x in defect_sqrt_areas_um)
-        gumbel = {"n": float(len(defect_sqrt_areas_um)), "characteristicLargest_um": char, "fit": "max-only"}
+        char = max(float(x) for x in defects)
+        gumbel = {"n": float(len(defects)), "characteristicLargest_um": char, "fit": "max-only"}
     else:
         char = gumbel["characteristicLargest_um"]
 
     return {
         "status": "screening_estimate",
         "hardness_HV": hv,
+        "hardnessSource": hv_source,
+        "nDefects": len(defects),
         "gumbel": gumbel,
         "sqrtAreaUsed_um": round(float(char), 4),
         "fatigueLimit_internal_MPa": round(murakami_fatigue_limit_MPa(char, hv, "internal"), 2),
         "fatigueLimit_surface_MPa": round(murakami_fatigue_limit_MPa(char, hv, "surface"), 2),
         "ctDetectionThreshold_um": ct_detection_threshold_um,
+        "pasteHint": PASTE_HINT,
         "note": (
             "SCREENING ONLY — Murakami empirical √area model; not a certified allowable. "
             "Supply CT/metallography √area in µm."

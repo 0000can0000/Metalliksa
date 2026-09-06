@@ -6,7 +6,6 @@ The industrial UI must display this verdict. TypeScript must not re-decide print
 Fidelity flag (Eagar–Tsai / Goldak source) is reserved for a later step.
 """
 
-import hashlib
 import json
 import sys
 import time
@@ -19,9 +18,14 @@ from four_alloy_materials import (
     thermal_props,
 )
 from lpbf_build_job_schema import LpbfBuildJobRequest
+from lpbf_job_cache import build_cache_key, cache_get, cache_put
 from lpbf_screening_uq import apply_uq_prop_scales, run_screening_uq
 from lpbf_thermal_solver import calculate_meltpool_physics
-from murakami_fatigue_screening import build_qualification_block, evaluate_murakami_block
+from murakami_fatigue_screening import (
+    build_qualification_block,
+    evaluate_murakami_block,
+    parse_defect_sqrt_areas_text,
+)
 from nist_ambench_2018_02 import coverage_for_alloy, run_ambench_validation
 from stl_slicer_build_time_solver import solve_slicer
 
@@ -195,19 +199,47 @@ def compose_verdict(thermal, alloy_id, extras=None):
             tang_r,
             1.0,
             "1",
-            "Tang et al. LoF: (h/W)²+(t/D)² ≤ 1; warn if >0.80.",
+            "Tang LoF index (h/W)²+(t/D)² — pass ≤0.80, fail >1.0. Primary hatch/layer fusion gate.",
         ),
-        _gate("lof_wh", tang_status, lw, 1.05, "1", "Diagnostic W/h (not the Tang gate)."),
-        _gate("lof_dt", tang_status, dt, 1.15, "1", "Diagnostic D/t (not the Tang gate)."),
-        _gate("keyhole", kh_status, dh, 30.0, "1", "King ΔH/hₛ onset ~30; do-not-print if High and >35."),
-        _gate("balling", ball_status, aspect, None, "1", "Plateau–Rayleigh L/W from Rosenthal length."),
+        _gate(
+            "lof_wh",
+            tang_status,
+            lw,
+            1.05,
+            "1",
+            "Diagnostic melt-pool width / hatch (W/h). Informational; Tang index is the gate.",
+        ),
+        _gate(
+            "lof_dt",
+            tang_status,
+            dt,
+            1.15,
+            "1",
+            "Diagnostic melt-pool depth / layer (D/t). Informational; Tang index is the gate.",
+        ),
+        _gate(
+            "keyhole",
+            kh_status,
+            dh,
+            30.0,
+            "1",
+            "King normalized enthalpy ΔH/hₛ — onset ~30; do-not-print when High and >35.",
+        ),
+        _gate(
+            "balling",
+            ball_status,
+            aspect,
+            None,
+            "1",
+            "Plateau–Rayleigh aspect L/W from Rosenthal length — High → fail.",
+        ),
         _gate(
             "literature_pv",
             lit_status,
             1.0 if win["inside"] else 0.0,
             1.0,
             "inside",
-            "Four-alloy literature P–v box (not a machine envelope).",
+            "Inside four-alloy published P–v box (screening envelope, not OEM machine limits).",
         ),
         _gate(
             "recoater",
@@ -215,7 +247,7 @@ def compose_verdict(thermal, alloy_id, extras=None):
             float(def_["distortionIndex"]),
             None,
             "index",
-            "Residual-stress heuristic, not a recoater-blade simulation.",
+            "Recoater-crash heuristic from residual-stress index — not a blade FEA.",
         ),
         _gate(
             "distortion",
@@ -223,7 +255,7 @@ def compose_verdict(thermal, alloy_id, extras=None):
             float(def_["distortionIndex"]),
             0.65,
             "index",
-            "Inherent-strain screening index, not Goldak FEA.",
+            "Inherent-strain distortion screening (≥0.65 warn) — not Goldak FEA.",
         ),
         _gate(
             "downskin",
@@ -231,7 +263,7 @@ def compose_verdict(thermal, alloy_id, extras=None):
             None if downskin_angle is None else round(float(downskin_angle), 1),
             45.0,
             "deg",
-            "Overhang from vertical; >45° warn, >55° fail. Flat when angle omitted.",
+            "Overhang from vertical: >45° warn, >55° fail. Omitted angle → pass.",
         ),
     ]
     dominant = "none"
@@ -284,6 +316,22 @@ def solve_lpbf_build_job(data):
         data = req.to_solver_dict()
     except Exception as e:
         return {"success": False, "error": f"Invalid LPBF build-job payload: {e}"}
+
+    # Normalize paste → defect list before cache key.
+    if not data.get("defectSqrtAreas_um") and data.get("defectSqrtAreasPaste"):
+        parsed = parse_defect_sqrt_areas_text(data.get("defectSqrtAreasPaste"))
+        if parsed:
+            data["defectSqrtAreas_um"] = parsed
+
+    bypass_cache = bool(data.get("bypassCache", False))
+    cache_key = build_cache_key(data)
+    if not bypass_cache:
+        cached = cache_get(cache_key)
+        if cached is not None:
+            cached["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
+            if cached.get("thermal"):
+                cached["thermal"]["computeTimeMs"] = cached["computeTimeMs"]
+            return cached
 
     alloy_id = resolve_alloy_id(data.get("alloyId") or "in718") or "in718"
     mats = ALLOY_MATERIALS[alloy_id]
@@ -346,10 +394,11 @@ def solve_lpbf_build_job(data):
         extras={"downskinOverhang_deg": downskin_deg},
     )
 
-    # --- Faz 3: literature-default Monte Carlo UQ ---
+    # --- Faz 3: literature-default Monte Carlo UQ (lazy; default off) ---
+    # UQ samples thermal+verdict only — slicer is NOT re-run inside MC.
     uq_block = None
-    enable_uq = bool(data.get("enableUq", True))
-    uq_n = int(data.get("uqSamples", 64))
+    enable_uq = bool(data.get("enableUq", False))
+    uq_n = int(data.get("uqSamples", 96))
     if enable_uq:
         base_props = thermal_props(thermal_mat) or {}
 
@@ -387,9 +436,9 @@ def solve_lpbf_build_job(data):
             "nSamples": uq_block["nSamples"],
         }
 
-    # --- Faz 4a: NIST AM-Bench (IN625 CBM Table 4) ---
+    # --- Faz 4a: NIST AM-Bench (lazy; default off) ---
     ambench = None
-    if bool(data.get("includeAmbench", True)):
+    if bool(data.get("includeAmbench", False)):
 
         def _amb_thermal(p_w, v_mms, beam_um, overrides):
             return calculate_meltpool_physics(
@@ -414,20 +463,10 @@ def solve_lpbf_build_job(data):
         data.get("defectSqrtAreas_um"),
         hardness_HV=data.get("hardness_HV"),
         ct_detection_threshold_um=data.get("ctDetectionThreshold_um"),
+        alloy_id=alloy_id,
+        defect_paste=data.get("defectSqrtAreasPaste"),
     )
-    hash_src = json.dumps(
-        {
-            "alloyId": alloy_id,
-            "P": power,
-            "v": speed,
-            "h": hatch,
-            "t": layer,
-            "d": beam,
-            "seed": process_seed,
-        },
-        sort_keys=True,
-    )
-    input_hash = hashlib.sha256(hash_src.encode("utf-8")).hexdigest()[:16]
+    input_hash = cache_key[:16]
     qualification = build_qualification_block(
         alloy_id,
         input_hash=input_hash,
@@ -446,6 +485,8 @@ def solve_lpbf_build_job(data):
         "Marangoni characteristic length uses the same thermal melt-pool width (geometrySource=thermal).",
         f"Deterministic processSeed={process_seed} for reproducible screening extras.",
         "Request validated with Pydantic; customTriangles capped at maxTriangles (default 12000).",
+        "Hash cache keys alloy+P/v/h/t/d+seed+strategy+mesh+UQ/NIST/Murakami flags.",
+        "Default job skips UQ and NIST AM-Bench (opt-in via enableUq / includeAmbench).",
     ]
     assumptions.extend(
         _scan_strategy_assumptions(scan_strategy, stripe_width_mm, rotation_deg, dwell_ms)
@@ -462,7 +503,7 @@ def solve_lpbf_build_job(data):
         assumptions.append(
             f"UQ: literature-default MC n={uq_block['nSamples']} "
             f"(P±{uq_block['bands']['power_rel']*100:.0f}%, A±{uq_block['bands']['absorptivity_rel']*100:.0f}%); "
-            "not machine-calibrated. Verdict label + P(printable) both reported."
+            "Spearman sensitivity proxy; slicer not re-run in MC. Not machine-calibrated."
         )
     if ambench:
         assumptions.append(
@@ -473,7 +514,7 @@ def solve_lpbf_build_job(data):
         "Murakami/qualification blocks are SCREENING ONLY; defect √area not invented when absent."
     )
 
-    return {
+    result = {
         "success": True,
         "engine": "lpbf_build_job",
         "modelId": "rosenthal-screening-v1",
@@ -495,6 +536,7 @@ def solve_lpbf_build_job(data):
         "murakami": murakami,
         "qualification": qualification,
     }
+    return cache_put(cache_key, result)
 
 
 def main():

@@ -7,8 +7,15 @@ import { physicsRouter } from "./routes/physics.ts";
 import { characterizationRouter } from "./routes/characterization.ts";
 import { copilotRouter } from "./routes/copilot.ts";
 import { processOrchestrationMiddleware } from "./server/processOrchestrator.ts";
+import {
+  AIRGAP_ALLOWED_LOCAL,
+  AIRGAP_BLOCKED_SERVICES,
+  isAirgappedFromEnv,
+} from "./server/airgap.ts";
 
 dotenv.config();
+
+const AIRGAPPED = isAirgappedFromEnv(process.env);
 
 // Process-level crash guards: isolate unhandled rejections and errors
 // Ensures an unhandled prompt error or JSON failure in AI copilot cannot terminate the process or affect CALPHAD/EIS
@@ -35,8 +42,17 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "MetalliX-Unified-Server",
-    hasApiKey: !!process.env.GEMINI_API_KEY,
+    hasApiKey: AIRGAPPED ? false : !!process.env.GEMINI_API_KEY,
+    airgapped: AIRGAPPED,
     timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/runtime-config", (_req: Request, res: Response) => {
+  res.json({
+    airgapped: AIRGAPPED,
+    blockedServices: AIRGAPPED ? AIRGAP_BLOCKED_SERVICES : [],
+    allowedLocal: [...AIRGAP_ALLOWED_LOCAL],
   });
 });
 
@@ -89,6 +105,9 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[MetalliX-Server] Modular server running on http://localhost:${PORT}`);
+    if (AIRGAPPED) {
+      console.log("[MetalliX-Server] AIRGAPPED=1 — Gemini / NVIDIA / live MP / external pricing disabled; local LPBF open.");
+    }
   });
 }
 

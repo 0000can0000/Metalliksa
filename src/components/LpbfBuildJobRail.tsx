@@ -59,6 +59,21 @@ function gateChipTone(status: string): string {
   return "text-slate-400 border-[#162032] bg-[#0c1322]";
 }
 
+function gateChipLabel(id: string): string {
+  const map: Record<string, string> = {
+    lof_tang: "Tang LoF",
+    lof_wh: "W/h diag",
+    lof_dt: "D/t diag",
+    keyhole: "Keyhole ΔH",
+    balling: "Balling L/W",
+    literature_pv: "Lit P–v",
+    recoater: "Recoater",
+    distortion: "Distortion",
+    downskin: "Downskin",
+  };
+  return map[id] || id;
+}
+
 function screeningAlloyWarning(name: string, baseMetal: string, alloyId: LPBFAlloyId): string | null {
   const n = `${name} ${baseMetal}`.toLowerCase();
   if (n.includes("cocr") || n.includes("hastelloy") || n.includes("scalmalloy") || n.includes("copper")) {
@@ -89,7 +104,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
   const specimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
   const loadPreset = useMaterialSpecimenStore((s) => s.loadPreset);
-  const { job, error, busy } = useLpbfBuildJobPython();
+  const { job, error, busy, cache, lastFlags } = useLpbfBuildJobPython();
   const [copied, setCopied] = useState(false);
   const lpbf = specimen.lpbf;
   const activeAlloyId = mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal).alloyId;
@@ -129,8 +144,13 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
         `d ${lpbf.beamDiameter_um} µm`,
         `preheat ${lpbf.preheatTemp_C} °C`,
         decision ? `verdict ${decision.verdict}` : "verdict pending",
-        job?.uq ? `P(printable) ${(job.uq.P_printable * 100).toFixed(0)}%` : "",
+        job?.uq ? `P(printable) ${(job.uq.P_printable * 100).toFixed(0)}% n=${job.uq.nSamples}` : "UQ not run",
+        job?.ambench?.overallMeanMape_pct != null
+          ? `NIST MAPE ${job.ambench.overallMeanMape_pct}%`
+          : "NIST not run",
+        job?.murakami ? `Murakami ${job.murakami.status}` : "",
         decision?.dominantGate ? `gate ${decision.dominantGate}` : "",
+        cache?.hit ? `cache HIT ${cache.ageMs}ms` : cache ? "cache MISS" : "",
         job?.modelId || "rosenthal-screening-v1",
       ]
         .filter(Boolean)
@@ -145,7 +165,10 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
       lpbf.preheatTemp_C,
       decision,
       job?.uq,
+      job?.ambench,
+      job?.murakami,
       job?.modelId,
+      cache,
     ]
   );
 
@@ -234,12 +257,33 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
                 decision?.dominantGate === g.id ? "ring-1 ring-sky-400/70" : ""
               }`}
             >
-              {g.id} {g.status}
+              {gateChipLabel(g.id)} {g.status}
               {g.id === "lof_wh" || g.id === "lof_dt" || g.id === "lof_tang" || g.id === "keyhole"
                 ? ` ${g.measured}`
                 : ""}
             </span>
           ))}
+          {busy && (
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border text-sky-200 border-sky-500/40 bg-sky-500/10">
+              busy
+            </span>
+          )}
+          {cache && (
+            <span
+              title={cache.hit ? `Cached result age ${cache.ageMs} ms` : "Fresh solve"}
+              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                cache.hit
+                  ? "text-emerald-200 border-emerald-500/40 bg-emerald-500/10"
+                  : "text-slate-400 border-[#162032] bg-[#0c1322]"
+              }`}
+            >
+              cache {cache.hit ? `HIT ${cache.ageMs}ms` : "MISS"}
+              {cache.stats ? ` · ${(cache.stats.hitRate * 100).toFixed(0)}%` : ""}
+            </span>
+          )}
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border text-slate-500 border-[#162032] bg-[#0c1322]">
+            UQ {lastFlags.enableUq ? "on" : "off"} · NIST {lastFlags.includeAmbench ? "on" : "off"}
+          </span>
           {job?.uq && (
             <span
               title={job.uq.note}

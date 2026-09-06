@@ -40,12 +40,15 @@ class LpbfBuildJobRequest(BaseModel):
     inclineAngle_deg: float = 0.0
     surfaceIncline_deg: Optional[float] = None
     downskinOverhang_deg: Optional[float] = None
-    enableUq: bool = True
-    uqSamples: int = Field(64, ge=8, le=500)
-    includeAmbench: bool = True
+    # Faz 5: lazy by default — UI opts in via Run UQ / Validate vs NIST.
+    enableUq: bool = False
+    uqSamples: int = Field(96, ge=8, le=500)
+    includeAmbench: bool = False
     defectSqrtAreas_um: Optional[List[float]] = None
+    defectSqrtAreasPaste: Optional[str] = None
     hardness_HV: Optional[float] = None
     ctDetectionThreshold_um: Optional[float] = None
+    bypassCache: bool = False
     gitSha: Optional[str] = None
 
     @field_validator("customTriangles")

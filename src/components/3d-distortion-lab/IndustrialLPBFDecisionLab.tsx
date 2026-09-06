@@ -40,7 +40,8 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
   const liveMesh = useLpbfBuildMeshStore((s) => s.mesh);
   const lpbf = specimen.lpbf;
-  const { job, error, busy, roundTripMs, rerun } = useLpbfBuildJobPython();
+  const { job, error, busy, roundTripMs, rerun, runUq, validateNist, murakamiInput, setMurakamiInput, cache, lastFlags } =
+    useLpbfBuildJobPython();
 
   const materials = useMemo(
     () => mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal),
@@ -131,6 +132,24 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
             </button>
             <button
               type="button"
+              onClick={() => void runUq()}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-400/40 text-violet-200 text-[11px] font-bold"
+              title="Literature-default Monte Carlo UQ (n≈96). Skipped on default job for speed."
+            >
+              Run UQ
+            </button>
+            <button
+              type="button"
+              onClick={() => void validateNist()}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/15 border border-sky-400/40 text-sky-200 text-[11px] font-bold"
+              title="NIST AMB2018-02 IN625 CBM Table 4 MAPE vs Rosenthal screening"
+            >
+              Validate vs NIST
+            </button>
+            <button
+              type="button"
               onClick={() => void rerun()}
               disabled={busy}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-[11px] font-bold"
@@ -140,6 +159,20 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
             </button>
           </div>
         </div>
+        {(cache || lastFlags) && (
+          <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-mono text-slate-500 relative z-10">
+            {busy && <span className="text-sky-300">Busy…</span>}
+            {cache && (
+              <span className={cache.hit ? "text-emerald-300" : "text-slate-500"}>
+                Cache {cache.hit ? `HIT age ${cache.ageMs} ms` : "MISS"} · key {cache.key}
+                {cache.stats ? ` · hitRate ${(cache.stats.hitRate * 100).toFixed(0)}%` : ""}
+              </span>
+            )}
+            <span>
+              Flags: UQ {lastFlags.enableUq ? "on" : "off"} · NIST {lastFlags.includeAmbench ? "on" : "off"}
+            </span>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -169,6 +202,135 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           qualStatus={job?.qualification?.status}
         />
       )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-violet-400" />
+            <h3 className="text-xs font-bold text-white">Murakami √area paste (optional)</h3>
+          </div>
+          <p className="text-[10px] text-slate-500">
+            {job?.murakami?.pasteHint ||
+              "Paste √area values in µm: CSV / whitespace / one per line. Example: 40, 55, 62, 48, 70. No sizes invented when empty."}
+          </p>
+          <textarea
+            value={murakamiInput.defectSqrtAreasPaste}
+            onChange={(e) => setMurakamiInput({ defectSqrtAreasPaste: e.target.value })}
+            rows={3}
+            placeholder="40, 55, 62, 48, 70"
+            className="w-full bg-[#060a12] border border-[#162032] rounded-lg px-2 py-1.5 text-[11px] text-slate-200 font-mono"
+          />
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="text-[10px] text-slate-400 font-mono">
+              HV override
+              <input
+                type="number"
+                value={murakamiInput.hardness_HV ?? ""}
+                placeholder={
+                  job?.murakami?.alloyHvDefaults?.[materials.alloyId]
+                    ? String(job.murakami.alloyHvDefaults[materials.alloyId])
+                    : "alloy default"
+                }
+                onChange={(e) =>
+                  setMurakamiInput({
+                    hardness_HV: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+                className="ml-1 w-20 bg-[#060a12] border border-[#162032] rounded px-1 py-0.5 text-[11px] text-slate-200"
+              />
+            </label>
+            <label className="text-[10px] text-slate-400 font-mono">
+              CT thresh µm
+              <input
+                type="number"
+                value={murakamiInput.ctDetectionThreshold_um ?? ""}
+                onChange={(e) =>
+                  setMurakamiInput({
+                    ctDetectionThreshold_um: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+                className="ml-1 w-16 bg-[#060a12] border border-[#162032] rounded px-1 py-0.5 text-[11px] text-slate-200"
+              />
+            </label>
+            {job?.murakami?.status === "screening_estimate" && (
+              <span className="text-[10px] text-violet-200 font-mono">
+                σ_w {job.murakami.fatigueLimit_internal_MPa ?? "—"} MPa (internal) · HV{" "}
+                {job.murakami.hardness_HV} ({job.murakami.hardnessSource || "—"})
+              </span>
+            )}
+            {job?.murakami?.status === "data_not_supplied" && (
+              <span className="text-[10px] text-slate-500 font-mono">data_not_supplied</span>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-2">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-sky-400" />
+            <h3 className="text-xs font-bold text-white">NIST AMB2018-02 case table</h3>
+          </div>
+          {job?.ambench?.cases?.length ? (
+            <>
+              <p className="text-[10px] text-slate-500">
+                {job.ambench.source.citation} · DOI{" "}
+                <a
+                  className="text-sky-300 underline"
+                  href={`https://doi.org/${job.ambench.source.doi}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {job.ambench.source.doi}
+                </a>
+                {" · "}
+                coverage {job.ambench.alloyCoverage?.status ?? "—"}
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[10px] font-mono text-slate-300">
+                  <thead>
+                    <tr className="text-slate-500 text-left border-b border-[#162032]">
+                      <th className="py-1 pr-2">Case</th>
+                      <th className="py-1 pr-2">NIST L/W/D</th>
+                      <th className="py-1 pr-2">Pred L/W/D</th>
+                      <th className="py-1">MAPE %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {job.ambench.cases.map((c) => (
+                      <tr key={c.caseId} className="border-b border-[#0f172a]">
+                        <td className="py-1 pr-2 text-sky-200">{c.caseId}</td>
+                        <td className="py-1 pr-2">
+                          {c.nist.length_um}/{c.nist.width_um}/{c.nist.depth_um}
+                        </td>
+                        <td className="py-1 pr-2">
+                          {c.predicted.length_um}/{c.predicted.width_um}/{c.predicted.depth_um}
+                        </td>
+                        <td className="py-1">
+                          L {c.mape_pct.length ?? "—"} · W {c.mape_pct.width ?? "—"} · D {c.mape_pct.depth ?? "—"} · μ{" "}
+                          {c.mape_pct.mean ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Overall mean MAPE {job.ambench.overallMeanMape_pct ?? "—"}% — screening only, not a qualification gate.
+              </p>
+            </>
+          ) : (
+            <p className="text-[10px] text-slate-500">
+              Not loaded on the default job. Click <span className="text-sky-300">Validate vs NIST</span> to attach Lane et
+              al. Table 4 (IN625 CBM). No AMMT rows added without open NIST numbers.
+            </p>
+          )}
+          {job?.uq && (
+            <p className="text-[10px] text-violet-200/90 font-mono pt-1 border-t border-[#162032]">
+              UQ n={job.uq.nSamples} · P(printable) {(job.uq.P_printable * 100).toFixed(0)}% · sensitivity (
+              {job.uq.sensitivityMethod || "proxy"}) dom {job.uq.dominantUncertainty}
+            </p>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-3">

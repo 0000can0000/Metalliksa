@@ -1,0 +1,239 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:a42e86df-aec9-4aae-bebc-c5aee655ac09",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-06T19:41:46Z",
+    "tools": [
+      {
+        "vendor": "MetalliX",
+        "name": "generate_sbom.py",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "metallix-python",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "pycalphad",
+      "version": "0.11.2,<0.13",
+      "purl": "pkg:pypi/pycalphad@0.11.2,<0.13",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "xarray",
+      "version": "2024.0.0",
+      "purl": "pkg:pypi/xarray@2024.0.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "symengine",
+      "version": "0.13.0",
+      "purl": "pkg:pypi/symengine@0.13.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tinydb",
+      "version": "4.8.0",
+      "purl": "pkg:pypi/tinydb@4.8.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pint",
+      "version": "0.23.0",
+      "purl": "pkg:pypi/pint@0.23.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "numpy",
+      "version": "1.24.0,<2.3",
+      "purl": "pkg:pypi/numpy@1.24.0,<2.3",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "scipy",
+      "version": "1.10.0,<1.16",
+      "purl": "pkg:pypi/scipy@1.10.0,<1.16",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "matplotlib",
+      "version": "3.8.0",
+      "purl": "pkg:pypi/matplotlib@3.8.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "scikit-learn",
+      "version": "1.3.0",
+      "purl": "pkg:pypi/scikit-learn@1.3.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tqdm",
+      "version": "4.66.0",
+      "purl": "pkg:pypi/tqdm@4.66.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pydantic",
+      "version": "2.5.0,<3",
+      "purl": "pkg:pypi/pydantic@2.5.0,<3",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "torch",
+      "version": "2.1.0",
+      "purl": "pkg:pypi/torch@2.1.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "torchvision",
+      "version": "0.16.0",
+      "purl": "pkg:pypi/torchvision@0.16.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "segmentation-models-pytorch",
+      "version": "0.3.3",
+      "purl": "pkg:pypi/segmentation-models-pytorch@0.3.3",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "albumentations",
+      "version": "1.3.1",
+      "purl": "pkg:pypi/albumentations@1.3.1",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "opencv-python-headless",
+      "version": "4.8.0",
+      "purl": "pkg:pypi/opencv-python-headless@4.8.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "onnx",
+      "version": "1.15.0",
+      "purl": "pkg:pypi/onnx@1.15.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "onnxruntime",
+      "version": "1.16.0",
+      "purl": "pkg:pypi/onnxruntime@1.16.0",
+      "properties": [
+        {
+          "name": "metallix:source",
+          "value": "python/requirements.txt"
+        }
+      ]
+    }
+  ]
+}

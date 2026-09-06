@@ -1,6 +1,7 @@
 /**
- * Client-side energy-density screening (VED, LED, I0, King ΔH/hs).
- * DEPRECATED for industrial printability: do not call from the Additive rail or Decision lab.
+ * Client-side energy-density screening (VED, LED, I0, King ΔH/hs) for telemetry / Inverse Alloy helpers.
+ * DEPRECATED for industrial printability: do NOT call from the Additive rail or Decision lab.
+ * TypeScript must not re-score printability — Python `job.verdict` is the only industrial decision.
  * Paid / Additive Lab path uses POST /api/python/lpbf-build-job → job.verdict only.
  */
 

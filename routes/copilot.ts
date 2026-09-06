@@ -1,10 +1,20 @@
 import { Router, Request, Response } from "express";
 import { getGeminiClient, generateGeminiContentWithFallback } from "../server/geminiService.ts";
+import { airgapDenyPayload, isAirgappedFromEnv } from "../server/airgap.ts";
 
 export const copilotRouter = Router();
 
+const AIRGAPPED = isAirgappedFromEnv(process.env);
+
+function denyIfAirgapped(res: Response, service: string): boolean {
+  if (!AIRGAPPED) return false;
+  res.status(503).json(airgapDenyPayload(service));
+  return true;
+}
+
 // General Metallurgy Consultation & Copilot Guidance
 copilotRouter.post(["/api/metallurgy/consult", "/api/consult"], async (req: Request, res: Response) => {
+  if (denyIfAirgapped(res, "Gemini AI consultation")) return;
   try {
     const { prompt, message, context, systemInstruction } = req.body;
     const userPrompt = prompt || message || "Provide metallurgical analysis and ICME optimization advice.";
@@ -37,6 +47,7 @@ copilotRouter.post(["/api/metallurgy/consult", "/api/consult"], async (req: Requ
 
 // SEM & Micrograph Vision Diagnostics
 copilotRouter.post("/api/metallurgy/diagnose-micrograph", async (req: Request, res: Response) => {
+  if (denyIfAirgapped(res, "Gemini micrograph vision")) return;
   try {
     const { imageBase64, prompt } = req.body;
     let ai;
@@ -85,6 +96,7 @@ copilotRouter.post("/api/metallurgy/detect-sem-legend", async (_req: Request, re
 
 // SEM Auto Analysis
 copilotRouter.post("/api/metallurgy/analyze-sem", async (req: Request, res: Response) => {
+  if (denyIfAirgapped(res, "Gemini SEM analysis")) return;
   try {
     const { imageBase64, analysisType } = req.body;
     return res.json({
@@ -103,6 +115,7 @@ copilotRouter.post("/api/metallurgy/analyze-sem", async (req: Request, res: Resp
 
 // Aerospace Qualification
 copilotRouter.post("/api/metallurgy/qualify-aerospace", async (req: Request, res: Response) => {
+  if (denyIfAirgapped(res, "Cloud aerospace qualification assistant")) return;
   try {
     const { material, specStandard, testResults } = req.body;
     return res.json({
@@ -438,6 +451,7 @@ const MATERIALS_PROJECT_VERIFIED_DATA: any[] = [
 ];
 
 copilotRouter.get("/api/materials-project/search", (req: Request, res: Response) => {
+  // Bundled offline catalog is always allowed. Live materialsproject.org fetch is not used.
   const formula = String(req.query.formula || "").trim().toLowerCase();
   const materialId = String(req.query.material_id || "").trim().toLowerCase();
 
@@ -461,6 +475,10 @@ copilotRouter.get("/api/materials-project/search", (req: Request, res: Response)
     count: matches.length,
     data: matches,
     source: "Verified Materials Project Physical DFT Reference Catalog",
+    airgapped: AIRGAPPED,
+    note: AIRGAPPED
+      ? "Air-gap: serving bundled offline catalog only (no live materialsproject.org)."
+      : "Bundled offline catalog (not a live Materials Project API proxy).",
   });
 });
 

@@ -236,5 +236,20 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Fixtures**: `python/test_lpbf_build_job.py` Phase 0–4 (UQ n=24 seed reproducibility, NIST table values, Murakami empty/filled); `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 017: LPBF Build Job Phase 5 (cache, lazy UQ/NIST, Murakami paste, SBOM, air-gap)
+- **Date**: 2026-09-06
+- **Module**: `lpbf_job_cache.py` / `lpbf_build_job_solver.py` / `lpbf_screening_uq.py` / `murakami_fatigue_screening.py` / `server/airgap.ts` / `generate_sbom.py`
+- **Scope**: Phase 5 environment + performance. Verdict remains Python-only. No invented defect / AM-Bench / AMMT numbers. No AMMT rows (no open NIST numbers beyond Lane Table 4).
+- **Hash cache**: Canonical SHA-256 over alloy + P/v/h/t/d + seed + strategy + mesh fingerprint + UQ/NIST/Murakami flags; in-process hit returns prior result with `cache.hit` / `ageMs` / hitRate.
+- **Lazy UQ / NIST**: Schema + UI defaults `enableUq=false`, `includeAmbench=false`. Decision lab **Run UQ** (n≈96) and **Validate vs NIST**. Session store retains last UQ/NIST blocks. UQ MC does not re-run slicer.
+- **Sensitivity**: Spearman |ρ| share labelled `spearman-proxy` (`screeningSensitivity` / `sobolProxy` alias).
+- **Murakami paste**: CSV / whitespace / line √area µm; alloy HV defaults (Ti64 340, 316L 210, AlSi10Mg 120, IN718 380) with override; empty → `data_not_supplied`.
+- **SBOM**: CycloneDX 1.5 JSON via `npm run sbom` → `sbom/python-cyclonedx.json`, `sbom/node-cyclonedx.json`. Core Python pins tightened in `requirements.txt`.
+- **Air-gap**: `AIRGAPPED=1` disables Gemini consultation/vision routes; banner + `/api/runtime-config` list blocked vs local-allowed. Bundled MP catalog remains offline. Local LPBF open.
+- **UI**: Cache hit/age chips; NIST case MAPE table + DOI; engineer-friendlier gate notes; copy-job UQ/NIST summary.
+- **Fixtures**: `python/test_lpbf_build_job.py` (fast default + `--slow`); `npx tsc --noEmit`; `py -3 python/generate_sbom.py`.
+- **Status**: **PASS**
 
 

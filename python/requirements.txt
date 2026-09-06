@@ -1,15 +1,16 @@
 # Metallix Scientific Computing & CALPHAD Thermodynamics
-pycalphad>=0.11.2
+# Core screening pins (Faz 5). Heavy ML stacks remain range-pinned for CUDA variance.
+pycalphad>=0.11.2,<0.13
 xarray>=2024.0.0
 symengine>=0.13.0
 tinydb>=4.8.0
 pint>=0.23.0
-numpy>=1.24.0
-scipy>=1.10.0
+numpy>=1.24.0,<2.3
+scipy>=1.10.0,<1.16
 matplotlib>=3.8.0
 scikit-learn>=1.3.0
 tqdm>=4.66.0
-pydantic>=2.5.0
+pydantic>=2.5.0,<3
 
 # Metallix Micrograph AI Segmentation Training Pipeline Requirements
 torch>=2.1.0

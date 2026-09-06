@@ -1436,8 +1436,10 @@ class PythonComputationService {
     uqSamples?: number;
     includeAmbench?: boolean;
     defectSqrtAreas_um?: number[] | null;
+    defectSqrtAreasPaste?: string;
     hardness_HV?: number;
     ctDetectionThreshold_um?: number;
+    bypassCache?: boolean;
     gitSha?: string;
   }): Promise<PythonLpbfBuildJobResult> {
     const res = await fetch("/api/python/lpbf-build-job", {
@@ -1667,6 +1669,8 @@ export interface PythonLpbfUqBlock {
   counts: { printable: number; risky: number; do_not_print: number };
   normalizedEnthalpy: { mean: number; std: number; unit: string };
   sobolProxy: Record<string, number>;
+  screeningSensitivity?: Record<string, number>;
+  sensitivityMethod?: string;
   dominantUncertainty: string;
   note: string;
 }
@@ -1697,8 +1701,13 @@ export interface PythonLpbfMurakamiBlock {
   fatigueLimit_MPa?: number | null;
   fatigueLimit_internal_MPa?: number;
   fatigueLimit_surface_MPa?: number;
+  hardness_HV?: number;
+  hardnessSource?: string;
+  nDefects?: number;
   gumbel?: Record<string, number | string> | null;
   note: string;
+  pasteHint?: string;
+  alloyHvDefaults?: Record<string, number>;
   ctDetectionThreshold_um?: number | null;
 }
 
@@ -1710,6 +1719,13 @@ export interface PythonLpbfQualificationBlock {
   couponPlan: string[];
   traceability: { inputHash: string; gitSha?: string | null; note: string };
   note: string;
+}
+
+export interface PythonLpbfCacheMeta {
+  hit: boolean;
+  key: string;
+  ageMs: number;
+  stats?: { entries: number; hits: number; misses: number; hitRate: number };
 }
 
 export interface PythonLpbfBuildJobResult {
@@ -1733,6 +1749,7 @@ export interface PythonLpbfBuildJobResult {
   ambench?: PythonLpbfAmbenchBlock | null;
   murakami?: PythonLpbfMurakamiBlock | null;
   qualification?: PythonLpbfQualificationBlock | null;
+  cache?: PythonLpbfCacheMeta | null;
 }
 
 export interface PythonLPBFResult {

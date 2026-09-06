@@ -4,6 +4,15 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-06 22:45 — LPBF Faz 5 (cache, lazy UQ/NIST, Murakami, SBOM, air-gap)
+- **Agent**: Cursor Auto (Composer) / Grok inherit for survey
+- **Result**: PASS
+- **Task**: MetalliX LPBF Faz 5 ortam+performans + serbest kalite: hash cache; lazy UQ/NIST; Murakami paste; CycloneDX SBOM; AIRGAPPED; PROOF 017; push yeni1 + main sync.
+- **Done**: `lpbf_job_cache.py`; schema defaults enableUq/includeAmbench=false; Decision lab Run UQ / Validate vs NIST + NIST MAPE table + Murakami paste/HV; Spearman screeningSensitivity; air-gap middleware+banner; `npm run sbom`; rail cache/UQ chips; tests fast/slow; PROOF 017.
+- **Where we left off**: Nothing left on this task after commit/push + main sync.
+- **Files**: `python/lpbf_job_cache.py`, `python/lpbf_build_job_solver.py`, `python/lpbf_build_job_schema.py`, `python/lpbf_screening_uq.py`, `python/murakami_fatigue_screening.py`, `python/generate_sbom.py`, `python/test_lpbf_build_job.py`, `python/requirements.txt`, `server/airgap.ts`, `server.ts`, `routes/copilot.ts`, `src/store/useLpbfBuildJobStore.ts`, `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/AirgapBanner.tsx`, `src/App.tsx`, `src/services/pythonComputationService.ts`, `src/physics/lpbfBuildJob.ts`, `package.json`, `README.md`, `sbom/*`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_lpbf_build_job.py` PASS; `py -3 python/test_lpbf_build_job.py --slow` PASS; `py -3 python/generate_sbom.py` PASS; `npx tsc --noEmit` PASS
+
 ## 2026-09-06 22:20 — LPBF Faz 3+4 (UQ, NIST, Murakami, qualification)
 - **Agent**: Cursor Auto (Composer)
 - **Result**: PASS

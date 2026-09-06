@@ -51,6 +51,7 @@ import { DigitalTwinHub } from "./components/DigitalTwinHub";
 import { PhaseKineticsTTTCCTStudio } from "./components/PhaseKineticsTTTCCTStudio";
 import { UQLab } from "./components/UQLab";
 import { pythonComputationService, PythonEngineStatus } from "./services/pythonComputationService";
+import { AirgapBanner } from "./components/AirgapBanner";
 
 export type DisciplineHubId =
   | "characterization"
@@ -436,7 +437,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070b12] text-[#e2e8f0] flex flex-col font-sans selection:bg-sky-500/25 selection:text-sky-200 relative overflow-x-hidden">
-      {/* Aerospace Subtle Ambient Radar Glow */}
+      <AirgapBanner />      {/* Aerospace Subtle Ambient Radar Glow */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_-10%,rgba(56,189,248,0.08),transparent_50%)] h-[550px] z-0"></div>
 
       {/* Top Aerospace Header & 3-Step Master Workflow */}

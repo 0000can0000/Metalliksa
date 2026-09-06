@@ -4,6 +4,72 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-06 21:10 — LPBF Faz 0→2 + serbest iyileştirme
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: MetalliX LPBF çekirdek Faz 0→1→2 (verdict yalnız Python; ölçüm uydurma yok; force-push yok) + sınırlı kalite iyileştirmeleri; bitince `yeni1` push ve `main` sync.
+- **Done**: F0 seed/M_molar/Tang/(h/W)²+(t/D)²/sahte tavan kaldırma/Marangoni=termal; F1 efektif k/Cp (King solid), R=v·cosθ, downskin gate, stripe 5 mm/67°/dwell 0 + DOI assumptions; F2 numpy, pydantic şema, triangle cap 12000; UI seed+strategy; PROOF 015.
+- **Where we left off**: Nothing left on this task. Faz 3–5 (UQ/Murakami/AMS/SBOM) bilerek yapılmadı.
+- **Files**: `python/lpbf_thermal_solver.py`, `python/lpbf_build_job_solver.py`, `python/lpbf_build_job_schema.py`, `python/four_alloy_materials.py`, `python/marangoni_pore_instability_solver.py`, `python/stl_slicer_build_time_solver.py`, `python/test_lpbf_build_job.py`, `python/requirements.txt`, `src/store/useMaterialSpecimenStore.ts`, `src/store/useLpbfBuildJobStore.ts`, `src/services/pythonComputationService.ts`, `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/MarangoniPoreInstabilityLab.tsx`, `src/types/lpbfDataFoundation.ts`, `src/physics/lpbfBuildJob.ts`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_lpbf_build_job.py` PASS; `py -3 python/test_lpbf_meltpool_accuracy.py` PASS; `py -3 python/test_four_alloy_literature.py` PASS; `npx tsc --noEmit` PASS
+
+---
+
+## 2026-09-06 20:08 — NVIDIA DeepSeek snippet with leaked key
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User pasted NVIDIA integrate.api OpenAI client for deepseek-v4-pro-0813 including a live nvapi key.
+- **Done**: Did not store or run the key. Told user to rotate it and use an env var. Explained the snippet is hosted NIM, not a local model load.
+- **Where we left off**: After rotation, they can set NVIDIA_API_KEY and call the same endpoint. No app code change.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — secret hygiene; did not execute the snippet
+
+---
+
+## 2026-09-06 20:08 — DeepSeek from NVIDIA, not STL
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User clarified they will load DeepSeek from NVIDIA, not a CAD STL.
+- **Done**: Explained Metalliksa has no LLM hook; NVIDIA NIM DeepSeek V4 is datacenter-scale; Cursor uses its own model picker; practical options are NVIDIA API vs local NIM vs smaller distill.
+- **Where we left off**: User still needs to pick Cursor vs NVIDIA API vs local GPU. No code change.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — product guidance only
+
+---
+
+## 2026-09-06 20:07 — User plans new model upload
+- **Agent**: Cursor Grok 4.6
+- **Result**: PARTIAL
+- **Task**: User said they will upload a new model; no file or target lab yet.
+- **Done**: Confirmed STL upload already feeds session mesh / Build Job as `uploaded-stl`. Asked whether STL vs alloy/physics model and which lab.
+- **Where we left off**: Waiting for the file or a clearer target. No code change.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — clarification only
+
+---
+
+## 2026-09-06 20:03 — Fast-forward GitHub main to yeni1
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Make GitHub default `main` show the LPBF work so AI Studio / GitHub no longer open the empty init commit.
+- **Done**: `git push origin yeni1:main` (`d45f875..caed225`). Local `main` moved to `caed225` (same as `yeni1` / `origin/yeni1` / `origin/main`).
+- **Where we left off**: Refresh GitHub or Google AI Studio on `main`. Stay on branch `yeni1` for further work. Uncommitted LOG is this entry.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — git refs only; push reported `yeni1 -> main`.
+
+---
+
+## 2026-09-06 19:48 — Start npm run dev
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Start the MetalliX app for the user.
+- **Done**: `npm run dev` is running. Express+Vite on http://localhost:3000; Python IPC HTTP on http://127.0.0.1:5055 (17 modules warm).
+- **Where we left off**: Open the URL in the browser. Additive LPBF uses the live Python build-job route.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — process start only; server log shows daemon ONLINE.
+
+---
+
 ## 2026-09-05 23:20 — Engineering-usable LPBF screening rail
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

@@ -18,7 +18,10 @@ import math
 import struct
 import time
 
+import numpy as np
+
 from four_alloy_materials import slicer_props
+from lpbf_build_job_schema import MAX_LPBF_SLICER_TRIANGLES
 
 # Secondary alloys only. The four locked alloys come from four_alloy_materials.py.
 SECONDARY_ALLOY_DB = {
@@ -350,9 +353,15 @@ def solve_slicer(data):
     custom_triangles = data.get("customTriangles", None)
     cad_asset_name = data.get("cadAssetName", "")
     native_triangle_count = data.get("triangleCountNative", None)
+    max_triangles = int(data.get("maxTriangles") or MAX_LPBF_SLICER_TRIANGLES)
 
     triangles = []
     if custom_triangles and len(custom_triangles) > 0:
+        if native_triangle_count is None:
+            native_triangle_count = len(custom_triangles)
+        # Server-side triangle cap (matches TS MAX_LPBF_SLICER_TRIANGLES).
+        if len(custom_triangles) > max_triangles:
+            custom_triangles = custom_triangles[:max_triangles]
         for tri in custom_triangles:
             if not isinstance(tri, (list, tuple)) or len(tri) < 3:
                 continue
@@ -376,9 +385,10 @@ def solve_slicer(data):
     if not triangles:
         return {"error": "No triangles available for slicing."}
 
-    all_x = [v[0] for t in triangles for v in t]
-    all_y = [v[1] for t in triangles for v in t]
-    all_z = [v[2] for t in triangles for v in t]
+    coords = np.asarray([v for t in triangles for v in t], dtype=np.float64)
+    all_x = coords[:, 0]
+    all_y = coords[:, 1]
+    all_z = coords[:, 2]
 
     min_x, max_x = min(all_x), max(all_x)
     min_y, max_y = min(all_y), max(all_y)

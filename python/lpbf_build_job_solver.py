@@ -16,6 +16,7 @@ from four_alloy_materials import (
     evaluate_literature_pv,
     resolve_alloy_id,
 )
+from lpbf_build_job_schema import LpbfBuildJobRequest
 from lpbf_thermal_solver import calculate_meltpool_physics
 from stl_slicer_build_time_solver import solve_slicer
 
@@ -27,6 +28,8 @@ _LOF_HT = {
     "alsi10mg": {"hatch_um": 110, "layer_um": 30, "beamDiameter_um": 100},
     "in718": {"hatch_um": 90, "layer_um": 30, "beamDiameter_um": 80},
 }
+
+DEFAULT_PROCESS_SEED = 42
 
 
 def _gate(gid, status, measured, required, unit, note):
@@ -59,7 +62,7 @@ def _suggested_patch(thermal, alloy_id, dominant_gate, verdict):
             "layer_um": int(round(cur_t)),
             "beamDiameter_um": int(round(cur_d)),
         }
-    if dominant_gate in ("lof_wh", "lof_dt"):
+    if dominant_gate in ("lof_tang", "lof_wh", "lof_dt", "downskin"):
         return {
             "laserPower_W": mid_p,
             "scanSpeed_mms": mid_v,
@@ -76,13 +79,20 @@ def _suggested_patch(thermal, alloy_id, dominant_gate, verdict):
     }
 
 
-def compose_verdict(thermal, alloy_id):
+def compose_verdict(thermal, alloy_id, extras=None):
+    extras = extras or {}
     W = float(thermal["meltPoolGeometry"]["width_um"])
     D = float(thermal["meltPoolGeometry"]["depth_um"])
     h = float(thermal["processParameters"]["hatchSpacing_um"])
     t = float(thermal["processParameters"]["layerThickness_um"])
     width_over_hatch = W / max(1e-6, h)
     depth_over_layer = D / max(1e-6, t)
+    tang = float(
+        thermal["defectDiagnostics"].get(
+            "tangIndex_hW_tD",
+            thermal["defectDiagnostics"].get("lackOfFusionOverlapIndex", 0.0),
+        )
+    )
 
     def_ = thermal["defectDiagnostics"]
     lof_fail = def_["lackOfFusionStatus"] == "Fail"
@@ -98,14 +108,25 @@ def compose_verdict(thermal, alloy_id):
         float(thermal["processParameters"]["scanSpeed_mm_s"]),
     )
 
+    downskin_angle = extras.get("downskinOverhang_deg")
+    downskin_fail = False
+    downskin_warn = False
+    if downskin_angle is not None:
+        # Overhang from vertical: >45° downskin needs support / parameter change in screening.
+        if float(downskin_angle) > 55.0:
+            downskin_fail = True
+        elif float(downskin_angle) > 45.0:
+            downskin_warn = True
+
     reasons = []
     if lof_fail:
         reasons.append(
-            f"Lack of fusion: W/h = {width_over_hatch:.2f} (need >1.05) or D/t = {depth_over_layer:.2f} (need >1.15)."
+            f"Lack of fusion (Tang): (h/W)²+(t/D)² = {tang:.3f} (need ≤1.0); "
+            f"W/h = {width_over_hatch:.2f}, D/t = {depth_over_layer:.2f}."
         )
     elif lof_warn:
         reasons.append(
-            f"Hatch/layer overlap is marginal (W/h = {width_over_hatch:.2f}, D/t = {depth_over_layer:.2f})."
+            f"Tang overlap marginal: (h/W)²+(t/D)² = {tang:.3f} (pass ≤0.80)."
         )
     if keyhole_high:
         reasons.append(f"Keyhole porosity: ΔH/hₛ = {dh} (King onset ~30).")
@@ -117,6 +138,14 @@ def compose_verdict(thermal, alloy_id):
         reasons.append("Recoater crash / part curl risk from residual stress.")
     if distortion_high:
         reasons.append(f"Inherent-strain distortion index {def_['distortionIndex']} (≥0.65).")
+    if downskin_fail:
+        reasons.append(
+            f"Downskin overhang {float(downskin_angle):.1f}° from vertical exceeds 55° screening gate."
+        )
+    elif downskin_warn:
+        reasons.append(
+            f"Downskin overhang {float(downskin_angle):.1f}° is marginal (45–55°); expect support or stripe reorient."
+        )
     if not win["inside"]:
         box = win["box"]
         reasons.append(
@@ -125,14 +154,15 @@ def compose_verdict(thermal, alloy_id):
         )
 
     verdict = "printable"
-    if lof_fail or balling_high or (keyhole_high and dh > 35):
+    if lof_fail or balling_high or downskin_fail or (keyhole_high and dh > 35):
         verdict = "do-not-print"
-    elif lof_warn or keyhole_high or recoater_high or distortion_high or (not win["inside"]):
+    elif lof_warn or keyhole_high or recoater_high or distortion_high or downskin_warn or (not win["inside"]):
         verdict = "risky"
 
     if not reasons:
         reasons.append(
-            "Conduction-mode melt pool with hatch/layer overlap above LoF gates. VED is not used as the sole criterion."
+            "Conduction-mode melt pool with Tang hatch/layer overlap above LoF gates. "
+            "VED is not used as the sole criterion."
         )
 
     headline = {
@@ -143,18 +173,27 @@ def compose_verdict(thermal, alloy_id):
 
     lw = round(width_over_hatch, 3)
     dt = round(depth_over_layer, 3)
-    lw_status = "fail" if width_over_hatch < 1.05 else ("warn" if lof_warn else "pass")
-    dt_status = "fail" if depth_over_layer < 1.15 else ("warn" if lof_warn else "pass")
+    tang_r = round(tang, 3)
+    tang_status = "fail" if lof_fail else ("warn" if lof_warn else "pass")
     kh_status = "fail" if (keyhole_high and dh > 35) else ("warn" if keyhole_high else "pass")
     ball_status = "fail" if balling_high else "pass"
     lit_status = "pass" if win["inside"] else "warn"
     rec_status = "warn" if recoater_high else "pass"
     dist_status = "warn" if distortion_high else "pass"
+    ds_status = "fail" if downskin_fail else ("warn" if downskin_warn else "pass")
     aspect = float(thermal["meltPoolGeometry"]["aspectRatio_L_over_W"])
 
     gates = [
-        _gate("lof_wh", lw_status, lw, 1.05, "1", "Melt-pool width vs hatch (LoF)."),
-        _gate("lof_dt", dt_status, dt, 1.15, "1", "Melt-pool depth vs layer (LoF)."),
+        _gate(
+            "lof_tang",
+            tang_status,
+            tang_r,
+            1.0,
+            "1",
+            "Tang et al. LoF: (h/W)²+(t/D)² ≤ 1; warn if >0.80.",
+        ),
+        _gate("lof_wh", tang_status, lw, 1.05, "1", "Diagnostic W/h (not the Tang gate)."),
+        _gate("lof_dt", tang_status, dt, 1.15, "1", "Diagnostic D/t (not the Tang gate)."),
         _gate("keyhole", kh_status, dh, 30.0, "1", "King ΔH/hₛ onset ~30; do-not-print if High and >35."),
         _gate("balling", ball_status, aspect, None, "1", "Plateau–Rayleigh L/W from Rosenthal length."),
         _gate(
@@ -181,6 +220,14 @@ def compose_verdict(thermal, alloy_id):
             "index",
             "Inherent-strain screening index, not Goldak FEA.",
         ),
+        _gate(
+            "downskin",
+            ds_status,
+            None if downskin_angle is None else round(float(downskin_angle), 1),
+            45.0,
+            "deg",
+            "Overhang from vertical; >45° warn, >55° fail. Flat when angle omitted.",
+        ),
     ]
     dominant = "none"
     for g in gates:
@@ -200,6 +247,9 @@ def compose_verdict(thermal, alloy_id):
         "lofGeometry": {
             "widthOverHatch": lw,
             "depthOverLayer": dt,
+            "tangIndex": tang_r,
+            "hOverW": round(h / max(1e-6, W), 3),
+            "tOverD": round(t / max(1e-6, D), 3),
         },
         "literatureWindow": win,
         "gates": gates,
@@ -208,8 +258,28 @@ def compose_verdict(thermal, alloy_id):
     }
 
 
+def _scan_strategy_assumptions(scan_strategy, stripe_width_mm, rotation_deg, dwell_ms):
+    strat = (scan_strategy or "stripe").strip().lower().replace("_", "-")
+    return [
+        (
+            f"Scan strategy screening default: {strat}; stripe width {stripe_width_mm} mm; "
+            f"inter-layer rotation {rotation_deg}°; hatch dwell {dwell_ms} ms."
+        ),
+        "Strategy DOIs: 10.1115/1.4031649 (Cheng et al. residual stress / scan strategy); "
+        "10.1016/j.jmapro.2020.01.039 (stripe / hatch strategy process effects); "
+        "10.1016/j.jmrt.2022.04.055 (scan strategy on microstructure / defects); "
+        "10.1016/j.matdes.2018.107552 (scan strategy design of LPBF parts).",
+    ]
+
+
 def solve_lpbf_build_job(data):
     t0 = time.time()
+    try:
+        req = LpbfBuildJobRequest.model_validate(data if isinstance(data, dict) else {})
+        data = req.to_solver_dict()
+    except Exception as e:
+        return {"success": False, "error": f"Invalid LPBF build-job payload: {e}"}
+
     alloy_id = resolve_alloy_id(data.get("alloyId") or "in718") or "in718"
     mats = ALLOY_MATERIALS[alloy_id]
     thermal_mat = data.get("thermalMaterial") or mats["thermal"]
@@ -222,9 +292,30 @@ def solve_lpbf_build_job(data):
     layer = float(data.get("layerThickness_um", 40.0))
     hatch = float(data.get("hatchSpacing_um", 110.0))
     wavelength = data.get("laserWavelength", "IR_1064nm")
+    process_seed = int(data.get("processSeed", data.get("seed", DEFAULT_PROCESS_SEED)))
+
+    incline_deg = float(data.get("inclineAngle_deg", data.get("surfaceIncline_deg", 0.0) or 0.0))
+    downskin_deg = data.get("downskinOverhang_deg")
+    if downskin_deg is None and incline_deg > 0:
+        # Treat surface incline from horizontal as overhang from vertical when only one angle given.
+        downskin_deg = max(0.0, 90.0 - incline_deg) if incline_deg <= 90 else incline_deg
+
+    scan_strategy = data.get("scanStrategy", "stripe")
+    stripe_width_mm = float(data.get("stripeWidth_mm", 5.0))
+    rotation_deg = float(data.get("scanRotation_deg", 67.0))
+    dwell_ms = float(data.get("hatchDwell_ms", 0.0))
 
     thermal = calculate_meltpool_physics(
-        thermal_mat, power, speed, beam, preheat, layer, hatch, wavelength
+        thermal_mat,
+        power,
+        speed,
+        beam,
+        preheat,
+        layer,
+        hatch,
+        wavelength,
+        incline_angle_deg=incline_deg,
+        process_seed=process_seed,
     )
     slicer = solve_slicer(
         {
@@ -238,26 +329,55 @@ def solve_lpbf_build_job(data):
             "customTriangles": data.get("customTriangles"),
             "cadAssetName": data.get("cadAssetName", ""),
             "triangleCountNative": data.get("triangleCountNative"),
+            "maxTriangles": data.get("maxTriangles"),
         }
     )
     if slicer.get("error"):
         return {"success": False, "error": slicer["error"]}
 
-    decision = compose_verdict(thermal, alloy_id)
+    decision = compose_verdict(
+        thermal,
+        alloy_id,
+        extras={"downskinOverhang_deg": downskin_deg},
+    )
     elapsed = round((time.time() - t0) * 1000.0, 1)
     thermal["computeTimeMs"] = elapsed
+
+    assumptions = [
+        "Melt-pool field is regularized Rosenthal (not volumetric Goldak FEA).",
+        "LoF gate is Tang (h/W)²+(t/D)² ≤ 1; VED is not the sole criterion.",
+        "Keyhole uses King ΔH/hs ≈ 30.",
+        "Slicer uses live customTriangles when present; otherwise a demo CAD preset.",
+        "No artificial peak-T / PDAS / residual-stress display ceilings; alloy M_molar drives recoil.",
+        "Marangoni characteristic length uses the same thermal melt-pool width (geometrySource=thermal).",
+        f"Deterministic processSeed={process_seed} for reproducible screening extras.",
+        "Request validated with Pydantic; customTriangles capped at maxTriangles (default 12000).",
+    ]
+    assumptions.extend(
+        _scan_strategy_assumptions(scan_strategy, stripe_width_mm, rotation_deg, dwell_ms)
+    )
+    if thermal.get("processParameters", {}).get("effectiveConductivity_W_mK") is not None:
+        assumptions.append(
+            "Effective k/Cp blend solid↔liquid for Rosenthal geometry; King ΔH/hs stays on solid thermophysics."
+        )
+    if abs(incline_deg) > 1e-6:
+        assumptions.append(
+            f"Solidification rate R = v·cos(θ) with surface incline θ={incline_deg:.1f}°."
+        )
 
     return {
         "success": True,
         "engine": "lpbf_build_job",
         "modelId": "rosenthal-screening-v1",
-        "assumptions": [
-            "Melt-pool field is regularized Rosenthal (not volumetric Goldak FEA).",
-            "LoF uses W vs h and D vs t; VED is not the sole gate.",
-            "Keyhole uses King ΔH/hs ≈ 30.",
-            "Slicer uses live customTriangles when present; otherwise a demo CAD preset.",
-        ],
+        "assumptions": assumptions,
         "alloyId": alloy_id,
+        "processSeed": process_seed,
+        "scanStrategy": {
+            "id": scan_strategy,
+            "stripeWidth_mm": stripe_width_mm,
+            "rotation_deg": rotation_deg,
+            "hatchDwell_ms": dwell_ms,
+        },
         "computeTimeMs": elapsed,
         "thermal": thermal,
         "slicer": slicer,

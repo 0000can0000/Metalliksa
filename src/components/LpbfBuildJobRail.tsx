@@ -233,7 +233,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
               }`}
             >
               {g.id} {g.status}
-              {g.id === "lof_wh" || g.id === "lof_dt" || g.id === "keyhole"
+              {g.id === "lof_wh" || g.id === "lof_dt" || g.id === "lof_tang" || g.id === "keyhole"
                 ? ` ${g.measured}`
                 : ""}
             </span>
@@ -403,6 +403,12 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
         <span className="flex items-center gap-1 ml-auto">
           <Layers className="w-3 h-3 text-sky-400" />
           {lpbf.scanStrategy}
+          {job?.scanStrategy
+            ? ` · ${job.scanStrategy.stripeWidth_mm} mm / ${job.scanStrategy.rotation_deg}° / dwell ${job.scanStrategy.hatchDwell_ms} ms`
+            : " · 5 mm / 67° / dwell 0"}
+        </span>
+        <span className="text-slate-500" title="Deterministic process seed">
+          seed {job?.processSeed ?? lpbf.processSeed ?? 42}
         </span>
         {lpbf.cadAssetName && (
           <span className="text-sky-300 truncate max-w-[160px]">{lpbf.cadAssetName}</span>
@@ -418,10 +424,19 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
           onChange={(e) => updateLpbfProcess({ scanStrategy: e.target.value as LpbfScanStrategy })}
           className="bg-[#0c1322] border border-[#162032] rounded px-1.5 py-0.5 text-[10px] text-slate-200"
         >
+          <option value="stripe">Stripe 5 mm / 67°</option>
           <option value="meander-67">Meander 67°</option>
           <option value="island">Island 5×5</option>
-          <option value="stripe">Stripe</option>
         </select>
+        <label className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
+          seed
+          <input
+            type="number"
+            value={lpbf.processSeed ?? 42}
+            onChange={(e) => updateLpbfProcess({ processSeed: Number(e.target.value) || 42 })}
+            className="w-14 bg-[#0c1322] border border-[#162032] rounded px-1 py-0.5 text-[10px] text-slate-200"
+          />
+        </label>
       </div>
 
       {actionable.length > 0 && (

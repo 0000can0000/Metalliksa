@@ -212,4 +212,17 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Expected**: `modelId=rosenthal-screening-v1`; literature box inside; `geometrySource=demo-preset`; `buildTimeSummary.totalBuildTime_hr>0`; `meshMetrics.estimatedPartMass_g>0`; assumptions mention Goldak (not used) and King \(\Delta H/h_s\).
 - **Status**: **PASS** (`python/test_lpbf_build_job.py`; `tsc --noEmit`)
 
+---
+
+## Proof Entry 015: LPBF Build Job Phase 0→2 (Tang, M_molar, k_eff, strategy DOIs, Pydantic)
+- **Date**: 2026-09-06
+- **Module**: `lpbf_thermal_solver.py` / `lpbf_build_job_solver.py` / `lpbf_build_job_schema.py` / `four_alloy_materials.py`
+- **Scope**: Phase 0–2 screening upgrades without UQ/Murakami/AMS. Verdict remains Python-only.
+- **Phase 0**: Per-alloy `M_molar_kg_mol`; Tang LoF gate \((h/W)^2+(t/D)^2\); remove fake peak-T / PDAS / residual-stress ceilings; `processSeed`; Marangoni geometry accepts thermal W/D.
+- **Phase 1**: Effective solid↔liquid \(k/C_p\) for Rosenthal geometry (King \(\Delta H/h_s\) stays solid); \(R=v\cos\theta\); downskin overhang gate; scan strategy stripe / 5 mm / 67° / dwell 0 with DOIs in `assumptions`.
+- **Phase 2**: NumPy in thermal map + slicer bbox; Pydantic request schema; triangle cap 12000 (synced with TS).
+- **Fixtures**: `python/test_lpbf_build_job.py` (seed, Tang, DOIs, incline R, triangle cap, downskin); `python/test_four_alloy_literature.py`; `python/test_lpbf_meltpool_accuracy.py`; `npx tsc --noEmit`.
+- **Status**: **PASS**
+
+
 

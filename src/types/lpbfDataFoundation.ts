@@ -290,8 +290,8 @@ export function classifyProcessRegime(
 }
 
 /**
- * Geometric LoF gates (Tang / Gong / ISO/ASTM AM density practice):
- * hatch overlap fails when h > W; layer overlap fails when t > D.
+ * Geometric LoF gates (Tang et al.):
+ * Tang index (h/W)^2+(t/D)^2 ≤ 1 for consolidation; also report W/h and D/t.
  */
 export function classifyHatchLayerOverlap(
   meltPoolWidth_um: number,
@@ -303,14 +303,18 @@ export function classifyHatchLayerOverlap(
   layerOverlapFail: boolean;
   widthOverHatch: number;
   depthOverLayer: number;
+  tangIndex: number;
   status: "Pass" | "Warning" | "Fail";
 } {
   const widthOverHatch = meltPoolWidth_um / Math.max(1, hatchSpacing_um);
   const depthOverLayer = meltPoolDepth_um / Math.max(1, layerThickness_um);
+  const hOverW = hatchSpacing_um / Math.max(1, meltPoolWidth_um);
+  const tOverD = layerThickness_um / Math.max(1, meltPoolDepth_um);
+  const tangIndex = hOverW * hOverW + tOverD * tOverD;
   const hatchOverlapFail = hatchSpacing_um > meltPoolWidth_um;
   const layerOverlapFail = layerThickness_um > meltPoolDepth_um;
   let status: "Pass" | "Warning" | "Fail" = "Pass";
-  if (hatchOverlapFail || layerOverlapFail) status = "Fail";
-  else if (widthOverHatch < 1.05 || depthOverLayer < 1.15) status = "Warning";
-  return { hatchOverlapFail, layerOverlapFail, widthOverHatch, depthOverLayer, status };
+  if (tangIndex > 1.0 || hatchOverlapFail || layerOverlapFail) status = "Fail";
+  else if (tangIndex > 0.8) status = "Warning";
+  return { hatchOverlapFail, layerOverlapFail, widthOverHatch, depthOverLayer, tangIndex, status };
 }

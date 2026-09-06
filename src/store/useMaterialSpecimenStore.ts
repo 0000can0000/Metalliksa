@@ -33,6 +33,12 @@ export interface LpbfSpecimenState {
   beamProfile: LpbfBeamProfile;
   cadAssetName: string;
   specimenDoi: string;
+  /** Deterministic seed for Python screening extras (Marangoni pores, etc.). */
+  processSeed: number;
+  /** Surface incline from horizontal (deg); solidification R = v·cos(θ). */
+  inclineAngle_deg: number;
+  /** Overhang from vertical (deg); omit/0 = flat upskin. */
+  downskinOverhang_deg: number;
 }
 
 export type LpbfProcessPatch = Partial<
@@ -48,6 +54,9 @@ export type LpbfProcessPatch = Partial<
     | "beamProfile"
     | "cadAssetName"
     | "specimenDoi"
+    | "processSeed"
+    | "inclineAngle_deg"
+    | "downskinOverhang_deg"
   >
 >;
 
@@ -73,10 +82,13 @@ export function withLpbfProcessDefaults(lpbf: Partial<LpbfSpecimenState> & Pick<
     layer_um: lpbf.layer_um ?? lpbf.recommendedLayer_um,
     beamDiameter_um: lpbf.beamDiameter_um ?? 80,
     preheatTemp_C: lpbf.preheatTemp_C ?? lpbf.recommendedPreheatTemp_C,
-    scanStrategy: lpbf.scanStrategy ?? "meander-67",
+    scanStrategy: lpbf.scanStrategy ?? "stripe",
     beamProfile: lpbf.beamProfile ?? "gaussian",
     cadAssetName: lpbf.cadAssetName ?? "",
     specimenDoi: lpbf.specimenDoi ?? "",
+    processSeed: lpbf.processSeed ?? 42,
+    inclineAngle_deg: lpbf.inclineAngle_deg ?? 0,
+    downskinOverhang_deg: lpbf.downskinOverhang_deg ?? 0,
   };
 }
 

@@ -50,6 +50,15 @@ function buildJobKey(): { key: string; payload: Parameters<typeof pythonComputat
     customTriangles: liveMesh?.triangles ?? null,
     cadAssetName: liveMesh?.name || lpbf.cadAssetName,
     triangleCountNative: liveMesh?.nativeTriangleCount,
+    processSeed: lpbf.processSeed ?? 42,
+    scanStrategy: lpbf.scanStrategy,
+    stripeWidth_mm: 5,
+    scanRotation_deg: 67,
+    hatchDwell_ms: 0,
+    inclineAngle_deg: lpbf.inclineAngle_deg ?? 0,
+    ...(lpbf.downskinOverhang_deg > 0
+      ? { downskinOverhang_deg: lpbf.downskinOverhang_deg }
+      : {}),
   };
   const key = [
     materials.alloyId,
@@ -63,6 +72,10 @@ function buildJobKey(): { key: string; payload: Parameters<typeof pythonComputat
     payload.cadAssetName,
     liveMesh?.usedTriangleCount ?? 0,
     liveMesh?.nativeTriangleCount ?? 0,
+    payload.processSeed,
+    payload.scanStrategy,
+    payload.inclineAngle_deg,
+    payload.downskinOverhang_deg,
   ].join("|");
   return { key, payload };
 }
@@ -148,6 +161,10 @@ export function useLpbfBuildJobPython() {
     lpbf.layer_um,
     lpbf.hatch_um,
     lpbf.cadAssetName,
+    lpbf.processSeed,
+    lpbf.scanStrategy,
+    lpbf.inclineAngle_deg,
+    lpbf.downskinOverhang_deg,
     liveMesh?.name,
     liveMesh?.usedTriangleCount,
     liveMesh?.nativeTriangleCount,

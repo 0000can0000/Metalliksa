@@ -30,6 +30,8 @@ import {
   VoxelHeatmapDatum,
   TrappedPoreDatum,
 } from "../../services/pythonComputationService";
+import { useLpbfBuildJobStore } from "../../store/useLpbfBuildJobStore";
+import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 
 export interface MarangoniLabProps {
   initialPower_W?: number;
@@ -193,6 +195,10 @@ export const MarangoniPoreInstabilityLab: React.FC<MarangoniLabProps> = ({
     ];
 
     try {
+      const buildJob = useLpbfBuildJobStore.getState().job;
+      const processSeed = useMaterialSpecimenStore.getState().activeSpecimen.lpbf.processSeed ?? 42;
+      const thermalGeom = buildJob?.thermal?.meltPoolGeometry;
+      const thermalPeak = buildJob?.thermal?.hydrodynamicsAndRecoil?.peakTemperature_C;
       const result = await pythonComputationService.solveMarangoniPoreInstability({
         material: selectedMaterial,
         laserPower_W,
@@ -201,6 +207,11 @@ export const MarangoniPoreInstabilityLab: React.FC<MarangoniLabProps> = ({
         preheatTemp_C,
         surfactant_sulfur_ppm: surfactantSulfur_ppm,
         shieldingGas,
+        processSeed,
+        meltPoolWidth_um: thermalGeom?.width_um,
+        meltPoolDepth_um: thermalGeom?.depth_um,
+        meltPoolLength_um: thermalGeom?.length_um,
+        peakTemperature_C: thermalPeak,
       });
 
       const elapsed = performance.now() - startT;

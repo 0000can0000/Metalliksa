@@ -65,6 +65,11 @@ def solve_marangoni_flow_and_porosity(payload):
     """
     t_start = time.perf_counter()
 
+    # Deterministic pore sampling when processSeed is provided (Build Job / UI).
+    seed = payload.get("processSeed", payload.get("seed"))
+    if seed is not None:
+        random.seed(int(seed))
+
     # Extract inputs with robust defaults
     material_name = payload.get("material", "Inconel 718")
     props = (
@@ -111,24 +116,37 @@ def solve_marangoni_flow_and_porosity(payload):
     # Rosenthal-Eagar-Tsai peak temperature estimate:
     delta_T_peak = P_eff / (math.sqrt(2.0 * math.pi) * k_th * r0_m * (1.0 + 0.5 * math.sqrt(v_scan_m_s * r0_m / alpha_th)))
     T_peak_K = T0_K + delta_T_peak
-    T_peak_C = min(props["boiling_C"] + 150.0, T_peak_K - 273.15)
-    T_peak_K = T_peak_C + 273.15
+    # Prefer thermal-solver peak when provided (shared process vector).
+    if payload.get("peakTemperature_C") is not None:
+        T_peak_C = float(payload["peakTemperature_C"])
+        T_peak_K = T_peak_C + 273.15
+    else:
+        T_peak_C = T_peak_K - 273.15
+        T_peak_K = T_peak_C + 273.15
     
-    # Estimated Melt Pool Dimensions [m]
-    # Semi-ellipsoid lengths: Length L, Half-width W/2, Depth D
-    delta_T_melt = max(100.0, T_liq_K - T0_K)
-    L_pool_m = max(r0_m * 1.5, (P_eff / (math.pi * k_th * delta_T_melt)) * (1.0 / math.sqrt(1.0 + 1.2 * v_scan_m_s * r0_m / alpha_th)))
-    W_pool_m = max(r0_m * 1.2, 2.0 * math.sqrt(P_eff / (math.pi * rho * Cp * delta_T_melt * (v_scan_m_s + 0.05))))
-    
-    # Depth is influenced by Marangoni flow direction:
-    # If d_gamma/dT > 0, flow is inward & downward (deep keyhole-like penetration)
-    # If d_gamma/dT < 0, flow is outward & shallow (wide shallow pool)
-    marangoni_aspect_boost = 1.0 + (1.2 if effective_d_gamma_dT > 0 else -0.15)
-    D_pool_m = max(r0_m * 0.8, (W_pool_m * 0.45) * marangoni_aspect_boost)
-    
-    L_pool_um = L_pool_m * 1e6
-    W_pool_um = W_pool_m * 1e6
-    D_pool_um = D_pool_m * 1e6
+    # Melt pool dimensions: use thermal W/D/L when supplied (Phase 0 — Marangoni geometry = thermal).
+    thermal_W = payload.get("meltPoolWidth_um", payload.get("thermalWidth_um"))
+    thermal_D = payload.get("meltPoolDepth_um", payload.get("thermalDepth_um"))
+    thermal_L = payload.get("meltPoolLength_um", payload.get("thermalLength_um"))
+    geometry_source = "thermal" if (thermal_W is not None and thermal_D is not None) else "marangoni-estimate"
+
+    if geometry_source == "thermal":
+        W_pool_um = float(thermal_W)
+        D_pool_um = float(thermal_D)
+        L_pool_um = float(thermal_L) if thermal_L is not None else max(W_pool_um * 1.6, W_pool_um)
+        W_pool_m = W_pool_um * 1e-6
+        D_pool_m = D_pool_um * 1e-6
+        L_pool_m = L_pool_um * 1e-6
+    else:
+        # Estimated Melt Pool Dimensions [m] (fallback when thermal geometry absent)
+        delta_T_melt = max(100.0, T_liq_K - T0_K)
+        L_pool_m = max(r0_m * 1.5, (P_eff / (math.pi * k_th * delta_T_melt)) * (1.0 / math.sqrt(1.0 + 1.2 * v_scan_m_s * r0_m / alpha_th)))
+        W_pool_m = max(r0_m * 1.2, 2.0 * math.sqrt(P_eff / (math.pi * rho * Cp * delta_T_melt * (v_scan_m_s + 0.05))))
+        marangoni_aspect_boost = 1.0 + (1.2 if effective_d_gamma_dT > 0 else -0.15)
+        D_pool_m = max(r0_m * 0.8, (W_pool_m * 0.45) * marangoni_aspect_boost)
+        L_pool_um = L_pool_m * 1e6
+        W_pool_um = W_pool_m * 1e6
+        D_pool_um = D_pool_m * 1e6
     
     # 2. Marangoni Flow Velocity & Dimensionless Numbers
     delta_T_pool = max(50.0, T_peak_K - T_liq_K)
@@ -357,6 +375,8 @@ def solve_marangoni_flow_and_porosity(payload):
             "preheatTemp_C": preheat_temp_C,
             "surfactant_sulfur_ppm": surfactant_sulfur_ppm,
             "shieldingGas": shielding_gas_name,
+            "processSeed": int(seed) if seed is not None else None,
+            "geometrySource": geometry_source,
         },
         "marangoniHydrodynamics": {
             "marangoniNumber_Ma": round(marangoni_number, 0),
@@ -378,6 +398,7 @@ def solve_marangoni_flow_and_porosity(payload):
             "peakTemp_C": round(T_peak_C, 1),
             "liquidusTemp_C": props["liquidus_C"],
             "solidusTemp_C": props["solidus_C"],
+            "geometrySource": geometry_source,
         },
         "porosityPrediction": {
             "relativeDensity_pct": round(relative_density_pct, 2),

@@ -1,7 +1,7 @@
 /**
  * Client-side energy-density screening (VED, LED, I0, King ΔH/hs).
- * Not the industrial printability decision. Paid / Additive Lab path uses
- * POST /api/python/lpbf-build-job → job.verdict only.
+ * DEPRECATED for industrial printability: do not call from the Additive rail or Decision lab.
+ * Paid / Additive Lab path uses POST /api/python/lpbf-build-job → job.verdict only.
  */
 
 export type LpbfBuildRegime =

@@ -1031,6 +1031,11 @@ class PythonComputationService {
     preheatTemp_C?: number;
     surfactant_sulfur_ppm?: number;
     shieldingGas?: string;
+    processSeed?: number;
+    meltPoolWidth_um?: number;
+    meltPoolDepth_um?: number;
+    meltPoolLength_um?: number;
+    peakTemperature_C?: number;
   }): Promise<PythonMarangoniPoreResult> {
     try {
       const res = await fetch("/api/python/marangoni-pore-instability", {
@@ -1419,6 +1424,14 @@ class PythonComputationService {
     customTriangles?: number[][][] | null;
     cadAssetName?: string;
     triangleCountNative?: number;
+    processSeed?: number;
+    scanStrategy?: string;
+    stripeWidth_mm?: number;
+    scanRotation_deg?: number;
+    hatchDwell_ms?: number;
+    inclineAngle_deg?: number;
+    downskinOverhang_deg?: number;
+    maxTriangles?: number;
   }): Promise<PythonLpbfBuildJobResult> {
     const res = await fetch("/api/python/lpbf-build-job", {
       method: "POST",
@@ -1614,7 +1627,13 @@ export interface PythonLpbfBuildJobVerdict {
   verdict: "printable" | "risky" | "do-not-print";
   headline: string;
   reasons: string[];
-  lofGeometry: { widthOverHatch: number; depthOverLayer: number };
+  lofGeometry: {
+    widthOverHatch: number;
+    depthOverLayer: number;
+    tangIndex?: number;
+    hOverW?: number;
+    tOverD?: number;
+  };
   literatureWindow: {
     inside: boolean;
     alloyId: string;
@@ -1631,6 +1650,13 @@ export interface PythonLpbfBuildJobResult {
   modelId: string;
   assumptions: string[];
   alloyId: string;
+  processSeed?: number;
+  scanStrategy?: {
+    id: string;
+    stripeWidth_mm: number;
+    rotation_deg: number;
+    hatchDwell_ms: number;
+  };
   computeTimeMs: number;
   thermal: PythonLPBFResult;
   slicer: PythonSTLSlicerResult;
@@ -1652,7 +1678,13 @@ export interface PythonLPBFResult {
     preheatTemp_C: number;
     layerThickness_um: number;
     hatchSpacing_um: number;
+    inclineAngle_deg?: number;
+    processSeed?: number;
     effectiveAbsorptivity: number;
+    effectiveConductivity_W_mK?: number;
+    effectiveSpecificHeat_J_kgK?: number;
+    solidConductivity_W_mK?: number;
+    liquidConductivity_W_mK?: number;
     volumetricEnergyDensity_J_mm3: number;
     linearEnergyDensity_J_m: number;
     peakIntensity_MW_cm2?: number;
@@ -1677,6 +1709,8 @@ export interface PythonLPBFResult {
     peakTemperature_C: number;
     knudsenRecoilPressure_kPa: number;
     marangoniNumber: number;
+    marangoniGeometrySource?: string;
+    molarMass_kg_mol?: number;
     pecletThermalNumber: number;
     powderDenudationWidth_um: number;
   };
@@ -1684,6 +1718,9 @@ export interface PythonLPBFResult {
     lackOfFusionStatus: "Pass" | "Warning" | "Fail";
     lackOfFusionRisk: string;
     lackOfFusionOverlapIndex: number;
+    tangIndex_hW_tD?: number;
+    hOverW?: number;
+    tOverD?: number;
     keyholePorosityRisk: string;
     ballingInstabilityRisk: string;
     recoaterCrashRisk: string;
@@ -1695,6 +1732,7 @@ export interface PythonLPBFResult {
     thermalGradient_G_K_um: number;
     solidificationRate_R_m_s: number;
     solidificationRate_R_mm_s: number;
+    solidificationCosTheta?: number;
     coolingRate_K_s: number;
     coolingRate_log10: number;
     g_over_r_ratio: number;

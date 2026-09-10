@@ -6,6 +6,7 @@ import { createServer as createViteServer } from "vite";
 import { physicsRouter } from "./routes/physics.ts";
 import { characterizationRouter } from "./routes/characterization.ts";
 import { copilotRouter } from "./routes/copilot.ts";
+import { researchRouter } from "./routes/research.ts";
 import { processOrchestrationMiddleware } from "./server/processOrchestrator.ts";
 
 dotenv.config();
@@ -51,6 +52,9 @@ app.use(characterizationRouter);
 
 // 3. AI Copilot, Metallurgy Consultation, Alloy Formulation & Materials Project
 app.use(copilotRouter);
+
+// 4. LPBF Data Research & Acquisition (live Materials Project DFT + curated literature)
+app.use(researchRouter);
 
 // Explicit JSON 404 for unmatched /api routes (prevents SPA index.html fallback for API calls)
 app.all("/api/*", (req: Request, res: Response) => {

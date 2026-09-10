@@ -1562,6 +1562,24 @@ export interface LPBFDFTEvidence {
   note?: string;
 }
 
+export type LPBFAuditSeverity = "pass" | "warn" | "fail";
+
+export interface LPBFAuditCheck {
+  id: string;
+  label: string;
+  severity: LPBFAuditSeverity;
+  detail: string;
+}
+
+export interface LPBFAuditReport {
+  status: LPBFAuditSeverity;
+  confidence: number;
+  passCount: number;
+  warnCount: number;
+  failCount: number;
+  checks: LPBFAuditCheck[];
+}
+
 export interface LPBFResearchResult {
   success: boolean;
   material: string;
@@ -1578,6 +1596,7 @@ export interface LPBFResearchResult {
     deviationPct: number;
   } | null;
   schemaComplete: boolean;
+  audit: LPBFAuditReport;
 }
 
 export interface PythonLPBFResult {

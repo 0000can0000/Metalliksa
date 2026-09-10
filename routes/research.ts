@@ -234,6 +234,205 @@ const REFERENCE_LIBRARY: ReferenceAlloy[] = [
   },
 ];
 
+// Independent elemental reference values (CRC Handbook / NIST) used to
+// cross-audit researched records against physical reality.
+const ELEMENT_REFERENCE: Record<string, { meltC: number; density_kg_m3: number }> = {
+  Ni: { meltC: 1455, density_kg_m3: 8908 },
+  Fe: { meltC: 1538, density_kg_m3: 7874 },
+  Ti: { meltC: 1668, density_kg_m3: 4506 },
+  Al: { meltC: 660, density_kg_m3: 2700 },
+  Cu: { meltC: 1085, density_kg_m3: 8960 },
+  Co: { meltC: 1495, density_kg_m3: 8900 },
+  W: { meltC: 3422, density_kg_m3: 19250 },
+  Ta: { meltC: 3017, density_kg_m3: 16650 },
+};
+
+type AuditSeverity = "pass" | "warn" | "fail";
+
+interface AuditCheck {
+  id: string;
+  label: string;
+  severity: AuditSeverity;
+  detail: string;
+}
+
+interface AuditReport {
+  status: AuditSeverity;
+  confidence: number; // 0-100
+  passCount: number;
+  warnCount: number;
+  failCount: number;
+  checks: AuditCheck[];
+}
+
+/**
+ * Autonomous self-audit: validates an assembled record for internal physical
+ * consistency and cross-checks it against independent elemental references and
+ * the live DFT evidence. Ensures autonomous output stays physically realistic.
+ */
+function auditRecord(
+  alloy: ReferenceAlloy,
+  dft: DFTEvidence
+): AuditReport {
+  const r = alloy.record;
+  const checks: AuditCheck[] = [];
+  const num = (k: string) => Number(r[k]);
+
+  const push = (id: string, label: string, severity: AuditSeverity, detail: string) =>
+    checks.push({ id, label, severity, detail });
+
+  // 1. Completeness: all schema fields present & finite.
+  const missing = LPBF_SCHEMA.filter(
+    (s) => r[s.key] === undefined || (s.key !== "base" && !Number.isFinite(num(s.key)))
+  );
+  push(
+    "completeness",
+    "Schema completeness (22 fields present & finite)",
+    missing.length === 0 ? "pass" : "fail",
+    missing.length === 0 ? "All required fields populated." : `Missing/NaN: ${missing.map((m) => m.key).join(", ")}`
+  );
+
+  // 2. Phase ordering: solidus <= liquidus <= boiling.
+  const solidus = num("solidus_C"), liquidus = num("liquidus_C"), boiling = num("boiling_C");
+  const ordered = solidus <= liquidus && liquidus < boiling;
+  push(
+    "phase_order",
+    "Phase ordering (solidus ≤ liquidus < boiling)",
+    ordered ? "pass" : "fail",
+    ordered
+      ? `${solidus} ≤ ${liquidus} < ${boiling} °C`
+      : `Violated: solidus ${solidus}, liquidus ${liquidus}, boiling ${boiling} °C`
+  );
+
+  // 3. Latent heats: vaporization >> fusion.
+  const lf = num("latent_heat_fusion_J_kg"), lv = num("latent_heat_vap_J_kg");
+  push(
+    "latent_heats",
+    "Latent heat of vaporization > fusion",
+    lv > lf ? "pass" : "fail",
+    lv > lf ? `Lv ${lv} > Lf ${lf} J/kg` : `Lv ${lv} not greater than Lf ${lf} J/kg`
+  );
+
+  // 4. Liquid density < solid density (metals contract on solidification).
+  const rhoS = num("density_kg_m3"), rhoL = num("density_liquid_kg_m3");
+  push(
+    "density_phase",
+    "Liquid density < solid density",
+    rhoL < rhoS ? "pass" : "warn",
+    rhoL < rhoS ? `${rhoL} < ${rhoS} kg/m³` : `Liquid ${rhoL} ≥ solid ${rhoS} kg/m³ (unusual)`
+  );
+
+  // 5. Absorptivity bounds (0,1) and IR < Green for metals.
+  const aIR = num("absorptivity_IR"), aG = num("absorptivity_Green");
+  const absOk = aIR > 0 && aIR < 1 && aG > 0 && aG < 1;
+  push(
+    "absorptivity",
+    "Absorptivity within (0,1)",
+    absOk ? "pass" : "fail",
+    absOk ? `IR ${aIR}, Green ${aG}` : `Out of physical range: IR ${aIR}, Green ${aG}`
+  );
+
+  // 6. Poisson ratio in (0, 0.5).
+  const nu = num("poissons_ratio");
+  push(
+    "poisson",
+    "Poisson's ratio in (0, 0.5)",
+    nu > 0 && nu < 0.5 ? "pass" : "fail",
+    `ν = ${nu}`
+  );
+
+  // 7. Young's modulus in a broad metallic band (10-600 GPa).
+  const E = num("youngs_modulus_GPa");
+  push(
+    "youngs",
+    "Young's modulus in 10-600 GPa",
+    E >= 10 && E <= 600 ? "pass" : "warn",
+    `E = ${E} GPa`
+  );
+
+  // 8. Marangoni dγ/dT sign (solver assumes outward, negative) convention.
+  const dg = num("d_gamma_dT_N_mK");
+  push(
+    "marangoni_sign",
+    "dγ/dT negative (outward Marangoni convention)",
+    dg < 0 ? "pass" : "warn",
+    `dγ/dT = ${dg} N/mK`
+  );
+
+  // 9. Liquid specific heat >= solid specific heat.
+  const cpS = num("specific_heat_J_kgK"), cpL = num("specific_heat_liquid_J_kgK");
+  push(
+    "cp_phase",
+    "Liquid specific heat ≥ solid specific heat",
+    cpL >= cpS ? "pass" : "warn",
+    `cp_liquid ${cpL} vs cp_solid ${cpS} J/kgK`
+  );
+
+  // 10. Cross-check melting point against base-element reference.
+  const ref = ELEMENT_REFERENCE[alloy.base];
+  if (ref) {
+    const dev = ((liquidus - ref.meltC) / ref.meltC) * 100;
+    const isPureElement = alloy.formulaForDFT === alloy.base && alloy.name.toLowerCase().includes("pure");
+    if (isPureElement) {
+      push(
+        "melt_vs_element",
+        `Melting point vs pure ${alloy.base} reference`,
+        Math.abs(dev) <= 3 ? "pass" : "fail",
+        `Liquidus ${liquidus} °C vs ${alloy.base} ${ref.meltC} °C (Δ ${dev.toFixed(1)}%)`
+      );
+    } else {
+      // Alloying typically shifts melting modestly; flag only large excursions.
+      push(
+        "melt_vs_element",
+        `Melting point plausibility vs base ${alloy.base}`,
+        Math.abs(dev) <= 25 ? "pass" : "warn",
+        `Liquidus ${liquidus} °C vs base ${alloy.base} ${ref.meltC} °C (Δ ${dev.toFixed(1)}%)`
+      );
+    }
+  }
+
+  // 11. DFT density cross-check (independent evidence).
+  if (dft.live && typeof dft.density_g_cm3 === "number") {
+    const dftDensity = dft.density_g_cm3 * 1000;
+    const dev = ((rhoS - dftDensity) / dftDensity) * 100;
+    const isPureElement = alloy.formulaForDFT === alloy.base && alloy.name.toLowerCase().includes("pure");
+    if (isPureElement) {
+      push(
+        "density_vs_dft",
+        "Solid density vs live DFT (pure element)",
+        Math.abs(dev) <= 6 ? "pass" : Math.abs(dev) <= 12 ? "warn" : "fail",
+        `Literature ${rhoS} vs DFT ${dftDensity.toFixed(0)} kg/m³ (Δ ${dev.toFixed(1)}%)`
+      );
+    } else {
+      // Alloy density legitimately differs from a pure-element DFT cell.
+      push(
+        "density_vs_dft",
+        "Solid density vs live DFT (alloy vs pure-element cell)",
+        Math.abs(dev) <= 20 ? "pass" : "warn",
+        `Literature ${rhoS} vs pure-${alloy.base} DFT ${dftDensity.toFixed(0)} kg/m³ (Δ ${dev.toFixed(1)}%; alloy deviation expected)`
+      );
+    }
+  } else {
+    push(
+      "density_vs_dft",
+      "Solid density vs live DFT",
+      "warn",
+      "Live DFT unavailable — density validated against literature only."
+    );
+  }
+
+  const failCount = checks.filter((c) => c.severity === "fail").length;
+  const warnCount = checks.filter((c) => c.severity === "warn").length;
+  const passCount = checks.filter((c) => c.severity === "pass").length;
+  const status: AuditSeverity = failCount > 0 ? "fail" : warnCount > 0 ? "warn" : "pass";
+  const confidence = Math.max(
+    0,
+    Math.round(100 - failCount * 100 / Math.max(checks.length, 1) - warnCount * 8)
+  );
+
+  return { status, confidence, passCount, warnCount, failCount, checks };
+}
+
 const MP_API_BASE = "https://api.materialsproject.org/materials/summary/";
 
 interface DFTEvidence {
@@ -393,6 +592,8 @@ researchRouter.post("/api/research/lpbf-thermophysical", async (req: Request, re
     provenance.poissons_ratio = "Literature";
   }
 
+  const audit = auditRecord(alloy, dft);
+
   res.json({
     success: true,
     material: alloy.name,
@@ -405,5 +606,6 @@ researchRouter.post("/api/research/lpbf-thermophysical", async (req: Request, re
     dftEvidence: dft,
     densityCrossCheck,
     schemaComplete: LPBF_SCHEMA.every((s) => alloy.record[s.key] !== undefined),
+    audit,
   });
 });

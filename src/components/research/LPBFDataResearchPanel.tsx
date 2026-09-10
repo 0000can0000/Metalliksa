@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { get as idbGet, set as idbSet } from "idb-keyval";
 import {
   FlaskConical,
   Database,
@@ -6,6 +7,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertTriangle,
+  XCircle,
   Copy,
   Download,
   Atom,
@@ -15,13 +17,18 @@ import {
   Beaker,
   ArrowRight,
   ShieldCheck,
+  ShieldAlert,
   Sparkles,
+  Save,
+  Trash2,
+  Archive,
 } from "lucide-react";
 import {
   pythonComputationService,
   LPBFResearchSchema,
   LPBFResearchResult,
   LPBFResearchProvenance,
+  LPBFAuditSeverity,
 } from "../../services/pythonComputationService";
 
 const PROVENANCE_STYLES: Record<LPBFResearchProvenance, string> = {
@@ -29,6 +36,14 @@ const PROVENANCE_STYLES: Record<LPBFResearchProvenance, string> = {
   Literature: "bg-amber-500/15 text-amber-300 border-amber-500/40",
   Derived: "bg-purple-500/15 text-purple-300 border-purple-500/40",
 };
+
+const AUDIT_STYLES: Record<LPBFAuditSeverity, { badge: string; text: string; label: string }> = {
+  pass: { badge: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40", text: "text-emerald-300", label: "PASS" },
+  warn: { badge: "bg-amber-500/15 text-amber-300 border-amber-500/40", text: "text-amber-300", label: "WARN" },
+  fail: { badge: "bg-rose-500/15 text-rose-300 border-rose-500/40", text: "text-rose-300", label: "FAIL" },
+};
+
+const LIBRARY_KEY = "metallix.lpbf.research.library";
 
 function buildPythonDict(result: LPBFResearchResult): string {
   const r = result.record;
@@ -70,6 +85,9 @@ export const LPBFDataResearchPanel: React.FC = () => {
   const [researchError, setResearchError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
+  const [savedRecords, setSavedRecords] = useState<LPBFResearchResult[]>([]);
+  const [justSaved, setJustSaved] = useState<boolean>(false);
+
   const loadSchema = useCallback(async () => {
     setLoadingSchema(true);
     setSchemaError(null);
@@ -85,7 +103,67 @@ export const LPBFDataResearchPanel: React.FC = () => {
 
   useEffect(() => {
     loadSchema();
+    idbGet<LPBFResearchResult[]>(LIBRARY_KEY)
+      .then((stored) => {
+        if (Array.isArray(stored)) setSavedRecords(stored);
+      })
+      .catch(() => {
+        /* first run: no library yet */
+      });
   }, [loadSchema]);
+
+  const persistLibrary = useCallback(async (records: LPBFResearchResult[]) => {
+    setSavedRecords(records);
+    try {
+      await idbSet(LIBRARY_KEY, records);
+    } catch (err) {
+      console.warn("Failed to persist LPBF research library:", err);
+    }
+  }, []);
+
+  const handleSaveToLibrary = useCallback(() => {
+    if (!result || result.audit.status === "fail") return;
+    const others = savedRecords.filter((r) => r.material !== result.material);
+    persistLibrary([...others, result]);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2500);
+  }, [result, savedRecords, persistLibrary]);
+
+  const handleRemoveSaved = useCallback(
+    (material: string) => {
+      persistLibrary(savedRecords.filter((r) => r.material !== material));
+    },
+    [savedRecords, persistLibrary]
+  );
+
+  const handleExportAll = useCallback(() => {
+    if (savedRecords.length === 0) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      count: savedRecords.length,
+      records: savedRecords.map((r) => ({
+        material: r.material,
+        base: r.base,
+        category: r.category,
+        record: r.record,
+        provenance: r.provenance,
+        citations: r.citations,
+        audit: r.audit,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `LPBF_ResearchLibrary_${savedRecords.length}alloys.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [savedRecords]);
+
+  const isSaved = useMemo(
+    () => !!result && savedRecords.some((r) => r.material === result.material),
+    [result, savedRecords]
+  );
 
   const runResearch = useCallback(async (material: string) => {
     setSelected(material);
@@ -182,6 +260,10 @@ export const LPBFDataResearchPanel: React.FC = () => {
             <div className="bg-[#050810] px-3.5 py-2 rounded-xl border border-[#162032] text-right">
               <span className="text-[10px] text-slate-500 block uppercase">Schema Fields</span>
               <span className="text-base font-bold text-amber-400">{schema?.fieldCount ?? "—"}</span>
+            </div>
+            <div className="bg-[#050810] px-3.5 py-2 rounded-xl border border-[#162032] text-right">
+              <span className="text-[10px] text-slate-500 block uppercase">Saved Library</span>
+              <span className="text-base font-bold text-purple-400">{savedRecords.length}</span>
             </div>
           </div>
         </div>
@@ -285,6 +367,55 @@ export const LPBFDataResearchPanel: React.FC = () => {
               })}
             </div>
           </div>
+
+          {/* Saved research library */}
+          <div className="bg-[#090e18] border border-[#1e2d46] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2 border-b border-[#162032] pb-2">
+              <Archive className="w-4 h-4 text-purple-400" />
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                Saved Research Library
+              </h3>
+              <span className="ml-auto text-[10px] text-slate-500">{savedRecords.length} saved</span>
+            </div>
+            {savedRecords.length === 0 ? (
+              <p className="text-[11px] text-slate-500">
+                Audited records you save are stored locally and persist across sessions.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                  {savedRecords.map((rec) => (
+                    <div
+                      key={rec.material}
+                      className="flex items-center gap-2 p-2 rounded-lg bg-[#050810] border border-[#1e2d46]"
+                    >
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded border font-bold ${AUDIT_STYLES[rec.audit.status].badge}`}
+                      >
+                        {AUDIT_STYLES[rec.audit.status].label}
+                      </span>
+                      <span className="text-[11px] text-slate-200 font-bold truncate">{rec.material}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSaved(rec.material)}
+                        className="ml-auto text-slate-500 hover:text-rose-400 transition"
+                        title="Remove from library"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportAll}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition"
+                >
+                  <Download className="w-3.5 h-3.5" /> Export All ({savedRecords.length}) as JSON
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* RIGHT: Research result */}
@@ -337,10 +468,26 @@ export const LPBFDataResearchPanel: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={handleCopy}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition"
+                      onClick={handleSaveToLibrary}
+                      disabled={result.audit.status === "fail" || isSaved}
+                      title={
+                        result.audit.status === "fail"
+                          ? "Blocked: record failed self-audit"
+                          : isSaved
+                          ? "Already in your research library"
+                          : "Save to research library"
+                      }
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Copy className="w-3.5 h-3.5" />
+                      <Save className="w-3.5 h-3.5" />
+                      {justSaved ? "Saved!" : isSaved ? "In Library" : "Save to Library"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#050810] hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs transition"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-emerald-400" />
                       {copied ? "Copied!" : "Copy DB Entry"}
                     </button>
                     <button
@@ -412,6 +559,58 @@ export const LPBFDataResearchPanel: React.FC = () => {
                         Δ {result.densityCrossCheck.deviationPct}%
                       </span>
                     </div>
+                  )}
+                </div>
+
+                {/* Self-audit report */}
+                <div className="bg-[#050810] border border-[#162032] rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    {result.audit.status === "fail" ? (
+                      <ShieldAlert className="w-4 h-4 text-rose-400" />
+                    ) : (
+                      <ShieldCheck className={`w-4 h-4 ${AUDIT_STYLES[result.audit.status].text}`} />
+                    )}
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Autonomous Self-Audit
+                    </span>
+                    <span
+                      className={`ml-auto text-[10px] px-2 py-0.5 rounded-full border font-bold ${AUDIT_STYLES[result.audit.status].badge}`}
+                    >
+                      {AUDIT_STYLES[result.audit.status].label} · {result.audit.confidence}% confidence
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> {result.audit.passCount} pass
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> {result.audit.warnCount} warn
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <XCircle className="w-3.5 h-3.5 text-rose-400" /> {result.audit.failCount} fail
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {result.audit.checks.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-start gap-2 p-2 rounded-lg bg-[#0c1322] border border-[#1e2d46]"
+                      >
+                        {c.severity === "pass" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />}
+                        {c.severity === "warn" && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />}
+                        {c.severity === "fail" && <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />}
+                        <div className="min-w-0">
+                          <span className="text-[11px] text-slate-200 font-semibold block">{c.label}</span>
+                          <span className="text-[10px] text-slate-500 font-sans">{c.detail}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {result.audit.status === "fail" && (
+                    <p className="text-[11px] text-rose-300 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      Saving is blocked until all physical-consistency checks pass.
+                    </p>
                   )}
                 </div>
 

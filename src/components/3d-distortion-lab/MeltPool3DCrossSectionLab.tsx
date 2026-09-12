@@ -1350,11 +1350,11 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                   <h4 className="text-xs font-bold text-white">Literature Benchmarks</h4>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-600">
-                  NIST AMB2022-03 / King
+                  Measured DOI catalog
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Predicted W, D, and regime versus published single-track anchors (NIST AMB2022-03 IN718 and King windows). Goldak/ET depth uses Fabbro with Fresnel A; Marangoni does not refit W/D.
+                Published single-track W/D with DOI (NIST AMB2022-03 Table 4, Guo 2024 Table 3). Solver-echo sweeps are not benchmarks. Goldak/ET depth uses Fabbro with Fresnel A; Marangoni does not refit W/D.
               </p>
               {MELT_POOL_LITERATURE_CASES.map((c) => {
                 const same =
@@ -1389,7 +1389,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">
-                      {c.material} · {c.laserPower_W} W · {c.scanSpeed_mm_s} mm/s · DOI {c.doi}
+                      {c.kind === "measured" ? "measured" : "asymptotic"} · {c.material} · {c.laserPower_W} W · {c.scanSpeed_mm_s} mm/s · DOI {c.doi}
                     </div>
                     {same && (
                       <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-slate-300">

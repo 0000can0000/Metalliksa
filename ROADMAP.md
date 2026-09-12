@@ -20,7 +20,7 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 - [x] **Derived Quantities Engine**: Real-time calculation of $E_L$ (LED), $E_A$ (AED), $E_V$ (VED), $I_0$ (Peak Intensity), and $\Delta H / h_s$ (Normalized Enthalpy).
 - [x] **Iso-VED Limitation Demonstrator**: Interactive sandbox demonstrating laser spot diameter and thermal dwell time decoupling.
 - [x] **Standards Integration**: ASTM F3055, ASTM B962 (Archimedes), ASTM E8/E8M (Tensile), ASTM E1245 (Porosity).
-- [x] **Export Formats**: Structured JSON and CSV data pipelines.
+- [x] **Measured melt-pool W/D catalog**: NIST AMB2022-03 Table 4 + Guo 2024 Table 3 in `meltpool_literature_catalog.py`. Solver-echo batches are not ground truth.
 
 ---
 

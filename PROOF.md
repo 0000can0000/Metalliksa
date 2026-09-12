@@ -314,4 +314,17 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Functional proof**: `py -3 python/test_solidification_front.py`; `py -3 python/test_lpbf_build_job.py`; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 022: Measured melt-pool literature catalog (`meltpool-lit-catalog-v1`)
+- **Date**: 2026-09-12
+- **Module**: `python/meltpool_literature_catalog.py` / `src/data/meltPoolLiteratureCases.ts` / Melt Pool 3D lab
+- **Scope**: Research database for W/D checks. Rows are **measured** single tracks with P, v, d, T0, W, D, DOI. The 640-row randomized solver-echo jsonl on `cursor/lpbf-data-research-panel-7a66` is **not** ingested (circular labels).
+- **Catalog**:
+  - NIST AMB2022-03 IN718, Lane et al. 2024 Table 4, DOI `10.1007/s40192-024-00355-5`: seven bare-plate cases. Goldak+Fabbro W and D stay inside a ×0.5–2 band; smaller \(D_{4\sigma}\) is deeper.
+  - 316L, Guo et al. *Micromachines* 15(2):170 (2024) Table 3, DOI `10.3390/mi15020170`. N04 (260 W, 1.47 m/s, 100 µm) scored on Goldak+Fabbro in the same band.
+- **Product split**: Catalog scores the Melt Pool lab path only. Build Job stays `rosenthal-screening-v1`.
+- **Functional proof**: `py -3 python/test_meltpool_literature_catalog.py`; `npx tsc --noEmit`.
+- **Status**: **PASS**
+
 

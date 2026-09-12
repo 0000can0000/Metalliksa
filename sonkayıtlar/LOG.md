@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 13:30 — Measured literature catalog (not solver-echo)
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User: use the research database; if insufficient, develop it. Full authority until the simulation is done.
+- **Done**: Inspected the 640-row research-panel jsonl — it is randomized solver output, not measurements. Did not ingest it. Built `meltpool-lit-catalog-v1` from Lane 2024 Table 4 (7 IN718) + Guo 2024 Table 3 (316L). Goldak+Fabbro stays in a ×0.5–2 band; Melt Pool lab lists measured DOI cases. PROOF 022. Did not open Marangoni CFD / Goldak FEA / Build Job rescoring.
+- **Where we left off**: Simulation kıvam now has a real W/D research set. Still locked: CFD, FEA, Gäumann \(N_0\), AlSi10Mg measured tracks (no clean P–v–d–W–D row yet).
+- **Files**: `python/meltpool_literature_catalog.py`, `python/test_meltpool_literature_catalog.py`, `src/data/meltPoolLiteratureCases.ts`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `AGENTS.md`, `ROADMAP.md`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_meltpool_literature_catalog.py` PASS; `npx tsc --noEmit` PASS
+
+---
+
 ## 2026-09-12 13:20 — Phase 3 liquidus G/R + fold into main
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

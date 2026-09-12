@@ -32,7 +32,8 @@ export interface SimulationResult {
   convergenceStudy?: unknown;
   resourceEstimate?: ResourceEstimate;
   confidenceReason?: string;
-  scanPath?: { start_s: number; end_s: number; layer: number }[];
+  scanPath?: { start_s: number; end_s: number; layer: number; track?: number; start?: number[]; end?: number[] }[];
+  provenance?: { createdAt: string; inputHash: string; implementationHash: string; solverBinaryHash: string | null; runtime_s?: number };
   massBalance?: { initial_kg: number; deposited_kg: number; final_kg: number; relativeError: number; scope: string };
   phaseAudit?: { liquidVolume_m3: number; solidVolume_m3: number; activeVolume_m3: number; minFraction: number; maxFraction: number; scope: string };
   fieldSeries?: "field-series.json" | null;
@@ -61,6 +62,11 @@ function finiteTree(value: unknown): boolean {
 function dimensions(value: unknown): boolean {
   return object(value) && ["width_um", "depth_um", "length_um"].every(k => typeof value[k] === "number" && Number.isFinite(value[k]) && (value[k] as number) >= 0);
 }
+function checkClosure(value: unknown, keys: string[], tolerance: number): void {
+  if (!object(value) || !keys.every(k => typeof value[k] === "number" && Number(value[k]) >= 0)) throw new Error("Missing or invalid thermal conservation audit");
+  const [total, a, b] = keys.map(k => Number(value[k]));
+  if (Math.abs(total-a-b)/Math.max(total,1e-30) > tolerance || (value.relativeError !== undefined && (typeof value.relativeError !== "number" || value.relativeError < 0 || value.relativeError > tolerance))) throw new Error("Failed thermal conservation audit");
+}
 export function parseSimulationJob(value: unknown): SimulationJob {
   if (!object(value) || !finiteTree(value) || typeof value.id !== "string" || !/^[a-f0-9]{32}$/.test(value.id)
     || !["queued", "running", "completed", "failed", "cancelled", "timed_out"].includes(String(value.status))
@@ -81,6 +87,11 @@ export function parseSimulationJob(value: unknown): SimulationJob {
     if (r.energyBalance !== undefined && (!object(r.energyBalance) || !["input_J", "losses_J", "stored_J", "relativeError"].every(k => typeof (r.energyBalance as Record<string, unknown>)[k] === "number"))) throw new Error("Invalid energy audit");
     if (r.massBalance !== undefined && (!object(r.massBalance) || !["initial_kg", "deposited_kg", "final_kg", "relativeError"].every(k => typeof (r.massBalance as Record<string, unknown>)[k] === "number" && Number((r.massBalance as Record<string, unknown>)[k]) >= 0) || typeof r.massBalance.scope !== "string")) throw new Error("Invalid mass audit");
     if (r.phaseAudit !== undefined && (!object(r.phaseAudit) || !["liquidVolume_m3", "solidVolume_m3", "activeVolume_m3", "minFraction", "maxFraction"].every(k => typeof (r.phaseAudit as Record<string, unknown>)[k] === "number" && Number((r.phaseAudit as Record<string, unknown>)[k]) >= 0) || Number(r.phaseAudit.maxFraction) > 1 || Number(r.phaseAudit.minFraction) > Number(r.phaseAudit.maxFraction) || typeof r.phaseAudit.scope !== "string")) throw new Error("Invalid phase audit");
+    if (r.effectiveMode === "standard" || r.effectiveMode === "calibration") {
+      checkClosure(r.energyBalance, ["input_J", "losses_J", "stored_J"], .01);
+      checkClosure(r.massBalance, ["final_kg", "initial_kg", "deposited_kg"], 1e-10);
+      checkClosure(r.phaseAudit, ["activeVolume_m3", "liquidVolume_m3", "solidVolume_m3"], 1e-10);
+    }
     if (r.artifacts !== undefined && (!Array.isArray(r.artifacts) || !r.artifacts.every(a => object(a) && typeof a.path === "string" && !a.path.includes("..") && !a.path.startsWith("/") && typeof a.size_bytes === "number" && Number.isSafeInteger(a.size_bytes) && a.size_bytes >= 0 && typeof a.sha256 === "string" && /^[a-f0-9]{64}$/.test(a.sha256)))) throw new Error("Invalid artifact manifest");
     if (r.fieldSeries != null && r.fieldSeries !== "field-series.json") throw new Error("Invalid field series artifact");
     if (r.fieldPreviews !== undefined && (!Array.isArray(r.fieldPreviews) || !r.fieldPreviews.every(a => a === "temperature-slice.svg" || a === "phase-slice.svg"))) throw new Error("Invalid field preview");

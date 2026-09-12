@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from lpbf_material_registry import catalog
 from lpbf_simulation import run, validate, fingerprint
 from lpbf_openfoam import BINARY
-from lpbf_evidence import resource_estimate
+from lpbf_evidence import resource_estimate, enforce_thermal_balances
 
 ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().parents[1]/".lpbf-jobs")))
 
@@ -91,7 +91,13 @@ class Queue:
         settings = json.loads((self.root/job/"input.json").read_text())
         out["requestSummary"] = {k:settings[k] for k in ("mode","backend","material")}
         if out["status"] == "completed":
-            out["result"] = json.loads((self.root/job/"result.json").read_text())
+            try:
+                out["result"] = json.loads((self.root/job/"result.json").read_text())
+                enforce_thermal_balances(out["result"])
+            except (OSError, ValueError) as error:
+                out.pop("result", None)
+                out.update(status="failed", error=f"Saved result integrity failed: {error}")
+                self.update(job, status=out["status"], error=out["error"])
         return out
 
     def artifact(self, payload):
@@ -103,21 +109,31 @@ class Queue:
             raise ValueError("Artifact unavailable")
         entry = next((a for a in state["result"].get("artifacts",[]) if a["path"] == name),None)
         if not entry or entry["size_bytes"] > 8_000_000: raise ValueError("Artifact unavailable or too large")
-        content = (self.root/payload["id"]/name).read_bytes()
-        if hashlib.sha256(content).hexdigest() != entry["sha256"]: raise ValueError("Artifact integrity failed")
+        path = self.root/payload["id"]/name
+        if path.stat().st_size != entry["size_bytes"]: raise ValueError("Artifact size mismatch")
+        content = path.read_bytes()
+        if len(content) != entry["size_bytes"] or hashlib.sha256(content).hexdigest() != entry["sha256"]: raise ValueError("Artifact integrity failed")
         return dict(content=base64.b64encode(content).decode(),type="image/svg+xml" if name.endswith(".svg") else "application/octet-stream" if name.endswith(".bin") else "application/json" if name.endswith(".json") else "text/csv")
 
     def submit(self, raw):
         p, m = validate(raw)
+        # A rebuilt binary must invalidate a long-lived worker's cache identity.
+        self.caps["binaryHash"] = hashlib.sha256(BINARY.read_bytes()).hexdigest() if BINARY.is_file() else None
+        self.caps["openfoamThermal"] = bool(self.caps["openfoamVersion"] and self.caps["binaryHash"])
         key = hashlib.sha256((fingerprint(p, m)+json.dumps(self.caps, sort_keys=True)).encode()).hexdigest()
         with self.lock, self.connect() as c:
             row = c.execute("SELECT id FROM jobs WHERE cache_key=? AND status IN ('queued','running','completed') ORDER BY created DESC LIMIT 1", (key,)).fetchone()
             if row:
                 try:
                     cached = self.get(row["id"])
+                    if cached["status"] not in ("queued", "running", "completed"):
+                        raise ValueError("Cached result no longer usable")
                     if cached["status"] == "completed":
                         for artifact in cached["result"].get("artifacts", []):
-                            path = self.root/row["id"]/artifact["path"]
+                            folder = (self.root/row["id"]).resolve()
+                            path = (folder/artifact["path"]).resolve()
+                            if folder not in path.parents:
+                                raise ValueError("Cached artifact escapes job directory")
                             if not path.is_file() or path.stat().st_size != artifact["size_bytes"]:
                                 raise ValueError("Cached artifact missing or size changed")
                             digest = hashlib.sha256()
@@ -186,7 +202,7 @@ class Queue:
                             self.finish_running(job, status="failed", error="Worker stopped during execution")
                         return
                     text = (folder/"progress.log").read_text(errors="replace")[-16000:]
-                    progress = 0.
+                    progress = self.get(job)["progress"]
                     for line in text.splitlines():
                         try:
                             event = json.loads(line)
@@ -199,10 +215,16 @@ class Queue:
                     if self.get(job)["status"] == "cancelled":
                         return
                     final_log = (folder/"progress.log").read_text(errors="replace")[-16000:]
+                    if time.monotonic()-started > params["timeout_s"] or self.closed.is_set():
+                        self.finish_running(job, status="timed_out" if not self.closed.is_set() else "failed",
+                                            error="Simulation timeout" if not self.closed.is_set() else "Worker stopped during execution", log=final_log)
+                        return
                     if child.returncode == 0 and (folder/"result.json").exists():
-                        self.update(job, status="completed", progress=1., log=final_log)
+                        result = json.loads((folder/"result.json").read_text())
+                        enforce_thermal_balances(result)
+                        self.finish_running(job, status="completed", progress=1., log=final_log)
                     else:
-                        self.update(job, status="failed", error=final_log[-4000:] or f"Solver exit {child.returncode}", log=final_log)
+                        self.finish_running(job, status="failed", error=final_log[-4000:] or f"Solver exit {child.returncode}", log=final_log)
             finally:
                 if child.poll() is None:
                     if os.name == "nt": child.kill()
@@ -224,8 +246,10 @@ def main():
         def report(progress, message):
             print(json.dumps(dict(progress=progress, message=message)), flush=True)
         try:
+            execution_start = time.monotonic()
             result = run(json.loads((folder/"input.json").read_text()), report, folder,
                          json.loads((folder/"capabilities.json").read_text()))
+            result["provenance"]["runtime_s"] = time.monotonic()-execution_start
             (folder/"result.tmp").write_text(json.dumps(result, allow_nan=False))
             (folder/"result.tmp").replace(folder/"result.json")
         except Exception as e:

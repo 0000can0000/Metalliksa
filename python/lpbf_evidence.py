@@ -74,6 +74,10 @@ def resource_estimate(p, m):
 def thermal_audits(coords, volumes, p, m, liquid_fraction):
     import numpy as np
     from lpbf_material_registry import property_at
+    if (not np.isfinite(coords).all() or not np.isfinite(volumes).all()
+            or np.any(volumes <= 0) or not np.isfinite(liquid_fraction).all()
+            or np.any(liquid_fraction < 0) or np.any(liquid_fraction > 1)):
+        raise ValueError("Mass/phase audit failed: invalid cells or unbounded liquid fraction")
     z = coords[:, 2]
     rho = float(property_at(m, p["preheat_C"]+273.15, 1))*np.where(z > 0, p["packingFraction"], 1.)
     initial = z < p["layer_um"]*1e-6
@@ -89,6 +93,35 @@ def thermal_audits(coords, volumes, p, m, liquid_fraction):
                     activeVolume_m3=float(np.sum(volumes[active])), minFraction=float(liquid_fraction.min()),
                     maxFraction=float(liquid_fraction.max()), interfaceConservation=None,
                     scope="Enthalpy liquid fraction partition; not a metal/gas interface conservation test"))
+
+
+def enforce_thermal_balances(result):
+    """Fail closed at the result boundary, including restored/cached thermal jobs.
+
+    Closure is recomputed from extensive quantities, never trusted from a badge.
+    This verifies stationary accounting, not a gas interface or fluid continuity.
+    """
+    if result.get("effectiveMode") not in ("standard", "calibration"):
+        return
+    for name, keys, tolerance in (
+        ("energyBalance", ("input_J", "losses_J", "stored_J"), .01),
+        ("massBalance", ("final_kg", "initial_kg", "deposited_kg"), 1e-10),
+        ("phaseAudit", ("activeVolume_m3", "liquidVolume_m3", "solidVolume_m3"), 1e-10),
+    ):
+        audit = result.get(name, {})
+        values = [audit.get(k) for k in keys]
+        if any(type(v) not in (int, float) or not math.isfinite(v) or v < 0 for v in values):
+            raise ValueError(f"{name} failed: missing/nonphysical accounting")
+        total, part1, part2 = values
+        error = abs(total-part1-part2)/max(total, 1e-30)
+        reported = audit.get("relativeError", error)
+        if type(reported) not in (int, float) or not math.isfinite(reported) or not 0 <= reported <= tolerance or error > tolerance:
+            raise ValueError(f"{name} failed: closure error {error:.6g}")
+    phase = result["phaseAudit"]
+    lo, hi = phase.get("minFraction"), phase.get("maxFraction")
+    if (type(lo) not in (int, float) or type(hi) not in (int, float)
+            or not 0 <= lo <= hi <= 1):
+        raise ValueError("phaseAudit failed: unbounded liquid fraction")
 
 
 def write_artifacts(result, folder):
@@ -149,14 +182,16 @@ class FieldRecorder:
     Visualization precision only; solver and metrics retain float64. No spatial
     interpolation, fabricated interface or inferred velocity is exported.
     """
-    def __init__(self, folder, coords, spacing, material):
+    def __init__(self, folder, coords, spacing, material, process=None):
         import numpy as np
         self.folder = Path(folder) if folder else None
         self.coords = np.asarray(coords)
         self.frames = []
+        self.process = process
         self.metadata = dict(version=1, cells=len(coords), spacing_m=spacing,
             coordinates="field-coordinates.bin", frames=self.frames,
             solidus_K=material["solidus_K"], liquidus_K=material["liquidus_K"],
+            boiling_K=material["boiling_K"],
             encoding="little-endian-float32", scope="Sampled resolved cell temperatures; stationary enthalpy phase fraction; no velocity or VOF")
         if self.folder:
             self.coords.astype("<f4").tofile(self.folder/"field-coordinates.bin")
@@ -174,6 +209,18 @@ class FieldRecorder:
         values.astype("<f4").tofile(self.folder/name)
         self.frames.append(dict(path=name, time_s=float(time), surface_m=float(surface),
             minimum_K=float(values.min()), maximum_K=float(values.max())))
+        molten = (values >= self.metadata["liquidus_K"]) & (self.coords[:,2] < surface)
+        if self.process and molten.any():
+            layer = round(surface/(self.process["layer_um"]*1e-6))-1
+            angle = math.radians(self.process["scanAngle_deg"]+layer*self.process["layerRotation_deg"])
+            x,y,z = self.coords[molten].T
+            along,across = x*math.cos(angle)+y*math.sin(angle), -x*math.sin(angle)+y*math.cos(angle)
+            support = self.metadata["spacing_m"]*(abs(math.cos(angle))+abs(math.sin(angle)))/2
+            self.frames[-1]["geometry"] = dict(angle_rad=angle,
+                along_m=[float(along.min()-support),float(along.max()+support)],
+                across_m=[float(across.min()-support),float(across.max()+support)],
+                bottom_m=float(z.min()-self.metadata["spacing_m"]/2),
+                scope="All concurrently molten cells; projected cell support; not an interpolated interface")
 
     def finish(self):
         import json

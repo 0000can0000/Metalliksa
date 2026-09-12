@@ -18,12 +18,46 @@ CASE = dict(mode="standard", backend="reference", power_W=40, mesh_um=40, trackL
 
 
 class Verification(unittest.TestCase):
+    def test_active_gradient_excludes_future_powder(self):
+        from lpbf_simulation import active_gradient
+        x,y,z = np.meshgrid(np.arange(4.),np.arange(4.),np.arange(5.),indexing="ij")
+        active = z < 3
+        temperature = 300+2*x+3*y+4*z
+        temperature[~active] = -1e9  # Deliberately unrelated inactive storage.
+        gradient = active_gradient(temperature,active,1.)
+        np.testing.assert_allclose(gradient[active], math.sqrt(29),rtol=1e-12)
+        np.testing.assert_array_equal(gradient[~active],0.)
+
+    def test_balance_failure_cannot_be_published_or_restored(self):
+        from lpbf_evidence import enforce_thermal_balances, thermal_audits
+        result = run(CASE)
+        for audit,key in (("massBalance","final_kg"),("phaseAudit","solidVolume_m3"),("energyBalance","stored_J")):
+            broken = copy.deepcopy(result); broken[audit][key] += 1.
+            with self.assertRaisesRegex(ValueError,"failed"): enforce_thermal_balances(broken)
+        p,m = validate(CASE)
+        with self.assertRaisesRegex(ValueError,"audit failed"):
+            thermal_audits(np.zeros((1,3)),np.ones(1),p,m,np.array([1.1]))
+        with tempfile.TemporaryDirectory() as tmp:
+            queue = Queue(tmp,start=False); job = queue.submit(CASE)
+            broken = copy.deepcopy(result); broken["massBalance"]["relativeError"] = .1
+            (Path(tmp)/job["id"]/"result.json").write_text(json.dumps(broken))
+            queue.update(job["id"],status="completed")
+            rejected = queue.get(job["id"])
+            self.assertEqual(rejected["status"],"failed")
+            self.assertIn("massBalance failed",rejected["error"])
+            self.assertNotIn("result",rejected)
+            self.assertNotEqual(queue.submit(CASE)["id"],job["id"])
+
     def test_resolved_field_artifacts(self):
         from lpbf_evidence import FieldRecorder
         with tempfile.TemporaryDirectory() as folder:
             r = run(CASE, artifact_dir=folder)
             metadata = json.loads((Path(folder)/r["fieldSeries"]).read_text())
             self.assertGreater(len(metadata["frames"]), 2)
+            measured_frames = [f for f in metadata["frames"] if "geometry" in f]
+            self.assertTrue(measured_frames)
+            self.assertEqual(metadata["boiling_K"],r["material"]["boiling_K"])
+            self.assertTrue(any(abs((f["geometry"]["along_m"][1]-f["geometry"]["along_m"][0])*1e6-r["metrics"]["length_um"])<1e-8 for f in measured_frames))
             self.assertEqual(metadata["cells"], r["discretization"]["cells"])
             xyz = np.fromfile(Path(folder)/metadata["coordinates"], dtype="<f4").reshape(-1,3)
             self.assertEqual(len(xyz), metadata["cells"])

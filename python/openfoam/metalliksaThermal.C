@@ -142,6 +142,7 @@ int main(int argc, char *argv[])
             forAll(neighbours,face)
             {
                 const int a=owners[face], b=neighbours[face];
+                if(!active[a] || !active[b]) continue;
                 const vector delta=centres[b]-centres[a];
                 for(int axis=0;axis<3;++axis) if(std::abs(delta[axis])>dx*.5)
                 {

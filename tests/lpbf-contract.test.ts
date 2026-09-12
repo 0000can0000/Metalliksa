@@ -27,4 +27,9 @@ for (const patch of [
   { fieldPreviews: ["https://untrusted.example/field.svg"] },
 ]) assert.throws(() => parseSimulationJob({ ...base, status: "completed", result: { ...result, ...patch } }));
 assert.throws(() => parseSimulationJob({ ...base, status: "cancelled", result }));
+assert.throws(() => parseSimulationJob({ ...base, status: "completed", result: {...result,effectiveMode:"standard"} }));
+const thermal={...result,effectiveMode:"standard",energyBalance:{input_J:1,losses_J:.2,stored_J:.8,relativeError:0},massBalance:{initial_kg:1,deposited_kg:1,final_kg:2,relativeError:0,scope:"stationary"},phaseAudit:{liquidVolume_m3:1,solidVolume_m3:1,activeVolume_m3:2,minFraction:0,maxFraction:1,scope:"enthalpy"}};
+assert.doesNotThrow(()=>parseSimulationJob({...base,status:"completed",result:thermal}));
+assert.throws(()=>parseSimulationJob({...base,status:"completed",result:{...thermal,massBalance:{...thermal.massBalance,final_kg:3}}}));
+assert.throws(()=>parseSimulationJob({...base,status:"completed",result:{...thermal,phaseAudit:{...thermal.phaseAudit,activeVolume_m3:3}}}));
 console.log("PASS: LPBF runtime contract rejects invalid, nonfinite and false-validation responses");

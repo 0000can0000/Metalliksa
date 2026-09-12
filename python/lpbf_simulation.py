@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material, property_at, enthalpy_table
 from lpbf_verification import compare, convergence
-from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, write_artifacts, FieldRecorder
+from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
 VERSION = "enthalpy-fv-2"
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
@@ -155,6 +155,26 @@ def conduction_rate(T, k, active, dx):
     return rate
 
 
+def active_gradient(T, active, dx):
+    """Average active face differences; one-sided at deposition boundaries.
+
+    Inactive future powder is not a temperature boundary condition. Including
+    its preheat temperature would contaminate the extracted G and R.
+    """
+    squared = np.zeros_like(T)
+    for axis in range(3):
+        left, right = [slice(None)]*3, [slice(None)]*3
+        left[axis], right[axis] = slice(None, -1), slice(1, None)
+        a, b = tuple(left), tuple(right)
+        valid = active[a] & active[b]
+        difference = (T[b]-T[a])/dx*valid
+        gradient, count = np.zeros_like(T), np.zeros_like(T)
+        gradient[a] += difference; gradient[b] += difference
+        count[a] += valid; count[b] += valid
+        squared += (gradient/np.maximum(count, 1))**2
+    return np.sqrt(squared)
+
+
 def transient(p, m, report=lambda *args: None, artifact_dir=None):
     segments, end = scan_segments(p)
     dx_requested = p["mesh_um"]*1e-6
@@ -187,7 +207,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     best = dict(width_um=0., depth_um=0., length_um=0., volume_um3=0., crossSectionArea_um2=0.)
     peak = t0
     time, step, next_sample = 0., 0, 0.
-    recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m)
+    recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
     min_dt = p["maxDt_s"]
     while time < end:
         seg = next((s for s in segments if s["start_s"] <= time+1e-14 and time < s["end_s"]-1e-14), None)
@@ -236,7 +256,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         ever |= melt
         crossing = (old >= m["liquidus_K"])&(T < m["liquidus_K"])
         if crossing.any():
-            grad = np.sqrt(sum(a*a for a in np.gradient(T, dx)))
+            grad = active_gradient(T, active, dx)
             cooling = (old[crossing]-T[crossing])/dt
             good = grad[crossing] > 1e-6
             if good.any():
@@ -367,6 +387,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     result["confidenceReason"] = f"{m['quality']} material data and unresolved flow; no independent experimental validation."
     if any(isinstance(v,(int,float)) and (not math.isfinite(v) or v < 0) for v in g.values()):
         raise ValueError("Nonfinite or negative physical result")
+    enforce_thermal_balances(result)
     write_artifacts(result, artifact_dir)
     json.dumps(result, allow_nan=False)
     return result

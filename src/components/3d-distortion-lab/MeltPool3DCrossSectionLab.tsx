@@ -95,7 +95,6 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const [showIsotherms, setShowIsotherms] = useState<boolean>(true);
   const [showPowderBed, setShowPowderBed] = useState<boolean>(true);
   const [showLaserRays, setShowLaserRays] = useState<boolean>(true);
-  const [showMarangoniVectors, setShowMarangoniVectors] = useState<boolean>(true);
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
 
@@ -530,35 +529,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
 
     }
 
-    // 9. MARANGONI CONVECTION STREAMLINE VORTICES
-    if (showMarangoniVectors) {
-      const vortexMat = new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 });
-      const reach = Math.min(1.35, 0.55 + Ma / 8000);
-
-      // Left Surface Outward Vortex Loop
-      const vortexCurve1 = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0, 0, 5),
-        new THREE.Vector3(-af * 0.2, -5, b * 0.4 * reach),
-        new THREE.Vector3(-af * 0.5, -c * 0.35, b * 0.7 * reach),
-        new THREE.Vector3(-af * 0.7, -c * 0.55, b * 0.3 * reach),
-        new THREE.Vector3(-af * 0.4, -c * 0.3, 5),
-      ], true);
-      const vGeom1 = new THREE.BufferGeometry().setFromPoints(vortexCurve1.getPoints(32));
-      const vLine1 = new THREE.Line(vGeom1, vortexMat);
-      content.add(vLine1);
-
-      // Right Surface Outward Vortex Loop
-      const vortexCurve2 = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0, 0, -5),
-        new THREE.Vector3(-af * 0.2, -5, -b * 0.4 * reach),
-        new THREE.Vector3(-af * 0.5, -c * 0.35, -b * 0.7 * reach),
-        new THREE.Vector3(-af * 0.7, -c * 0.55, -b * 0.3 * reach),
-        new THREE.Vector3(-af * 0.4, -c * 0.3, -5),
-      ], true);
-      const vGeom2 = new THREE.BufferGeometry().setFromPoints(vortexCurve2.getPoints(32));
-      const vLine2 = new THREE.Line(vGeom2, vortexMat);
-      content.add(vLine2);
-    }
+    // No velocity field is solved; Marangoni screening remains numerical only.
 
     // 10. SCAN VELOCITY VECTOR ARROW
     const scanDir = new THREE.Vector3(1, 0, 0);
@@ -578,7 +549,6 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     showIsotherms,
     showPowderBed,
     showLaserRays,
-    showMarangoniVectors,
     wireframeMode,
     laserPower_W,
     beamDiameter_um,
@@ -823,6 +793,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         <div className="space-y-1">
           <label className="text-[10px] text-slate-400">Alloy Material</label>
           <select
+            aria-label="Analytical material"
             value={selectedMaterial}
             onChange={(e) => setSelectedMaterial(e.target.value)}
             className="w-full bg-[#050810] text-slate-200 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:border-sky-500 outline-none"
@@ -849,6 +820,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             min={80}
             max={600}
             step={10}
+            aria-label="Analytical laser power in watts"
             value={laserPower_W}
             onChange={(e) => setLaserPower_W(Number(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
@@ -866,6 +838,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             min={200}
             max={2500}
             step={25}
+            aria-label="Analytical scan speed in millimetres per second"
             value={scanSpeed_mms}
             onChange={(e) => setScanSpeed_mms(Number(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
@@ -883,6 +856,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             min={40}
             max={150}
             step={5}
+            aria-label="Analytical beam diameter in micrometres"
             value={beamDiameter_um}
             onChange={(e) => setBeamDiameter_um(Number(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
@@ -900,6 +874,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             min={20}
             max={80}
             step={5}
+            aria-label="Analytical layer thickness in micrometres"
             value={layerThickness_um}
             onChange={(e) => setLayerThickness_um(Number(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -917,6 +892,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             min={50}
             max={180}
             step={5}
+            aria-label="Analytical hatch spacing in micrometres"
             value={hatchSpacing_um}
             onChange={(e) => setHatchSpacing_um(Number(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
@@ -927,6 +903,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         <div className="space-y-1">
           <label className="text-[10px] text-slate-400">Laser Source</label>
           <select
+            aria-label="Analytical laser wavelength"
             value={laserWavelength}
             onChange={(e) => setLaserWavelength(e.target.value as any)}
             className="w-full bg-[#050810] text-slate-200 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:border-sky-500 outline-none"
@@ -947,6 +924,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             min={0}
             max={100}
             step={5}
+            aria-label="Sulfur concentration in ppm"
             value={sulfurPpm}
             onChange={(e) => setSulfurPpm(Number(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
@@ -1020,15 +998,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 >
                   Isotherms
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowMarangoniVectors(!showMarangoniVectors)}
-                  className={`px-2 py-1 rounded-lg border transition ${
-                    showMarangoniVectors ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-slate-900 text-slate-500 border-slate-800"
-                  }`}
-                >
-                  Illustrative flow (screening)
-                </button>
+
                 <button
                   type="button"
                   onClick={() => setShowLaserRays(!showLaserRays)}

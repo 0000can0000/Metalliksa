@@ -81,7 +81,7 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     if not np.isfinite(samples).all() or samples.shape[1] != len(coords)+14:
         raise ValueError("Invalid OpenFOAM field output")
     from lpbf_evidence import FieldRecorder
-    recorder = FieldRecorder(artifact_dir, coords[:, :3], dx, m)
+    recorder = FieldRecorder(artifact_dir, coords[:, :3], dx, m, p)
     history, best = [], dict(width_um=0., depth_um=0., length_um=0., volume_um3=0., crossSectionArea_um2=0.)
     xs = np.unique(coords[:, 0]); ever = np.zeros(len(coords), bool); remelt = ever.copy(); previous = ever.copy()
     for row in samples:

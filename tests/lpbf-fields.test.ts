@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {parseFieldSeries,decodeField} from "../src/components/3d-distortion-lab/ResolvedThermalViewer";
+import {liquidusSection,thermalColour} from "../src/components/3d-distortion-lab/thermalFieldGeometry";
 const valid={version:1,cells:2,spacing_m:2e-5,coordinates:"field-coordinates.bin",solidus_K:1500,liquidus_K:1600,frames:[{path:"field-frame-000.bin",time_s:0,surface_m:0,minimum_K:300,maximum_K:1500}]};
 assert.equal(parseFieldSeries(valid).cells,2);
 for(const patch of [{cells:600001},{spacing_m:NaN},{coordinates:"../secret"},{liquidus_K:1200},{frames:[]},{frames:[{...valid.frames[0],path:"../secret"}]}])assert.throws(()=>parseFieldSeries({...valid,...patch}));
@@ -7,3 +8,13 @@ assert.deepEqual([...decodeField(new Float32Array([300,1600]).buffer,2)],[300,16
 assert.throws(()=>decodeField(new Float32Array([300]).buffer,2));
 assert.throws(()=>decodeField(new Float32Array([Infinity]).buffer,1));
 console.log("Resolved field contract: passed");
+// Manufactured linear field: a 1500 K section must lie at x=0.5 m.
+const coords=new Float32Array([0,0,0, 1,0,0, 0,0,1, 1,0,1]);
+const temperatures=new Float32Array([1000,2000,1000,2000]);
+const contour=liquidusSection(coords,temperatures,1,0,1,2,1500);
+assert.equal(contour.length,12);
+for(let i=0;i<contour.length;i+=3)assert.equal(contour[i],500000);
+assert.equal(liquidusSection(coords,temperatures,1,0,1,2,2500).length,0);
+assert.equal(thermalColour(1500,300,1500,1600,2200),"rgb(64,151,210)");
+assert.equal(thermalColour(1600,300,1500,1600,2200),"rgb(245,158,11)");
+console.log("Manufactured liquidus contour and shared palette: passed");

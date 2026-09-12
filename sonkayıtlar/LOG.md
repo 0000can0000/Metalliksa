@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 13:32 — Handoff: close melt-pool kıvam on measured catalog
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User asked to continue with the recommendation and write it for a new agent; close this chat.
+- **Done**: Handoff written in chat. Repo `main` holds the measured DOI catalog (PROOF 022). No physics code in this turn.
+- **Where we left off**: New agent: do not ingest 640-row solver-echo jsonl; do not open CFD/FEA/Build Job rescoring; close kıvam with DOI-clean AlSi10Mg (and Ti-6Al-4V if measured) tracks scored ×0.5–2 on Goldak+Fabbro.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — handoff only
+
+---
+
 ## 2026-09-12 13:26 — Disable Bugbot for user
 - **Agent**: Cursor Grok 4.6
 - **Result**: FAIL

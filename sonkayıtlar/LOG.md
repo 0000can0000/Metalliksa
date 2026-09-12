@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 09:50 — Open Goldak + Fabbro keyhole
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User said “Açalım” — unlock the next physics lock (Goldak / recoil keyhole).
+- **Done**: `goldak-v1` Fachinotti–Nguyen field (beam-seeded axes). `fabbro-keyhole-v1` on Goldak/ET lab paths (Appl. Sci. 2020). Melt Pool lab defaults to Goldak with ET/Rosenthal toggles. Build Job stays `rosenthal-screening-v1` + King increment. PROOF 019. NIST AMB2022-03 depth band.
+- **Where we left off**: Goldak + Fabbro are open on the Melt Pool lab. Marangoni CFD and Goldak FEA remain later. Restart `npm run dev` to load the new Python modules in IPC workers.
+- **Files**: `python/goldak_solver.py`, `python/fabbro_keyhole.py`, `python/lpbf_thermal_solver.py`, `python/test_goldak_fabbro.py`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `src/services/pythonComputationService.ts`, `PROOF.md`, `ROADMAP.md`, `AGENTS.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `python3 python/test_goldak_fabbro.py` PASS; `python3 python/test_eagar_tsai.py` PASS; melt-pool / four-alloy / build-job PASS; `npx tsc --noEmit` PASS
+
+---
+
 ## 2026-09-12 08:50 — Eagar–Tsai melt-pool field
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

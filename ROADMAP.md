@@ -29,8 +29,8 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 - [x] **3D Interactive Melt Pool Visualizer**: Dynamic isotherm geometry ($T_{\text{liquidus}}$, $T_{\text{solidus}}$, $T_{\text{vaporization}}$).
 - [x] **Eagar-Tsai 3D Distributed Heat Source**: Finite 1/e² Gaussian (`eagar-tsai-v1`) on the Melt Pool 3D lab. Build Job verdict stays `rosenthal-screening-v1`. Not powder-bed k degradation and not Goldak FEA.
 - [x] **Goldak double-ellipsoid field**: Fachinotti–Cardona (2008) erf-corrected Nguyen integral (`goldak-v1`). Beam-seeded axes, not FEA.
-- [x] **Dynamic Keyhole Vaporization Depth**: Fabbro cylindrical keyhole (`fabbro-keyhole-v1`, Appl. Sci. 2020) on Goldak/ET lab paths. Recoil pressure still Clausius–Clapeyron screening, not collapse CFD.
-- [ ] **Marangoni Convection**: Melt pool circulation driven by surface tension temperature gradient ($\partial \gamma / \partial T$), accounting for surfactant concentrations (e.g., Sulfur in 316L).
+- [x] **Dynamic Keyhole Vaporization Depth**: Fabbro cylindrical keyhole (`fabbro-keyhole-v1`, Appl. Sci. 2020) on Goldak/ET lab paths. Fresnel \(A\) only (no stacked \(\eta_\mathrm{eff}\)). Recoil is Knight \(0.54 P_\mathrm{sat}(T_s)\) with \(T_s\le T_v\), not collapse CFD.
+- [x] **Marangoni Convection (screening)**: Heiple–Roper \(\partial\gamma/\partial T\) sign + 30–60 ppm S inversion (`marangoni-heiple-v1`). Reports Ma / flow direction / \(\mathrm{Pe}_{Ma}\). Not Navier–Stokes CFD and not a W/D fit.
 
 ---
 

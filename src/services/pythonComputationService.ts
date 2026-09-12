@@ -1361,6 +1361,7 @@ class PythonComputationService {
     hatchSpacing_um?: number;
     laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm";
     heatSource?: "rosenthal" | "eagar-tsai" | "goldak";
+    sulfur_ppm?: number;
   }): Promise<PythonLPBFResult> {
     const res = await fetch("/api/python/lpbf-thermal-solver", {
       method: "POST",
@@ -1763,6 +1764,17 @@ export interface PythonLPBFResult {
     fabbroDepth_um?: number;
     aspectRatio_e_over_d?: number;
     peclet?: number;
+    absorptivity?: number;
+    doi?: string;
+  };
+  marangoniModel?: {
+    modelId?: string;
+    flowDirection?: string;
+    dGamma_dT_N_mK?: number;
+    sulfur_ppm?: number;
+    surfaceVelocity_m_s?: number;
+    pecletMarangoni?: number;
+    aspectNote?: string;
     doi?: string;
   };
   computeTimeMs: number;
@@ -1789,6 +1801,8 @@ export interface PythonLPBFResult {
     peakIntensity_MW_cm2?: number;
     normalizedEnthalpy: number;
     heatSource?: string;
+    conductionAbsorptivity?: number;
+    fabbroAbsorptivity?: number;
   };
   meltPoolGeometry: {
     length_um: number;
@@ -1807,6 +1821,7 @@ export interface PythonLPBFResult {
   };
   hydrodynamicsAndRecoil: {
     peakTemperature_C: number;
+    surfaceTemperature_C?: number;
     knudsenRecoilPressure_kPa: number;
     marangoniNumber: number;
     marangoniGeometrySource?: string;

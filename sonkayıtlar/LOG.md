@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 10:05 — Melt-pool kıvam: Fabbro A, Knight recoil, Heiple–Roper
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User said keep going without waiting for approval until the melt-pool simulation is at the intended kıvam.
+- **Done**: Stopped double-counting multi-reflection A on Fabbro/ET/Goldak (Fresnel \(A=\eta_0\)). NIST AMB2022-03 Goldak W/D now ~117/124 µm vs 136.3/139.7. Recoil uses Knight \(0.54 P_\mathrm{sat}(T_s)\) with \(T_s\le T_v\) (~55 kPa, not \(10^7\) kPa). Unlocked `marangoni-heiple-v1` (30–60 ppm S inversion, no W/D fit). Melt Pool lab sulfur slider + surface-T / flow chips. Build Job stays Rosenthal + King. PROOF 020.
+- **Where we left off**: Melt Pool kıvam is literature-consistent on W/D/recoil/Marangoni sign. Still locked: Marangoni CFD, Goldak FEA, using Goldak/ET to re-score Build Job, G/R mapping as a dedicated Phase 3 lab.
+- **Files**: `python/marangoni_screening.py`, `python/lpbf_thermal_solver.py`, `python/fabbro_keyhole.py`, `python/test_goldak_fabbro.py`, `python/test_marangoni_screening.py`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `src/services/pythonComputationService.ts`, `PROOF.md`, `ROADMAP.md`, `AGENTS.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `python3 python/test_goldak_fabbro.py` PASS; `python3 python/test_marangoni_screening.py` PASS; `python3 python/test_eagar_tsai.py` PASS; melt-pool / four-alloy / build-job PASS; `npx tsc --noEmit` PASS
+
+---
+
 ## 2026-09-12 09:50 — Open Goldak + Fabbro keyhole
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

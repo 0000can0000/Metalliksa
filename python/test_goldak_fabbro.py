@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Goldak field + Fabbro keyhole checks (PROOF 019)."""
+"""Goldak field + Fabbro keyhole + recoil/Marangoni kıvam (PROOF 019/020)."""
 import math
 import sys
 
@@ -14,10 +14,11 @@ def assert_true(cond, msg):
 
 
 def main():
-    # NIST AMB2022-03 IN718 baseline: 285 W, 960 mm/s, 67 µm, T0=23.5 °C, D=139.7 µm.
+    # NIST AMB2022-03 IN718: 285 W, 960 mm/s, 67 µm, T0=23.5 °C, D=139.7 µm.
+    # Fabbro A is Fresnel (0.38), not stacked multi-reflection eta_eff.
     nist = fabbro_keyhole_depth_m(285.0, 0.960, 67e-6, 11.4, 11.4 / (8190.0 * 435.0), 2850.0, 23.5, 0.38, 35.0)
     D_um = nist["depth_m"] * 1e6
-    assert_true(0.45 * 139.7 <= D_um <= 2.2 * 139.7, f"Fabbro NIST depth {D_um:.1f} vs 139.7")
+    assert_true(0.70 * 139.7 <= D_um <= 1.40 * 139.7, f"Fabbro NIST depth {D_um:.1f} vs 139.7")
 
     tight = fabbro_keyhole_depth_m(285.0, 0.960, 49e-6, 11.4, 11.4 / (8190.0 * 435.0), 2850.0, 23.5, 0.38, 40.0)
     wide = fabbro_keyhole_depth_m(285.0, 0.960, 82e-6, 11.4, 11.4 / (8190.0 * 435.0), 2850.0, 23.5, 0.38, 28.0)
@@ -41,16 +42,22 @@ def main():
     )
     assert_true(gk["modelId"] == "goldak-v1", "goldak model id")
     assert_true(gk["keyholeModel"]["modelId"] == "fabbro-keyhole-v1", "fabbro on goldak path")
+    assert_true(abs(gk["keyholeModel"]["absorptivity"] - 0.38) < 0.02, "Fabbro A is Fresnel, not eta_eff")
     W = gk["meltPoolGeometry"]["width_um"]
     D = gk["meltPoolGeometry"]["depth_um"]
-    assert_true(0.35 * 136.3 <= W <= 2.8 * 136.3, f"Goldak NIST width {W}")
-    assert_true(0.35 * 139.7 <= D <= 2.8 * 139.7, f"Goldak+Fabbro NIST depth {D}")
+    assert_true(0.70 * 136.3 <= W <= 1.40 * 136.3, f"Goldak NIST width {W}")
+    assert_true(0.70 * 139.7 <= D <= 1.40 * 139.7, f"Goldak+Fabbro NIST depth {D}")
+    recoil = gk["hydrodynamicsAndRecoil"]["knudsenRecoilPressure_kPa"]
+    assert_true(20.0 <= recoil <= 120.0, f"Knight recoil at Tv {recoil}")
+    assert_true(gk["hydrodynamicsAndRecoil"]["surfaceTemperature_C"] <= 2850.0 + 1.0, "surface T capped")
+    assert_true(gk["marangoniModel"]["modelId"] == "marangoni-heiple-v1", "marangoni model")
+    assert_true(gk["marangoniModel"]["flowDirection"] == "outward", "low-S outward")
 
     ros = calculate_meltpool_physics("Inconel 718", 285, 960, 80, 80, 40, 110)
     assert_true(ros["modelId"] == "rosenthal-screening-v1", "Build Job default unchanged")
     assert_true(ros["keyholeModel"]["modelId"] == "king-increment", "Rosenthal keeps King increment")
 
-    print("PASS: Goldak field + Fabbro keyhole")
+    print("PASS: Goldak field + Fabbro keyhole + recoil/Marangoni")
     return 0
 
 

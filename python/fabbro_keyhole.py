@@ -8,7 +8,9 @@ Cylindrical multiple-reflection keyhole, conduction loss only:
     R = e / d = R0 / (1 + V / V0)
 
 Pe = V d / (2 α), m ≈ 2.4, n ≈ 3 for 2 ≤ Pe ≤ 10 (Fabbro §2).
-A is the already multi-reflected absorptivity. Not CFD, not a collapse simulation.
+A is Fabbro's keyhole absorptivity in eq. 2 — pass Fresnel / flat-surface A, do not
+stack the thermal-solver multi-reflection η_eff on top (that double-counts trapping;
+Trapp et al. 2017). Not CFD, not a collapse simulation.
 """
 
 from __future__ import annotations

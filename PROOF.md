@@ -282,4 +282,19 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Functional proof**: `python3 python/test_goldak_fabbro.py`; existing melt-pool / four-alloy / build-job fixtures; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 020: Fabbro A without double-count, Knight recoil, Heiple–Roper Marangoni
+- **Date**: 2026-09-12
+- **Module**: `python/fabbro_keyhole.py` / `python/marangoni_screening.py` / `python/lpbf_thermal_solver.py` / `MeltPool3DCrossSectionLab.tsx`
+- **Academic basis**:
+  - Fabbro, *Appl. Sci.* 10, 1487 (2020), DOI `10.3390/app10041487` eq. 2: \(A\) is the keyhole absorptivity already used in \(e=AP/[k(T_v-T_0)(m\mathrm{Pe}+n)]\). Stacking the thermal-solver multi-reflection \(\eta_\mathrm{eff}\) on top double-counts trapping (Trapp et al., *Appl. Mater. Today* 2017, calorimetric 316L: conduction \(\sim 0.3\), deep-keyhole saturation \(\sim 0.78\)). Melt Pool ET/Goldak paths now use Fresnel \(A=\eta_0\) for both the conduction field and Fabbro.
+  - Anisimov / Knight evaporative jump: \(P_r=0.54\,P_\mathrm{sat}(T_s)\). Surface \(T\) saturates at \(T_v\) (Khairallah et al., *Acta Mater.* / *Science* recoil picture). Field peak stays uncapped (PROOF 015); recoil and Marangoni \(\Delta T\) use \(T_s=\min(T_\mathrm{field},T_v)\).
+  - Heiple & Roper, *Welding Journal* 61 (1982): \(\partial\gamma/\partial T\) sign sets outward vs inward flow. Inversion band 30–60 ppm S (Ebrahimi et al., *Int. J. Heat Mass Transfer* 2021, DOI `10.1016/j.ijheatmasstransfer.2020.120801`). `marangoni-heiple-v1` reports direction / Ma / \(u\) / \(\mathrm{Pe}_{Ma}\). It does **not** refit \(W/D\) and is **not** CFD.
+- **Literature numbers** (search-sourced):
+  - NIST AMB2022-03 IN718 (Lane et al. 2024): \(W=136.3\,\mu\mathrm{m}\), \(D=139.7\,\mu\mathrm{m}\). After the A fix, Goldak+Fabbro sits in a \(\pm 30\%\) band (typical: \(W\approx 117\,\mu\mathrm{m}\), \(D\approx 124\,\mu\mathrm{m}\)). Knight recoil at \(T_v\) is \(0.54\,\mathrm{atm}\approx 55\,\mathrm{kPa}\), not \(10^7\,\mathrm{kPa}\).
+- **Product split**: Build Job / Rosenthal path still uses \(\eta_\mathrm{eff}\) + King increment. Marangoni and Fabbro flags must not re-score `job.verdict`.
+- **Functional proof**: `python3 python/test_goldak_fabbro.py`; `python3 python/test_marangoni_screening.py`; `python3 python/test_eagar_tsai.py`; melt-pool / four-alloy / build-job; `npx tsc --noEmit`.
+- **Status**: **PASS**
+
 

@@ -24,6 +24,7 @@ from eagar_tsai_solver import EagarTsaiField, MODEL_ID as EAGAR_TSAI_MODEL_ID
 from fabbro_keyhole import MODEL_ID as FABBRO_MODEL_ID, fabbro_keyhole_depth_m
 from four_alloy_materials import four_alloy_thermophysical_db, thermal_props
 from goldak_solver import GoldakField, MODEL_ID as GOLDAK_MODEL_ID, seed_goldak_axes
+from marangoni_screening import MODEL_ID as MARANGONI_MODEL_ID, marangoni_screening
 
 # Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
 SECONDARY_THERMOPHYSICAL_DB = {
@@ -199,11 +200,13 @@ def calculate_meltpool_physics(
     process_seed: int = 42,
     prop_overrides: dict | None = None,
     heat_source: str | None = None,
+    sulfur_ppm: float = 15.0,
 ):
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
     Optional prop_overrides merge onto the resolved thermophysical dict (UQ / AM-Bench).
     heat_source: "rosenthal" (Build Job default), "eagar-tsai", or "goldak" (Melt Pool lab).
+    sulfur_ppm: Heiple–Roper screening only (does not refit W/D or re-score Build Job).
     """
     base = (
         thermal_props(material_name)
@@ -266,10 +269,18 @@ def calculate_meltpool_physics(
     # Latent-heat (Stefan) correction so the liquidus is not an over-hot Rosenthal tail.
     Lf = props["latent_heat_fusion_J_kg"]
     stefan = Lf / max(1.0, cp * max(50.0, T_liq - T_preheat))
-    P_geom = effective_power / (1.0 + 0.55 * stefan)
+    source = _normalize_heat_source(heat_source)
+    # ET/Goldak are conduction fields: Fresnel A only. Fabbro already carries keyhole A(R)
+    # (Appl. Sci. 2020 eq. 2). Stacking eta_eff on both double-counts Trapp multiple reflections.
+    if source in ("eagar-tsai", "goldak"):
+        P_absorbed = eta_base * P_laser
+        A_fabbro = eta_base
+    else:
+        P_absorbed = effective_power
+        A_fabbro = eta_base
+    P_geom = P_absorbed / (1.0 + 0.55 * stefan)
     r_reg = max(r_beam / math.sqrt(2.0), 8e-6)
 
-    source = _normalize_heat_source(heat_source)
     goldak_seed = seed_goldak_axes(r_beam)
     if source == "eagar-tsai":
         et_field = EagarTsaiField(T_preheat, P_geom, k_th, alpha_th, r_beam).bind_speed(v_scan)
@@ -295,7 +306,7 @@ def calculate_meltpool_physics(
         heat_source_id = "rosenthal-screening-v1"
 
     fabbro = fabbro_keyhole_depth_m(
-        P_laser, v_scan, d_beam, k_s, alpha_solid, T_vap, T_preheat, eta_eff, normalized_enthalpy
+        P_laser, v_scan, d_beam, k_s, alpha_solid, T_vap, T_preheat, A_fabbro, normalized_enthalpy
     )
 
     # Seed search box from the high-speed Rosenthal width scale
@@ -374,17 +385,17 @@ def calculate_meltpool_physics(
     goldak_b_um = w_melt_um / 2.0
     goldak_c_um = d_melt_um
 
-    # 8. Marangoni Convection & Knudsen Recoil Pressure (geometry = thermal W/D above)
-    # Recoil vapor pressure P_recoil (Pa) — Clausius–Clapeyron with alloy molar mass
+    # 8. Recoil from evaporative surface T (Anisimov/Knight 0.54 Psat). Field peak stays
+    # uncapped (PROOF 015). Conduction singularities of 10^4 °C are not a wall temperature.
     R_gas = 8.314
     M_molar = float(props.get("M_molar_kg_mol", 0.055))
     delta_H_vap = props["latent_heat_vap_J_kg"] * M_molar
-    T_peak_K = t_peak_C + 273.15
+    t_surface_C = min(float(t_peak_C), float(T_vap))
+    T_surf_K = t_surface_C + 273.15
     T_vap_K = T_vap + 273.15
-    
-    if t_peak_C >= T_vap * 0.8:
-        recoil_exp = (delta_H_vap / R_gas) * (1.0 / T_vap_K - 1.0 / max(500.0, T_peak_K))
-        # Soft numeric guard against overflow only (not a physics ceiling on T or P).
+
+    if t_surface_C >= T_vap * 0.8:
+        recoil_exp = (delta_H_vap / R_gas) * (1.0 / T_vap_K - 1.0 / max(500.0, T_surf_K))
         if recoil_exp > 700.0:
             p_recoil_atm = 1.0e200
         elif recoil_exp < -700.0:
@@ -395,11 +406,17 @@ def calculate_meltpool_physics(
     else:
         p_recoil_kPa = 0.1
 
-    # Marangoni Number Ma uses the same thermal melt-pool half-width (not a separate estimate).
-    d_gamma = abs(props["d_gamma_dT_N_mK"])
-    delta_T_mushy = max(10.0, t_peak_C - T_liq)
-    mu_visc = props["viscosity_Pa_s"]
-    marangoni_number = (d_gamma * delta_T_mushy * (w_melt_m / 2.0)) / max(1e-9, (mu_visc * alpha_th))
+    ma = marangoni_screening(
+        props["d_gamma_dT_N_mK"],
+        props["viscosity_Pa_s"],
+        alpha_th,
+        float(props.get("density_liquid_kg_m3", rho)),
+        w_melt_m / 2.0,
+        t_surface_C,
+        T_liq,
+        sulfur_ppm=float(sulfur_ppm),
+    )
+    marangoni_number = ma["marangoniNumber"]
 
     # 9. Defect Diagnostics
     # A) Lack of Fusion — Tang et al.: (h/W)^2 + (t/D)^2 ≤ 1 for full consolidation
@@ -437,7 +454,7 @@ def calculate_meltpool_physics(
     # 10. Solidification Kinetics (G, R, G*R, G/R) & Microstructure
     # R = v · cos(θ) along the local surface normal incline (θ=0 → flat plate, R≈v).
     tail_length_m = max(1e-6, goldak_ar_um * 1e-6)
-    delta_T_sol = max(10.0, t_peak_C - T_sol)
+    delta_T_sol = max(10.0, t_surface_C - T_sol)
     thermal_gradient_G_K_m = max(100.0, delta_T_sol / tail_length_m)
     solidification_rate_R_m_s = max(1e-4, v_scan * cos_theta)
     cooling_rate_K_s = max(1.0, thermal_gradient_G_K_m * solidification_rate_R_m_s)
@@ -632,6 +649,8 @@ def calculate_meltpool_physics(
             "inclineAngle_deg": round(float(incline_angle_deg), 2),
             "processSeed": int(process_seed),
             "effectiveAbsorptivity": round(eta_eff, 3),
+            "conductionAbsorptivity": round(eta_base, 3),
+            "fabbroAbsorptivity": round(A_fabbro, 3),
             "effectiveConductivity_W_mK": round(k_th, 3),
             "effectiveSpecificHeat_J_kgK": round(cp, 1),
             "solidConductivity_W_mK": round(k_s, 3),
@@ -665,10 +684,22 @@ def calculate_meltpool_physics(
             "fabbroDepth_um": round(fabbro["depth_m"] * 1e6, 1),
             "aspectRatio_e_over_d": round(fabbro["aspectRatio_e_over_d"], 2),
             "peclet": round(fabbro["peclet"], 2),
+            "absorptivity": round(A_fabbro, 3),
             "doi": fabbro["doi"],
+        },
+        "marangoniModel": {
+            "modelId": MARANGONI_MODEL_ID,
+            "flowDirection": ma["flowDirection"],
+            "dGamma_dT_N_mK": round(ma["dGamma_dT_N_mK"], 6),
+            "sulfur_ppm": round(ma["sulfur_ppm"], 1),
+            "surfaceVelocity_m_s": round(ma["surfaceVelocity_m_s"], 3),
+            "pecletMarangoni": round(ma["pecletMarangoni"], 2),
+            "aspectNote": ma["aspectNote"],
+            "doi": ma["doi"],
         },
         "hydrodynamicsAndRecoil": {
             "peakTemperature_C": round(t_peak_C, 1),
+            "surfaceTemperature_C": round(t_surface_C, 1),
             "knudsenRecoilPressure_kPa": round(p_recoil_kPa, 2),
             "marangoniNumber": round(marangoni_number, 0),
             "marangoniGeometrySource": "thermal",
@@ -750,11 +781,13 @@ if __name__ == "__main__":
         hatch = float(data.get("hatchSpacing_um", 110.0))
         wavelength = data.get("laserWavelength", "IR_1064nm")
         heat_source = data.get("heatSource") or data.get("heat_source") or "rosenthal"
+        sulfur_ppm = float(data.get("sulfur_ppm", data.get("sulfurPpm", 15.0)))
         
         t0 = time.time()
         result = calculate_meltpool_physics(
             mat, power, speed, beam, preheat, layer, hatch, wavelength,
             heat_source=heat_source,
+            sulfur_ppm=sulfur_ppm,
         )
         result["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
         print(json.dumps(result, indent=2))

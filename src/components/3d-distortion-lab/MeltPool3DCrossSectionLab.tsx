@@ -85,6 +85,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const [selectedMaterial, setSelectedMaterial] = useState<string>(initialMaterial);
   const [laserWavelength, setLaserWavelength] = useState<"IR_1064nm" | "Green_515nm" | "Blue_450nm">("IR_1064nm");
   const [heatSource, setHeatSource] = useState<"goldak" | "eagar-tsai" | "rosenthal">("goldak");
+  const [sulfurPpm, setSulfurPpm] = useState<number>(15);
 
   useEffect(() => {
     setLaserPower_W(initialPower_W);
@@ -154,6 +155,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         hatchSpacing_um,
         laserWavelength,
         heatSource,
+        sulfur_ppm: sulfurPpm,
       });
       setPyResult(res);
 
@@ -184,6 +186,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     hatchSpacing_um,
     laserWavelength,
     heatSource,
+    sulfurPpm,
     onParametersChange,
   ]);
 
@@ -723,7 +726,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Goldak volumetric source, Eagar–Tsai Gaussian, or Rosenthal. Fabbro keyhole depth on Goldak/ET. Build Job verdict stays Rosenthal screening.
+                Goldak / Eagar–Tsai / Rosenthal. Fabbro keyhole uses Fresnel A (no double-counted trapping). Heiple–Roper Marangoni is screening, not CFD. Build Job stays Rosenthal.
               </p>
             </div>
           </div>
@@ -816,6 +819,12 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 <strong className="text-xs">{pyResult.keyholeModel.fabbroDepth_um} μm</strong>
               </div>
             )}
+            {pyResult?.marangoniModel?.flowDirection && (
+              <div className="text-right border-l border-current/30 pl-2">
+                <span className="text-[10px] opacity-75 block">Marangoni:</span>
+                <strong className="text-xs capitalize">{pyResult.marangoniModel.flowDirection}</strong>
+              </div>
+            )}
           </div>
         </div>
 
@@ -854,7 +863,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       </div>
 
       {/* PARAMETER SLIDERS */}
-      <div className="p-3.5 rounded-xl bg-[#090e18] border border-[#162032] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="p-3.5 rounded-xl bg-[#090e18] border border-[#162032] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
         {/* Material */}
         <div className="space-y-1">
           <label className="text-[10px] text-slate-400">Alloy Material</label>
@@ -971,6 +980,22 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             <option value="Green_515nm">Green (515 nm - Cu/Al)</option>
             <option value="Blue_450nm">Blue (450 nm)</option>
           </select>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex justify-between text-[10px]">
+            <span className="text-slate-400">Sulfur (Heiple–Roper)</span>
+            <span className="text-teal-300 font-bold">{sulfurPpm} ppm</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={sulfurPpm}
+            onChange={(e) => setSulfurPpm(Number(e.target.value))}
+            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+          />
         </div>
       </div>
 
@@ -1181,13 +1206,27 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                     <span className="font-bold text-rose-400">{pyResult.meltPoolGeometry.keyholeVaporCavityDepth_um} μm</span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                    <span className="text-slate-400">Peak Temperature (T_peak):</span>
+                    <span className="text-slate-400">Field peak (conduction):</span>
                     <span className="font-bold text-amber-300">{pyResult.hydrodynamicsAndRecoil.peakTemperature_C} °C</span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                    <span className="text-slate-400">Knudsen Recoil Pressure:</span>
+                    <span className="text-slate-400">Surface T (evaporative cap):</span>
+                    <span className="font-bold text-amber-200">
+                      {pyResult.hydrodynamicsAndRecoil.surfaceTemperature_C ?? "—"} °C
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-0.5 border-b border-slate-800/60">
+                    <span className="text-slate-400">Knudsen Recoil (0.54 Psat):</span>
                     <span className="font-bold text-rose-300">{pyResult.hydrodynamicsAndRecoil.knudsenRecoilPressure_kPa} kPa</span>
                   </div>
+                  {pyResult.marangoniModel && (
+                    <div className="flex justify-between py-0.5 border-b border-slate-800/60">
+                      <span className="text-slate-400">Marangoni flow:</span>
+                      <span className="font-bold text-teal-300 capitalize">
+                        {pyResult.marangoniModel.flowDirection} @ {pyResult.marangoniModel.sulfur_ppm} ppm S
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
                     <span className="text-slate-400">Volumetric Energy Density (VED):</span>
                     <span className="font-bold text-sky-400">{pyResult.processParameters.volumetricEnergyDensity_J_mm3} J/mm³</span>
@@ -1286,7 +1325,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Predicted W, D, and regime versus published single-track anchors (NIST AMB2022-03 IN718 and King windows). Depth on keyhole coupons is not an Eagar–Tsai claim.
+                Predicted W, D, and regime versus published single-track anchors (NIST AMB2022-03 IN718 and King windows). Goldak/ET depth uses Fabbro with Fresnel A; Marangoni does not refit W/D.
               </p>
               {MELT_POOL_LITERATURE_CASES.map((c) => {
                 const same =

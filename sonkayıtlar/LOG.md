@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 08:05 — Melt-pool strengthening plan
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User asked for a plan to strengthen the melt-pool simulation (no solver implementation this turn).
+- **Done**: Wrote `MELT_POOL_PLAN.md` (current Rosenthal limits; non-goals; Phases A–D: honesty → Eagar–Tsai → recoil/$Ma$ corrections → multi-track $G,R$; NIST MAPE gates; PR sequence). Pointed ROADMAP Phase 2 at the plan and marked what is already shipped vs heuristic.
+- **Where we left off**: Plan only. Next step is Plan Phase A (docstring/`modelId` honesty + single source of truth) or Phase B if they want ET first.
+- **Files**: `MELT_POOL_PLAN.md`, `ROADMAP.md`, `sonkayıtlar/LOG.md`
+- **Tests**: N/A — planning document, no physics or UI code change
+
+---
+
 ## 2026-09-06 22:45 — LPBF Faz 5 (cache, lazy UQ/NIST, Murakami, SBOM, air-gap)
 - **Agent**: Cursor Auto (Composer) / Grok inherit for survey
 - **Result**: PASS

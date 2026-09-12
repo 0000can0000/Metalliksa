@@ -25,11 +25,16 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 ---
 
 ## Phase 2: High-Fidelity Melt Pool & Thermal Physics (🟡 IN PROGRESS)
-- [x] **Analytical Moving Heat Source**: Rosenthal 3D steady-state point source solver.
-- [x] **3D Interactive Melt Pool Visualizer**: Dynamic isotherm geometry ($T_{\text{liquidus}}$, $T_{\text{solidus}}$, $T_{\text{vaporization}}$).
-- [ ] **Eagar-Tsai 3D Distributed Heat Source**: Accounting for finite Gaussian beam distribution and powder bed thermal conductivity degradation.
-- [ ] **Dynamic Keyhole Vaporization Depth**: Numerical model incorporating recoil pressure ($P_r$) and multiple laser reflections.
-- [ ] **Marangoni Convection**: Melt pool circulation driven by surface tension temperature gradient ($\partial \gamma / \partial T$), accounting for surfactant concentrations (e.g., Sulfur in 316L).
+
+Execution plan (honesty → Eagar–Tsai → keyhole/$Ma$ corrections → multi-track $G,R$): [`MELT_POOL_PLAN.md`](./MELT_POOL_PLAN.md). Live industrial field remains Rosenthal screening (`rosenthal-screening-v1`) until Phase B ships.
+
+- [x] **Analytical Moving Heat Source**: Regularized Rosenthal 3D steady-state point source + Stefan $L_f$ correction; King $\Delta H/h_s$ (15 / 30); Tang LoF; Rayleigh–Plateau balling (PROOF 007, 012, 015).
+- [x] **3D Interactive Melt Pool Visualizer**: Python contours / slices lofted in `MeltPool3DCrossSectionLab` (not a second TS field).
+- [ ] **Single source of truth (Plan Phase A)**: Solver/UI must not claim Goldak or Eagar–Tsai while those fields are unevaluated; client-only labs marked overlay or rewired.
+- [ ] **Eagar-Tsai 3D Distributed Heat Source (Plan Phase B)**: Finite Gaussian beam; optional powder-bed $k$; `modelId=eagar-tsai-v1`. Primary gate: NIST AMB2018-02 CBM $W$/$D$ MAPE bands in the plan.
+- [ ] **Dynamic Keyhole Vaporization Depth (Plan Phase C)**: Recoil–capillary $\Delta D$ + existing multi-reflection $\eta$, not a free $\Delta H/h_s$ depth multiplier. Ship only if hold-out MAPE improves.
+- [ ] **Marangoni correction (Plan Phase C)**: Scalar $W$ (and mild $D$) correction from $Ma$ and $\partial\gamma/\partial T$; not Navier–Stokes. Sulfur override off by default.
+- [ ] **Multi-track superposition + spatial $G,R$ (Plan Phase D)**: Hatch-offset fields instead of copied contours; $G=\nabla T$ on the liquidus.
 
 ---
 

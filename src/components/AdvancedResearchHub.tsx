@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { MeltPoolMeasuredTrackPanel } from "./MeltPoolMeasuredTrackPanel";
 import {
   BookOpen,
   Search,
@@ -337,7 +338,11 @@ export const AdvancedResearchHub: React.FC = () => {
               <span className="text-[10px] text-slate-500 block uppercase">Readiness</span>
               <span className="text-base font-bold text-emerald-400">TRL 3 - TRL 8</span>
             </div>
-          </div>
+        </div>
+      </div>
+
+        <div className="mt-5">
+          <MeltPoolMeasuredTrackPanel />
         </div>
 
         {/* AI Synthesis Query Bar */}

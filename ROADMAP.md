@@ -20,7 +20,7 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 - [x] **Derived Quantities Engine**: Real-time calculation of $E_L$ (LED), $E_A$ (AED), $E_V$ (VED), $I_0$ (Peak Intensity), and $\Delta H / h_s$ (Normalized Enthalpy).
 - [x] **Iso-VED Limitation Demonstrator**: Interactive sandbox demonstrating laser spot diameter and thermal dwell time decoupling.
 - [x] **Standards Integration**: ASTM F3055, ASTM B962 (Archimedes), ASTM E8/E8M (Tensile), ASTM E1245 (Porosity).
-- [x] **Measured melt-pool W/D catalog**: NIST AMB2022-03 Table 4 + Guo 2024 Table 3 in `meltpool_literature_catalog.py`. Solver-echo batches are not ground truth.
+- [x] **Measured melt-pool W/D catalog**: NIST AMB2022-03 Table 4 + Guo 2024 Table 3 in `meltpool_literature_catalog.py`. AlSi10Mg / Ti-6Al-4V measured isolated tracks: honest gaps (PROOF 023). Solver-echo batches are not ground truth.
 
 ---
 
@@ -31,6 +31,7 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 - [x] **Goldak double-ellipsoid field**: Fachinotti–Cardona (2008) erf-corrected Nguyen integral (`goldak-v1`). Beam-seeded axes, not FEA.
 - [x] **Dynamic Keyhole Vaporization Depth**: Fabbro cylindrical keyhole (`fabbro-keyhole-v1`, Appl. Sci. 2020) on Goldak/ET lab paths. Fresnel \(A\) only (no stacked \(\eta_\mathrm{eff}\)). Recoil is Knight \(0.54 P_\mathrm{sat}(T_s)\) with \(T_s\le T_v\), not collapse CFD.
 - [x] **Marangoni Convection (screening)**: Heiple–Roper \(\partial\gamma/\partial T\) sign + 30–60 ppm S inversion (`marangoni-heiple-v1`). Reports Ma / flow direction / \(\mathrm{Pe}_{Ma}\). Not Navier–Stokes CFD and not a W/D fit.
+- [x] **Measured W/D catalog**: `meltpool-lit-catalog-v1` (NIST AMB2022-03 Table 4, Guo 2024 Table 3). AlSi10Mg left as `no measured track`. Ti-6Al-4V PROOF 003 stays asymptotic. Solver-echo datasets are not ground truth.
 
 ---
 

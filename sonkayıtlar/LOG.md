@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 13:49 — Commit/push catalog kıvam close-out
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Standing Rule 7 — leftover catalog/UI work must not stay uncommitted.
+- **Done**: Honest AlSi10Mg/Ti64 gaps, Guo N01/N05/N06 scoring (N01 depth reported, not fitted), measured-track collector, PROOF 023. Pushed to `origin/main`. Did not commit `.cursor/mcp.json`.
+- **Where we left off**: Nothing left on this catalog close-out. CFD / Goldak FEA / Build Job Goldak–ET rescoring still locked.
+- **Files**: `python/meltpool_literature_catalog.py`, `python/test_meltpool_literature_catalog.py`, `src/data/meltPoolLiteratureCases.ts`, `src/components/MeltPoolMeasuredTrackPanel.tsx`, `src/components/AdvancedResearchHub.tsx`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `AGENTS.md`, `ROADMAP.md`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_meltpool_literature_catalog.py` PASS; `npx tsc --noEmit` PASS
+
+---
+
 ## 2026-09-12 13:41 — Fix fallback G: ΔT/L not T_liq/L
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

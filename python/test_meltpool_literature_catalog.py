@@ -1,14 +1,36 @@
 #!/usr/bin/env python3
-"""Goldak+Fabbro vs measured literature tracks (PROOF 022). Not Build Job."""
+"""Goldak+Fabbro vs measured literature tracks (PROOF 022/023). Not Build Job."""
 import sys
 
 from lpbf_thermal_solver import calculate_meltpool_physics
-from meltpool_literature_catalog import TRACKS, score_track
+from meltpool_literature_catalog import (
+    GAPS,
+    TRACKS,
+    measured_coverage,
+    score_track,
+    validate_measured_candidate,
+)
 
 
 def assert_true(cond, msg):
     if not cond:
         raise AssertionError(msg)
+
+
+LAYER = {"Inconel 718": (40, 110), "316L Stainless Steel": (50, 100)}
+
+
+def goldak_score(t):
+    t_um, h_um = LAYER[t["material"]]
+    r = calculate_meltpool_physics(
+        t["material"], t["laserPower_W"], t["scanSpeed_mm_s"], t["beamDiameter_um"],
+        t["preheatTemp_C"], t_um, h_um, heat_source="goldak",
+    )
+    assert_true(r["modelId"] == "goldak-v1", "heat source")
+    s = score_track(r["meltPoolGeometry"]["width_um"], r["meltPoolGeometry"]["depth_um"], t)
+    s["pred_W"] = r["meltPoolGeometry"]["width_um"]
+    s["pred_D"] = r["meltPoolGeometry"]["depth_um"]
+    return s
 
 
 def main():
@@ -17,19 +39,26 @@ def main():
     assert_true(len(nist) == 7, "Lane Table 4 has 7 cases")
     assert_true(len(guo) == 4, "Guo Table 3 four experimental W/D rows")
     assert_true(all(t["kind"] == "measured" and t["doi"] for t in TRACKS), "DOI measured only")
+    cov = measured_coverage()
+    assert_true(cov["AlSi10Mg"] == "no_measured_track", "AlSi10Mg honest gap")
+    assert_true(cov["Ti-6Al-4V"] == "no_measured_track", "Ti64 no invented micrograph")
+    assert_true(any(g["material"] == "AlSi10Mg" for g in GAPS), "AlSi10Mg gap recorded")
+
+    ok, _ = validate_measured_candidate(nist[0])
+    assert_true(ok, "Lane row is a valid measured candidate")
+    bad, why = validate_measured_candidate(
+        {"kind": "measured", "id": "solver-echo-jsonl", "doi": "10.0/x",
+         "laserPower_W": 1, "scanSpeed_mm_s": 1, "beamDiameter_um": 1,
+         "preheatTemp_C": 1, "width_um": 1, "depth_um": 1}
+    )
+    assert_true(not bad and "solver-echo" in why, why)
 
     nist_pass = 0
     for t in nist:
-        r = calculate_meltpool_physics(
-            t["material"], t["laserPower_W"], t["scanSpeed_mm_s"], t["beamDiameter_um"],
-            t["preheatTemp_C"], 40, 110, heat_source="goldak",
-        )
-        assert_true(r["modelId"] == "goldak-v1", "heat source")
-        s = score_track(r["meltPoolGeometry"]["width_um"], r["meltPoolGeometry"]["depth_um"], t)
+        s = goldak_score(t)
         assert_true(s["pass"], f"{t['id']} W/D out of ×0.5–2 band {s}")
         nist_pass += 1
 
-    # Spot-size trend on Lane 1.1 vs 1.2 (measured deeper when smaller spot).
     d49 = calculate_meltpool_physics("Inconel 718", 285, 960, 49, 23.5, 40, 110, heat_source="goldak")
     d82 = calculate_meltpool_physics("Inconel 718", 285, 960, 82, 23.5, 40, 110, heat_source="goldak")
     assert_true(
@@ -37,19 +66,22 @@ def main():
         "smaller D4σ must be deeper (Lane 1.1 vs 1.2)",
     )
 
-    # Guo N04: conduction-ish; width in band. Depth may be Fabbro-light — still ×0.5–2.
-    n04 = next(t for t in guo if t["id"] == "guo-316l-n04")
-    ss = calculate_meltpool_physics(
-        n04["material"], n04["laserPower_W"], n04["scanSpeed_mm_s"], n04["beamDiameter_um"],
-        n04["preheatTemp_C"], 50, 100, heat_source="goldak",
+    guo_scores = {t["id"]: goldak_score(t) for t in guo}
+    for gid in ("guo-316l-n04", "guo-316l-n05", "guo-316l-n06"):
+        assert_true(guo_scores[gid]["pass"], f"{gid} {guo_scores[gid]}")
+
+    n01 = guo_scores["guo-316l-n01"]
+    # Depth 73.1 vs 180 µm → factor 0.41, below ×0.5. Do not fit absorptivity.
+    assert_true(n01["widthInBand"], f"Guo N01 width {n01}")
+    assert_true(not n01["depthInBand"], f"Guo N01 depth unexpectedly in band {n01}")
+    print(
+        "REPORT: Guo N01 depth out of ×0.5–2 "
+        f"(pred {n01['pred_D']} µm vs 180 µm, MAPE {n01['depth_mape_pct']}%) — not fitted"
     )
-    s4 = score_track(ss["meltPoolGeometry"]["width_um"], ss["meltPoolGeometry"]["depth_um"], n04)
-    assert_true(s4["widthInBand"], f"Guo N04 width {s4}")
-    assert_true(s4["depthInBand"], f"Guo N04 depth {s4}")
 
     ros = calculate_meltpool_physics("Inconel 718", 285, 960, 80, 80, 40, 110)
     assert_true(ros["modelId"] == "rosenthal-screening-v1", "Build Job heat source unchanged")
-    print(f"PASS: literature catalog Goldak+Fabbro ({nist_pass} NIST + Guo N04)")
+    print(f"PASS: literature catalog Goldak+Fabbro ({nist_pass} NIST + Guo N04/N05/N06; N01 depth reported)")
     return 0
 
 

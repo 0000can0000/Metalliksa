@@ -328,4 +328,22 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Functional proof**: `py -3 python/test_meltpool_literature_catalog.py`; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 023: Catalog close-out — AlSi10Mg/Ti64 gaps + Guo N01/N05/N06
+- **Date**: 2026-09-12
+- **Module**: `python/meltpool_literature_catalog.py` / Melt Pool 3D Literature Benchmarks / Research Hub measured-track collector
+- **Scope**: Finish kıvam against DOI-measured isolated single tracks. Do **not** ingest `data/lpbf_meltpool_dataset.jsonl` from `origin/cursor/lpbf-data-research-panel-7a66` (randomized P–v + solver-echo W/D). Do **not** open CFD, Goldak FEA, or Build Job rescoring with Goldak/ET.
+- **AlSi10Mg**: No isolated single-track row with P, v, d, T0, W, and D that can be transcribed without inventing a field. Sow et al., *Addit. Manuf.* (2022), DOI `10.1016/j.addma.2022.103112` Table 3 has W/D but samples 7–40 are five weld lines at 100 µm hatch and 1–6 / 41–57 are cube top layers. Piedra et al. (2026), DOI `10.1007/s00170-025-17344-3` Table 3 lists experimental width without depth. Catalog status: `no_measured_track`.
+- **Ti-6Al-4V**: PROOF 003 Rosenthal asymptotic remains `kind: asymptotic`. Dilip et al., *Prog. Addit. Manuf.* (2017), DOI `10.1007/s40964-017-0030-2` states selected depths in text (100 W / 500 mm/s → 45 µm; 195 W / 500 mm/s → 176 µm) but does not tabulate matching widths or T0. No figure-digitized W/D added.
+- **316L Guo Table 3** (DOI `10.3390/mi15020170`), Goldak+Fabbro, band ×0.5–2:
+  - N04: pred W/D 90.3 / 45.1 µm vs 94 / 61 — **in band** (width MAPE 3.9%, depth 26.1%).
+  - N05: pred 73.4 / 36.8 vs 83 / 41 — **in band** (11.6% / 10.2%).
+  - N06: pred 119.0 / 58.8 vs 98 / 104 — **in band** (21.4% / 43.5%).
+  - N01: pred 150.0 / 73.1 vs 114 / 180 — width in band; **depth factor 0.41 (MAPE 59.4%) outside ×0.5–2**. Not fitted.
+- **IN718**: Lane 2024 Table 4 seven cases remain in band (PROOF 022).
+- **Product split**: Build Job default heat source stays `rosenthal-screening-v1`.
+- **Functional proof**: `py -3 python/test_meltpool_literature_catalog.py`; `npx tsc --noEmit`.
+- **Status**: **PASS** (kıvam closed with AlSi10Mg honest gap)
+
 

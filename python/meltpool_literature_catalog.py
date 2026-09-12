@@ -11,9 +11,42 @@ Does not re-score Build Job printability.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 CATALOG_ID = "meltpool-lit-catalog-v1"
+
+REQUIRED_MEASURED_FIELDS = (
+    "laserPower_W",
+    "scanSpeed_mm_s",
+    "beamDiameter_um",
+    "preheatTemp_C",
+    "width_um",
+    "depth_um",
+    "doi",
+)
+
+# Isolated single-track rows only. Hatch-overlapped weld lines, cube top-layer
+# melt pools, figure-digitized guesses, and solver-echo sweeps are not ingested.
+GAPS: List[Dict[str, Any]] = [
+    {
+        "material": "AlSi10Mg",
+        "status": "no_measured_track",
+        "doi_notes": [
+            "10.1016/j.addma.2022.103112 — Sow et al. Table 3 has W/D but samples 7–40 are 5 weld lines at 100 µm hatch; 1–6 and 41–57 are cube top layers.",
+            "10.1007/s00170-025-17344-3 — Piedra et al. Table 3 reports experimental width without depth.",
+        ],
+        "reason": "No isolated single-track table with P, v, d, T0, W, and D that can be transcribed without inventing a missing field.",
+    },
+    {
+        "material": "Ti-6Al-4V",
+        "status": "no_measured_track",
+        "doi_notes": [
+            "10.1063/1.1712881 — Rosenthal asymptotic (PROOF 003); theory, not a micrograph. Keep kind=asymptotic.",
+            "10.1007/s40964-017-0030-2 — Dilip et al. state selected depths in text (100 W / 500 mm/s → 45 µm; 195 W / 500 mm/s → 176 µm) but do not tabulate matching widths or T0.",
+        ],
+        "reason": "No complete measured P–v–d–T0–W–D row. Do not digitize Fig. 6 or copy third-party figure reads as ground truth.",
+    },
+]
 
 
 TRACKS: List[Dict[str, Any]] = [
@@ -163,6 +196,47 @@ TRACKS: List[Dict[str, Any]] = [
         "source": "Guo et al. 2024 Table 3 N06 (440 W, 1.47 m/s)",
     },
 ]
+
+
+def measured_coverage() -> Dict[str, str]:
+    """Four-alloy coverage: measured DOI W/D, or an honest gap / asymptotic."""
+    out = {
+        "Inconel 718": "measured",
+        "316L Stainless Steel": "measured",
+        "AlSi10Mg": "no_measured_track",
+        "Ti-6Al-4V": "no_measured_track",
+    }
+    for t in TRACKS:
+        if t.get("kind") == "measured" and t.get("material") in out:
+            out[t["material"]] = "measured"
+    return out
+
+
+def validate_measured_candidate(row: Dict[str, Any]) -> Tuple[bool, str]:
+    """Intake gate for the research panel. Rejects solver-echo / incomplete rows."""
+    blob = " ".join(str(row.get(k, "")).lower() for k in ("id", "source", "kind", "note", "origin"))
+    if "solver-echo" in blob or "jsonl" in blob or "randomized" in blob:
+        return False, "solver-echo / randomized sweeps are not ground truth"
+    if row.get("kind") != "measured":
+        return False, "kind must be measured"
+    for key in REQUIRED_MEASURED_FIELDS:
+        val = row.get(key)
+        if val is None or val == "":
+            return False, f"missing {key}"
+        if key != "doi":
+            try:
+                n = float(val)
+            except (TypeError, ValueError):
+                return False, f"{key} is not numeric"
+            if key == "preheatTemp_C":
+                if n < -273.15:
+                    return False, "preheatTemp_C is below absolute zero"
+            elif n <= 0:
+                return False, f"{key} must be > 0"
+    doi = str(row.get("doi", "")).strip()
+    if "10." not in doi:
+        return False, "DOI required"
+    return True, "ok"
 
 
 def mape_pct(pred: float, ref: float) -> float:

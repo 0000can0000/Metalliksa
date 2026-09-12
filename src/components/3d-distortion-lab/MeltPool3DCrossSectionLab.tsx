@@ -40,6 +40,7 @@ import {
 } from "./meltPool3DGeometry";
 import {
   MELT_POOL_LITERATURE_CASES,
+  isLoadableLiteratureCase,
   regimeFamily,
   relativeErrorPct,
 } from "../../data/meltPoolLiteratureCases";
@@ -1354,44 +1355,65 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Published single-track W/D with DOI (NIST AMB2022-03 Table 4, Guo 2024 Table 3). Solver-echo sweeps are not benchmarks. Goldak/ET depth uses Fabbro with Fresnel A; Marangoni does not refit W/D.
+                Published isolated single-track W/D with DOI (NIST AMB2022-03 Table 4, Guo 2024 Table 3). AlSi10Mg is an honest gap. Solver-echo sweeps are not benchmarks. Goldak/ET depth uses Fabbro with Fresnel A; Marangoni does not refit W/D.
               </p>
               {MELT_POOL_LITERATURE_CASES.map((c) => {
+                const loadable = isLoadableLiteratureCase(c);
                 const same =
+                  loadable &&
                   pyResult.material === c.material &&
-                  Math.abs(pyResult.processParameters.laserPower_W - c.laserPower_W) < 1 &&
-                  Math.abs(pyResult.processParameters.scanSpeed_mm_s - c.scanSpeed_mm_s) < 1;
-                const wErr = relativeErrorPct(pyResult.meltPoolGeometry.width_um, c.publishedWidth_um);
-                const dErr = relativeErrorPct(pyResult.meltPoolGeometry.depth_um, c.publishedDepth_um);
+                  Math.abs(pyResult.processParameters.laserPower_W - (c.laserPower_W ?? -1)) < 1 &&
+                  Math.abs(pyResult.processParameters.scanSpeed_mm_s - (c.scanSpeed_mm_s ?? -1)) < 1;
+                const canScore =
+                  same && c.publishedWidth_um != null && c.publishedDepth_um != null;
+                const wErr = canScore
+                  ? relativeErrorPct(pyResult.meltPoolGeometry.width_um, c.publishedWidth_um as number)
+                  : 0;
+                const dErr = canScore
+                  ? relativeErrorPct(pyResult.meltPoolGeometry.depth_um, c.publishedDepth_um as number)
+                  : 0;
                 const predFam = regimeFamily(pyResult.meltPoolGeometry.regime);
-                const regimeOk = predFam === c.publishedRegime;
+                const regimeOk = c.publishedRegime != null && predFam === c.publishedRegime;
+                const kindLabel =
+                  c.kind === "measured" ? "measured" : c.kind === "asymptotic" ? "asymptotic" : "no measured track";
                 return (
                   <button
                     key={c.id}
                     type="button"
+                    disabled={!loadable}
                     onClick={() => {
+                      if (!loadable) return;
                       setSelectedMaterial(c.material);
-                      setLaserPower_W(c.laserPower_W);
-                      setScanSpeed_mms(c.scanSpeed_mm_s);
-                      setBeamDiameter_um(c.beamDiameter_um);
-                      setPreheatTemp_C(c.preheatTemp_C);
-                      setLayerThickness_um(c.layerThickness_um);
-                      setHatchSpacing_um(c.hatchSpacing_um);
+                      setLaserPower_W(c.laserPower_W as number);
+                      setScanSpeed_mms(c.scanSpeed_mm_s as number);
+                      setBeamDiameter_um(c.beamDiameter_um as number);
+                      setPreheatTemp_C(c.preheatTemp_C as number);
+                      setLayerThickness_um(c.layerThickness_um as number);
+                      setHatchSpacing_um(c.hatchSpacing_um as number);
                     }}
                     className={`w-full text-left p-2 rounded-lg border ${
                       same ? "border-sky-500/50 bg-sky-500/10" : "border-slate-800 bg-[#050810]"
-                    }`}
+                    } ${!loadable ? "opacity-80 cursor-default" : ""}`}
                   >
                     <div className="flex justify-between gap-2 text-[10px]">
                       <span className="text-slate-200 font-bold">{c.label}</span>
                       <span className={regimeOk && same ? "text-emerald-400" : "text-slate-400"}>
-                        {same ? (regimeOk ? "Regime match" : `Regime ${predFam} vs ${c.publishedRegime}`) : "Load case"}
+                        {!loadable
+                          ? "Gap"
+                          : same
+                            ? regimeOk
+                              ? "Regime match"
+                              : `Regime ${predFam} vs ${c.publishedRegime}`
+                            : "Load case"}
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">
-                      {c.kind === "measured" ? "measured" : "asymptotic"} · {c.material} · {c.laserPower_W} W · {c.scanSpeed_mm_s} mm/s · DOI {c.doi}
+                      {kindLabel}
+                      {loadable
+                        ? ` · ${c.material} · ${c.laserPower_W} W · ${c.scanSpeed_mm_s} mm/s · DOI ${c.doi}`
+                        : ` · ${c.material} · ${c.source}`}
                     </div>
-                    {same && (
+                    {canScore && (
                       <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-slate-300">
                         <span>W {pyResult.meltPoolGeometry.width_um} vs {c.publishedWidth_um} μm ({wErr >= 0 ? "+" : ""}{wErr.toFixed(0)}%)</span>
                         <span>D {pyResult.meltPoolGeometry.depth_um} vs {c.publishedDepth_um} μm ({dErr >= 0 ? "+" : ""}{dErr.toFixed(0)}%)</span>

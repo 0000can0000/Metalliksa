@@ -1,0 +1,344 @@
+{
+  "status": "Numerical verification only; experimental validation pending",
+  "openfoam": "OpenFOAM-14",
+  "binaryHash": "dc15d14113978d08fc3c8af59534119f6223ea9281bc5b997aa4641ddc355c0f",
+  "fixtures": [
+    {
+      "name": "single-track",
+      "input": {
+        "mode": "standard",
+        "material": "Inconel 718",
+        "power_W": 40,
+        "speed_mm_s": 800.0,
+        "beamDiameter_um": 80.0,
+        "preheat_C": 80.0,
+        "layer_um": 40.0,
+        "hatch_um": 100.0,
+        "mesh_um": 40,
+        "maxDt_s": 1e-06,
+        "trackLength_um": 200,
+        "tracks": 1,
+        "layers": 1,
+        "dwell_s": 0,
+        "cooling_s": 0.0001,
+        "scanAngle_deg": 0.0,
+        "layerRotation_deg": 67.0,
+        "strategy": "meander",
+        "stripeWidth_um": 500.0,
+        "islandSize_um": 200.0,
+        "packingFraction": 0.55,
+        "powderConductivityRatio": 0.12,
+        "convection_W_m2K": 20.0,
+        "timeout_s": 300.0,
+        "study": "none",
+        "backend": "reference",
+        "absorptivity": 0.38,
+        "emissivity": 0.35
+      },
+      "implementationHash": "3a58a7f572950d3e5d0ce11e3ebb44bc43c8183ca2673795d05272b51422ec00",
+      "reference": {
+        "metrics": {
+          "length_um": 160.0,
+          "width_um": 40.0,
+          "depth_um": 40.0,
+          "volume_um3": 255999.9999999999,
+          "crossSectionArea_um2": 1599.9999999999995,
+          "peakTemperature_K": 2496.546392470436,
+          "thermalGradient_K_m": 21933251.209973723,
+          "solidificationRate_m_s": 0.11394603590968107,
+          "coolingRate_K_s": 2541220.458545407,
+          "keyholeDepth_um": null,
+          "recoilPressure_Pa": null,
+          "marangoniNumber": 484.12341371289943,
+          "pecletNumber": 6.001103448275862,
+          "aspectRatio": 1.0,
+          "trackOverlapRatio": 0.0,
+          "remeltingRatio": 0.0
+        },
+        "energy": {
+          "input_J": 0.0038,
+          "losses_J": 6.884844149755034e-07,
+          "stored_J": 0.003799311515585023,
+          "relativeError": 3.423796334164751e-16
+        },
+        "wallTime_s": 0.12290649599981407
+      },
+      "openfoam": {
+        "metrics": {
+          "length_um": 160.0,
+          "width_um": 40.0,
+          "depth_um": 40.0,
+          "volume_um3": 256000.00000000012,
+          "crossSectionArea_um2": 1599.9999999999995,
+          "peakTemperature_K": 2496.546392470436,
+          "thermalGradient_K_m": 21933251.20997372,
+          "solidificationRate_m_s": 0.11394603590968981,
+          "coolingRate_K_s": 2541220.4585455675,
+          "keyholeDepth_um": null,
+          "recoilPressure_Pa": null,
+          "marangoniNumber": 484.12341371289943,
+          "pecletNumber": 6.001103448275862,
+          "aspectRatio": 1.0,
+          "trackOverlapRatio": 0.0,
+          "remeltingRatio": 0.0
+        },
+        "energy": {
+          "input_J": 0.003800000000000002,
+          "losses_J": 6.884844149755038e-07,
+          "stored_J": 0.0037993115155850236,
+          "relativeError": 7.988858113051081e-16
+        },
+        "mass": {
+          "initial_kg": 5.393358185389222e-07,
+          "deposited_kg": 0.0,
+          "final_kg": 5.393358185389222e-07,
+          "relativeError": 0.0,
+          "scope": "Stationary reference mass accounting; no continuity, evaporation or shrinkage solved"
+        },
+        "phase": {
+          "liquidVolume_m3": 1.5133986561446583e-13,
+          "solidVolume_m3": 6.954466013438555e-11,
+          "activeVolume_m3": 6.969600000000001e-11,
+          "minFraction": 0.0,
+          "maxFraction": 0.9245175537258924,
+          "interfaceConservation": null,
+          "scope": "Enthalpy liquid fraction partition; not a metal/gas interface conservation test"
+        },
+        "mesh": {
+          "cells": 1089,
+          "mesh_m": 3.9999999999999996e-05,
+          "minimumDt_s": 5.178916663852251e-07,
+          "meanDt_s": 7.368421052631578e-07,
+          "steps": 475
+        },
+        "wallTime_s": 2.589271851000376
+      },
+      "peakDifference_pct": 0.0
+    },
+    {
+      "name": "rotated-multilayer",
+      "input": {
+        "mode": "standard",
+        "material": "Inconel 718",
+        "power_W": 10,
+        "speed_mm_s": 800.0,
+        "beamDiameter_um": 80.0,
+        "preheat_C": 80.0,
+        "layer_um": 45,
+        "hatch_um": 100.0,
+        "mesh_um": 40,
+        "maxDt_s": 1e-06,
+        "trackLength_um": 200,
+        "tracks": 2,
+        "layers": 2,
+        "dwell_s": 2e-05,
+        "cooling_s": 0.0001,
+        "scanAngle_deg": 35,
+        "layerRotation_deg": 67.0,
+        "strategy": "meander",
+        "stripeWidth_um": 500.0,
+        "islandSize_um": 200.0,
+        "packingFraction": 0.55,
+        "powderConductivityRatio": 0.12,
+        "convection_W_m2K": 20.0,
+        "timeout_s": 300.0,
+        "study": "none",
+        "backend": "reference",
+        "absorptivity": 0.38,
+        "emissivity": 0.35
+      },
+      "implementationHash": "534fe61dc9137a61e7d14f5e795df5d52fed7ae9adccd787403c1d61a884b16b",
+      "reference": {
+        "metrics": {
+          "width_um": 0.0,
+          "depth_um": 0.0,
+          "length_um": 0.0,
+          "volume_um3": 0.0,
+          "crossSectionArea_um2": 0.0,
+          "peakTemperature_K": 1290.346500481174,
+          "thermalGradient_K_m": null,
+          "solidificationRate_m_s": null,
+          "coolingRate_K_s": null,
+          "keyholeDepth_um": null,
+          "recoilPressure_Pa": null,
+          "marangoniNumber": 0.0,
+          "pecletNumber": 0.0,
+          "aspectRatio": null,
+          "trackOverlapRatio": 0.0,
+          "remeltingRatio": 0.0
+        },
+        "energy": {
+          "input_J": 0.003799999999999939,
+          "losses_J": 8.201253883862226e-07,
+          "stored_J": 0.0037991798746115674,
+          "relativeError": 3.880302512053447e-15
+        },
+        "wallTime_s": 0.4122008320000532
+      },
+      "openfoam": {
+        "metrics": {
+          "width_um": 0.0,
+          "depth_um": 0.0,
+          "length_um": 0.0,
+          "volume_um3": 0.0,
+          "crossSectionArea_um2": 0.0,
+          "peakTemperature_K": 1290.346500481176,
+          "thermalGradient_K_m": null,
+          "solidificationRate_m_s": null,
+          "coolingRate_K_s": null,
+          "keyholeDepth_um": null,
+          "recoilPressure_Pa": null,
+          "marangoniNumber": 0.0,
+          "pecletNumber": 0.0,
+          "aspectRatio": null,
+          "trackOverlapRatio": 0.0,
+          "remeltingRatio": 0.0
+        },
+        "energy": {
+          "input_J": 0.0037999999999999393,
+          "losses_J": 8.201253883861919e-07,
+          "stored_J": 0.003799179874611568,
+          "relativeError": 3.880302512053447e-15
+        },
+        "mass": {
+          "initial_kg": 7.833343356184779e-07,
+          "deposited_kg": 5.038992802224113e-08,
+          "final_kg": 8.337242636407191e-07,
+          "relativeError": 1.4286978729332792e-16,
+          "scope": "Stationary reference mass accounting; no continuity, evaporation or shrinkage solved"
+        },
+        "phase": {
+          "liquidVolume_m3": 0.0,
+          "solidVolume_m3": 1.1247428571428577e-10,
+          "activeVolume_m3": 1.1247428571428577e-10,
+          "minFraction": 0.0,
+          "maxFraction": 0.0,
+          "interfaceConservation": null,
+          "scope": "Enthalpy liquid fraction partition; not a metal/gas interface conservation test"
+        },
+        "mesh": {
+          "cells": 2156,
+          "mesh_m": 3.857142857142856e-05,
+          "minimumDt_s": 9.999999999938444e-07,
+          "meanDt_s": 9.99999999999989e-07,
+          "steps": 1180
+        },
+        "wallTime_s": 2.927921890000107
+      },
+      "peakDifference_pct": 1.5859019869670619e-13
+    },
+    {
+      "name": "island",
+      "input": {
+        "mode": "standard",
+        "material": "Inconel 718",
+        "power_W": 10,
+        "speed_mm_s": 800.0,
+        "beamDiameter_um": 80.0,
+        "preheat_C": 80.0,
+        "layer_um": 40.0,
+        "hatch_um": 100.0,
+        "mesh_um": 40,
+        "maxDt_s": 1e-06,
+        "trackLength_um": 200,
+        "tracks": 2,
+        "layers": 1,
+        "dwell_s": 0,
+        "cooling_s": 0.0001,
+        "scanAngle_deg": 0.0,
+        "layerRotation_deg": 67.0,
+        "strategy": "island",
+        "stripeWidth_um": 500.0,
+        "islandSize_um": 100,
+        "packingFraction": 0.55,
+        "powderConductivityRatio": 0.12,
+        "convection_W_m2K": 20.0,
+        "timeout_s": 300.0,
+        "study": "none",
+        "backend": "reference",
+        "absorptivity": 0.38,
+        "emissivity": 0.35
+      },
+      "implementationHash": "004ff5be274eb9c884494907f4d2f54949848c2afe81f64969d29fa40a2e4d6b",
+      "reference": {
+        "metrics": {
+          "width_um": 0.0,
+          "depth_um": 0.0,
+          "length_um": 0.0,
+          "volume_um3": 0.0,
+          "crossSectionArea_um2": 0.0,
+          "peakTemperature_K": 1202.4986374250525,
+          "thermalGradient_K_m": null,
+          "solidificationRate_m_s": null,
+          "coolingRate_K_s": null,
+          "keyholeDepth_um": null,
+          "recoilPressure_Pa": null,
+          "marangoniNumber": 0.0,
+          "pecletNumber": 0.0,
+          "aspectRatio": null,
+          "trackOverlapRatio": 0.0,
+          "remeltingRatio": 0.0
+        },
+        "energy": {
+          "input_J": 0.0018999999999999718,
+          "losses_J": 2.3878814814874596e-07,
+          "stored_J": 0.0018997612118518297,
+          "relativeError": 3.5379228786369615e-15
+        },
+        "wallTime_s": 0.21159245500075485
+      },
+      "openfoam": {
+        "metrics": {
+          "width_um": 0.0,
+          "depth_um": 0.0,
+          "length_um": 0.0,
+          "volume_um3": 0.0,
+          "crossSectionArea_um2": 0.0,
+          "peakTemperature_K": 1202.4986374250518,
+          "thermalGradient_K_m": null,
+          "solidificationRate_m_s": null,
+          "coolingRate_K_s": null,
+          "keyholeDepth_um": null,
+          "recoilPressure_Pa": null,
+          "marangoniNumber": 0.0,
+          "pecletNumber": 0.0,
+          "aspectRatio": null,
+          "trackOverlapRatio": 0.0,
+          "remeltingRatio": 0.0
+        },
+        "energy": {
+          "input_J": 0.0018999999999999718,
+          "losses_J": 2.387881481487458e-07,
+          "stored_J": 0.0018997612118518306,
+          "relativeError": 3.994429056525602e-15
+        },
+        "mass": {
+          "initial_kg": 7.83334335618478e-07,
+          "deposited_kg": 0.0,
+          "final_kg": 7.83334335618478e-07,
+          "relativeError": 0.0,
+          "scope": "Stationary reference mass accounting; no continuity, evaporation or shrinkage solved"
+        },
+        "phase": {
+          "liquidVolume_m3": 0.0,
+          "solidVolume_m3": 1.012268571428572e-10,
+          "activeVolume_m3": 1.012268571428572e-10,
+          "minFraction": 0.0,
+          "maxFraction": 0.0,
+          "interfaceConservation": null,
+          "scope": "Enthalpy liquid fraction partition; not a metal/gas interface conservation test"
+        },
+        "mesh": {
+          "cells": 1960,
+          "mesh_m": 3.857142857142856e-05,
+          "minimumDt_s": 9.999999999969885e-07,
+          "meanDt_s": 1e-06,
+          "steps": 600
+        },
+        "wallTime_s": 3.0266163239994057
+      },
+      "peakDifference_pct": -5.672530555130965e-14
+    }
+  ],
+  "limitations": "Fixed reference mass, assumed absorption depth, estimated properties, no momentum or free surface. Timings include OpenFOAM case I/O on WSL-mounted workspace."
+}

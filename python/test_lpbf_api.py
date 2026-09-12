@@ -1,11 +1,12 @@
 """Opt-in integration tests against a locally running Metalliksa server."""
 import json
+import os
 import time
 import urllib.request
 import urllib.error
 import unittest
 
-URL = "http://localhost:3000/api/lpbf"
+URL = os.environ.get("METALLIKSA_TEST_URL", "http://localhost:3000/api/lpbf")
 
 
 def request(path, data=None, method="GET"):
@@ -41,6 +42,16 @@ class Api(unittest.TestCase):
         self.assertEqual(done["status"], "completed", done.get("error"))
         self.assertIn("OpenFOAM14", done["result"]["solver"]["id"])
         self.assertLess(done["result"]["energyBalance"]["relativeError"], 1e-10)
+        self.assertLess(done["result"]["massBalance"]["relativeError"], 1e-12)
+        self.assertEqual(done["result"]["fieldPreviews"], ["temperature-slice.svg", "phase-slice.svg"])
+        for name in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv"):
+            with urllib.request.urlopen(URL+"/jobs/"+job["id"]+"/artifacts/"+name) as res:
+                body = res.read()
+                self.assertGreater(len(body), 50)
+                if name.endswith(".svg"): self.assertIn(b"Resolved thermal field", body)
+        with self.assertRaises(urllib.error.HTTPError) as denied:
+            urllib.request.urlopen(URL+"/jobs/"+job["id"]+"/artifacts/input.json")
+        self.assertEqual(denied.exception.code,400); denied.exception.close()
         again = request("/jobs", payload, "POST")
         self.assertEqual(again["id"], job["id"]); self.assertTrue(again["cacheHit"])
 
@@ -74,6 +85,18 @@ class Api(unittest.TestCase):
         self.assertEqual(r["validationStatus"], "unvalidated")
         self.assertEqual(len(r["convergenceStudy"]["results"]), 3)
         self.assertIn("calibrationFactor", r["measurementComparison"]["width_um"])
+        self.assertIsNone(r["measurementComparison"]["width_um"]["calibrationFactor"])
+
+    def test_preflight_and_nested_contract(self):
+        p = dict(mode="standard", power_W=40, mesh_um=40, trackLength_um=200)
+        estimate = request("/estimate",p,"POST")
+        self.assertEqual(estimate["cells"],1089)
+        self.assertGreater(estimate["minimumEstimatedSteps"],0)
+        for bad in ({"measurements":{}},{"unexpected":1},{"power_W":float("nan")},
+                    {"properties":{"source":"source string is not validation","unknown":1}}):
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                request("/jobs",{**p,**bad},"POST")
+            self.assertEqual(error.exception.code,400); error.exception.close()
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

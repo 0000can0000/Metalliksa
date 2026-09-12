@@ -12,25 +12,28 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material, property_at, enthalpy_table
 from lpbf_verification import compare, convergence
+from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, write_artifacts
 
-VERSION = "enthalpy-fv-1"
+VERSION = "enthalpy-fv-2"
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
                 dwell_s=0.0002, cooling_s=0.0005, scanAngle_deg=0., layerRotation_deg=67.,
-                strategy="meander", packingFraction=0.55, powderConductivityRatio=0.12,
+                strategy="meander", stripeWidth_um=500., islandSize_um=200., packingFraction=0.55, powderConductivityRatio=0.12,
                 convection_W_m2K=20., timeout_s=300., study="none", backend="auto")
 BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 500),
               preheat_C=(0, 1200), layer_um=(10, 150), hatch_um=(10, 1000), mesh_um=(5, 80),
               maxDt_s=(1e-9, 1e-4), trackLength_um=(100, 3000), tracks=(1, 8), layers=(1, 5),
               dwell_s=(0, .1), cooling_s=(0, .1), scanAngle_deg=(-360, 360),
               layerRotation_deg=(-360, 360), packingFraction=(.2, 1),
+              stripeWidth_um=(20,3000), islandSize_um=(50,3000),
               powderConductivityRatio=(.01, 1), convection_W_m2K=(0, 1000), timeout_s=(10, 3600))
 
 
 def validate(raw):
-    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity"}:
+    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity"}:
         raise ValueError("Unknown simulation input fields")
+    finite_tree(raw)
     p = {**DEFAULTS, **raw}
     if p["backend"] not in ("auto", "reference", "openfoam-thermal"):
         raise ValueError("Unknown thermal backend")
@@ -39,7 +42,7 @@ def validate(raw):
             raise ValueError(f"{k} must be finite in [{lo}, {hi}]")
         if k in ("tracks", "layers") and int(p[k]) != p[k]:
             raise ValueError(f"{k} must be integer")
-    if p["mode"] not in ("screening", "standard", "high-fidelity", "calibration") or p["strategy"] not in ("meander", "unidirectional") or p["study"] not in ("none", "mesh", "timestep"):
+    if p["mode"] not in ("screening", "standard", "high-fidelity", "calibration") or p["strategy"] not in ("meander", "unidirectional", "stripe", "island") or p["study"] not in ("none", "mesh", "timestep"):
         raise ValueError("Unknown mode, strategy or study")
     m = material(p["material"], p.get("properties"))
     if p["preheat_C"]+273.15 >= m["solidus_K"]:
@@ -49,13 +52,13 @@ def validate(raw):
         if isinstance(a, bool) or not isinstance(a, (int, float)) or not math.isfinite(a) or not 0 < a <= 1:
             raise ValueError("absorptivity must be in (0,1]")
         m["absorptivity"] = a
-    for item in p.get("measurements", []):
-        if not isinstance(item, dict) or set(item) != {"width_um", "depth_um", "source"} or not isinstance(item["source"], str) or not item["source"].strip():
-            raise ValueError("Measurement requires width_um, depth_um and source")
-        compare([item["width_um"]], [item["depth_um"]])
-        if item["width_um"] <= 0: raise ValueError("Measured width must be positive")
-    if len(p.get("measurements", [])) > 1000:
-        raise ValueError("At most 1000 measurement replicates")
+    if "emissivity" in p:
+        e = p["emissivity"]
+        if type(e) not in (int, float) or not math.isfinite(e) or not 0 <= e <= 1:
+            raise ValueError("emissivity must be in [0,1]")
+        m["emissivity"] = e
+    p["absorptivity"], p["emissivity"] = m["absorptivity"], m["emissivity"]
+    measurement_evidence(p.get("measurements", []), p)
     if p["mode"] == "calibration" and not p.get("measurements"):
         raise ValueError("Calibration requires measured dimensions and source")
     return p, m
@@ -69,6 +72,8 @@ def fingerprint(p, m):
         h.update(f.name.encode()); h.update(f.read_bytes())
     for f in sorted((root/"openfoam").glob("*.C")):
         h.update(f.name.encode()); h.update(f.read_bytes())
+    for f in sorted((root/"openfoam/Make").glob("*")):
+        if f.is_file(): h.update(f.name.encode()); h.update(f.read_bytes())
     h.update(json.dumps([VERSION, p, m], sort_keys=True, allow_nan=False).encode())
     return h.hexdigest()
 
@@ -109,14 +114,45 @@ def scan_segments(p):
     for layer in range(int(p["layers"])):
         theta = math.radians(p["scanAngle_deg"]+layer*p["layerRotation_deg"])
         u, v = np.array([math.cos(theta), math.sin(theta)]), np.array([-math.sin(theta), math.cos(theta)])
-        for track in range(int(p["tracks"])):
-            offset = (track-(p["tracks"]-1)/2)*p["hatch_um"]*1e-6*v
-            direction = -1 if p["strategy"] == "meander" and track % 2 else 1
-            start, end = offset-direction*length/2*u, offset+direction*length/2*u
-            segments.append(dict(start_s=time, end_s=time+length/speed, start=start.tolist(),
-                                 end=end.tolist(), layer=layer))
-            time += length/speed+p["dwell_s"]
+        tracks = int(p["tracks"])
+        groups = []
+        if p["strategy"] == "island":
+            across = max(1, int(p["islandSize_um"]/p["hatch_um"]))
+            columns = math.ceil(p["trackLength_um"]/p["islandSize_um"])
+            for row_start in range(0,tracks,across):
+                order = range(columns) if (row_start//across)%2 == 0 else reversed(range(columns))
+                for col in order:
+                    a = -length/2+col*length/columns
+                    b = a+length/columns
+                    groups.extend((track,a,b,(-1 if (track-row_start)%2 else 1),f"{row_start//across}:{col}")
+                                  for track in range(row_start,min(tracks,row_start+across)))
+        else:
+            stripe_tracks = max(1,int(p["stripeWidth_um"]/p["hatch_um"]))
+            for track in range(tracks):
+                parity = track%stripe_tracks if p["strategy"] == "stripe" else track
+                direction = -1 if p["strategy"] != "unidirectional" and parity%2 else 1
+                groups.append((track,-length/2,length/2,direction,None))
+        for track,a,b,direction,island in groups:
+            offset = (track-(tracks-1)/2)*p["hatch_um"]*1e-6*v
+            start,end = offset+(a if direction>0 else b)*u,offset+(b if direction>0 else a)*u
+            duration = (b-a)/speed
+            segments.append(dict(start_s=time,end_s=time+duration,start=start.tolist(),end=end.tolist(),
+                                 layer=layer,track=track,island=island))
+            time += duration+p["dwell_s"]
     return segments, time+p["cooling_s"]
+
+
+def conduction_rate(T, k, active, dx):
+    """Conservative harmonic internal-face conduction, W/m^3, insulated exterior."""
+    rate = np.zeros_like(T)
+    for axis_id in range(3):
+        left,right = [slice(None)]*3,[slice(None)]*3
+        left[axis_id],right[axis_id] = slice(None,-1),slice(1,None)
+        a,b = tuple(left),tuple(right)
+        face_k = 2*k[a]*k[b]/(k[a]+k[b])
+        flux = face_k*(T[b]-T[a])/dx**2*(active[a]&active[b])
+        rate[a] += flux; rate[b] -= flux
+    return rate
 
 
 def transient(p, m, report=lambda *args: None, artifact_dir=None):
@@ -132,6 +168,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError("Mesh exceeds 600000-cell reference solver limit; reduce domain or use coarser mesh")
     axis = (np.arange(nxy)+.5)*dx-span/2
     z = (np.arange(nz)+.5)*dx-substrate
+    layer_counts = [int(np.sum(z < layer*p["layer_um"]*1e-6)) for layer in range(int(p["layers"])+1)]
+    if any(b <= a for a,b in zip(layer_counts,layer_counts[1:])):
+        raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
     x, y, zz = np.meshgrid(axis, axis, z, indexing="ij")
     t0 = p["preheat_C"]+273.15
     T = np.full(x.shape, t0)
@@ -162,14 +201,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         events = [s[v]-time for s in segments for v in ("start_s", "end_s") if s[v] > time+1e-14]
         if events:
             dt = min(dt, min(events))
-        rate = np.zeros_like(T)
-        for axis_id in range(3):
-            left, right = [slice(None)]*3, [slice(None)]*3
-            left[axis_id], right[axis_id] = slice(None, -1), slice(1, None)
-            a, b = tuple(left), tuple(right)
-            face_k = 2*k[a]*k[b]/(k[a]+k[b])
-            flux = face_k*(T[b]-T[a])/dx**2*(active[a]&active[b])
-            rate[a] += flux; rate[b] -= flux
+        rate = conduction_rate(T,k,active,dx)
         # Isothermal baseplate bottom at half-cell distance. Other side faces insulated.
         bottom = 2*k[:, :, 0]*(T[:, :, 0]-t0)/dx**2
         rate[:, :, 0] -= bottom
@@ -178,14 +210,16 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         rate[:, :, top_index] -= surface_loss
         source = np.zeros_like(T)
         if seg:
-            f = (time+.5*dt-seg["start_s"])/(seg["end_s"]-seg["start_s"])
+            f = (time-seg["start_s"])/(seg["end_s"]-seg["start_s"])
             pos = (1-f)*np.array(seg["start"])+f*np.array(seg["end"])
-            penetration = max(p["layer_um"]*1e-6, dx)
+            penetration = p["layer_um"]*1e-6  # Physical assumption independent of mesh refinement
             shape = np.exp(-2*((x-pos[0])**2+(y-pos[1])**2)/radius**2-2*((zz-surface)/penetration)**2)*active
+            if not np.isfinite(shape).all() or shape.sum() <= 0:
+                raise ValueError("Gaussian source under-resolved; refine the mesh")
             source = shape*(p["power_W"]*m["absorptivity"]/(shape.sum()*dx**3))
             rate += source
         # Source-driven enthalpy increment limited to avoid jumping through phase interval.
-        dt = min(dt, 25.*float(np.min(rho*cp))/max(float(np.max(np.abs(rate))), 1.))
+        dt = min(dt, float(np.min(25.*rho*cp/np.maximum(np.abs(rate), 1e-30))))
         min_dt = min(min_dt, dt)
         old = T.copy()
         H += dt*rate
@@ -215,14 +249,14 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 angle = math.radians(p["scanAngle_deg"]+active_layer*p["layerRotation_deg"])
                 along = x[melt]*math.cos(angle)+y[melt]*math.sin(angle)
                 across = -x[melt]*math.sin(angle)+y[melt]*math.cos(angle)
-                metrics = dict(length_um=float(np.ptp(along)+dx)*1e6, width_um=float(np.ptp(across)+dx)*1e6,
+                metrics = dict(length_um=float(np.ptp(along)+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6, width_um=float(np.ptp(across)+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6,
                                depth_um=max(0., surface-float(z[ids[2]].min())+dx/2)*1e6,
                                volume_um3=float(melt.sum())*dx**3*1e18,
                                crossSectionArea_um2=float(melt.sum(axis=(1, 2)).max())*dx**2*1e12)
                 if metrics["volume_um3"] > best["volume_um3"]:
                     best = metrics
                     if artifact_dir:
-                        np.savez_compressed(Path(artifact_dir)/"peak-field.npz", T_K=T, x_m=axis, y_m=axis, z_m=z,
+                        np.savez_compressed(Path(artifact_dir)/"peak-field.npz", T_K=T, liquid_fraction=np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]), 0, 1)*active, x_m=axis, y_m=axis, z_m=z,
                                             time_s=time, liquidus_K=m["liquidus_K"])
             history.append(dict(time_s=time, peak_K=float(T.max()), center_K=float(T[nxy//2, nxy//2, top_index]),
                                 storedEnergy_J=float(H.sum())*dx**3, inputEnergy_J=energy_in, lossEnergy_J=energy_out))
@@ -247,7 +281,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     return dict(metrics=best, thermalHistory=history,
                 energyBalance=dict(input_J=energy_in, losses_J=energy_out, stored_J=stored, relativeError=balance),
                 discretization=dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step),
-                scanPath=segments)
+                scanPath=segments,
+                **thermal_audits(np.column_stack([x.ravel(),y.ravel(),zz.ravel()]), np.full(T.size,dx**3), p,m,
+                    (np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)*active).ravel()))
 
 
 def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
@@ -263,7 +299,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                   solver=dict(id="rosenthal+goldak" if p["mode"] == "screening" or fallback else VERSION,
                               version=VERSION, openfoam=(capabilities or {}).get("openfoamVersion")),
                   settings=p, material=m, confidence="low", validationStatus="unvalidated", productionReady=False,
-                  label="Screening only" if p["mode"] == "screening" or fallback else "Unvalidated transient conduction",
+                  label="Screening only" if p["mode"] == "screening" or fallback else "Unvalidated transient thermal",
                   provenance=dict(inputHash=hashlib.sha256(json.dumps(p, sort_keys=True, allow_nan=False).encode()).hexdigest(),
                                   implementationHash=fingerprint(p, m), materialVersion=m["version"],
                                   solverBinaryHash=(capabilities or {}).get("binaryHash"),
@@ -273,7 +309,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                                "No resolved momentum, Marangoni flow, evaporation, recoil, VOF, keyhole or pores.",
                                "Estimated material laws; fixed reference density conserves mass on a stationary grid.",
                                "Uniform effective powder, irreversible conductivity densification; no resolved powder particles.",
-                               "Gaussian depth attenuation is assumed, not ray tracing; absorbed power normalized over domain.",
+                               "Gaussian penetration equals layer thickness, independent of mesh; source evaluated at step start (first-order Euler). Absorbed power normalized over domain.",
                                "Geometry is sampled molten-domain extent at maximum sampled volume; multi-track pools may be disconnected.",
                                "Cross section is the maximum YZ grid section; it is not scan-normal for rotated scans.",
                                "R = -dT/dt / |grad T| on cooling liquidus crossings. G, R, G×R are separately averaged.",
@@ -285,7 +321,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         n_runs = 1 if p["study"] == "none" else 3
         result.update(thermal_solver(p, m, lambda f, msg: report(f/n_runs, msg), artifact_dir))
         if use_foam:
-            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-1"
+            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-2"
         if p["study"] != "none":
             trials = []
             key = "mesh_um" if p["study"] == "mesh" else "maxDt_s"
@@ -316,6 +352,20 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         g["trackOverlapRatio"] = None
     if p.get("measurements"):
         result["measurementComparison"] = {key: compare([g[key]]*len(p["measurements"]), [row[key] for row in p["measurements"]]) for key in ("width_um", "depth_um")}
+    result["resourceEstimate"] = resource_estimate(p,m)
+    result["unresolvedPhysics"] = dict(freeSurface=None, velocity=None, evaporationMassFlux=None,
+        evaporationLoss=None, recoilPressure=None, keyholeDepth=None, porosityProbability=None, residualStress=None)
+    if p.get("measurements"):
+        result["measurementEvidence"] = measurement_evidence(p["measurements"],p)
+        result["experimentalValidation"] = "Experimental validation pending"
+        if any(v["sameProcessVector"] != "matched" for v in result["measurementEvidence"]):
+            for value in result["measurementComparison"].values():
+                value["calibrationFactor"] = None
+                value["note"] += " Process vector unverified; calibration factor withheld."
+    result["confidenceReason"] = f"{m['quality']} material data and unresolved flow; no independent experimental validation."
+    if any(isinstance(v,(int,float)) and (not math.isfinite(v) or v < 0) for v in g.values()):
+        raise ValueError("Nonfinite or negative physical result")
+    write_artifacts(result, artifact_dir)
     json.dumps(result, allow_nan=False)
     return result
 

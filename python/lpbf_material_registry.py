@@ -31,6 +31,13 @@ def material(name, supplied=None):
     if name not in NAMES:
         raise ValueError("Unknown alloy identity")
     if supplied is not None:
+        if not isinstance(supplied, dict):
+            raise ValueError("Material properties must be an object")
+        allowed = {"source", "solidus_K", "liquidus_K", "boiling_K", "latentHeat_J_kg", "absorptivity", "emissivity",
+                   "dGamma_dT", "table", "name", "version", "quality", "physicalMeltingPoint_K", "phaseRegularization_K",
+                   "temperatureCoverage_K", "uncertaintyNote"}
+        if set(supplied)-allowed:
+            raise ValueError("Unknown material property fields")
         m = dict(supplied)
         if not isinstance(m.get("source"), str) or not m["source"].strip():
             raise ValueError("A property-table source is required")
@@ -61,7 +68,10 @@ def material(name, supplied=None):
         raise ValueError("Require 0 < solidus < liquidus < boiling <= 10000 K")
     if not 0 < m["latentHeat_J_kg"] <= 2e6 or not 0 < m["absorptivity"] <= 1 or not 0 <= m["emissivity"] <= 1:
         raise ValueError("Invalid latent heat / optical properties")
-    a = np.asarray(m.get("table"), dtype=float)
+    raw_table = m.get("table")
+    if not isinstance(raw_table, list) or any(not isinstance(row, list) or any(type(v) not in (int,float) for v in row) for row in raw_table):
+        raise ValueError("Material table must contain numeric rows, not booleans or strings")
+    a = np.asarray(raw_table, dtype=float)
     if a.ndim != 2 or a.shape[1] != 5 or not 2 <= len(a) <= 200 or not np.isfinite(a).all():
         raise ValueError("table rows must be [T_K, rho_kg_m3, k_W_mK, cp_J_kgK, viscosity_Pa_s]")
     if (a <= 0).any() or (np.diff(a[:, 0]) <= 0).any() or a[0, 0] > 273.15 or a[-1, 0] < m["boiling_K"]:
@@ -71,7 +81,8 @@ def material(name, supplied=None):
             raise ValueError(f"Property column {col} outside physical model bounds [{lo}, {hi}]")
     if abs(m["dGamma_dT"]) > .01:
         raise ValueError("Surface tension slope outside model bounds")
-    m.update(name=name, version=VERSION, table=a.tolist())
+    m.update(name=name, version=VERSION, table=a.tolist(), temperatureCoverage_K=[float(a[0,0]),float(a[-1,0])],
+             uncertaintyNote="Property uncertainties not quantified; source string does not establish validation.")
     return m
 
 

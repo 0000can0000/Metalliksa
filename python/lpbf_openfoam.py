@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import numpy as np
 from lpbf_material_registry import enthalpy_table, property_at
+from lpbf_evidence import thermal_audits
 
 BINARY = Path(__file__).parent/"openfoam/bin/metalliksaThermal"
 HEADER = 'FoamFile { version 2.0; format ascii; class dictionary; object %s; }\n'
@@ -22,6 +23,10 @@ def generate_case(p, m, folder):
     bottom = -math.ceil(max(300e-6, 4*radius)/dx)*dx
     nz = math.ceil((-bottom+p["layers"]*p["layer_um"]*1e-6)/dx)
     if nxy*nxy*nz > 600000: raise ValueError("OpenFOAM thermal cell budget exceeded")
+    z = bottom+(np.arange(nz)+.5)*dx
+    counts = [int(np.sum(z < layer*p["layer_um"]*1e-6)) for layer in range(int(p["layers"])+1)]
+    if any(b <= a for a,b in zip(counts,counts[1:])):
+        raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
     top = bottom+nz*dx
     corners = [(x, y, z) for z in (bottom, top) for x, y in ((-span/2, -span/2), (span/2, -span/2), (span/2, span/2), (-span/2, span/2))]
     vertices = "\n".join("(%s %s %s)" % point for point in corners)
@@ -39,7 +44,7 @@ mergePatchPairs ();
     tt, hh = enthalpy_table(m)
     table = np.column_stack([tt, hh, *[property_at(m, tt, i) for i in (1, 2, 3, 4)]])
     config = [end, p["maxDt_s"], p["preheat_C"]+273.15, m["solidus_K"], m["liquidus_K"], m["boiling_K"],
-              p["power_W"]*m["absorptivity"], radius, max(dx, p["layer_um"]*1e-6),
+              p["power_W"]*m["absorptivity"], radius, p["layer_um"]*1e-6,
               p["packingFraction"], p["powderConductivityRatio"], p["convection_W_m2K"], m["emissivity"], dx, p["speed_mm_s"]*1e-3]
     with (folder/"thermalInput.dat").open("w") as stream:
         stream.write(" ".join(map(str, config))+"\n"+str(len(table))+"\n")
@@ -86,13 +91,13 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
             layer = max(s["layer"] for s in segments if s["start_s"] <= t)
             angle = math.radians(p["scanAngle_deg"]+layer*p["layerRotation_deg"])
             x, y, z = coords[melt, :3].T
-            g = dict(length_um=float(np.ptp(x*math.cos(angle)+y*math.sin(angle))+dx)*1e6,
-                     width_um=float(np.ptp(-x*math.sin(angle)+y*math.cos(angle))+dx)*1e6,
+            g = dict(length_um=float(np.ptp(x*math.cos(angle)+y*math.sin(angle))+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6,
+                     width_um=float(np.ptp(-x*math.sin(angle)+y*math.cos(angle))+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6,
                      depth_um=float(surface-z.min()+dx/2)*1e6, volume_um3=float(coords[melt, 3].sum())*1e18,
                      crossSectionArea_um2=float(max(np.sum(melt&(coords[:, 0] == xx)) for xx in xs))*dx*dx*1e12)
             if g["volume_um3"] > best["volume_um3"]:
                 best = g
-                np.savez_compressed(Path(artifact_dir)/"peak-field.npz", coordinates_m=coords[:, :3], T_K=T, time_s=t)
+                np.savez_compressed(Path(artifact_dir)/"peak-field.npz", coordinates_m=coords[:, :3], T_K=T, liquid_fraction=np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)*(coords[:,2]<surface), time_s=t)
     row = samples[-1]; balance = abs(row[1]-row[2]-row[3])/max(row[1], 1e-12)
     if balance > .01: raise ValueError("OpenFOAM energy balance failed")
     w = best["width_um"]*1e-6
@@ -108,4 +113,5 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     return dict(metrics=best, thermalHistory=history, scanPath=segments,
                 energyBalance=dict(input_J=float(row[1]), losses_J=float(row[2]), stored_J=float(row[3]), relativeError=float(balance)),
                 discretization=dict(cells=len(coords), mesh_m=dx, minimumDt_s=float(row[4]), meanDt_s=float(row[0]/row[5]), steps=int(row[5])),
+                **thermal_audits(coords[:,:3],coords[:,3],p,m,np.clip((samples[-1,14:]-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)),
                 fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions sampled at ~60 times. G/R/cooling are crossing-cell means over every timestep; remelting tracked every step.")

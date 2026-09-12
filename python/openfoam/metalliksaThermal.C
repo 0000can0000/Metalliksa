@@ -85,7 +85,8 @@ int main(int argc, char *argv[])
             rate[a]+=flux; rate[b]-=flux;
         }
         double loss=0,shapeSum=0;
-        double zmin=GREAT;
+        double zmin=GREAT, ztop=-GREAT;
+        for(int i=0;i<n;++i) if(active[i]) ztop=std::max(ztop,double(centres[i].z()));
         for(int i=0;i<n;++i) zmin=std::min(zmin,double(centres[i].z()));
         for(int i=0;i<n;++i)
         {
@@ -96,20 +97,22 @@ int main(int argc, char *argv[])
                 const double q=2*k[i]*(T[i]-t0)/dx*area;
                 rate[i]-=q; loss+=q;
             }
-            if(centres[i].z()+dx>=surface)
+            if(centres[i].z()>ztop-.1*dx)
             {
                 const double q=(conv*(T[i]-t0)+emissivity*5.670374419e-8*(std::pow(T[i],4)-std::pow(t0,4)))*area;
                 rate[i]-=q; loss+=q;
             }
             if(laser)
             {
-                const double f=(time+.5*dt-laser->a)/(laser->b-laser->a);
+                const double f=(time-laser->a)/(laser->b-laser->a);
                 const double x=(1-f)*laser->x0+f*laser->x1,y=(1-f)*laser->y0+f*laser->y1;
                 source[i]=std::exp(-2*(std::pow(centres[i].x()-x,2)+std::pow(centres[i].y()-y,2))/(radius*radius)
                     -2*std::pow((centres[i].z()-surface)/penetration,2))*volumes[i];
                 shapeSum+=source[i];
             }
         }
+        if(laser && (!std::isfinite(shapeSum) || shapeSum<=0))
+            FatalErrorInFunction<<"Gaussian source under-resolved; refine mesh"<<exit(FatalError);
         for(int i=0;i<n;++i)
         {
             source[i]=laser ? source[i]*power/shapeSum : 0;

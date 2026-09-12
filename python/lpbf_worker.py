@@ -3,6 +3,7 @@
 Normally launched inside WSL by the Node bridge. No browser-supplied shell commands.
 """
 import hashlib
+import base64
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from contextlib import contextmanager
 from lpbf_material_registry import catalog
 from lpbf_simulation import run, validate, fingerprint
 from lpbf_openfoam import BINARY
+from lpbf_evidence import resource_estimate
 
 ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().parents[1]/".lpbf-jobs")))
 
@@ -80,9 +82,22 @@ class Queue:
         if row is None:
             raise ValueError("Job not found")
         out = dict(row)
+        settings = json.loads((self.root/job/"input.json").read_text())
+        out["requestSummary"] = {k:settings[k] for k in ("mode","backend","material")}
         if out["status"] == "completed":
             out["result"] = json.loads((self.root/job/"result.json").read_text())
         return out
+
+    def artifact(self, payload):
+        state = self.get(payload["id"])
+        name = payload.get("name")
+        if state["status"] != "completed" or name not in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv"):
+            raise ValueError("Artifact unavailable")
+        entry = next((a for a in state["result"].get("artifacts",[]) if a["path"] == name),None)
+        if not entry or entry["size_bytes"] > 8_000_000: raise ValueError("Artifact unavailable or too large")
+        content = (self.root/payload["id"]/name).read_bytes()
+        if hashlib.sha256(content).hexdigest() != entry["sha256"]: raise ValueError("Artifact integrity failed")
+        return dict(content=base64.b64encode(content).decode(),type="image/svg+xml" if name.endswith(".svg") else "text/csv")
 
     def submit(self, raw):
         p, m = validate(raw)
@@ -90,7 +105,22 @@ class Queue:
         with self.lock, self.connect() as c:
             row = c.execute("SELECT id FROM jobs WHERE cache_key=? AND status IN ('queued','running','completed') ORDER BY created DESC LIMIT 1", (key,)).fetchone()
             if row:
-                return {**self.get(row["id"]), "cacheHit": True}
+                try:
+                    cached = self.get(row["id"])
+                    if cached["status"] == "completed":
+                        for artifact in cached["result"].get("artifacts", []):
+                            path = self.root/row["id"]/artifact["path"]
+                            if not path.is_file() or path.stat().st_size != artifact["size_bytes"]:
+                                raise ValueError("Cached artifact missing or size changed")
+                            digest = hashlib.sha256()
+                            with path.open("rb") as stream:
+                                for chunk in iter(lambda: stream.read(1024*1024), b""): digest.update(chunk)
+                            if digest.hexdigest() != artifact["sha256"]:
+                                raise ValueError("Cached artifact checksum mismatch")
+                    return {**cached, "cacheHit": cached["status"] == "completed",
+                            "deduplicated": cached["status"] != "completed"}
+                except (OSError, ValueError, KeyError):
+                    c.execute("UPDATE jobs SET status='failed',error='Cached result/artifacts unavailable or corrupt' WHERE id=?", (row["id"],))
             if c.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','running')").fetchone()[0] >= 16:
                 raise ValueError("Queue full (16 jobs)")
             job = uuid.uuid4().hex
@@ -140,7 +170,9 @@ class Queue:
                         else:
                             os.killpg(child.pid, signal.SIGKILL)
                         child.wait(timeout=5)
-                        if timed_out:
+                        if state == "cancelled":
+                            pass
+                        elif timed_out:
                             self.update(job, status="timed_out", error="Simulation timeout")
                         elif self.closed.is_set():
                             self.update(job, status="failed", error="Worker stopped during execution")
@@ -212,7 +244,11 @@ def main():
             request = json.loads(line)
             method = request["method"]
             if method == "capabilities": data = queue.caps
+            elif method == "estimate":
+                p, m = validate(request["payload"])
+                data = resource_estimate(p,m)
             elif method == "submit": data = queue.submit(request["payload"])
+            elif method == "artifact": data = queue.artifact(request["payload"])
             elif method == "get": data = queue.get(request["payload"])
             elif method == "cancel": data = queue.cancel(request["payload"])
             else: raise ValueError("Unknown method")

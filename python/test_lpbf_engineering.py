@@ -43,6 +43,8 @@ class Verification(unittest.TestCase):
         self.assertEqual(m["quality"], "user-supplied-unverified")
         bad = copy.deepcopy(supplied); bad["table"][1][2] = -5
         with self.assertRaises(ValueError): material("Inconel 625", bad)
+        bad = copy.deepcopy(supplied); bad["table"][1][2] = True
+        with self.assertRaises(ValueError): material("Inconel 625", bad)
 
     def test_enthalpy_latent_heat_and_inverse(self):
         m = material("Inconel 718"); t, h = enthalpy_table(m)
@@ -132,12 +134,104 @@ class Verification(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=test_root) as tmp:
             queue = Queue(tmp, start=False)
             first = queue.submit(CASE); second = queue.submit(CASE)
-            self.assertEqual(first["id"], second["id"]); self.assertTrue(second["cacheHit"])
+            self.assertEqual(first["id"], second["id"]); self.assertTrue(second["deduplicated"]); self.assertFalse(second["cacheHit"])
             self.assertEqual(queue.cancel(first["id"])["status"], "cancelled")
             third = queue.submit(CASE); self.assertNotEqual(third["id"], first["id"])
             queue.update(third["id"], status="running")
             restarted = Queue(tmp, start=False)
             self.assertEqual(restarted.get(third["id"])["status"], "failed")
+
+    def test_nested_schema_and_measurement_evidence(self):
+        from lpbf_evidence import PROCESS_KEYS
+        p, _ = validate(CASE)
+        row = dict(width_um=50., depth_um=45., source="Synthetic schema fixture")
+        for patch in ({"measurements": {}}, {"measurements": [dict(row, width_um=True)]},
+                      {"measurements": [dict(row, unknown=1)]}, {"emissivity": float("inf")}):
+            with self.assertRaises(ValueError): validate({**CASE, **patch})
+        vector = {k:p[k] for k in PROCESS_KEYS}
+        matched = dict(row, processVector=vector, uncertainty_um=dict(width_um=2., depth_um=3.), independentHoldout=False)
+        r = run({**CASE, "measurements": [matched]})
+        self.assertEqual(r["measurementEvidence"][0]["sameProcessVector"], "matched")
+        self.assertIsNotNone(r["measurementComparison"]["width_um"]["calibrationFactor"])
+        unmatched = run({**CASE, "measurements": [row]})
+        self.assertIsNone(unmatched["measurementComparison"]["width_um"]["calibrationFactor"])
+        matched["processVector"]["power_W"] += 1
+        with self.assertRaisesRegex(ValueError,"does not match"): validate({**CASE,"measurements":[matched]})
+
+    def test_mass_and_phase_partition_with_deposition(self):
+        p,m = validate({**CASE,"power_W":10,"layers":2,"layer_um":30,"mesh_um":20})
+        r = transient(p,m)
+        self.assertGreater(r["massBalance"]["deposited_kg"],0)
+        self.assertLess(r["massBalance"]["relativeError"],1e-12)
+        a = r["phaseAudit"]
+        self.assertAlmostEqual((a["liquidVolume_m3"]+a["solidVolume_m3"])/a["activeVolume_m3"],1.)
+        self.assertTrue(0 <= a["minFraction"] <= a["maxFraction"] <= 1)
+        self.assertIsNone(a["interfaceConservation"])
+
+    def test_artifact_manifest_and_corrupt_cache(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            q = Queue(tmp,start=False)
+            job = q.submit(CASE); folder = Path(tmp)/job["id"]
+            r = run(CASE,artifact_dir=folder)
+            self.assertTrue(any(a["path"] == "thermal-history.csv" for a in r["artifacts"]))
+            for a in r["artifacts"]:
+                self.assertEqual(hashlib.sha256((folder/a["path"]).read_bytes()).hexdigest(),a["sha256"])
+            (folder/"result.json").write_text(json.dumps(r))
+            q.update(job["id"],status="completed")
+            self.assertTrue(q.submit(CASE)["cacheHit"])
+            (folder/"thermal-history.csv").write_text("corrupted")
+            self.assertNotEqual(q.submit(CASE)["id"],job["id"])
+
+    def test_source_depth_independent_of_mesh(self):
+        from lpbf_openfoam import generate_case
+        for mesh in (20,40,60):
+            p,m = validate({**CASE,"mesh_um":mesh,"layer_um":30})
+            with tempfile.TemporaryDirectory() as tmp:
+                generate_case(p,m,tmp)
+                values = (Path(tmp)/"thermalInput.dat").read_text().splitlines()[0].split()
+                self.assertAlmostEqual(float(values[8]),30e-6)
+
+    def test_manufactured_conduction_second_order(self):
+        from lpbf_simulation import conduction_rate
+        errors = []
+        for n in (12,24,48):
+            dx = 1./n
+            x,y,z = np.meshgrid(*[(np.arange(n)+.5)*dx]*3,indexing="ij")
+            T = 300+np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z)
+            rates = conduction_rate(T,np.full(T.shape,2.),np.ones(T.shape,bool),dx)
+            exact = -6*np.pi**2*(T-300)
+            errors.append(float(np.sqrt(np.mean((rates[1:-1,1:-1,1:-1]-exact[1:-1,1:-1,1:-1])**2))))
+            self.assertLess(abs(float(rates.sum())),1e-8)
+        self.assertGreater(errors[0]/errors[1],3.5)
+        self.assertGreater(errors[1]/errors[2],3.5)
+
+    def test_exact_latent_heat_integral(self):
+        m = material("Inconel 718"); t,h = enthalpy_table(m)
+        from lpbf_material_registry import property_at
+        mask = (t>=m["solidus_K"]) & (t<=m["liquidus_K"])
+        cp = property_at(m,t[mask],3)
+        sensible = float(np.sum(np.diff(t[mask])*(cp[:-1]+cp[1:])/2))
+        total = float(h[mask][-1]-h[mask][0])
+        self.assertAlmostEqual(total-sensible,m["latentHeat_J_kg"],places=6)
+
+    def test_stripe_and_island_timing(self):
+        for strategy in ("stripe","island"):
+            p,m = validate({**CASE,"strategy":strategy,"tracks":3,"layers":2,"islandSize_um":100,"scanAngle_deg":35})
+            scans,end = scan_segments(p)
+            length = sum(np.linalg.norm(np.array(s["end"])-s["start"]) for s in scans)
+            self.assertAlmostEqual(length, p["trackLength_um"]*1e-6*6)
+            for a,b in zip(scans,scans[1:]): self.assertAlmostEqual(b["start_s"]-a["end_s"],p["dwell_s"])
+            self.assertAlmostEqual(end,length/(p["speed_mm_s"]*.001)+len(scans)*p["dwell_s"]+p["cooling_s"])
+            self.assertEqual({s["track"] for s in scans},{0,1,2})
+            if strategy == "island": self.assertEqual(len(scans),12)
+
+    def test_unresolved_layer_rejected(self):
+        from lpbf_openfoam import generate_case
+        p,m = validate({**CASE,"layer_um":30,"layers":2})
+        with self.assertRaisesRegex(ValueError,"each powder layer"): transient(p,m)
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(ValueError,"each powder layer"): generate_case(p,m,tmp)
 
     @unittest.skipUnless(os.name != "nt" and capabilities()["openfoamThermal"], "Requires compiled OpenFOAM 14 worker")
     def test_openfoam_against_independent_reference(self):
@@ -149,10 +243,20 @@ class Verification(unittest.TestCase):
             self.assertAlmostEqual(a["metrics"][key]/b["metrics"][key], 1., places=8)
         self.assertLess(abs(a["metrics"]["peakTemperature_K"]-b["metrics"]["peakTemperature_K"])/a["metrics"]["peakTemperature_K"], .01)
         self.assertGreater(b["metrics"]["coolingRate_K_s"], 0)
-        p.update(power_W=10, tracks=2, layers=2, dwell_s=.00002)
+        for key in ("thermalGradient_K_m", "solidificationRate_m_s", "coolingRate_K_s"):
+            self.assertLess(abs(a["metrics"][key]/b["metrics"][key]-1), .01, key)
+        # Misaligned layer surface previously applied radiative losses to multiple cell planes.
+        p.update(power_W=10, tracks=2, layers=2, layer_um=45, dwell_s=.00002)
         multi = thermal(p, m)
+        ref_multi = transient(p,m)
+        self.assertLess(abs(multi["energyBalance"]["losses_J"]-ref_multi["energyBalance"]["losses_J"])/max(ref_multi["energyBalance"]["losses_J"],1e-12),.02)
         duration = p["trackLength_um"]*1e-6/(p["speed_mm_s"]*.001)*4
         self.assertAlmostEqual(multi["energyBalance"]["input_J"], p["power_W"]*m["absorptivity"]*duration, places=9)
+        p.update(strategy="island",islandSize_um=100,tracks=2,layers=1,layer_um=40)
+        island = thermal(p,m)
+        reference = transient(p,m)
+        self.assertAlmostEqual(island["energyBalance"]["input_J"],reference["energyBalance"]["input_J"],places=10)
+        self.assertLess(abs(island["metrics"]["peakTemperature_K"]-reference["metrics"]["peakTemperature_K"])/reference["metrics"]["peakTemperature_K"],.02)
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

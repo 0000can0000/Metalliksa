@@ -1,6 +1,6 @@
 # LPBF engineering simulation — capability and verification record
 
-This implementation is an **unvalidated transient thermal research solver**, with an actual OpenFOAM Foundation 14 backend. It is not a free-surface CFD solver, a process qualification system, or a production-ready LPBF model. The High-Fidelity option currently returns **Screening only** with an explicit reason. Installing OpenFOAM alone does not supply a laser/metal/gas/keyhole solver.
+This implementation is an **unvalidated transient thermal research solver**, with an actual OpenFOAM Foundation 14 backend. It is not a free-surface CFD solver, a process qualification system, or a production-ready LPBF model. The High-Fidelity CFD option currently returns **Screening only** with an explicit reason. Installing OpenFOAM alone does not supply a laser/metal/gas/keyhole solver.
 
 ## Architecture and execution
 
@@ -28,7 +28,7 @@ Start Metalliksa normally with `npm run dev`. The capabilities endpoint must sho
 
 - **Quick Screening:** existing Rosenthal and Goldak temperature kernels, constant properties at preheat, no keyhole correction in the engineering comparison. Typical latency is seconds. Old analytical labs and Eagar–Tsai remain available.
 - **Standard Simulation:** auto-selects the compiled OpenFOAM thermal solver in WSL; otherwise conservative NumPy reference finite volumes. Usually seconds to minutes; mesh, laser speed, dwell and timestep can make it substantially longer. A 600000-cell / 250000-step budget guards this research implementation.
-- **High-Fidelity Simulation:** unavailable free-surface capability; explicit analytical screening fallback. It cannot produce a CFD validation badge.
+- **High-Fidelity CFD:** unavailable free-surface capability; explicit analytical screening fallback. It cannot produce a CFD validation badge.
 - **Calibration / Validation:** Standard plus measured dimension comparison. Replicates must belong to the submitted process vector. Calibration is never automatically promoted to independent validation.
 
 ## Governing model
@@ -43,11 +43,11 @@ Reference mass is fixed on a stationary grid: substrate density is evaluated at 
 
 Face conductivity is the harmonic mean. Opposite internal face powers cancel exactly. Conductivity increases irreversibly from effective powder to dense material after reaching liquidus; the stationary mass remains conserved. This is a homogenized powder approximation, not a resolved powder packing or densification geometry model.
 
-The 3D Gaussian is `exp(-2*r_xy²/r_beam² - 2*depth²/penetration²)`. Beam diameter means **1/e² intensity diameter**. Penetration is `max(layer thickness, cell size)` and is an assumption. Discrete cell source powers sum to `absorptivity * laser power` during laser-on intervals. There is no reflection or ray tracing. Powder geometry and attenuation assumptions can strongly affect temperature and depth.
+The 3D Gaussian is `exp(-2*r_xy²/r_beam² - 2*depth²/penetration²)`. Beam diameter means **1/e² intensity diameter**. Penetration equals `layer thickness`, independent of mesh spacing and is an assumption. Discrete cell source powers sum to `absorptivity * laser power` during laser-on intervals. There is no reflection or ray tracing. Powder geometry and attenuation assumptions can strongly affect temperature and depth.
 
 The bottom boundary is held at baseplate preheat with half-cell conduction distance. Side walls are insulated. The current powder surface loses heat by convection and Stefan–Boltzmann radiation to preheat-temperature surroundings. Effective emissivity defaults to **estimated 0.35**. Preheat is prescribed, not computed from an entire build plate.
 
-The grid activates powder layers at scan events, with newly active material at preheat. Meander and unidirectional tracks support hatch spacing, direction, layer rotation and dwell. Shared island scanning is explicitly unsupported and requires choosing a supported strategy. The current generator uses a uniform orthogonal mesh; adaptive/local mesh refinement is not implemented.
+The grid activates powder layers at scan events, with newly active material at preheat. Meander, unidirectional, stripe and rectangular island tracks support hatch spacing, direction, layer rotation and dwell. Stripe width groups adjacent tracks; meander direction resets within each stripe. Rectangular islands subdivide the along-track extent and group adjacent hatch rows; island columns traverse in alternating order and each sub-track has an explicit dwell. Scanner acceleration and jump travel time are not solved: dwell is supplied. A mesh that cannot activate at least one new cell plane for every layer fails explicitly. The current generator uses a uniform orthogonal mesh; adaptive/local mesh refinement is not implemented.
 
 The explicit timestep is bounded by a conservative 3D Fourier limit, laser motion per step, scan event boundaries and a 25 K sensible-equivalent enthalpy increment. Refinement uses the realized grid spacing and mean used timestep; cap-limited sensitivity runs may be inconclusive.
 
@@ -122,3 +122,22 @@ The reference/OpenFOAM verification fixture uses estimated IN718, 40 W, 800 mm/s
 - [NIST keyhole/melt-pool benchmark](https://www.nist.gov/publications/benchmark-study-melt-pool-and-keyhole-dynamics-laser-absorption-and-porosity-additive) — a prospective validation target; no claim that this thermal solver reproduces it.
 
 The user-requested end goal remains open: a tested metal/gas VOF solver with mass/momentum/enthalpy conservation, capillary curvature, temperature/composition-dependent Marangoni stress, enthalpy-porosity solid drag, evaporation mass/energy removal, recoil coupling, optical absorption/reflections, bounded interface transport and capillary/Courant timestep control. It then needs interface/spurious-current tests, evaporation energy/mass audits, free-surface benchmark comparisons, domain/mesh/timestep studies and independent experimental LPBF validation. None of these can be replaced by a thermal heat map or a status badge.
+
+
+## September 12 reliability and evidence update
+
+See [architecture audit](LPBF_ARCHITECTURE_AUDIT.md) and [reproducible numerical benchmark](LPBF_BENCHMARK_2026-09-12.json). Source placement is evaluated at step start consistently with first-order explicit Euler; source-driven timestep limiting cannot move it to the wrong midpoint. The OpenFOAM surface-loss mask selects only the highest active cell plane. Rotated extents include the projected cube support. Gaussian depth remains an assumed absorption distribution, not an optical solution.
+
+Mass audit reports initial active reference mass, newly activated powder reference mass, and final reference mass. It does not claim continuity or evaporation conservation. Phase audit partitions active volume into enthalpy liquid/solid fractions; the metal/gas interface conservation value remains null. Temperature and enthalpy liquid-fraction X–Z previews come directly from the saved peak-volume field on the nearest y=0 plane. They are separate from analytical 3D geometry. Analytical cavity cones, trapped-pore spheres and uncomputed reflection paths are removed. The Fabbro model remains available as a screening depth proxy.
+
+The queue distinguishes a completed cache hit from joining a queued/running job. Cached artifacts are checked for existence, size and SHA-256 before reuse. A corrupt cached job becomes failed and a fresh job is created. Result manifests include relative paths, byte sizes and checksums. Fields remain in files; SVG previews and thermal-history CSV are served through a fixed allowlist and checksum verification. Retention is explicit operator deletion; there is no automatic expiry. UI polling preserves cache status, stops on terminal states and slows when hidden. Local storage retains job ID, cache state and input signature for refresh recovery; restored results are labelled as belonging to saved settings.
+
+`POST /api/lpbf/estimate` validates the input and reports uniform cell count, spacing, simulated duration, approximate working-array memory, estimated steps and solve count. It does not claim calibrated wall time or an HPC scheduler estimate. Optical emissivity and absorptivity overrides are finite and bounded.
+
+Measurements accept required `width_um`, `depth_um`, `source`, plus optional `processVector`, `uncertainty_um` (nonnegative width/depth uncertainty in µm), and boolean `independentHoldout`. The exact process-vector keys are defined in `python/lpbf_evidence.py:PROCESS_KEYS`; values must match normalized result settings, including effective optical properties and thermal-history controls. Unknown fields and mismatching vectors fail. When a vector is missing, signed errors/RMSE/bias are descriptive only and calibration factors are null. User-declared holdout and source strings never establish experimental validation.
+
+Additional controls: `stripeWidth_um` in [20,3000], `islandSize_um` in [50,3000], `emissivity` in [0,1]. The 15-identity registry retains eight estimated data models and seven explicit missing-data identities. Supplied material metadata is unverified, rejects unknown fields and reports temperature coverage and unquantified uncertainty.
+
+Repeatable checks: `npx tsx tests/lpbf-contract.test.ts`; `npx tsx tests/lpbf-smoke-server.ts` starts an isolated engineering API/UI host on 127.0.0.1:3001. Set `METALLIKSA_TEST_URL=http://127.0.0.1:3001/api/lpbf` for API tests. The smoke host intentionally excludes unrelated legacy physics endpoints, so their requests may show 404; use the full application for their integration checks. Run `python3 python/benchmark_lpbf_engineering.py --output docs/LPBF_BENCHMARK_2026-09-12.json` in WSL for backend benchmarks. Synthetic measurement fixtures are always labelled as tests, not evidence.
+
+Remaining research gates: bounded metal/gas transport, capillary and Marangoni momentum, evaporation/recoil, keyhole collapse, local track fusion metrics, adaptive refinement, full field-history mechanics coupling, material-source verification, and independent experimental validation. None is implied by the conservation audits or engineering visual style.

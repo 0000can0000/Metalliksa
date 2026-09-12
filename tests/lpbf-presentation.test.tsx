@@ -1,0 +1,32 @@
+import React from "react";
+import assert from "node:assert/strict";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ResultHeader, ConvergencePanel, MeasurementPanel, ThermalHistory } from "../src/components/3d-distortion-lab/LpbfResultPresentation";
+import { SimulationJob, SimulationResult } from "../src/services/lpbfSimulationService";
+
+const result: SimulationResult = {
+  schemaVersion: 1, requestedMode: "screening", effectiveMode: "screening", settings: { material: "Inconel 718", power_W: 40, speed_mm_s: 800, beamDiameter_um: 80, preheat_C: 200, hatch_um: 100, layer_um: 40 },
+  solver: { id: "synthetic-presentation-fixture", version: "1", openfoam: null }, confidence: "low", validationStatus: "unvalidated", productionReady: false,
+  label: "Screening only", fallbackReason: null, metrics: { length_um: 321, width_um: 123, depth_um: 45 }, material: { name: "Inconel 718", quality: "estimated", source: "Synthetic UI test; not experimental evidence" },
+  analyticalComparison: {}, assumptions: [], regime: "conduction assumption", mainRisk: "lack-of-fusion", recommendation: "Reduce hatch spacing; verify experimentally.", riskScope: "Geometric screening only",
+};
+const job: SimulationJob = { id: "a".repeat(32), status: "completed", progress: 1, log: "fixture", error: null, result };
+const render = (j?: SimulationJob, stale = false) => renderToStaticMarkup(<ResultHeader job={j} material="Inconel 718" availability="Unavailable" stale={stale} elapsed={12} cancel={() => {}} cancelling={false}/>);
+assert.match(render(job), /321/);
+assert.match(render(job), /Experimental validation pending/);
+assert.match(render({...job, cacheHit:true}), /Cached · completed/);
+assert.match(render(job,true), /inputs have changed/);
+for (const status of ["queued", "running", "failed", "cancelled", "timed_out"] as const) {
+  // Even if an upstream caller supplies stale result data, terminal failures cannot render it.
+  const html=render({...job,status,progress:.42});
+  assert.doesNotMatch(html,/321/);
+  assert.match(html,/42% reported/);
+  if(status==="queued"||status==="running") assert.match(html,/>Cancel</);
+  else {assert.doesNotMatch(html,/>Cancel</);assert.match(html,/No completed result/);}
+}
+assert.match(renderToStaticMarkup(<ConvergencePanel study={undefined}/>),/Not run/);
+const audit=renderToStaticMarkup(<ConvergencePanel study={{kind:"mesh",spacings:[4e-5,2e-5,1e-5],results:[{width_um:100,depth_um:40},{width_um:110,depth_um:42},{width_um:112,depth_um:43}],checks:{width_um:{status:"inconclusive",reason:"Fixture",observedOrder:2,fineGCI_pct:3}}}}/>);
+for(const label of ["Coarse","Medium","Fine","inconclusive","observed order 2","fine GCI 3"]) assert.ok(audit.includes(label));
+assert.match(renderToStaticMarkup(<MeasurementPanel result={result}/>),/does not establish independent validation/);
+assert.match(renderToStaticMarkup(<ThermalHistory result={result}/>),/Not resolved in this screening run/);
+console.log("PASS: result visibility, progress, cancellation/failure/timeout, cache, stale inputs, calibration and numerical evidence rendering");

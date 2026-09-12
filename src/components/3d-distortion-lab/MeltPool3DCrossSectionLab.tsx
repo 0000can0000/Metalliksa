@@ -89,15 +89,6 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const [heatSource, setHeatSource] = useState<"goldak" | "eagar-tsai" | "rosenthal">("goldak");
   const [sulfurPpm, setSulfurPpm] = useState<number>(15);
 
-  useEffect(() => {
-    setLaserPower_W(initialPower_W);
-    setScanSpeed_mms(initialSpeed_mms);
-    setBeamDiameter_um(initialBeamDiameter_um);
-    setPreheatTemp_C(initialPreheat_C);
-    setLayerThickness_um(initialLayer_um);
-    setHatchSpacing_um(initialHatch_um);
-  }, [initialPower_W, initialSpeed_mms, initialBeamDiameter_um, initialPreheat_C, initialLayer_um, initialHatch_um]);
-
   // 3D Visualization Controls
   const [slicingPlane, setSlicingPlane] = useState<SlicingPlane>("quarter-cutaway");
   const [sliceCutOffset, setSliceCutOffset] = useState<number>(0); // -100 to +100 um
@@ -142,8 +133,17 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     initialMaterial,
   ]);
 
+  // Late analytical responses cannot roll back a newer shared process vector.
+  const solveGeneration = useRef(0);
+  const onParametersChangeRef = useRef(onParametersChange);
+  onParametersChangeRef.current = onParametersChange;
+  const sharedInputSignature = JSON.stringify([initialPower_W, initialSpeed_mms, initialBeamDiameter_um, initialPreheat_C, initialLayer_um, initialHatch_um, initialMaterial]);
+  const latestSharedInput = useRef(sharedInputSignature);
+  latestSharedInput.current = sharedInputSignature;
   // Execute Python Solver
   const solvePhysics = useCallback(async () => {
+    const generation=++solveGeneration.current;
+    const sharedAtStart=latestSharedInput.current;
     setIsSolving(true);
     setErrorMsg(null);
     try {
@@ -159,10 +159,11 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         heatSource,
         sulfur_ppm: sulfurPpm,
       });
+      if(generation!==solveGeneration.current||sharedAtStart!==latestSharedInput.current)return;
       setPyResult(res);
 
-      if (onParametersChange) {
-        onParametersChange({
+      if (onParametersChangeRef.current) {
+        onParametersChangeRef.current({
           laserPower_W,
           scanSpeed_mm_s: scanSpeed_mms,
           beamDiameter_um,
@@ -173,10 +174,11 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         });
       }
     } catch (err: any) {
+      if(generation!==solveGeneration.current||sharedAtStart!==latestSharedInput.current)return;
       console.warn("Python LPBF Thermal Solver Error:", err);
       setErrorMsg(err.message || "Failed to execute Python thermal solver.");
     } finally {
-      setIsSolving(false);
+      if(generation===solveGeneration.current)setIsSolving(false);
     }
   }, [
     selectedMaterial,
@@ -189,7 +191,6 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     laserWavelength,
     heatSource,
     sulfurPpm,
-    onParametersChange,
   ]);
 
   // Debounced execution on parameter changes
@@ -197,7 +198,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     const timer = setTimeout(() => {
       solvePhysics();
     }, 200);
-    return () => clearTimeout(timer);
+    return () => {clearTimeout(timer);solveGeneration.current++;};
   }, [solvePhysics]);
 
   // Regime from the solver only (King ΔH/hs ≈ 15 / 30). Do not recompute a second threshold.

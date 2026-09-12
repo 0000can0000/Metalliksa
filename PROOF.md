@@ -268,4 +268,18 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Functional proof**: `py -3 python/test_eagar_tsai.py`; `py -3 python/test_lpbf_meltpool_accuracy.py`; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 019: Goldak field + Fabbro keyhole (`goldak-v1`, `fabbro-keyhole-v1`)
+- **Date**: 2026-09-12
+- **Module**: `python/goldak_solver.py` / `python/fabbro_keyhole.py` / `lpbf_thermal_solver.py` / `MeltPool3DCrossSectionLab.tsx`
+- **Academic basis**:
+  - Goldak et al., *Metall. Trans. B* (1984) double-ellipsoid; temperature via Fachinotti & Cardona, *Mecánica Computacional* 27 (2008) — erf correction to Nguyen et al., *Weld. J.* (1999). Beam-seeded axes (`af=r0`, `ar=2r0`), not a circular W/D fit and not Goldak FEA.
+  - Fabbro, *Appl. Sci.* 10, 1487 (2020), DOI `10.3390/app10041487`: \(e = AP/[k(T_v-T_0)(m\mathrm{Pe}+n)]\), \(m=2.4\), \(n=3\). Applied on Melt Pool Goldak/ET paths only.
+- **Literature numbers** (search-sourced):
+  - NIST AMB2022-03 IN718 baseline (Lane et al. 2024, DOI `10.1007/s40192-024-00355-5`): \(P=285\,\mathrm{W}\), \(v=960\,\mathrm{mm/s}\), \(D_{4\sigma}=67\,\mu\mathrm{m}\), \(T_0=23.5^\circ\mathrm{C}\), measured \(D=139.7\,\mu\mathrm{m}\). Fabbro depth checked in a factor-of-two band; smaller \(D_{4\sigma}\) must be deeper.
+- **Product split**: Melt Pool lab can select Goldak / Eagar–Tsai / Rosenthal. `POST /api/python/lpbf-build-job` stays `rosenthal-screening-v1` with the King increment (not Fabbro).
+- **Functional proof**: `python3 python/test_goldak_fabbro.py`; existing melt-pool / four-alloy / build-job fixtures; `npx tsc --noEmit`.
+- **Status**: **PASS**
+
 

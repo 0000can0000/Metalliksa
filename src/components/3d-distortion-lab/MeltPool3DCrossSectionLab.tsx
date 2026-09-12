@@ -84,7 +84,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(initialHatch_um);
   const [selectedMaterial, setSelectedMaterial] = useState<string>(initialMaterial);
   const [laserWavelength, setLaserWavelength] = useState<"IR_1064nm" | "Green_515nm" | "Blue_450nm">("IR_1064nm");
-  const [heatSource, setHeatSource] = useState<"eagar-tsai" | "rosenthal">("eagar-tsai");
+  const [heatSource, setHeatSource] = useState<"goldak" | "eagar-tsai" | "rosenthal">("goldak");
 
   useEffect(() => {
     setLaserPower_W(initialPower_W);
@@ -206,7 +206,8 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
 
     let modeName = pyResult?.meltPoolGeometry?.regime || "Conduction Mode (Stable)";
     let badgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
-    const sourceLabel = heatSource === "eagar-tsai" ? "Eagar–Tsai Gaussian" : "regularized Rosenthal";
+    const sourceLabel =
+      heatSource === "goldak" ? "Goldak double-ellipsoid" : heatSource === "eagar-tsai" ? "Eagar–Tsai Gaussian" : "regularized Rosenthal";
     let desc = `Stable conduction-mode pool. Width and depth from the T = T_liquidus isotherm of a ${sourceLabel} field (King ΔH/hs < 15).`;
     let keyRisk = "Low (ASTM F3055 Compliant)";
 
@@ -717,11 +718,12 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1">
                   <Cpu className="w-3 h-3 text-sky-400" />
-                  {pyResult?.modelId || (heatSource === "eagar-tsai" ? "eagar-tsai-v1" : "rosenthal-screening-v1")}
+                  {pyResult?.modelId ||
+                    (heatSource === "goldak" ? "goldak-v1" : heatSource === "eagar-tsai" ? "eagar-tsai-v1" : "rosenthal-screening-v1")}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Eagar–Tsai 3D Gaussian (finite spot) or regularized Rosenthal. King ΔH/hs keyhole increment. Build Job verdict stays Rosenthal screening.
+                Goldak volumetric source, Eagar–Tsai Gaussian, or Rosenthal. Fabbro keyhole depth on Goldak/ET. Build Job verdict stays Rosenthal screening.
               </p>
             </div>
           </div>
@@ -730,11 +732,18 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             <div className="flex rounded-xl border border-slate-700 overflow-hidden">
               <button
                 type="button"
+                onClick={() => setHeatSource("goldak")}
+                className={`px-2.5 py-2 text-[10px] font-bold ${
+                  heatSource === "goldak" ? "bg-sky-600 text-white" : "bg-[#050810] text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                Goldak
+              </button>
+              <button
+                type="button"
                 onClick={() => setHeatSource("eagar-tsai")}
                 className={`px-2.5 py-2 text-[10px] font-bold ${
-                  heatSource === "eagar-tsai"
-                    ? "bg-sky-600 text-white"
-                    : "bg-[#050810] text-slate-300 hover:bg-slate-800"
+                  heatSource === "eagar-tsai" ? "bg-sky-600 text-white" : "bg-[#050810] text-slate-300 hover:bg-slate-800"
                 }`}
               >
                 Eagar–Tsai
@@ -743,9 +752,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 type="button"
                 onClick={() => setHeatSource("rosenthal")}
                 className={`px-2.5 py-2 text-[10px] font-bold ${
-                  heatSource === "rosenthal"
-                    ? "bg-sky-600 text-white"
-                    : "bg-[#050810] text-slate-300 hover:bg-slate-800"
+                  heatSource === "rosenthal" ? "bg-sky-600 text-white" : "bg-[#050810] text-slate-300 hover:bg-slate-800"
                 }`}
               >
                 Rosenthal
@@ -803,6 +810,12 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
               <span className="text-[10px] opacity-75 block">Risk Status:</span>
               <strong className="text-xs">{regimeInfo.keyRisk}</strong>
             </div>
+            {pyResult?.keyholeModel?.fabbroDepth_um != null && (
+              <div className="text-right border-l border-current/30 pl-2">
+                <span className="text-[10px] opacity-75 block">Fabbro e:</span>
+                <strong className="text-xs">{pyResult.keyholeModel.fabbroDepth_um} μm</strong>
+              </div>
+            )}
           </div>
         </div>
 

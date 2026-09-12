@@ -21,7 +21,9 @@ import time
 import numpy as np
 
 from eagar_tsai_solver import EagarTsaiField, MODEL_ID as EAGAR_TSAI_MODEL_ID
+from fabbro_keyhole import MODEL_ID as FABBRO_MODEL_ID, fabbro_keyhole_depth_m
 from four_alloy_materials import four_alloy_thermophysical_db, thermal_props
+from goldak_solver import GoldakField, MODEL_ID as GOLDAK_MODEL_ID, seed_goldak_axes
 
 # Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
 SECONDARY_THERMOPHYSICAL_DB = {
@@ -179,6 +181,8 @@ def _normalize_heat_source(heat_source: str | None) -> str:
     key = (heat_source or "rosenthal").strip().lower().replace("_", "-")
     if key in ("eagar-tsai", "eagar-tsai-v1", "et", "eager-tsai"):
         return "eagar-tsai"
+    if key in ("goldak", "goldak-v1", "goldak-double-ellipsoid"):
+        return "goldak"
     return "rosenthal"
 
 
@@ -199,7 +203,7 @@ def calculate_meltpool_physics(
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
     Optional prop_overrides merge onto the resolved thermophysical dict (UQ / AM-Bench).
-    heat_source: "rosenthal" (Build Job default) or "eagar-tsai" (finite Gaussian).
+    heat_source: "rosenthal" (Build Job default), "eagar-tsai", or "goldak" (Melt Pool lab).
     """
     base = (
         thermal_props(material_name)
@@ -266,6 +270,7 @@ def calculate_meltpool_physics(
     r_reg = max(r_beam / math.sqrt(2.0), 8e-6)
 
     source = _normalize_heat_source(heat_source)
+    goldak_seed = seed_goldak_axes(r_beam)
     if source == "eagar-tsai":
         et_field = EagarTsaiField(T_preheat, P_geom, k_th, alpha_th, r_beam).bind_speed(v_scan)
 
@@ -273,20 +278,34 @@ def calculate_meltpool_physics(
             return et_field.temperature_C(x_m, y_m, z_m)
 
         heat_source_id = EAGAR_TSAI_MODEL_ID
+    elif source == "goldak":
+        gk_field = GoldakField(
+            T_preheat, P_geom, rho, cp, alpha_th,
+            goldak_seed["af_m"], goldak_seed["ar_m"], goldak_seed["b_m"], goldak_seed["c_m"],
+        ).bind_speed(v_scan)
+
+        def T_field(x_m, y_m, z_m):
+            return gk_field.temperature_C(x_m, y_m, z_m)
+
+        heat_source_id = GOLDAK_MODEL_ID
     else:
         def T_field(x_m, y_m, z_m):
             return rosenthal_temperature_C(x_m, y_m, z_m, T_preheat, P_geom, k_th, v_scan, alpha_th, r_reg)
 
         heat_source_id = "rosenthal-screening-v1"
 
+    fabbro = fabbro_keyhole_depth_m(
+        P_laser, v_scan, d_beam, k_s, alpha_solid, T_vap, T_preheat, eta_eff, normalized_enthalpy
+    )
+
     # Seed search box from the high-speed Rosenthal width scale
     denom_thermal = rho * cp * max(50.0, T_liq - T_preheat) * v_scan
     w_analytical = math.sqrt(max(1e-12, (8.0 / (math.pi * math.e)) * (P_geom / denom_thermal)))
     search_half_w = max(d_beam * 1.8, w_analytical * 1.8, 50e-6)
     search_len = max(d_beam * 3.0, w_analytical * 4.5, 80e-6)
-    search_depth = max(d_beam * 2.2, w_analytical * 2.0, 40e-6)
+    search_depth = max(d_beam * 2.2, w_analytical * 2.0, 40e-6, fabbro["depth_m"] * 1.35)
 
-    if source == "eagar-tsai":
+    if source in ("eagar-tsai", "goldak"):
         t_peak_C = float(T_field(0.0, 0.0, 0.0))
     else:
         t_peak_C = T_preheat + (2.0 * eta_eff * P_laser) / (math.pi * k_th * d_beam * math.sqrt(math.pi))
@@ -319,22 +338,28 @@ def calculate_meltpool_physics(
     x_rear = max(r_beam * 0.8, l_melt_m - x_front)
     l_melt_m = x_front + x_rear
 
-    # Keyhole / transition: Rosenthal is conduction-only; add vapor-depression extra depth.
-    # Extra penetration grows from ΔH/hs = 15 and accelerates past King onset ≈ 30.
-    if normalized_enthalpy < ENTHALPY_TRANSITION:
+    # Keyhole extra: Fabbro on Melt Pool lab fields; Rosenthal Build Job keeps the King increment.
+    if source in ("eagar-tsai", "goldak"):
+        extra = max(0.0, fabbro["depth_m"] - d_iso)
+        keyhole_depth_um = extra * 1e6
+    elif normalized_enthalpy < ENTHALPY_TRANSITION:
         extra = 0.0
-        keyhole_porosity_risk = "Negligible (<0.01%)"
         keyhole_depth_um = 0.0
     elif normalized_enthalpy < ENTHALPY_KEYHOLE:
         trans = (normalized_enthalpy - ENTHALPY_TRANSITION) / (ENTHALPY_KEYHOLE - ENTHALPY_TRANSITION)
         extra = d_iso * (0.15 + 0.55 * trans)
-        keyhole_porosity_risk = "Low-Moderate (Occasional Fluctuations)"
         keyhole_depth_um = extra * 1e6
     else:
         over = (normalized_enthalpy - ENTHALPY_KEYHOLE) / 10.0
         extra = d_iso * (0.85 + 0.55 * math.log10(1.0 + max(0.0, over)))
-        keyhole_porosity_risk = "High (Vapor Bubble Entrapment / Pore Defect Risk)"
         keyhole_depth_um = extra * 1e6
+
+    if normalized_enthalpy < ENTHALPY_TRANSITION:
+        keyhole_porosity_risk = "Negligible (<0.01%)"
+    elif normalized_enthalpy < ENTHALPY_KEYHOLE:
+        keyhole_porosity_risk = "Low-Moderate (Occasional Fluctuations)"
+    else:
+        keyhole_porosity_risk = "High (Vapor Bubble Entrapment / Pore Defect Risk)"
 
     d_melt_m = d_iso + extra
     regime = classify_enthalpy_regime(normalized_enthalpy)
@@ -630,8 +655,17 @@ def calculate_meltpool_physics(
                 "semiAxis_af_front_um": round(goldak_af_um, 1),
                 "semiAxis_ar_rear_um": round(goldak_ar_um, 1),
                 "semiAxis_b_halfwidth_um": round(goldak_b_um, 1),
-                "semiAxis_c_depth_um": round(goldak_c_um, 1)
+                "semiAxis_c_depth_um": round(goldak_c_um, 1),
+                "seed_af_um": round(goldak_seed["af_m"] * 1e6, 1),
+                "seed_ar_um": round(goldak_seed["ar_m"] * 1e6, 1),
             }
+        },
+        "keyholeModel": {
+            "modelId": FABBRO_MODEL_ID if source in ("eagar-tsai", "goldak") else "king-increment",
+            "fabbroDepth_um": round(fabbro["depth_m"] * 1e6, 1),
+            "aspectRatio_e_over_d": round(fabbro["aspectRatio_e_over_d"], 2),
+            "peclet": round(fabbro["peclet"], 2),
+            "doi": fabbro["doi"],
         },
         "hydrodynamicsAndRecoil": {
             "peakTemperature_C": round(t_peak_C, 1),

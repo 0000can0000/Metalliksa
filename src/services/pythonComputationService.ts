@@ -1360,7 +1360,7 @@ class PythonComputationService {
     layerThickness_um?: number;
     hatchSpacing_um?: number;
     laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm";
-    heatSource?: "rosenthal" | "eagar-tsai";
+    heatSource?: "rosenthal" | "eagar-tsai" | "goldak";
   }): Promise<PythonLPBFResult> {
     const res = await fetch("/api/python/lpbf-thermal-solver", {
       method: "POST",
@@ -1758,6 +1758,13 @@ export interface PythonLPBFResult {
   engine: string;
   modelId?: string;
   heatSourceModel?: string;
+  keyholeModel?: {
+    modelId?: string;
+    fabbroDepth_um?: number;
+    aspectRatio_e_over_d?: number;
+    peclet?: number;
+    doi?: string;
+  };
   computeTimeMs: number;
   proxyRoundtripMs?: number;
   material: string;

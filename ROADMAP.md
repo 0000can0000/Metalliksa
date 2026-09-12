@@ -28,7 +28,8 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 - [x] **Analytical Moving Heat Source**: Rosenthal 3D steady-state point source solver.
 - [x] **3D Interactive Melt Pool Visualizer**: Dynamic isotherm geometry ($T_{\text{liquidus}}$, $T_{\text{solidus}}$, $T_{\text{vaporization}}$).
 - [x] **Eagar-Tsai 3D Distributed Heat Source**: Finite 1/e² Gaussian (`eagar-tsai-v1`) on the Melt Pool 3D lab. Build Job verdict stays `rosenthal-screening-v1`. Not powder-bed k degradation and not Goldak FEA.
-- [ ] **Dynamic Keyhole Vaporization Depth**: Numerical model incorporating recoil pressure ($P_r$) and multiple laser reflections.
+- [x] **Goldak double-ellipsoid field**: Fachinotti–Cardona (2008) erf-corrected Nguyen integral (`goldak-v1`). Beam-seeded axes, not FEA.
+- [x] **Dynamic Keyhole Vaporization Depth**: Fabbro cylindrical keyhole (`fabbro-keyhole-v1`, Appl. Sci. 2020) on Goldak/ET lab paths. Recoil pressure still Clausius–Clapeyron screening, not collapse CFD.
 - [ ] **Marangoni Convection**: Melt pool circulation driven by surface tension temperature gradient ($\partial \gamma / \partial T$), accounting for surfactant concentrations (e.g., Sulfur in 316L).
 
 ---

@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 13:26 — Disable Bugbot for user
+- **Agent**: Cursor Grok 4.6
+- **Result**: FAIL
+- **Task**: User asked to turn Bugbot off so it would not keep billing.
+- **Done**: Opened cursor.com/dashboard/bugbot in the browser. The page asked for Cursor sign-in; this session is not logged into the user's Cursor account, so the toggle could not be flipped.
+- **Where we left off**: User must sign in and disable Bugbot in Automations / dashboard, or stay on the login page if they want to finish it themselves.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — account setting, not repo code
+
+---
+
 ## 2026-09-12 13:30 — Measured literature catalog (not solver-echo)
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

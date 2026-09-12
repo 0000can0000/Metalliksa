@@ -33,9 +33,10 @@ import { LPBF_DEMO_VECTORS } from "../../utils/lpbfDemoVectors";
 interface Props {
   onOpenSlicer?: () => void;
   onOpenGroundTruth?: () => void;
+  onOpenMeltPool?: () => void;
 }
 
-export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpenGroundTruth }) => {
+export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpenGroundTruth, onOpenMeltPool }) => {
   const specimen = useMaterialSpecimenStore((s) => s.activeSpecimen);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
   const liveMesh = useLpbfBuildMeshStore((s) => s.mesh);
@@ -106,10 +107,20 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
             </div>
             <h2 className="text-lg font-bold text-white mt-1">Python Build Job verdict</h2>
             <p className="text-[11px] text-slate-400 mt-1 max-w-2xl">
-              One Python call owns printability (LoF, keyhole, balling, recoater, literature P–v). The UI does not re-score. Melt pool is Rosenthal screening, not Goldak FEA. Analytical labs remain under Advanced physics.
+              One Python call owns printability (LoF, keyhole, balling, recoater, literature P–v). The UI does not re-score. Build Job melt pool is Rosenthal screening. Open Melt Pool 3D for Goldak / Eagar–Tsai / Fabbro geometry.
             </p>
+            {onOpenMeltPool && (
+              <button
+                type="button"
+                onClick={onOpenMeltPool}
+                className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-sky-500/25 border border-sky-400/40 text-sky-100 text-[11px] font-bold hover:border-sky-300/70"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                Open Melt Pool 3D
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {roundTripMs != null && (
               <span className="text-[10px] text-slate-500">
                 Round-trip {roundTripMs} ms

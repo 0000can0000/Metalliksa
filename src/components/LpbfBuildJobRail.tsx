@@ -377,56 +377,117 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-        <JobSlider
-          label="P (W)"
-          value={lpbf.laserPower_W}
-          min={pMin}
-          max={pMax}
-          step={10}
-          onChange={(v) => updateLpbfProcess({ laserPower_W: v })}
-        />
-        <JobSlider
-          label="v (mm/s)"
-          value={lpbf.scanSpeed_mms}
-          min={vMin}
-          max={vMax}
-          step={10}
-          onChange={(v) => updateLpbfProcess({ scanSpeed_mms: v })}
-        />
-        <JobSlider
-          label="h (µm)"
-          value={lpbf.hatch_um}
-          min={40}
-          max={200}
-          step={5}
-          onChange={(v) => updateLpbfProcess({ hatch_um: v })}
-        />
-        <JobSlider
-          label="t (µm)"
-          value={lpbf.layer_um}
-          min={20}
-          max={80}
-          step={5}
-          onChange={(v) => updateLpbfProcess({ layer_um: v })}
-        />
-        <JobSlider
-          label="d (µm)"
-          value={lpbf.beamDiameter_um}
-          min={40}
-          max={140}
-          step={5}
-          onChange={(v) => updateLpbfProcess({ beamDiameter_um: v })}
-        />
-        <JobSlider
-          label="Preheat (°C)"
-          value={lpbf.preheatTemp_C}
-          min={25}
-          max={500}
-          step={5}
-          onChange={(v) => updateLpbfProcess({ preheatTemp_C: v })}
-        />
-      </div>
+      {inAdvanced ? (
+        <details className="rounded-xl border border-[#162032] bg-[#0c1322] px-2.5 py-1.5">
+          <summary className="cursor-pointer list-none text-[10px] font-mono font-bold text-slate-300 flex items-center justify-between gap-2">
+            <span>
+              Process sliders · {alloyLabel} · {lpbf.laserPower_W} W · {lpbf.scanSpeed_mms} mm/s
+            </span>
+            <span className="text-slate-500 font-normal">expand</span>
+          </summary>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 pt-2">
+            <JobSlider
+              label="P (W)"
+              value={lpbf.laserPower_W}
+              min={pMin}
+              max={pMax}
+              step={10}
+              onChange={(v) => updateLpbfProcess({ laserPower_W: v })}
+            />
+            <JobSlider
+              label="v (mm/s)"
+              value={lpbf.scanSpeed_mms}
+              min={vMin}
+              max={vMax}
+              step={10}
+              onChange={(v) => updateLpbfProcess({ scanSpeed_mms: v })}
+            />
+            <JobSlider
+              label="h (µm)"
+              value={lpbf.hatch_um}
+              min={40}
+              max={200}
+              step={5}
+              onChange={(v) => updateLpbfProcess({ hatch_um: v })}
+            />
+            <JobSlider
+              label="t (µm)"
+              value={lpbf.layer_um}
+              min={20}
+              max={80}
+              step={5}
+              onChange={(v) => updateLpbfProcess({ layer_um: v })}
+            />
+            <JobSlider
+              label="d (µm)"
+              value={lpbf.beamDiameter_um}
+              min={40}
+              max={140}
+              step={5}
+              onChange={(v) => updateLpbfProcess({ beamDiameter_um: v })}
+            />
+            <JobSlider
+              label="Preheat (°C)"
+              value={lpbf.preheatTemp_C}
+              min={25}
+              max={500}
+              step={5}
+              onChange={(v) => updateLpbfProcess({ preheatTemp_C: v })}
+            />
+          </div>
+        </details>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <JobSlider
+            label="P (W)"
+            value={lpbf.laserPower_W}
+            min={pMin}
+            max={pMax}
+            step={10}
+            onChange={(v) => updateLpbfProcess({ laserPower_W: v })}
+          />
+          <JobSlider
+            label="v (mm/s)"
+            value={lpbf.scanSpeed_mms}
+            min={vMin}
+            max={vMax}
+            step={10}
+            onChange={(v) => updateLpbfProcess({ scanSpeed_mms: v })}
+          />
+          <JobSlider
+            label="h (µm)"
+            value={lpbf.hatch_um}
+            min={40}
+            max={200}
+            step={5}
+            onChange={(v) => updateLpbfProcess({ hatch_um: v })}
+          />
+          <JobSlider
+            label="t (µm)"
+            value={lpbf.layer_um}
+            min={20}
+            max={80}
+            step={5}
+            onChange={(v) => updateLpbfProcess({ layer_um: v })}
+          />
+          <JobSlider
+            label="d (µm)"
+            value={lpbf.beamDiameter_um}
+            min={40}
+            max={140}
+            step={5}
+            onChange={(v) => updateLpbfProcess({ beamDiameter_um: v })}
+          />
+          <JobSlider
+            label="Preheat (°C)"
+            value={lpbf.preheatTemp_C}
+            min={25}
+            max={500}
+            step={5}
+            onChange={(v) => updateLpbfProcess({ preheatTemp_C: v })}
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-400">
         <span className="text-slate-500" title={(job?.assumptions || []).join(" ")}>
@@ -511,7 +572,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
         </label>
       </div>
 
-      {actionable.length > 0 && (
+      {!inAdvanced && actionable.length > 0 && (
         <ul className="list-disc pl-5 space-y-0.5 text-[10px] text-slate-300 font-mono">
           {actionable.map((r) => (
             <li key={r}>{r}</li>

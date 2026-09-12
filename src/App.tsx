@@ -589,7 +589,7 @@ export default function App() {
       </header>
 
       {/* Main Workspace Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 pb-24 lg:pb-8 relative z-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 pb-28 lg:pb-8 relative z-10">
         {activeTab === "uq-lab" && (
           <UQLab onNavigate={(tabId) => navigateToTab(tabId as NavSubTab)} />
         )}

@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 14:01 — Surface Melt Pool 3D in LPBF UI
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User could not find the 3D simulation; asked to beautify the LPBF interface so the studio is visible.
+- **Done**: Sticky Build Job / Melt Pool 3D / More labs bar; Melt Pool studio renders above the job rail; sliders collapse while the 3D viewport is open; larger canvas; Open Melt Pool 3D on the decision card. Verified in browser at localhost:3000.
+- **Where we left off**: Nothing left on this UI pass. Physics lock unchanged (no CFD / Goldak FEA / Build Job rescoring).
+- **Files**: `src/components/Additive3DDistortionLab.tsx`, `src/components/LpbfBuildJobRail.tsx`, `src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `src/App.tsx`, `sonkayıtlar/LOG.md`
+- **Tests**: `npx tsc --noEmit` PASS; browser click Melt Pool 3D showed Goldak studio + canvas (solver Computing…)
+
+---
+
 ## 2026-09-12 13:49 — Commit/push catalog kıvam close-out
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

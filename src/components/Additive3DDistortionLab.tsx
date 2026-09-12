@@ -92,6 +92,7 @@ function isLpbfDistortionSubTab(value: string): value is LpbfDistortionSubTab {
 const ADVANCED_PHYSICS_LABS: {
   id: LpbfDistortionSubTab;
   label: string;
+  shortLabel: string;
   badge: string;
   icon: React.ElementType;
   activeClass: string;
@@ -99,6 +100,7 @@ const ADVANCED_PHYSICS_LABS: {
   {
     id: "3d-macro-distortion",
     label: "3D CAD/STL Distortion & Residual Stress FEA",
+    shortLabel: "Distortion FEA",
     badge: "ASTM F3055",
     icon: Box,
     activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
@@ -106,6 +108,7 @@ const ADVANCED_PHYSICS_LABS: {
   {
     id: "3d-cross-section-melt-pool",
     label: "3D Cross-Sectional Melt Pool & Keyhole Studio",
+    shortLabel: "Melt Pool 3D",
     badge: "Python HPC",
     icon: Zap,
     activeClass: "bg-sky-500/20 text-sky-200 border-sky-400/50",
@@ -113,41 +116,47 @@ const ADVANCED_PHYSICS_LABS: {
   {
     id: "marangoni-pore-heatmap",
     label: "3D Marangoni Flow & Gas Entrapment Heatmap",
-    badge: "Navier–Stokes",
+    shortLabel: "Marangoni map",
+    badge: "Screening",
     icon: Waves,
     activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
   },
   {
     id: "rosenthal-laser-profile",
     label: "Rosenthal Laser Spot & Absorption Melt Pool",
-    badge: "Rosenthal + Python",
+    shortLabel: "Rosenthal spot",
+    badge: "Rosenthal",
     icon: Focus,
     activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
   },
   {
     id: "solidification-front-cet",
     label: "Solidification Front Anisotropy (G×R) & CET Mapper",
-    badge: "Hunt CET",
+    shortLabel: "Solidification G/R",
+    badge: "Hunt",
     icon: GitFork,
     activeClass: "bg-purple-500/20 text-purple-200 border-purple-400/50",
   },
   {
     id: "multi-track-accumulation",
     label: "Multi-Track Scan Strategy & Thermal Accumulation",
-    badge: "Hatch & Dwell",
+    shortLabel: "Multi-track",
+    badge: "Hatch",
     icon: Waves,
     activeClass: "bg-amber-500/20 text-amber-200 border-amber-400/50",
   },
   {
     id: "anisotropic-fatigue-estimator",
     label: "Anisotropic Mechanical & S-N Fatigue",
-    badge: "Hill'48 + Python",
+    shortLabel: "S-N fatigue",
+    badge: "Hill'48",
     icon: Compass,
     activeClass: "bg-purple-500/20 text-purple-200 border-purple-400/50",
   },
   {
     id: "operando-synchrotron",
     label: "High-Speed Operando Synchrotron X-Ray Workbench",
+    shortLabel: "Operando X-ray",
     badge: "APS / ESRF",
     icon: Camera,
     activeClass: "bg-pink-500/20 text-pink-200 border-pink-400/50",
@@ -155,7 +164,8 @@ const ADVANCED_PHYSICS_LABS: {
   {
     id: "2d-thermal-melt-pool",
     label: "Thermal Melt Pool & Solidification Front Lab",
-    badge: "2D Rosenthal",
+    shortLabel: "2D thermal",
+    badge: "2D",
     icon: Flame,
     activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
   },
@@ -453,13 +463,22 @@ export const Additive3DDistortionLab: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<LpbfDistortionSubTab>("industrial-decision");
   const [focusedWizardStage, setFocusedWizardStage] = useState<LpbfBuildJobStage>("process");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const labStageRef = useRef<HTMLDivElement | null>(null);
+
+  const openPhysicsLab = (id: LpbfDistortionSubTab) => {
+    setActiveSubTab(id);
+    setAdvancedOpen(id !== "3d-cross-section-melt-pool");
+    window.setTimeout(() => {
+      labStageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 40);
+  };
 
   useEffect(() => {
     const applySubTab = (raw?: string) => {
       if (!raw || !isLpbfDistortionSubTab(raw)) return;
       setActiveSubTab(raw);
       if (isAdvancedLpbfSubTab(raw)) {
-        setAdvancedOpen(true);
+        setAdvancedOpen(raw !== "3d-cross-section-melt-pool");
         return;
       }
       if (raw === "basic-stl-slicer") setFocusedWizardStage("cad");
@@ -1196,60 +1215,98 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
     }, 1000);
   };
 
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto font-mono">
-      <LpbfBuildJobRail
-        activeSubTab={activeSubTab}
-        focusedWizardStage={focusedWizardStage}
-        onNavigateStage={(subTab, stage) => {
-          setFocusedWizardStage(stage);
-          setActiveSubTab(subTab as LpbfDistortionSubTab);
-        }}
-        onBackToDecision={() => {
-          setFocusedWizardStage("process");
-          setActiveSubTab("industrial-decision");
-        }}
-      />
+  const inAdvanced = isAdvancedLpbfSubTab(activeSubTab);
+  const otherPhysicsLabs = ADVANCED_PHYSICS_LABS.filter((lab) => lab.id !== "3d-cross-section-melt-pool");
 
-      <details
-        className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-2"
-        open={advancedOpen || isAdvancedLpbfSubTab(activeSubTab)}
-        onToggle={(e) => setAdvancedOpen((e.currentTarget as HTMLDetailsElement).open)}
-      >
-        <summary className="cursor-pointer list-none flex items-center gap-2 px-2 py-2 text-xs font-mono font-bold text-slate-300">
-          <ChevronDown className="w-4 h-4 text-slate-500" />
-          Advanced physics
-          <span className="text-[10px] font-normal text-slate-500">Melt pool 3D, Rosenthal, Marangoni, CET, fatigue, operando, 2D thermal, CAD distortion</span>
-        </summary>
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 p-1.5">
-          {ADVANCED_PHYSICS_LABS.map((lab) => {
+  return (
+    <div className="space-y-4 max-w-7xl mx-auto font-mono pb-24 lg:pb-4">
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-1 bg-[#070b13]/90 backdrop-blur-md border-b border-[#162032]/80">
+        <div className="grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setFocusedWizardStage("process");
+              setActiveSubTab("industrial-decision");
+              setAdvancedOpen(false);
+            }}
+            className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-bold border transition ${
+              activeSubTab === "industrial-decision"
+                ? "bg-emerald-500/20 text-emerald-100 border-emerald-400/50"
+                : "bg-[#0c1322] text-slate-300 border-[#1e2d46] hover:text-white"
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            Build Job
+          </button>
+          <button
+            type="button"
+            onClick={() => openPhysicsLab("3d-cross-section-melt-pool")}
+            className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-bold border transition ${
+              activeSubTab === "3d-cross-section-melt-pool"
+                ? "bg-sky-500/25 text-sky-100 border-sky-400/60 shadow-[0_0_18px_rgba(56,189,248,0.25)]"
+                : "bg-gradient-to-r from-amber-500/20 to-sky-500/20 text-white border-sky-400/40 hover:border-sky-300/70"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            Melt Pool 3D
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-bold border transition ${
+              advancedOpen || (inAdvanced && activeSubTab !== "3d-cross-section-melt-pool")
+                ? "bg-slate-500/20 text-slate-100 border-slate-400/40"
+                : "bg-[#0c1322] text-slate-300 border-[#1e2d46] hover:text-white"
+            }`}
+          >
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+            More labs
+          </button>
+        </div>
+      </div>
+
+      {advancedOpen && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {otherPhysicsLabs.map((lab) => {
             const Icon = lab.icon;
             const active = activeSubTab === lab.id;
             return (
               <button
                 key={lab.id}
                 type="button"
-                onClick={() => {
-                  setAdvancedOpen(true);
-                  setActiveSubTab(lab.id);
-                }}
-                className={`flex-1 min-w-[220px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition border ${
+                onClick={() => openPhysicsLab(lab.id)}
+                className={`flex flex-col items-start gap-1 p-3 rounded-xl text-left border transition ${
                   active
                     ? lab.activeClass
-                    : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border-transparent"
+                    : "bg-[#090e18] text-slate-300 border-[#1e2d46] hover:border-slate-500 hover:text-white"
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{lab.label}</span>
-                <span className="text-[9px] px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10 hidden lg:inline-block">
-                  {lab.badge}
-                </span>
+                <Icon className="w-4 h-4 text-sky-400" />
+                <span className="text-[11px] font-bold leading-tight">{lab.shortLabel}</span>
+                <span className="text-[9px] text-slate-500">{lab.badge}</span>
               </button>
             );
           })}
         </div>
-      </details>
+      )}
 
+      {!inAdvanced && (
+        <LpbfBuildJobRail
+          activeSubTab={activeSubTab}
+          focusedWizardStage={focusedWizardStage}
+          onNavigateStage={(subTab, stage) => {
+            setFocusedWizardStage(stage);
+            setActiveSubTab(subTab as LpbfDistortionSubTab);
+          }}
+          onBackToDecision={() => {
+            setFocusedWizardStage("process");
+            setActiveSubTab("industrial-decision");
+            setAdvancedOpen(false);
+          }}
+        />
+      )}
+
+      <div ref={labStageRef} id="lpbf-lab-stage" className="scroll-mt-16">
       {activeSubTab === "industrial-decision" ? (
         <IndustrialLPBFDecisionLab
           onOpenSlicer={() => {
@@ -1260,6 +1317,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
             setFocusedWizardStage("record");
             setActiveSubTab("ground-truth-foundation");
           }}
+          onOpenMeltPool={() => openPhysicsLab("3d-cross-section-melt-pool")}
         />
       ) : activeSubTab === "ground-truth-foundation" ? (
         <LPBFGroundTruthDataLab
@@ -2381,6 +2439,22 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
         </div>
       </div>
         </>
+      )}
+      </div>
+      {inAdvanced && (
+        <LpbfBuildJobRail
+          activeSubTab={activeSubTab}
+          focusedWizardStage={focusedWizardStage}
+          onNavigateStage={(subTab, stage) => {
+            setFocusedWizardStage(stage);
+            setActiveSubTab(subTab as LpbfDistortionSubTab);
+          }}
+          onBackToDecision={() => {
+            setFocusedWizardStage("process");
+            setActiveSubTab("industrial-decision");
+            setAdvancedOpen(false);
+          }}
+        />
       )}
     </div>
   );

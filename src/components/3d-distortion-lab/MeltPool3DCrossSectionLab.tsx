@@ -791,7 +791,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         )}
 
         {/* Dynamic Transition Banner */}
-        <div className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${regimeInfo.badgeColor}`}>
+        <div className={`p-2.5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-2 ${regimeInfo.badgeColor}`}>
           <div className="flex items-start gap-2.5">
             <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
@@ -863,8 +863,14 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         </div>
       </div>
 
-      {/* PARAMETER SLIDERS */}
-      <div className="p-3.5 rounded-xl bg-[#090e18] border border-[#162032] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+      <details className="p-3.5 rounded-xl bg-[#090e18] border border-[#162032]">
+        <summary className="cursor-pointer list-none flex items-center justify-between text-[11px] font-bold text-slate-200">
+          <span>
+            Melt-pool knobs · {selectedMaterial} · {laserPower_W} W · {scanSpeed_mms} mm/s
+          </span>
+          <span className="text-slate-500 font-normal">expand</span>
+        </summary>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3 pt-3">
         {/* Material */}
         <div className="space-y-1">
           <label className="text-[10px] text-slate-400">Alloy Material</label>
@@ -998,7 +1004,8 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
           />
         </div>
-      </div>
+        </div>
+      </details>
 
       {/* 3D VIEWPORT & SLICING CONTROLS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -1105,10 +1112,11 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             </div>
 
             {/* 3D WebGL Canvas */}
-            <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-[#060913]">
+            <div className="relative rounded-xl overflow-hidden border border-sky-500/30 bg-[#060913] shadow-[0_0_40px_rgba(14,165,233,0.12)]">
               <div
                 ref={threeMountRef}
-                className="w-full h-[440px] cursor-grab active:cursor-grabbing"
+                id="melt-pool-3d-canvas"
+                className="w-full h-[min(52vh,520px)] min-h-[320px] cursor-grab active:cursor-grabbing"
               />
 
               {/* Slicing Offset Slider Overlay */}

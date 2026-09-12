@@ -74,6 +74,12 @@ class Queue:
         with self.connect() as c:
             c.execute("UPDATE jobs SET "+",".join(k+"=?" for k in values)+" WHERE id=?", [*values.values(), job])
 
+    def finish_running(self, job, **values):
+        # Atomic terminal transition: a cancellation winning the race stays cancelled.
+        with self.lock, self.connect() as c:
+            c.execute("UPDATE jobs SET "+",".join(k+"=?" for k in values)+" WHERE id=? AND status='running'",
+                      [*values.values(), job])
+
     def get(self, job):
         if not isinstance(job, str) or len(job) != 32 or any(ch not in "0123456789abcdef" for ch in job):
             raise ValueError("Invalid job id")
@@ -150,7 +156,7 @@ class Queue:
                 self.execute(row["id"])
             except Exception as e:
                 if row:
-                    self.update(row["id"], status="failed", error=str(e))
+                    self.finish_running(row["id"], status="failed", error=str(e))
                 time.sleep(.1)
 
     def execute(self, job):
@@ -173,9 +179,9 @@ class Queue:
                         if state == "cancelled":
                             pass
                         elif timed_out:
-                            self.update(job, status="timed_out", error="Simulation timeout")
+                            self.finish_running(job, status="timed_out", error="Simulation timeout")
                         elif self.closed.is_set():
-                            self.update(job, status="failed", error="Worker stopped during execution")
+                            self.finish_running(job, status="failed", error="Worker stopped during execution")
                         return
                     text = (folder/"progress.log").read_text(errors="replace")[-16000:]
                     progress = 0.

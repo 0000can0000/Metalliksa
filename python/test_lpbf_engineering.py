@@ -136,6 +136,8 @@ class Verification(unittest.TestCase):
             first = queue.submit(CASE); second = queue.submit(CASE)
             self.assertEqual(first["id"], second["id"]); self.assertTrue(second["deduplicated"]); self.assertFalse(second["cacheHit"])
             self.assertEqual(queue.cancel(first["id"])["status"], "cancelled")
+            queue.finish_running(first["id"], status="timed_out", error="Racing timeout fixture")
+            self.assertEqual(queue.get(first["id"])["status"], "cancelled")
             third = queue.submit(CASE); self.assertNotEqual(third["id"], first["id"])
             queue.update(third["id"], status="running")
             restarted = Queue(tmp, start=False)

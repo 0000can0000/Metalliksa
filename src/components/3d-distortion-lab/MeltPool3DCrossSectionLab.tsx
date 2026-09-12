@@ -209,20 +209,20 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     const isTransition = family === "Transition";
     const isConduction = family === "Conduction";
 
-    let modeName = pyResult?.meltPoolGeometry?.regime || "Conduction Mode (Stable)";
+    const modeName = isKeyhole ? "High keyhole screening indicator" : isTransition ? "Transition screening indicator" : "Conduction assumption (screening)";
     let badgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
     const sourceLabel =
       heatSource === "goldak" ? "Goldak double-ellipsoid" : heatSource === "eagar-tsai" ? "Eagar–Tsai Gaussian" : "regularized Rosenthal";
-    let desc = `Stable conduction-mode pool. Width and depth from the T = T_liquidus isotherm of a ${sourceLabel} field (King ΔH/hs < 15).`;
+    let desc = `Analytical conduction estimate. Width and depth from the T = T_liquidus isotherm of a ${sourceLabel} field (King ΔH/hs < 15).`;
     let keyRisk = "Low screening indicator — unvalidated";
 
     if (isKeyhole) {
       badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]";
-      desc = `King keyhole onset (ΔH/hs ≥ 30). Extra vapor-depression depth is added on top of the ${sourceLabel} conduction isotherm; recoil can trap keyhole pores.`;
-      keyRisk = "HIGH (Keyhole Porosity Danger)";
+      desc = `King keyhole onset (ΔH/hs ≥ 30). The ${sourceLabel} conduction estimate and Fabbro depth proxy do not resolve a cavity or pore entrapment.`;
+      keyRisk = "High keyhole screening indicator";
     } else if (isTransition) {
       badgeColor = "bg-amber-500/20 text-amber-300 border-amber-500/40";
-      desc = `Transition band (15 ≤ ΔH/hs < 30). Mild vapor depression on the ${sourceLabel} liquidus isotherm plus a fractional cavity increment.`;
+      desc = `Transition band (15 ≤ ΔH/hs < 30). ${sourceLabel} conduction estimate; free-surface shape unresolved.`;
       keyRisk = "Moderate / Near Threshold";
     }
 
@@ -278,7 +278,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     controlsGroupRef.current = rootGroup;
 
     const content = new THREE.Group();
-    content.add(content);
+    rootGroup.add(content);
     contentGroupRef.current = content;
 
     let isDragging = false;
@@ -358,8 +358,6 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     const ar = geom?.goldakParameters?.semiAxis_ar_rear_um || beamDiameter_um * 2.8;
     const b = geom?.goldakParameters?.semiAxis_b_halfwidth_um || beamDiameter_um * 0.75;
     const c = geom?.goldakParameters?.semiAxis_c_depth_um || layerThickness_um * 1.8;
-    const d_kh = geom?.keyholeVaporCavityDepth_um || 0;
-    const isKeyhole = regimeInfo.isKeyhole;
     const Ma = pyResult?.hydrodynamicsAndRecoil?.marangoniNumber ?? 800;
 
     // Clip axes match the mesh: X = scan, Y = depth (negative down), Z = hatch.
@@ -498,44 +496,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       });
     }
 
-    // 7. KEYHOLE VAPOR DEPRESSION CAVITY MESH (If in Keyhole or Transition mode)
-    if (d_kh > 5 || isKeyhole) {
-      const khDepth = Math.max(d_kh, isKeyhole ? c * 0.55 : d_kh);
-      const khRadius = beamDiameter_um * 0.28;
-
-      const keyholeConeGeom = new THREE.ConeGeometry(khRadius, khDepth, 32, 16, true);
-      keyholeConeGeom.rotateX(Math.PI); // Point down
-      keyholeConeGeom.translate(0, -khDepth / 2, 0);
-
-      const keyholeMat = new THREE.MeshStandardMaterial({
-        color: 0xf43f5e,
-        emissive: 0xef4444,
-        emissiveIntensity: 0.6,
-        roughness: 0.2,
-        metalness: 0.9,
-        side: THREE.DoubleSide,
-        clippingPlanes: localClippingPlanes,
-      });
-
-      const keyholeMesh = new THREE.Mesh(keyholeConeGeom, keyholeMat);
-      content.add(keyholeMesh);
-
-      // Trapped Keyhole Bubble / Porosity Sphere at the cavity root
-      if (isKeyhole) {
-        const bubbleGeom = new THREE.SphereGeometry(khRadius * 0.55, 16, 16);
-        const bubbleMat = new THREE.MeshStandardMaterial({
-          color: 0x38bdf8,
-          emissive: 0x0284c7,
-          emissiveIntensity: 0.8,
-          roughness: 0.1,
-          wireframe: true,
-          clippingPlanes: localClippingPlanes,
-        });
-        const bubbleMesh = new THREE.Mesh(bubbleGeom, bubbleMat);
-        bubbleMesh.position.set(-af * 0.4, -khDepth * 1.05, 0);
-        content.add(bubbleMesh);
-      }
-    }
+    // No cavity or trapped pore rendering: free surface is unresolved.
 
     // 8. LASER BEAM & MULTI-REFLECTION OPTICAL RAYS
     if (showLaserRays) {
@@ -566,23 +527,6 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       const coreLine = new THREE.Line(coreGeom, coreMat);
       content.add(coreLine);
 
-      // Keyhole Multi-Reflection Ray-Tracing Bounce Lines
-      if (isKeyhole && d_kh > 5) {
-        const rayPoints = [
-          new THREE.Vector3(0, 50, 0),
-          new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(-r_beam * 0.5, -d_kh * 0.4, 0),
-          new THREE.Vector3(r_beam * 0.3, -d_kh * 0.7, 0),
-          new THREE.Vector3(-r_beam * 0.1, -d_kh * 0.95, 0),
-        ];
-        const rayGeom = new THREE.BufferGeometry().setFromPoints(rayPoints);
-        const rayLineMat = new THREE.LineBasicMaterial({
-          color: 0xfde047,
-          linewidth: 2,
-        });
-        const rayLine = new THREE.Line(rayGeom, rayLineMat);
-        content.add(rayLine);
-      }
     }
 
     // 9. MARANGONI CONVECTION STREAMLINE VORTICES
@@ -720,7 +664,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-bold text-white tracking-wide">
-                  3D Cross-Sectional Melt Pool Geometry &amp; Conduction-Keyhole Transition Studio
+                  Analytical Screening Geometry · Melt Pool Studio
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1">
                   <Cpu className="w-3 h-3 text-sky-400" />
@@ -839,7 +783,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             onClick={() => applyPreset("conduction-safe")}
             className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] transition"
           >
-            ✅ Stable Conduction
+            Conduction screening
           </button>
           <button
             type="button"
@@ -853,7 +797,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
             onClick={() => applyPreset("keyhole-danger")}
             className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] transition"
           >
-            🚨 Critical Keyhole Cavity
+            High keyhole screening indicator
           </button>
           <button
             type="button"
@@ -1081,7 +1025,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                     showMarangoniVectors ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-slate-900 text-slate-500 border-slate-800"
                   }`}
                 >
-                  Marangoni Vortices
+                  Illustrative flow (screening)
                 </button>
                 <button
                   type="button"
@@ -1090,7 +1034,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                     showLaserRays ? "bg-rose-500/10 text-rose-300 border-rose-500/30" : "bg-slate-900 text-slate-500 border-slate-800"
                   }`}
                 >
-                  Laser &amp; Ray Reflections
+                  Illustrative laser
                 </button>
                 <button
                   type="button"
@@ -1155,7 +1099,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 {regimeInfo.isKeyhole && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded bg-rose-600 animate-pulse" />
-                    <span className="text-rose-300 font-bold">Keyhole Vapor Depression (T &gt; T_boil)</span>
+                    <span className="text-rose-300 font-bold">Keyhole unresolved · screening indicator</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
@@ -1213,7 +1157,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                     <span className="font-bold text-white">{pyResult.meltPoolGeometry.aspectRatio_L_over_W}</span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                    <span className="text-slate-400">Keyhole Cavity Depth:</span>
+                    <span className="text-slate-400">Fabbro depth proxy (screening):</span>
                     <span className="font-bold text-rose-400">{pyResult.meltPoolGeometry.keyholeVaporCavityDepth_um} μm</span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
@@ -1221,18 +1165,18 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                     <span className="font-bold text-amber-300">{pyResult.hydrodynamicsAndRecoil.peakTemperature_C} °C</span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                    <span className="text-slate-400">Surface T (evaporative cap):</span>
+                    <span className="text-slate-400">Surface T proxy (screening cap):</span>
                     <span className="font-bold text-amber-200">
                       {pyResult.hydrodynamicsAndRecoil.surfaceTemperature_C ?? "—"} °C
                     </span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                    <span className="text-slate-400">Knudsen Recoil (0.54 Psat):</span>
+                    <span className="text-slate-400">Recoil proxy (screening; no momentum):</span>
                     <span className="font-bold text-rose-300">{pyResult.hydrodynamicsAndRecoil.knudsenRecoilPressure_kPa} kPa</span>
                   </div>
                   {pyResult.marangoniModel && (
                     <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                      <span className="text-slate-400">Marangoni flow:</span>
+                      <span className="text-slate-400">Marangoni tendency (screening):</span>
                       <span className="font-bold text-teal-300 capitalize">
                         {pyResult.marangoniModel.flowDirection} @ {pyResult.marangoniModel.sulfur_ppm} ppm S
                       </span>
@@ -1336,7 +1280,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-1.5 bg-[#050810] rounded-lg border border-slate-800">
-                  <span className="text-slate-300">Keyhole Porosity:</span>
+                  <span className="text-slate-300">Keyhole screening risk:</span>
                   <span className={`font-bold ${regimeInfo.isKeyhole ? "text-rose-400" : "text-emerald-400"}`}>
                     {pyResult.defectDiagnostics.keyholePorosityRisk}
                   </span>

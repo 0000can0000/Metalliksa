@@ -35,7 +35,7 @@
         "absorptivity": 0.38,
         "emissivity": 0.35
       },
-      "implementationHash": "3a58a7f572950d3e5d0ce11e3ebb44bc43c8183ca2673795d05272b51422ec00",
+      "implementationHash": "5c04e6f28d81e08d70f1508b2a3a9a1e929463d841b85d42d6e290931bbc02b7",
       "reference": {
         "metrics": {
           "length_um": 160.0,
@@ -61,7 +61,7 @@
           "stored_J": 0.003799311515585023,
           "relativeError": 3.423796334164751e-16
         },
-        "wallTime_s": 0.12290649599981407
+        "wallTime_s": 0.11875503900046169
       },
       "openfoam": {
         "metrics": {
@@ -111,7 +111,7 @@
           "meanDt_s": 7.368421052631578e-07,
           "steps": 475
         },
-        "wallTime_s": 2.589271851000376
+        "wallTime_s": 2.3747905969994463
       },
       "peakDifference_pct": 0.0
     },
@@ -147,7 +147,7 @@
         "absorptivity": 0.38,
         "emissivity": 0.35
       },
-      "implementationHash": "534fe61dc9137a61e7d14f5e795df5d52fed7ae9adccd787403c1d61a884b16b",
+      "implementationHash": "a9e7c07db77b334e6f48031da528b529c26bb20bc3ec9fa374a102b724799b86",
       "reference": {
         "metrics": {
           "width_um": 0.0,
@@ -173,7 +173,7 @@
           "stored_J": 0.0037991798746115674,
           "relativeError": 3.880302512053447e-15
         },
-        "wallTime_s": 0.4122008320000532
+        "wallTime_s": 0.37035801300044113
       },
       "openfoam": {
         "metrics": {
@@ -223,7 +223,7 @@
           "meanDt_s": 9.99999999999989e-07,
           "steps": 1180
         },
-        "wallTime_s": 2.927921890000107
+        "wallTime_s": 2.601311774000351
       },
       "peakDifference_pct": 1.5859019869670619e-13
     },
@@ -259,7 +259,7 @@
         "absorptivity": 0.38,
         "emissivity": 0.35
       },
-      "implementationHash": "004ff5be274eb9c884494907f4d2f54949848c2afe81f64969d29fa40a2e4d6b",
+      "implementationHash": "7d4c29596c2256ac00b374d95584a48ab99419812800e801abd4b2bc6dd27462",
       "reference": {
         "metrics": {
           "width_um": 0.0,
@@ -285,7 +285,7 @@
           "stored_J": 0.0018997612118518297,
           "relativeError": 3.5379228786369615e-15
         },
-        "wallTime_s": 0.21159245500075485
+        "wallTime_s": 0.1895900099998471
       },
       "openfoam": {
         "metrics": {
@@ -335,7 +335,7 @@
           "meanDt_s": 1e-06,
           "steps": 600
         },
-        "wallTime_s": 3.0266163239994057
+        "wallTime_s": 2.6075281630000973
       },
       "peakDifference_pct": -5.672530555130965e-14
     }

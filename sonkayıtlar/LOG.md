@@ -1,3 +1,13 @@
+## 2026-09-12 22:52 — LPBF engineering UI / safe visualization increment
+
+- **Agent:** GPT-6 Astra (Codex).
+- **Result:** PASS for delivered UI and thermal research workflow; PARTIAL for full multiphysics request.
+- **Done:** Engineering summary, bounded/resettable controls, resource estimates, genuine thermal field previews/history, mass/energy evidence, persistent refreshable jobs, cancellation without results, cache status, uncertainty/holdout comparison and artifact checksums. Fixed pre-existing Three.js self-parent scene bug and made timeout/failure terminal updates atomic against concurrent cancellation. Removed fake cavity/pore/reflection geometry; qualified proxy/regime/stress labels.
+- **Files:** `python/lpbf_worker.py`, `python/test_lpbf_engineering.py`, `docs/LPBF_BENCHMARK_2026-09-12.json` (final implementation hash), `src/App.tsx`, `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `MeltPool3DCrossSectionLab.tsx`, `CADStlSlicerDistortionLab.tsx`, `LPBFGroundTruthDataLab.tsx`, `src/services/lpbfSimulationService.ts`, `tests/lpbf-contract.test.ts`, `tests/lpbf-smoke-server.ts`, `PROOF.md`, this log.
+- **Tests:** lint/build/runtime contract pass; 23 WSL engineering tests and 6 API tests pass; real OpenFOAM compilation/three benchmark cases pass; original LPBF/Goldak/Fabbro/Eagar–Tsai/Marangoni/solidification/literature suites pass. Browser verified actual thermal images, measurement comparison, active-job refresh and cancellation; full-app scene renders after root-group fix. See PROOF for exact scopes and limitations.
+- **Where we left off:** Thermal platform increment delivered. No VOF, momentum/evaporation/recoil/keyhole CFD, local adaptive refinement, local track defect extraction, verified full material registry or experimental holdout qualification. All remain explicit research gates. Main JS bundle ~9.58 MB remains a performance risk. Full development application left running at 127.0.0.1:3000.
+- **Git:** Foundation commit `1c9c3fe`; UI in the following task-only commit. Push targets existing `origin/main` as explicitly requested; outcome reported after execution. Unrelated `.cursor/mcp.json` untouched.
+
 ## 2026-09-12 22:49 — LPBF thermal foundation / scan history / reliability increment
 
 - **Agent:** GPT-6 Astra (Codex).

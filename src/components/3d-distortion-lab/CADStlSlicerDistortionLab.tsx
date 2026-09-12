@@ -915,7 +915,7 @@ Boundary Condition: ${boundaryCondition.toUpperCase()}
    - Recoater Blade Clearance Limit (1.2 * t_layer): ${metrics?.recoaterClearanceLimit_um ?? "N/A"} µm
    - Recoater Safety Clearance Margin: ${metrics?.recoaterMargin_um ?? "N/A"} µm
    - Recoater Collision Status: ${metrics?.recoaterStatus ?? "N/A"}
-   - Peak Von Mises Residual Stress: ${metrics?.maxVonMisesStress_MPa ?? "N/A"} MPa (Yield Strength: ${alloy.yield_MPa} MPa)
+   - Peak stress proxy (unvalidated): ${metrics?.maxVonMisesStress_MPa ?? "N/A"} MPa (Yield Strength: ${alloy.yield_MPa} MPa)
    - Support Interface Yield Ratio: ${metrics?.supportYieldRatio ?? "N/A"}x (${metrics?.supportDetachmentRisk ?? "N/A"})
 
 4. METALLURGICAL MITIGATION DIRECTIVES:
@@ -953,7 +953,7 @@ Verified by MetalliX Python Inherent Strain FEA Engine
             </div>
             <p className="text-xs text-slate-400">
               Upload custom 3D CAD/STL models or select aerospace benchmarks to simulate progressive inherent strain shrinkage (
-              <span className="text-cyan-300 font-mono">ε_xx, ε_yy, ε_zz</span>), Von Mises residual stress, recoater blade collision, and wire-EDM cutoff springback.
+              <span className="text-cyan-300 font-mono">ε_xx, ε_yy, ε_zz</span>), unvalidated stress proxies, recoater-clearance estimates, and cutoff springback estimates. This is not a resolved thermo-mechanical stress solution.
             </p>
           </div>
 
@@ -1175,7 +1175,7 @@ Verified by MetalliX Python Inherent Strain FEA Engine
           <div className="flex items-center justify-between pb-2 border-b border-[#162032]">
             <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-purple-400" />
-              Residual Stress (σ_vM)
+              Stress proxy (unvalidated)
             </span>
             <span className="text-[10px] text-purple-300 font-mono">
               Yield: {alloy.yield_MPa} MPa
@@ -1307,7 +1307,7 @@ Verified by MetalliX Python Inherent Strain FEA Engine
                   className="bg-[#0c1424] border border-[#1e2d46] text-cyan-300 text-xs rounded-xl px-2.5 py-1.5 font-mono focus:outline-none focus:border-cyan-400"
                 >
                   <option value="total-distortion">Total Distortion |δ| (µm)</option>
-                  <option value="residual-stress">Von Mises Residual Stress (MPa)</option>
+                  <option value="residual-stress">Stress proxy (MPa; unvalidated)</option>
                   <option value="recoater-upward-warp">Vertical δ_z Recoater Clearance (µm)</option>
                   <option value="inherent-strain">Inherent Strain Magnitude (%)</option>
                   <option value="hot-tearing-rdg">Hot Tearing Cracking Susceptibility</option>
@@ -1451,7 +1451,7 @@ Verified by MetalliX Python Inherent Strain FEA Engine
               <div className="absolute bottom-3 right-3 bg-[#090e18]/90 backdrop-blur border border-[#1e2d46] p-2 rounded-xl text-[10px] space-y-1">
                 <div className="text-slate-400 font-bold">
                   {activeHeatmap === "residual-stress"
-                    ? "Residual Stress (MPa)"
+                    ? "Stress proxy (MPa; unvalidated)"
                     : activeHeatmap === "recoater-upward-warp"
                     ? "Recoater Clearance (µm)"
                     : "Distortion |δ| (µm)"}

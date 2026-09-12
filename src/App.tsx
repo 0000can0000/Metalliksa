@@ -232,9 +232,9 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
         id: "3d-distortion-lab",
         label: "3D CAD/STL Defect & Thermal Stress (LPBF)",
         shortLabel: "3D LPBF Simulation",
-        sublabel: "Additive Residual Stress σ_res, Warpage, Keyhole & LoF Heatmap",
+        sublabel: "Transient thermal research, analytical melt-pool screening and process history",
         icon: Box,
-        badge: "ASTM F3055",
+        badge: "Research / Screening",
         category: "Additive Manufacturing",
       },
       {

@@ -1449,7 +1449,7 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                   3. Degeneracy of (P, v) Pairs &amp; Cooling Rate Divergence
                 </span>
                 <p className="text-[11px] text-slate-400 leading-relaxed font-mono">
-                  Doubling power (2P) and doubling scan speed (2v) produces the exact same VED. However, the solidification cooling rate <code className="text-slate-300">Ṫ = G · R ∝ v</code> doubles! This transforms coarse columnar grains into ultra-fine cellular martensite, altering yield strength and residual stresses.
+                  Equal VED does not imply equal thermal history. Cooling rate depends on both the local thermal gradient and solidification rate; grain structure, phase transformation and stress require material-specific models and experimental evidence.
                 </p>
               </div>
 

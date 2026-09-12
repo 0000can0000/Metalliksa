@@ -21,5 +21,10 @@ for (const patch of [
   { thermalHistory: [{ time_s: 0, peak_K: Infinity }] },
   { measurementComparison: { width_um: { errors_pct: "bad" } } },
   { energyBalance: { input_J: "bad" } },
+  { massBalance: { initial_kg: -1, deposited_kg: 0, final_kg: 1, relativeError: 0, scope: "fixture" } },
+  { phaseAudit: { liquidVolume_m3: 1, solidVolume_m3: 0, activeVolume_m3: 1, minFraction: 0, maxFraction: 1.1, scope: "fixture" } },
+  { artifacts: [{ path: "../secret", size_bytes: 0, sha256: "a".repeat(64) }] },
+  { fieldPreviews: ["https://untrusted.example/field.svg"] },
 ]) assert.throws(() => parseSimulationJob({ ...base, status: "completed", result: { ...result, ...patch } }));
+assert.throws(() => parseSimulationJob({ ...base, status: "cancelled", result }));
 console.log("PASS: LPBF runtime contract rejects invalid, nonfinite and false-validation responses");

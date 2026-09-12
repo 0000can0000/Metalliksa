@@ -3,7 +3,7 @@
 import sys
 
 from lpbf_thermal_solver import calculate_meltpool_physics
-from solidification_front import MODEL_ID, hunt_lu_pdas_um, hunt_morphology, phase_transformation_note
+from solidification_front import MODEL_ID, evaluate_solidification, hunt_lu_pdas_um, hunt_morphology, phase_transformation_note
 
 
 def assert_true(cond, msg):
@@ -50,6 +50,33 @@ def main():
     assert_true(note["expected"] == "beta_to_alpha_prime_martensite", note)
     assert_true(ti["solidificationKinetics"]["coolingRate_K_s"] >= 410.0, "Ti64 LPBF >> 410 K/s")
     assert_true(note["doi"] == "10.1016/S0921-5093(97)00802-2", "Ahmed & Rack DOI")
+
+    def _cold(_x, _y, _z):
+        return 0.0
+
+    x_rear = 2.0e-4
+    t_surface, T_sol = 2000.0, 1260.0
+    fb = evaluate_solidification(
+        _cold,
+        T_liq=1336.0,
+        T_sol=T_sol,
+        t_surface=t_surface,
+        v_scan=0.96,
+        x_rear=x_rear,
+        x_front=8.0e-5,
+        search_depth=2.0e-4,
+        r_beam=3.35e-5,
+        cos_theta=1.0,
+        pdas_A1=75.0,
+        sdas_B1=40.0,
+        material_name="Inconel 718",
+    )
+    expect_G = (t_surface - T_sol) / x_rear
+    assert_true(fb["usedFieldMap"] is False, "cold field uses tail-length fallback")
+    assert_true(fb["gradientSource"] == "tail-length-fallback", "fallback source id")
+    assert_true(abs(fb["thermalGradient_G_K_m"] - expect_G) < 1.0, f"fallback G {fb['thermalGradient_G_K_m']} vs ΔT/L {expect_G}")
+    wrong_abs = 1336.0 / x_rear
+    assert_true(abs(fb["thermalGradient_G_K_m"] - wrong_abs) > 1.0e5, "must not use T_liq/x_rear")
 
     ros = calculate_meltpool_physics("Inconel 718", 285, 960, 80, 80, 40, 110)
     assert_true(ros["modelId"] == "rosenthal-screening-v1", "Build Job heat source unchanged")

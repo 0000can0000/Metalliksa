@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 13:41 — Fix fallback G: ΔT/L not T_liq/L
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Verify Bug 1 — tail-length fallback G divided absolute liquidus by \(x_\mathrm{rear}\) instead of a temperature difference.
+- **Done**: Bug confirmed in `evaluate_solidification`. Fallback is now \(G=(T_\mathrm{surface}-T_\mathrm{sol})/x_\mathrm{rear}\). Field-map path unchanged. Build Job still `rosenthal-screening-v1`. PROOF 021 note.
+- **Where we left off**: Nothing left on this bug. Catalog kıvam (AlSi10Mg gap / Guo N01 report) is still uncommitted local WIP from the prior turn — not part of this fix.
+- **Files**: `python/solidification_front.py`, `python/lpbf_thermal_solver.py`, `python/test_solidification_front.py`, `PROOF.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_solidification_front.py` PASS; `py -3 python/test_lpbf_build_job.py` PASS
+
+---
+
 ## 2026-09-12 13:32 — Handoff: close melt-pool kıvam on measured catalog
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

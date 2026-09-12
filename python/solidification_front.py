@@ -195,6 +195,8 @@ def evaluate_solidification(
     T_fn: Callable,
     *,
     T_liq: float,
+    T_sol: float,
+    t_surface: float,
     v_scan: float,
     x_rear: float,
     x_front: float,
@@ -217,7 +219,9 @@ def evaluate_solidification(
     )
     used_field = mapped is not None
     if mapped is None:
-        G = max(100.0, max(10.0, T_liq) / max(1e-6, x_rear))
+        # Screening G ~ ΔT / tail length, not T_liq / length (absolute T is not a gradient).
+        delta_T = max(10.0, float(t_surface) - float(T_sol))
+        G = max(100.0, delta_T / max(1e-6, float(x_rear)))
         R = max(1e-4, v_scan * max(0.05, cos_theta))
         Tdot = G * R
         source = "tail-length-fallback"

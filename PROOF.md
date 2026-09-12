@@ -311,6 +311,7 @@ This logbook records all empirically tested and mathematically verified models, 
   - LPBF \(G\sim 10^5\)–\(10^8\,\mathrm{K/m}\), \(\dot{T}\sim 10^4\)–\(10^7\,\mathrm{K/s}\), \(\lambda_1\sim 0.1\)–\(15\,\mu\mathrm{m}\).
   - NIST AMB2022-03 IN718 Goldak lab path (\(P=285\,\mathrm{W}\), \(v=960\,\mathrm{mm/s}\), \(D_{4\sigma}=67\,\mu\mathrm{m}\)): field map must be on; \(R\) must not exceed scan speed.
 - **Product split**: Melt Pool 3D reports `solidification-front-v1`. `POST /api/python/lpbf-build-job` stays `rosenthal-screening-v1`. G/R does **not** re-score `job.verdict`.
+- **Fallback G (when the liquidus map has fewer than 3 points)**: \(G=\Delta T/L=(T_\mathrm{surface}-T_\mathrm{sol})/x_\mathrm{rear}\), not \(T_\mathrm{liq}/x_\mathrm{rear}\). Absolute liquidus is not a temperature drop. Does not change `job.verdict`.
 - **Functional proof**: `py -3 python/test_solidification_front.py`; `py -3 python/test_lpbf_build_job.py`; `npx tsc --noEmit`.
 - **Status**: **PASS**
 

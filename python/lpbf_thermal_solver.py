@@ -456,6 +456,8 @@ def calculate_meltpool_physics(
     sol = evaluate_solidification(
         T_field,
         T_liq=T_liq,
+        T_sol=T_sol,
+        t_surface=t_surface_C,
         v_scan=v_scan,
         x_rear=x_rear,
         x_front=x_front,

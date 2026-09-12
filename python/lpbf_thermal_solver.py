@@ -24,6 +24,7 @@ from eagar_tsai_solver import EagarTsaiField, MODEL_ID as EAGAR_TSAI_MODEL_ID
 from fabbro_keyhole import MODEL_ID as FABBRO_MODEL_ID, fabbro_keyhole_depth_m
 from four_alloy_materials import four_alloy_thermophysical_db, thermal_props
 from goldak_solver import GoldakField, MODEL_ID as GOLDAK_MODEL_ID, seed_goldak_axes
+from solidification_front import MODEL_ID as SOLIDIFICATION_MODEL_ID, evaluate_solidification
 from marangoni_screening import MODEL_ID as MARANGONI_MODEL_ID, marangoni_screening
 
 # Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
@@ -451,32 +452,27 @@ def calculate_meltpool_physics(
     # Denudation width w_denude ~ W * (1 + 0.45 * (P_recoil / 50))
     denudation_width_um = w_melt_um * (1.0 + 0.35 * min(3.0, min(1e6, p_recoil_kPa) / 30.0))
 
-    # 10. Solidification Kinetics (G, R, G*R, G/R) & Microstructure
-    # R = v · cos(θ) along the local surface normal incline (θ=0 → flat plate, R≈v).
-    tail_length_m = max(1e-6, goldak_ar_um * 1e-6)
-    delta_T_sol = max(10.0, t_surface_C - T_sol)
-    thermal_gradient_G_K_m = max(100.0, delta_T_sol / tail_length_m)
-    solidification_rate_R_m_s = max(1e-4, v_scan * cos_theta)
-    cooling_rate_K_s = max(1.0, thermal_gradient_G_K_m * solidification_rate_R_m_s)
-    g_over_r = max(1.0, thermal_gradient_G_K_m / solidification_rate_R_m_s)
-
-    # Hunt CET Solidification Morphology
-    if g_over_r > 1.0e10:
-        morphology = "Planar Front (Segregation-Free Solidification)"
-    elif g_over_r > 5.0e8:
-        morphology = "Fine Cellular (High Creep & Yield Strength)"
-    elif g_over_r > 1.0e7:
-        morphology = "Columnar Dendritic (Epitaxial Texture Along Build Z)"
-    else:
-        morphology = "Equiaxed Dendritic (Isotropic Grain Structure)"
-
-    # Primary (PDAS) & Secondary (SDAS) Dendrite Arm Spacings
-    a1_const = props.get("pdas_A1", 75.0)
-    pdas_val = a1_const * (max(1.0, thermal_gradient_G_K_m) ** -0.5) * (max(1e-3, solidification_rate_R_m_s) ** -0.25) * 1e3
-    pdas_um = float(abs(pdas_val))
-    b1_const = props.get("sdas_B1", 40.0)
-    sdas_val = b1_const * ((max(10.0, cooling_rate_K_s)) ** -0.33)
-    sdas_um = float(abs(sdas_val))
+    # 10. Solidification kinetics from the liquidus isotherm (G = |∇T|, R = v n_x).
+    sol = evaluate_solidification(
+        T_field,
+        T_liq=T_liq,
+        v_scan=v_scan,
+        x_rear=x_rear,
+        x_front=x_front,
+        search_depth=search_depth,
+        r_beam=r_beam,
+        cos_theta=cos_theta,
+        pdas_A1=float(props.get("pdas_A1", 75.0)),
+        sdas_B1=float(props.get("sdas_B1", 40.0)),
+        material_name=material_name,
+    )
+    thermal_gradient_G_K_m = float(sol["thermalGradient_G_K_m"])
+    solidification_rate_R_m_s = float(sol["solidificationRate_R_m_s"])
+    cooling_rate_K_s = float(sol["coolingRate_K_s"])
+    g_over_r = float(sol["g_over_r_ratio"])
+    morphology = str(sol["microstructureMorphology"])
+    pdas_um = float(sol["primaryDendriteArmSpacing_PDAS_um"])
+    sdas_um = float(sol["secondaryDendriteArmSpacing_SDAS_um"])
 
     # 11. Residual Stress & Recoater Crash Upper Bound (no artificial 1200 MPa ceiling)
     e_gpa = props["youngs_modulus_GPa"]
@@ -721,8 +717,12 @@ def calculate_meltpool_physics(
             "distortionIndex": round(distortion_index, 2)
         },
         "solidificationKinetics": {
+            "modelId": SOLIDIFICATION_MODEL_ID,
+            "gradientSource": sol.get("gradientSource"),
+            "usedFieldMap": bool(sol.get("usedFieldMap")),
             "thermalGradient_G_K_m": round(thermal_gradient_G_K_m, 0),
             "thermalGradient_G_K_um": round(thermal_gradient_G_K_m * 1e-6, 3),
+            "thermalGradientTail_G_K_m": round(float(sol.get("G_tail_K_m") or thermal_gradient_G_K_m), 0),
             "solidificationRate_R_m_s": round(solidification_rate_R_m_s, 3),
             "solidificationRate_R_mm_s": round(solidification_rate_R_m_s * 1e3, 1),
             "solidificationCosTheta": round(cos_theta, 4),
@@ -731,7 +731,13 @@ def calculate_meltpool_physics(
             "g_over_r_ratio": round(g_over_r, 0),
             "microstructureMorphology": morphology,
             "primaryDendriteArmSpacing_PDAS_um": round(pdas_um, 2),
-            "secondaryDendriteArmSpacing_SDAS_um": round(sdas_um, 2)
+            "secondaryDendriteArmSpacing_SDAS_um": round(sdas_um, 2),
+            "phaseTransformation": sol.get("phaseTransformation"),
+            "frontPointCount": sol.get("frontPointCount"),
+            "tail": sol.get("tail"),
+            "bottom": sol.get("bottom"),
+            "doi": sol.get("doi"),
+            "disclaimer": sol.get("disclaimer"),
         },
         "geometricContours": {
             "topDownXY": top_down_contour,

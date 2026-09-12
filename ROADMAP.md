@@ -34,14 +34,14 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 
 ---
 
-## Phase 3: Microstructure & Rapid Solidification Kinetics (🔵 UPCOMING)
-- [ ] **Thermal Gradient ($G$) and Solidification Rate ($R$) Mapping**: Extraction of $G$ and $R$ along the melt pool boundary.
-- [ ] **Solidification Morphology Criteria**: Predicting Columnar vs. Equiaxed grain transitions ($G/R$ ratio).
-- [ ] **Microstructural Scale Estimation**: Primary Dendrite Arm Spacing ($\lambda_1 = a \cdot \dot{T}^{-n}$) where cooling rate $\dot{T} = G \cdot R$.
-- [ ] **Solid-State Phase Transformation Models**:
-  - Ti-6Al-4V: $\beta \rightarrow \alpha'$ hexagonal martensite transformation upon rapid cooling ($> 410\text{ K/s}$).
-  - 316L SS: Austenite cellular dendritic network with sub-micron cell walls.
-  - AlSi10Mg: $\alpha$-Al matrix with eutectic Si network.
+## Phase 3: Microstructure & Rapid Solidification Kinetics (🟡 IN PROGRESS)
+- [x] **Thermal Gradient ($G$) and Solidification Rate ($R$) Mapping**: Liquidus stations on the Melt Pool conduction field (`solidification-front-v1`). $G=|\nabla T|$, $R=v n_x\cos\theta$. Not a CAFE solver.
+- [x] **Solidification Morphology Criteria**: Hunt 1984 $G/R$ screening bands. Not Gäumann CET (no $N_0$ calibration) and not a Build Job input.
+- [x] **Microstructural Scale Estimation**: Hunt–Lu $\lambda_1 \propto G^{-1/2}R^{-1/4}$ (LPBF µm cells) and Kirkwood $\lambda_2 \propto \dot{T}^{-1/3}$ with $\dot{T}=G\cdot R$.
+- [x] **Solid-State Phase Transformation Models** (notes only, no invented fractions):
+  - Ti-6Al-4V: $\beta \rightarrow \alpha'$ when cooling $> 410\text{ K/s}$ (Ahmed & Rack 1998).
+  - 316L SS: Austenite cellular / dendritic network (spacing from PDAS/SDAS only).
+  - AlSi10Mg: $\alpha$-Al with eutectic Si network (not quantified).
 
 ---
 

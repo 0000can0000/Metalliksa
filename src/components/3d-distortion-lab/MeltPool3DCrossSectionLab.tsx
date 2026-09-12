@@ -1248,14 +1248,23 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 <h4 className="text-xs font-bold text-white">Solidification Kinetics &amp; Microstructure</h4>
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                Hunt CET
+                {pyResult?.solidificationKinetics.modelId || "solidification-front-v1"}
               </span>
             </div>
 
             {pyResult && (
               <div className="space-y-1.5 text-[11px] text-slate-300">
                 <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                  <span className="text-slate-400">Thermal Gradient (G):</span>
+                  <span className="text-slate-400">Field map (liquidus):</span>
+                  <span className="font-bold text-white">
+                    {pyResult.solidificationKinetics.usedFieldMap ? "on" : "tail-length fallback"}
+                    {pyResult.solidificationKinetics.frontPointCount
+                      ? ` · ${pyResult.solidificationKinetics.frontPointCount} stations`
+                      : ""}
+                  </span>
+                </div>
+                <div className="flex justify-between py-0.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">Thermal Gradient (G, median):</span>
                   <span className="font-bold text-white">{pyResult.solidificationKinetics.thermalGradient_G_K_um} K/μm</span>
                 </div>
                 <div className="flex justify-between py-0.5 border-b border-slate-800/60">
@@ -1267,13 +1276,33 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                   <span className="font-bold text-cyan-400">{pyResult.solidificationKinetics.coolingRate_K_s.toExponential(2)} K/s</span>
                 </div>
                 <div className="flex justify-between py-0.5 border-b border-slate-800/60">
-                  <span className="text-slate-400">Primary Dendrite Arm Spacing (PDAS):</span>
+                  <span className="text-slate-400">G/R (Hunt class):</span>
+                  <span className="font-bold text-sky-300">{pyResult.solidificationKinetics.g_over_r_ratio.toExponential(2)} K·s/m²</span>
+                </div>
+                <div className="flex justify-between py-0.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">PDAS (Hunt–Lu):</span>
                   <span className="font-bold text-purple-300">{pyResult.solidificationKinetics.primaryDendriteArmSpacing_PDAS_um} μm</span>
                 </div>
-                <div className="flex justify-between py-0.5">
+                <div className="flex justify-between py-0.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">SDAS (Kirkwood):</span>
+                  <span className="font-bold text-fuchsia-300">{pyResult.solidificationKinetics.secondaryDendriteArmSpacing_SDAS_um} μm</span>
+                </div>
+                <div className="flex justify-between py-0.5 border-b border-slate-800/60">
                   <span className="text-slate-400">Predicted Microstructure:</span>
                   <span className="font-bold text-emerald-300">{pyResult.solidificationKinetics.microstructureMorphology}</span>
                 </div>
+                {pyResult.solidificationKinetics.phaseTransformation?.expected && (
+                  <div className="flex justify-between py-0.5 border-b border-slate-800/60">
+                    <span className="text-slate-400">Phase note:</span>
+                    <span className="font-bold text-amber-200 text-right max-w-[58%]">
+                      {pyResult.solidificationKinetics.phaseTransformation.expected.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-500 leading-snug pt-1">
+                  {pyResult.solidificationKinetics.disclaimer
+                    || "Hunt-class G/R from the conduction isotherm. Not a Build Job input."}
+                </p>
               </div>
             )}
           </div>

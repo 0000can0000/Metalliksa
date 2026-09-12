@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 13:20 — Phase 3 liquidus G/R + fold into main
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Continue from GitHub 12:59 (`ed12fb9` Melt Pool kıvam). Unlock G/R mapping. Put all developed work on `main`. `yeni1`/`yeni2` had nothing unique; delete those branches.
+- **Done**: `solidification-front-v1` maps \(G=|\nabla T|\), \(R=v n_x\cos\theta\) on the liquidus. Hunt \(G/R\) screening + Hunt–Lu PDAS + Kirkwood SDAS + Ahmed & Rack Ti64 note. Melt Pool lab shows field-map stations. Build Job stays `rosenthal-screening-v1`. PROOF 021. Feature branch merged to `main`.
+- **Where we left off**: Phase 3 screening G/R is on Melt Pool. Still locked: Marangoni CFD, Goldak FEA, using Goldak/ET to re-score Build Job, Gäumann \(N_0\) CET.
+- **Files**: `python/solidification_front.py`, `python/test_solidification_front.py`, `python/lpbf_thermal_solver.py`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `src/services/pythonComputationService.ts`, `PROOF.md`, `ROADMAP.md`, `AGENTS.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `py -3 python/test_solidification_front.py` PASS; `py -3 python/test_goldak_fabbro.py` PASS; `py -3 python/test_eagar_tsai.py` PASS; `py -3 python/test_lpbf_build_job.py` PASS; `npx tsc --noEmit` PASS
+
+---
+
 ## 2026-09-12 10:05 — Melt-pool kıvam: Fabbro A, Knight recoil, Heiple–Roper
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

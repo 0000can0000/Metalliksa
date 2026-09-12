@@ -297,4 +297,21 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Functional proof**: `python3 python/test_goldak_fabbro.py`; `python3 python/test_marangoni_screening.py`; `python3 python/test_eagar_tsai.py`; melt-pool / four-alloy / build-job; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 021: Liquidus G/R mapping (`solidification-front-v1`)
+- **Date**: 2026-09-12
+- **Module**: `python/solidification_front.py` / `python/lpbf_thermal_solver.py` / `MeltPool3DCrossSectionLab.tsx`
+- **Academic basis**:
+  - Quasi-steady laser frame: on the liquidus, \(G=|\nabla T|\) by central difference; growth into the melt \(\mathbf{n}=\nabla T/|\nabla T|\); \(R=v n_x\cos\theta\) (Hunt / Kou geometry; incline \(\theta\) is the Build Job wall angle).
+  - Hunt, *Mater. Sci. Eng.* 65 (1984) 75–83, DOI `10.1016/0025-5416(84)90201-X`: \(G/R\) morphology screening bands. **Not** Gäumann–Trivedi–Kurz CET (no \(N_0\) / \(a_{\mathrm{CET}}\) calibration).
+  - Hunt–Lu \(\lambda_1=A G^{-1/2}R^{-1/4}\) with LPBF-scale SI prefactor (µm cells). Kirkwood \(\lambda_2\propto\dot{T}^{-1/3}\), \(\dot{T}=GR\). Welding-scale `pdas_A1` is unused.
+  - Ahmed & Rack, *Mater. Sci. Eng. A* 243 (1998) 206–211, DOI `10.1016/S0921-5093(97)00802-2`: Ti-6Al-4V fully martensitic when cooling \(>410\,\mathrm{K/s}\). 316L / AlSi10Mg / IN718 notes are screening only (no invented cell-wall chemistry or Laves fraction).
+- **Literature numbers** (order-of-magnitude, not a fitted CET map):
+  - LPBF \(G\sim 10^5\)–\(10^8\,\mathrm{K/m}\), \(\dot{T}\sim 10^4\)–\(10^7\,\mathrm{K/s}\), \(\lambda_1\sim 0.1\)–\(15\,\mu\mathrm{m}\).
+  - NIST AMB2022-03 IN718 Goldak lab path (\(P=285\,\mathrm{W}\), \(v=960\,\mathrm{mm/s}\), \(D_{4\sigma}=67\,\mu\mathrm{m}\)): field map must be on; \(R\) must not exceed scan speed.
+- **Product split**: Melt Pool 3D reports `solidification-front-v1`. `POST /api/python/lpbf-build-job` stays `rosenthal-screening-v1`. G/R does **not** re-score `job.verdict`.
+- **Functional proof**: `py -3 python/test_solidification_front.py`; `py -3 python/test_lpbf_build_job.py`; `npx tsc --noEmit`.
+- **Status**: **PASS**
+
 

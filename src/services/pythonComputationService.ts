@@ -1843,8 +1843,12 @@ export interface PythonLPBFResult {
     distortionIndex: number;
   };
   solidificationKinetics: {
+    modelId?: string;
+    gradientSource?: string;
+    usedFieldMap?: boolean;
     thermalGradient_G_K_m: number;
     thermalGradient_G_K_um: number;
+    thermalGradientTail_G_K_m?: number;
     solidificationRate_R_m_s: number;
     solidificationRate_R_mm_s: number;
     solidificationCosTheta?: number;
@@ -1854,6 +1858,18 @@ export interface PythonLPBFResult {
     microstructureMorphology: string;
     primaryDendriteArmSpacing_PDAS_um: number;
     secondaryDendriteArmSpacing_SDAS_um: number;
+    phaseTransformation?: {
+      alloyClass?: string;
+      expected?: string;
+      criterion?: string;
+      source?: string | null;
+      doi?: string | null;
+    };
+    frontPointCount?: number;
+    tail?: { x_um: number; z_um: number; G_K_m: number; R_m_s: number };
+    bottom?: { x_um: number; z_um: number; G_K_m: number; R_m_s: number };
+    doi?: string;
+    disclaimer?: string;
   };
   geometricContours: {
     topDownXY: { x_um: number; y_um: number }[];

@@ -50,7 +50,11 @@ class EagarTsaiField:
     def bind_speed(self, v_scan_m_s: float) -> "EagarTsaiField":
         v = max(1e-6, float(v_scan_m_s))
         self.v_star = v * self.r0_m / (2.0 * self.alpha_th)
-        tau_max = max(16.0 / max(self.v_star, 0.08), 24.0)
+        # Wake length in the moving frame (x < 0). τ ~ |x*| / v* with x* = √2 x / r0.
+        wake_m = 0.0012
+        x_span = math.sqrt(2.0) * wake_m / self.r0_m
+        tau_wake = x_span / max(self.v_star, 0.05) + 10.0
+        tau_max = max(24.0, 16.0 / max(self.v_star, 0.08), tau_wake)
         u_max = math.sqrt(tau_max)
         # Map ξ ∈ [−1, 1] → u ∈ [0, u_max]
         self._u = 0.5 * u_max * (_GL_XI + 1.0)
@@ -87,12 +91,14 @@ class EagarTsaiField:
         u = self._u[:, None]
         w = self._w[:, None]
 
-        dx = x_s[None, :] - self.v_star * tau
+        # +x is travel (same as Rosenthal). Past source → x + v t', so x* + v* τ.
+        dx = x_s[None, :] + self.v_star * tau
         # τ = u², dτ = 2u du → τ^{−1/2} dτ = 2 du, integrand becomes 2/(τ+1) exp(...)
         z2 = z_s[None, :] ** 2
         u2 = u * u
-        z_term = np.divide(z2, 2.0 * u2, out=np.zeros_like(z2, dtype=np.float64), where=u2 > 1e-18)
+        z_term = z2 / (2.0 * np.maximum(u2, 1e-18))
         z_term = np.where((u2 <= 1e-18) & (z2 > 0.0), 1.0e6, z_term)
+        z_term = np.where((u2 <= 1e-18) & (z2 <= 0.0), 0.0, z_term)
         expo = -((dx * dx + (y_s[None, :] ** 2)) / (2.0 * den)) - z_term
         expo = np.clip(expo, -60.0, 20.0)
         integrand = (2.0 / den) * np.exp(expo)

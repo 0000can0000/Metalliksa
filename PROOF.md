@@ -266,6 +266,6 @@ This logbook records all empirically tested and mathematically verified models, 
   - 316L order-of-magnitude: Guo et al., *Micromachines* 15(2):170 (2024), DOI `10.3390/mi15020170` — 260 W, 1.47 m/s, 100 µm spot; \(W\) band 60–280 µm.
 - **Product split**: Melt Pool 3D lab defaults to `eagar-tsai-v1`. `POST /api/python/lpbf-build-job` stays `rosenthal-screening-v1` (verdict unchanged).
 - **Functional proof**: `py -3 python/test_eagar_tsai.py`; `py -3 python/test_lpbf_meltpool_accuracy.py`; `npx tsc --noEmit`.
-- **Status**: **PASS** (pending fixture run in this change set)
+- **Status**: **PASS**
 
 

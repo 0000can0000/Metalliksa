@@ -101,7 +101,9 @@ Defining dimensionless variables:
 
 The dimensionless temperature distribution $\theta = \frac{T - T_0}{T_m - T_0}$ in quasi-steady state becomes:
 
-$$\theta(x^*, y^*, z^*) = \frac{n^*}{\sqrt{2\pi}} \int_0^\infty \frac{\tau^{-1/2}}{\tau + 1} \exp\left[ - \frac{(x^* - v^* \tau)^2 + y^{*2}}{2(\tau + 1)} - \frac{z^{*2}}{2\tau} \right] d\tau$$
+$$\theta(x^*, y^*, z^*) = \frac{n^*}{\sqrt{2\pi}} \int_0^\infty \frac{\tau^{-1/2}}{\tau + 1} \exp\left[ - \frac{(x^* + v^* \tau)^2 + y^{*2}}{2(\tau + 1)} - \frac{z^{*2}}{2\tau} \right] d\tau$$
+
+The \(+v^*\tau\) sign matches the Rosenthal moving frame used in this repository (laser at the origin, \(+x\) travel, wake at \(x<0\)). Some reprints write \(x^*-v^*\tau\) with the opposite \(x\) convention.
 
 ### 2.4 Physical Advantages Over Rosenthal
 - **Finite Peak Centerline Temperature**: Accurately bounds maximum melt pool temperature below the boiling point $T_b$ during conduction-mode melting.

@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 08:50 — Eagar–Tsai melt-pool field
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Continue the simulation from the locked next step. User said to pull literature from a search engine when numbers are needed.
+- **Done**: Implemented `eagar-tsai-v1` (Welding Journal 1983 / METALLURGY §2.3). Melt Pool 3D lab defaults to Eagar–Tsai with a Rosenthal compare toggle. Build Job verdict stays `rosenthal-screening-v1`. NIST AMB2022-03 IN718 width (Lane et al. 2024, 136.3 µm) and 316L Guo 2024 order-of-magnitude used as search-sourced checks. PROOF 018. PR #6.
+- **Where we left off**: Eagar–Tsai conduction field is in. Next physics unlock is still Goldak / recoil keyhole (not claimed here). Dynamic keyhole and Marangoni CFD remain later ROADMAP items.
+- **Files**: `python/eagar_tsai_solver.py`, `python/lpbf_thermal_solver.py`, `python/test_eagar_tsai.py`, `src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, `src/data/meltPoolLiteratureCases.ts`, `src/services/pythonComputationService.ts`, `PROOF.md`, `ROADMAP.md`, `AGENTS.md`, `METALLURGY_VALIDATION.md`, `sonkayıtlar/LOG.md`
+- **Tests**: `python3 python/test_eagar_tsai.py` PASS; `python3 python/test_lpbf_meltpool_accuracy.py` PASS; `python3 python/test_four_alloy_literature.py` PASS; `python3 python/test_lpbf_build_job.py` PASS; `npx tsc --noEmit` PASS
+
+---
+
 ## 2026-09-06 22:45 — LPBF Faz 5 (cache, lazy UQ/NIST, Murakami, SBOM, air-gap)
 - **Agent**: Cursor Auto (Composer) / Grok inherit for survey
 - **Result**: PASS

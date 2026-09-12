@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 
 import { physicsRouter } from "./routes/physics.ts";
+import { lpbfSimulationRouter } from "./routes/lpbfSimulation.ts";
 import { characterizationRouter } from "./routes/characterization.ts";
 import { copilotRouter } from "./routes/copilot.ts";
 import { processOrchestrationMiddleware } from "./server/processOrchestrator.ts";
@@ -61,6 +62,7 @@ app.get("/api/runtime-config", (_req: Request, res: Response) => {
 // =========================================================================
 // 1. HPC Physics & Computational Metallurgy (CALPHAD, DFT, LPBF, Kinetics, ICME, UQ)
 app.use(physicsRouter);
+app.use(lpbfSimulationRouter);
 
 // 2. Experimental Characterization & Spectroscopy (EIS, XRD, Battery Degradation, SEM Vision)
 app.use(characterizationRouter);

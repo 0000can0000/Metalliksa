@@ -12,6 +12,8 @@
     "lint": "tsc --noEmit",
     "sbom": "py -3 python/generate_sbom.py",
     "test:lpbf": "py -3 python/test_lpbf_build_job.py",
+    "test:lpbf:engineering": "py -3 python/test_lpbf_engineering.py",
+    "test:lpbf:api": "py -3 python/test_lpbf_api.py",
     "test:lpbf:slow": "py -3 python/test_lpbf_build_job.py --slow",
     "test:meltpool": "py -3 python/test_eagar_tsai.py && py -3 python/test_goldak_fabbro.py && py -3 python/test_lpbf_meltpool_accuracy.py"
   },

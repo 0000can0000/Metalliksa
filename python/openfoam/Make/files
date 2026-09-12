@@ -1,0 +1,3 @@
+metalliksaThermal.C
+
+EXE = $(PWD)/bin/metalliksaThermal

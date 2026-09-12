@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { LpbfEngineeringSimulation } from "./LpbfEngineeringSimulation";
 import * as THREE from "three";
 import {
   Flame,
@@ -213,7 +214,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     const sourceLabel =
       heatSource === "goldak" ? "Goldak double-ellipsoid" : heatSource === "eagar-tsai" ? "Eagar–Tsai Gaussian" : "regularized Rosenthal";
     let desc = `Stable conduction-mode pool. Width and depth from the T = T_liquidus isotherm of a ${sourceLabel} field (King ΔH/hs < 15).`;
-    let keyRisk = "Low (ASTM F3055 Compliant)";
+    let keyRisk = "Low screening indicator — unvalidated";
 
     if (isKeyhole) {
       badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]";
@@ -708,6 +709,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
 
   return (
     <div className="space-y-4 font-mono text-xs">
+      <LpbfEngineeringSimulation input={{ material: selectedMaterial, power_W: laserPower_W, speed_mm_s: scanSpeed_mms, beamDiameter_um, preheat_C: preheatTemp_C, layer_um: layerThickness_um, hatch_um: hatchSpacing_um }} />
       {/* HEADER BAR & REGIME STATUS */}
       <div className="p-4 rounded-2xl bg-[#090e18] border border-[#1e2d46] space-y-3 shadow-xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
@@ -1344,7 +1346,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                   <span className="font-bold text-slate-200">{pyResult.defectDiagnostics.ballingInstabilityRisk}</span>
                 </div>
                 <div className="flex items-center justify-between p-1.5 bg-[#050810] rounded-lg border border-slate-800">
-                  <span className="text-slate-300">Effective Residual Stress:</span>
+                  <span className="text-slate-300">Thermal-stress proxy (unvalidated):</span>
                   <span className="font-bold text-amber-300">{pyResult.defectDiagnostics.effectiveResidualStress_MPa} MPa</span>
                 </div>
               </div>

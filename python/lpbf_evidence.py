@@ -141,3 +141,42 @@ def write_field_slices(field, folder, result):
             parts.append(f'<text x="20" y="270" fill="#94a3b8" font-size="11">Blue {lo:.5g} / Amber {hi:.5g} {unit}; X horizontal, Z vertical; uniform cells; no velocity or gas interface</text></svg>')
             (folder/name).write_text("".join(parts),encoding="utf-8")
     result["fieldPreviews"] = ["temperature-slice.svg","phase-slice.svg"]
+
+
+class FieldRecorder:
+    """Full cell samples, little-endian float32, streamed separately from result JSON.
+
+    Visualization precision only; solver and metrics retain float64. No spatial
+    interpolation, fabricated interface or inferred velocity is exported.
+    """
+    def __init__(self, folder, coords, spacing, material):
+        import numpy as np
+        self.folder = Path(folder) if folder else None
+        self.coords = np.asarray(coords)
+        self.frames = []
+        self.metadata = dict(version=1, cells=len(coords), spacing_m=spacing,
+            coordinates="field-coordinates.bin", frames=self.frames,
+            solidus_K=material["solidus_K"], liquidus_K=material["liquidus_K"],
+            encoding="little-endian-float32", scope="Sampled resolved cell temperatures; stationary enthalpy phase fraction; no velocity or VOF")
+        if self.folder:
+            self.coords.astype("<f4").tofile(self.folder/"field-coordinates.bin")
+
+    def record(self, time, temperature, surface):
+        import numpy as np
+        if not self.folder: return
+        values = np.asarray(temperature).ravel()
+        if len(values) != len(self.coords) or not np.isfinite(values).all() or values.min() <= 0:
+            raise ValueError("Invalid resolved field frame")
+        if self.frames and time <= self.frames[-1]["time_s"]:
+            raise ValueError("Nonmonotonic field time")
+        if len(self.frames) >= 128: raise ValueError("Field frame budget exceeded")
+        name = f"field-frame-{len(self.frames):03d}.bin"
+        values.astype("<f4").tofile(self.folder/name)
+        self.frames.append(dict(path=name, time_s=float(time), surface_m=float(surface),
+            minimum_K=float(values.min()), maximum_K=float(values.max())))
+
+    def finish(self):
+        import json
+        if not self.folder: return None
+        (self.folder/"field-series.json").write_text(json.dumps(self.metadata,allow_nan=False),encoding="utf-8")
+        return "field-series.json"

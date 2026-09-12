@@ -1,3 +1,7 @@
+## 2026-09-12 — Resolved LPBF 3D fields and workspace redesign
+Result: COMPLETE for this development increment. Final lint, production build, physics/API/contracts and browser smoke pass. Commit and origin push follow this record.
+Added real thermal field time-series artifacts and isolated 3D explorer; responsive searchable module navigation and lazy loading; visible shared LPBF controls; separate analytical studio. Added predicted thermal CSV and corrected unsupported mechanical claims. 24 engineering tests, 6 API tests, binary/JSON contracts, OpenFOAM compile and analytical regressions pass. Real OpenFOAM UI run: 58 frames, 1089 cells, L/W/D 160/40/40 µm. Experimental validation pending; free-surface/flow/evaporation/stress unresolved. Only task files will be committed; unrelated .cursor/mcp.json and generated pycache excluded.
+
 ## 2026-09-12 22:52 — LPBF engineering UI / safe visualization increment
 
 - **Agent:** GPT-6 Astra (Codex).

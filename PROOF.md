@@ -386,3 +386,16 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Status**: **PASS** (kıvam closed with AlSi10Mg honest gap)
 
 
+
+
+## 2026-09-12 — Resolved LPBF field explorer and application workspace
+- Actual OpenFOAM/reference cell temperatures exported as bounded binary time series; hashes and allowlisted artifact serving, exact sizes and finite-value guards. No analytical geometry is mixed into resolved cell rendering.
+- 3D time selection/playback, temperature/enthalpy liquid fraction, Y cut, mushy/liquid filter, orbit/zoom/reset, mesh/sample counts and fixed color scale. WebGL objects and observers disposed; network requests cancelled on changes/unmount.
+- Searchable responsive module navigation, persisted module selection, honest engine connectivity, on-demand module loading. LPBF opens the simulation first with shared process controls and separate analytical disclosure.
+- Thermal Cycle adds predicted trace CSV and research evidence in recipe JSON; Hardness/Tensile removes certification and zero-error wording.
+- Verification: 24 WSL engineering tests, 6 API integration tests (including binary serving, cache, cancellation, timeout), field binary contract and existing JSON contract pass. OpenFOAM-14 wmake passes. All analytical LPBF/melt-pool/Marangoni/solidification/literature tests pass; Guo N01 mismatch remains explicitly reported.
+- Actual UI OpenFOAM job `8749e03289f04eb4800a4cfc343e95ed`: 58 frames, 1,089 cells; 160/40/40 µm L/W/D, 2496.546 K peak; energy closure 7.988858e-16. Time scrub, phase selection, Y section, molten-cell filter and playback through frame 58/58 observed; saved job restored after refresh. Mobile navigation corrected after screenshot review. Thermal Cycle and Hardness navigation smoke checked.
+- Benchmark JSON regenerated for three OpenFOAM/reference cases; single-track peak difference 0%; rotated multilayer/island peak differences at floating-point precision. These latter fixtures remain below melting. No experimental evidence added.
+- Build observation: entry JS approximately 301 kB (96 kB gzip), previously 9.58 MB monolithic. This is entry-chunk size, not total LPBF download. LPBF and electrochemistry chunks remain large. Numerical physics is unchanged; VOF/momentum/evaporation/stress remain unresolved, and the platform is not production-ready.
+
+Final checks: `npm run lint` and `npm run build` pass on the final WebGL context-reuse change. Field/JSON contract suites pass. Browser high-fidelity request returned Screening only with no resolved 3D explorer. Remaining production chunk warnings are retained and documented.

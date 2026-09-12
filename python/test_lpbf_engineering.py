@@ -18,6 +18,25 @@ CASE = dict(mode="standard", backend="reference", power_W=40, mesh_um=40, trackL
 
 
 class Verification(unittest.TestCase):
+    def test_resolved_field_artifacts(self):
+        from lpbf_evidence import FieldRecorder
+        with tempfile.TemporaryDirectory() as folder:
+            r = run(CASE, artifact_dir=folder)
+            metadata = json.loads((Path(folder)/r["fieldSeries"]).read_text())
+            self.assertGreater(len(metadata["frames"]), 2)
+            self.assertEqual(metadata["cells"], r["discretization"]["cells"])
+            xyz = np.fromfile(Path(folder)/metadata["coordinates"], dtype="<f4").reshape(-1,3)
+            self.assertEqual(len(xyz), metadata["cells"])
+            for frame, history in zip(metadata["frames"], r["thermalHistory"]):
+                values = np.fromfile(Path(folder)/frame["path"], dtype="<f4")
+                self.assertEqual(len(values), len(xyz))
+                self.assertTrue(np.isfinite(values).all())
+                self.assertAlmostEqual(float(values.max()), history["peak_K"], delta=.001)
+                self.assertEqual(frame["time_s"], history["time_s"])
+            recorder = FieldRecorder(folder, xyz, metadata["spacing_m"], material("Inconel 718"))
+            with self.assertRaises(ValueError): recorder.record(0, [float("nan")]*len(xyz), 0)
+            with self.assertRaises(ValueError): recorder.record(0, [300], 0)
+
     def test_invalid_process(self):
         for patch in ({"power_W": float("nan")}, {"speed_mm_s": -1}, {"tracks": 1.5},
                       {"mesh_um": True}, {"mode": "validated"}, {"backend": "evil;rm"},

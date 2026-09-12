@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material, property_at, enthalpy_table
 from lpbf_verification import compare, convergence
-from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, write_artifacts
+from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, write_artifacts, FieldRecorder
 
 VERSION = "enthalpy-fv-2"
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
@@ -187,6 +187,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     best = dict(width_um=0., depth_um=0., length_um=0., volume_um3=0., crossSectionArea_um2=0.)
     peak = t0
     time, step, next_sample = 0., 0, 0.
+    recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m)
     min_dt = p["maxDt_s"]
     while time < end:
         seg = next((s for s in segments if s["start_s"] <= time+1e-14 and time < s["end_s"]-1e-14), None)
@@ -243,6 +244,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         previous_melt = melt
         peak = max(peak, float(T.max()))
         if time >= next_sample or time >= end:
+            recorder.record(time, T, surface)
             if melt.any():
                 ids = np.where(melt)
                 # Extents of all concurrently molten cells, not a fitted ellipsoid or pore geometry.
@@ -278,7 +280,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 aspectRatio=best["depth_um"]/best["width_um"] if width else None,
                 trackOverlapRatio=max(0., 1-p["hatch_um"]/best["width_um"]) if width else 0.,
                 remeltingRatio=float(remelt.sum()/ever.sum()) if ever.any() else 0.)
-    return dict(metrics=best, thermalHistory=history,
+    return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
                 energyBalance=dict(input_J=energy_in, losses_J=energy_out, stored_J=stored, relativeError=balance),
                 discretization=dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step),
                 scanPath=segments,

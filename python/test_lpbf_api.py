@@ -44,7 +44,7 @@ class Api(unittest.TestCase):
         self.assertLess(done["result"]["energyBalance"]["relativeError"], 1e-10)
         self.assertLess(done["result"]["massBalance"]["relativeError"], 1e-12)
         self.assertEqual(done["result"]["fieldPreviews"], ["temperature-slice.svg", "phase-slice.svg"])
-        for name in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv"):
+        for name in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv", "field-series.json", "field-coordinates.bin", "field-frame-000.bin"):
             with urllib.request.urlopen(URL+"/jobs/"+job["id"]+"/artifacts/"+name) as res:
                 body = res.read()
                 self.assertGreater(len(body), 50)

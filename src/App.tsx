@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import {
   Calculator,
   Box,
@@ -26,30 +26,30 @@ import {
   Flame,
   Clock,
 } from "lucide-react";
-import { PocketCalculators } from "./components/PocketCalculators";
-import { CrystalVisualizer } from "./components/CrystalVisualizer";
-import { MicrographLab } from "./components/MicrographLab";
-import { AlloyBuilder } from "./components/AlloyBuilder";
-import { MaterialsDatabaseView } from "./components/MaterialsDatabaseView";
-import { MetallurgyCopilot } from "./components/MetallurgyCopilot";
-import { ElectrochemicalAnalysisSuite } from "./components/ElectrochemicalAnalysisSuite";
-import { MaterialsProjectExplorer } from "./components/MaterialsProjectExplorer";
-import { ICMEModule } from "./components/ICME-Module";
-import { StandardQualificationEngine } from "./components/StandardQualificationEngine";
-import { HypersonicAblationLab } from "./components/HypersonicAblationLab";
-import { RapidXRDAnalysisLab } from "./components/RapidXRDAnalysisLab";
-import { AIEbsdGrainLab } from "./components/AIEbsdGrainLab";
-import { HardnessToTensileLab } from "./components/HardnessToTensileLab";
-import { MechanicalPropertyAILab } from "./components/MechanicalPropertyAILab";
-import { Additive3DDistortionLab } from "./components/Additive3DDistortionLab";
-import { AerospaceAuditReportGenerator } from "./components/AerospaceAuditReportGenerator";
-import { AdvancedResearchHub } from "./components/AdvancedResearchHub";
-import { ThermalCycleScheduler } from "./components/ThermalCycleScheduler";
-import { PhaseDiagramViewer } from "./components/PhaseDiagramViewer";
-import { EDSSpectrumLab } from "./components/EDSSpectrumLab";
-import { DigitalTwinHub } from "./components/DigitalTwinHub";
-import { PhaseKineticsTTTCCTStudio } from "./components/PhaseKineticsTTTCCTStudio";
-import { UQLab } from "./components/UQLab";
+const PocketCalculators = lazy(() => import("./components/PocketCalculators").then(m => ({ default: m.PocketCalculators })));
+const CrystalVisualizer = lazy(() => import("./components/CrystalVisualizer").then(m => ({ default: m.CrystalVisualizer })));
+const MicrographLab = lazy(() => import("./components/MicrographLab").then(m => ({ default: m.MicrographLab })));
+const AlloyBuilder = lazy(() => import("./components/AlloyBuilder").then(m => ({ default: m.AlloyBuilder })));
+const MaterialsDatabaseView = lazy(() => import("./components/MaterialsDatabaseView").then(m => ({ default: m.MaterialsDatabaseView })));
+const MetallurgyCopilot = lazy(() => import("./components/MetallurgyCopilot").then(m => ({ default: m.MetallurgyCopilot })));
+const ElectrochemicalAnalysisSuite = lazy(() => import("./components/ElectrochemicalAnalysisSuite").then(m => ({ default: m.ElectrochemicalAnalysisSuite })));
+const MaterialsProjectExplorer = lazy(() => import("./components/MaterialsProjectExplorer").then(m => ({ default: m.MaterialsProjectExplorer })));
+const ICMEModule = lazy(() => import("./components/ICME-Module").then(m => ({ default: m.ICMEModule })));
+const StandardQualificationEngine = lazy(() => import("./components/StandardQualificationEngine").then(m => ({ default: m.StandardQualificationEngine })));
+const HypersonicAblationLab = lazy(() => import("./components/HypersonicAblationLab").then(m => ({ default: m.HypersonicAblationLab })));
+const RapidXRDAnalysisLab = lazy(() => import("./components/RapidXRDAnalysisLab").then(m => ({ default: m.RapidXRDAnalysisLab })));
+const AIEbsdGrainLab = lazy(() => import("./components/AIEbsdGrainLab").then(m => ({ default: m.AIEbsdGrainLab })));
+const HardnessToTensileLab = lazy(() => import("./components/HardnessToTensileLab").then(m => ({ default: m.HardnessToTensileLab })));
+const MechanicalPropertyAILab = lazy(() => import("./components/MechanicalPropertyAILab").then(m => ({ default: m.MechanicalPropertyAILab })));
+const Additive3DDistortionLab = lazy(() => import("./components/Additive3DDistortionLab").then(m => ({ default: m.Additive3DDistortionLab })));
+const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
+const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
+const ThermalCycleScheduler = lazy(() => import("./components/ThermalCycleScheduler").then(m => ({ default: m.ThermalCycleScheduler })));
+const PhaseDiagramViewer = lazy(() => import("./components/PhaseDiagramViewer").then(m => ({ default: m.PhaseDiagramViewer })));
+const EDSSpectrumLab = lazy(() => import("./components/EDSSpectrumLab").then(m => ({ default: m.EDSSpectrumLab })));
+const DigitalTwinHub = lazy(() => import("./components/DigitalTwinHub").then(m => ({ default: m.DigitalTwinHub })));
+const PhaseKineticsTTTCCTStudio = lazy(() => import("./components/PhaseKineticsTTTCCTStudio").then(m => ({ default: m.PhaseKineticsTTTCCTStudio })));
+const UQLab = lazy(() => import("./components/UQLab").then(m => ({ default: m.UQLab })));
 import { pythonComputationService, PythonEngineStatus } from "./services/pythonComputationService";
 import { AirgapBanner } from "./components/AirgapBanner";
 
@@ -230,7 +230,7 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
       },
       {
         id: "3d-distortion-lab",
-        label: "3D CAD/STL Defect & Thermal Stress (LPBF)",
+        label: "LPBF Simulation & Process Engineering",
         shortLabel: "3D LPBF Simulation",
         sublabel: "Transient thermal research, analytical melt-pool screening and process history",
         icon: Box,
@@ -361,9 +361,16 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
   },
 ];
 
+function savedTab(): NavSubTab {
+  try { const tab=localStorage.getItem("metallixa.workspace.module");if(DISCIPLINE_HUBS.some(h=>h.subTabs.some(s=>s.id===tab)))return tab as NavSubTab; } catch { /* Storage can be unavailable. */ }
+  return "3d-distortion-lab";
+}
 export default function App() {
-  const [activeHubId, setActiveHubId] = useState<DisciplineHubId>("characterization");
-  const [activeTab, setActiveTab] = useState<NavSubTab>("xrd-lab");
+  const [activeHubId, setActiveHubId] = useState<DisciplineHubId>(()=>DISCIPLINE_HUBS.find(h=>h.subTabs.some(s=>s.id===savedTab()))!.id);
+  const [activeTab, setActiveTab] = useState<NavSubTab>(savedTab);
+  const [navigationOpen,setNavigationOpen]=useState(false);
+  const [moduleSearch,setModuleSearch]=useState("");
+  useEffect(()=>{try{localStorage.setItem("metallixa.workspace.module",activeTab);}catch{/* Optional persistence. */}},[activeTab]);
   const [subModuleFilter, setSubModuleFilter] = useState<string>("all");
   const [showPythonStatusModal, setShowPythonStatusModal] = useState<boolean>(false);
   const [pyStatusData, setPyStatusData] = useState<PythonEngineStatus | null>(null);
@@ -397,6 +404,7 @@ export default function App() {
       setActiveHubId(parentHub.id);
     }
     setActiveTab(tabId);
+    setNavigationOpen(false);
   };
 
   // Switch discipline hub
@@ -437,159 +445,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070b12] text-[#e2e8f0] flex flex-col font-sans selection:bg-sky-500/25 selection:text-sky-200 relative overflow-x-hidden">
-      <AirgapBanner />      {/* Aerospace Subtle Ambient Radar Glow */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_-10%,rgba(56,189,248,0.08),transparent_50%)] h-[550px] z-0"></div>
-
-      {/* Top Aerospace Header & 3-Step Master Workflow */}
-      <header className="sticky top-0 z-50 bg-[#090e17]/95 backdrop-blur-md border-b border-[#162032] px-4 lg:px-8 py-2.5">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
-          {/* Brand & Telemetry Status */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.25)]">
-                <Compass className="w-4 h-4 text-sky-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-sm font-bold text-white tracking-wider uppercase font-mono">
-                    MetalliX <span className="text-sky-400">Aero</span>
-                  </h1>
-                  <span className="px-1.5 py-0.5 rounded border border-sky-500/30 bg-sky-500/10 text-sky-300 text-[9px] font-mono font-semibold tracking-wider">
-                    CALPHAD // v4.2
-                  </span>
-                  <button
-                    onClick={() => setShowPythonStatusModal(true)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-[9px] font-mono font-semibold tracking-wider hover:bg-emerald-500/20 transition-all cursor-pointer shadow-[0_0_8px_rgba(16,185,129,0.2)]"
-                    title="Click to view Python 3.10 HPC Subsystem status"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>PYTHON HPC 3.10: READY (6 SOLVERS)</span>
-                  </button>
-                </div>
-                <p className="text-[10.5px] text-slate-400 font-mono tracking-tight flex items-center gap-1.5 flex-wrap">
-                  <span>Materials Science & Aerospace Metallurgy Suite</span>
-                  <span className="text-slate-600 hidden sm:inline">•</span>
-                  <span className="text-sky-400/90 font-medium">Can Erganiş</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Mobile Telemetry Status */}
-            <div className="lg:hidden flex items-center gap-2 px-2.5 py-1 rounded bg-[#0c1322] border border-[#1a253a] text-[10px] font-mono text-sky-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)] animate-pulse"></span>
-              SYS: OK
-            </div>
-          </div>
-
-          {/* 3-STEP MASTER WORKFLOW STEPPER (Characterization ➔ Thermal & Mechanical ➔ Certification) */}
-          <div className="flex items-center gap-2">
-            <nav className="flex items-center gap-1.5 p-1 bg-[#060a12] rounded-xl border border-[#162032] overflow-x-auto max-w-full shadow-inner">
-              {DISCIPLINE_HUBS.map((hub, idx) => {
-                const Icon = hub.icon;
-                const isActive = activeHubId === hub.id;
-                const isPassed = currentHubIndex > idx;
-
-                return (
-                  <React.Fragment key={hub.id}>
-                    {idx > 0 && (
-                      <div className="hidden sm:flex items-center px-1 text-slate-600">
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => selectHub(hub.id)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all whitespace-nowrap cursor-pointer ${
-                        isActive
-                          ? "bg-gradient-to-r from-sky-500/20 to-indigo-500/15 border border-sky-400/50 text-white shadow-[0_0_14px_rgba(56,189,248,0.25)] font-bold"
-                          : isPassed
-                          ? "text-slate-300 hover:text-white bg-slate-900/60 border border-slate-800"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] border border-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`w-4 h-4 rounded-md text-[10px] font-bold flex items-center justify-center transition-all ${
-                          isActive
-                            ? "bg-sky-400 text-slate-950 shadow-[0_0_8px_rgba(56,189,248,0.9)]"
-                            : isPassed
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                            : "bg-slate-800 text-slate-400"
-                        }`}
-                      >
-                        {isPassed ? "✓" : hub.stepNumber}
-                      </div>
-
-                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-sky-300" : isPassed ? "text-emerald-400" : "text-slate-400"}`} />
-                      
-                      <div className="text-left">
-                        <div className="leading-tight">{hub.shortLabel}</div>
-                      </div>
-
-                      <span
-                        className={`hidden md:inline text-[9px] px-1.5 py-0.2 rounded font-sans tracking-tight ${
-                          isActive
-                            ? "bg-sky-400/20 text-sky-200 border border-sky-400/30"
-                            : "bg-slate-800/80 text-slate-400"
-                        }`}
-                      >
-                        {hub.subTabs.length} Modules
-                      </span>
-                    </button>
-                  </React.Fragment>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
-
-        {/* Streamlined Sub-Module Ribbon for the Active Flow */}
-        <div className="max-w-7xl mx-auto mt-2 pt-2 border-t border-[#162032]/60 flex flex-col md:flex-row md:items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin">
-            <span className="text-[10px] font-mono text-sky-400 font-semibold uppercase tracking-wider hidden lg:inline mr-1 shrink-0">
-              {activeHub.shortLabel} Modules:
-            </span>
-
-            {activeHub.subTabs.map((sub) => {
-              const Icon = sub.icon;
-              const isSubActive = activeTab === sub.id;
-
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => setActiveTab(sub.id)}
-                  title={sub.sublabel}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono transition-all whitespace-nowrap cursor-pointer shrink-0 ${
-                    isSubActive
-                      ? "bg-sky-500/20 text-sky-200 border border-sky-400/50 font-bold shadow-[0_0_10px_rgba(56,189,248,0.25)]"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-[#0c1424] border border-transparent"
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isSubActive ? "text-sky-400" : "text-slate-500"}`} />
-                  <span>{sub.shortLabel}</span>
-                  <span
-                    className={`text-[9px] px-1 py-0.2 rounded font-sans ${
-                      isSubActive
-                        ? "bg-sky-400/20 text-sky-300 border border-sky-400/30"
-                        : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
-                    {sub.badge}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Quick Flow Stage Indicator */}
-          <div className="hidden xl:flex items-center gap-2 text-[10px] font-mono text-slate-400 shrink-0">
-            <span className="text-slate-500">Flow Scope:</span>
-            <span className="text-slate-300 truncate max-w-xs">{activeHub.description}</span>
-          </div>
-        </div>
+      <AirgapBanner />
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#0b111c]/95 backdrop-blur px-4 lg:px-7 py-3">
+        <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><button aria-label="Toggle workspace navigation" aria-expanded={navigationOpen} onClick={()=>setNavigationOpen(v=>!v)} className="lg:hidden rounded-lg bg-slate-800 px-3 py-2 text-sm">Modules</button><Compass className="w-7 h-7 text-sky-400"/><div><h1 className="font-semibold tracking-tight text-lg text-white">MetalliX <span className="text-slate-400 font-normal">Engineering</span></h1><p className="text-xs text-slate-500">Materials · Process · Evidence</p></div></div><button onClick={()=>setShowPythonStatusModal(true)} className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700">Python engine · {pyStatusData ? pyStatusData.online ? "Connected" : "Unavailable" : "Checking…"}</button></div>
       </header>
-
-      {/* Main Workspace Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 pb-28 lg:pb-8 relative z-10">
+      <div className="flex flex-1 flex-col lg:flex-row">
+      <aside className={`${navigationOpen?"block":"hidden"} lg:block lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800 bg-[#0a101a] p-4 lg:sticky lg:top-[77px] lg:h-[calc(100vh-77px)] overflow-y-auto`}>
+        <label className="block text-xs text-slate-400 mb-2" htmlFor="module-search">Find a workspace</label><input id="module-search" type="search" value={moduleSearch} onChange={e=>setModuleSearch(e.target.value)} placeholder="Search modules…" className="w-full bg-slate-900 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-600 mb-4"/>
+        <nav aria-label="Engineering workspaces" className="flex gap-5 lg:block overflow-x-auto lg:overflow-visible">
+        {DISCIPLINE_HUBS.map(hub=><div key={hub.id} className="mb-5 min-w-44"><p className="text-[10px] uppercase tracking-[.16em] text-slate-500 mb-2">{hub.shortLabel}</p><div className="space-y-1">{hub.subTabs.filter(sub=>`${sub.label} ${sub.shortLabel} ${sub.sublabel}`.toLowerCase().includes(moduleSearch.toLowerCase())).map(sub=>{const Icon=sub.icon;return <button key={sub.id} aria-current={activeTab===sub.id?"page":undefined} title={sub.sublabel} onClick={()=>navigateToTab(sub.id)} className={`w-full text-left flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${activeTab===sub.id?"bg-sky-500/15 text-sky-200 font-medium":"text-slate-400 hover:text-white hover:bg-slate-800/60"}`}><Icon className="w-4 h-4 shrink-0"/><span>{sub.shortLabel}</span></button>;})}</div></div>)}
+        </nav>
+      </aside>
+      <main className="flex-1 min-w-0 w-full p-4 sm:p-6 xl:p-8 relative">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs text-slate-500 mb-1">Engineering workspace / {activeHub.shortLabel}</p><h2 className="text-2xl font-semibold tracking-tight">{activeHub.subTabs.find(s=>s.id===activeTab)?.label}</h2></div><p className="text-xs text-slate-400 max-w-md">{activeHub.subTabs.find(s=>s.id===activeTab)?.sublabel}</p></div>
+        <Suspense fallback={<div role="status" className="min-h-80 flex items-center justify-center text-slate-400">Loading engineering workspace…</div>}>
         {activeTab === "uq-lab" && (
           <UQLab onNavigate={(tabId) => navigateToTab(tabId as NavSubTab)} />
         )}
@@ -666,80 +535,10 @@ export default function App() {
             )}
           </div>
         </div>
+        </Suspense>
       </main>
-
-      {/* Mobile / Android Fixed Bottom Navigation Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#070b13]/95 backdrop-blur-xl border-t border-[#162032] px-2 pt-1.5 pb-safe shadow-[0_-8px_24px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {DISCIPLINE_HUBS.map((hub) => {
-            const Icon = hub.icon;
-            const isActive = activeHubId === hub.id;
-            return (
-              <button
-                key={hub.id}
-                onClick={() => {
-                  if (typeof navigator !== "undefined" && navigator.vibrate) {
-                    navigator.vibrate(12);
-                  }
-                  selectHub(hub.id);
-                }}
-                className={`flex flex-col items-center justify-center min-w-[70px] py-1 px-1 rounded-lg transition-all active:scale-95 cursor-pointer ${
-                  isActive
-                    ? "text-sky-300 font-semibold"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <div
-                  className={`p-1 rounded-md transition-all ${
-                    isActive
-                      ? "bg-sky-500/20 text-sky-400 border border-sky-400/40 shadow-[0_0_10px_rgba(56,189,248,0.35)]"
-                      : "text-slate-400"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] mt-0.5 tracking-tight font-mono whitespace-nowrap leading-tight">
-                  {hub.shortLabel}
-                </span>
-              </button>
-            );
-          })}
-        </div>
       </div>
-
-      {/* Aerospace Minimalist Footer */}
-      <footer className="border-t border-[#162032] bg-[#090e17] px-4 lg:px-8 py-4 mb-16 lg:mb-0 text-xs text-slate-400 relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 font-mono text-[11px]">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-white uppercase tracking-wider text-xs">
-              MetalliX Aero
-            </span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400">
-              Computational Materials Science & Aerospace Metallurgy Suite
-            </span>
-            <span className="text-slate-600 hidden md:inline">•</span>
-            <span className="text-sky-400">
-              Can Erganiş
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 text-[10px] text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.6)]"></span>
-              ASTM E140 / ISO 18265
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]"></span>
-              AWS D1.1 / IIW Carbon Eq
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]"></span>
-              ASTM E112 / E915 / E1508
-            </span>
-          </div>
-        </div>
-      </footer>
+      <footer className="border-t border-slate-800 px-6 py-4 text-xs text-slate-500">MetalliX Engineering · Research tools and traceable numerical results · Qualification requires applicable experimental evidence.</footer>
       {/* Python 3.10 HPC Subsystem Diagnostics Modal */}
       {showPythonStatusModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">

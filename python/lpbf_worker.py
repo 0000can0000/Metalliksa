@@ -97,13 +97,15 @@ class Queue:
     def artifact(self, payload):
         state = self.get(payload["id"])
         name = payload.get("name")
-        if state["status"] != "completed" or name not in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv"):
+        import re
+        allowed = isinstance(name, str) and (name in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv", "field-series.json", "field-coordinates.bin") or re.fullmatch(r"field-frame-[0-9]{3}\.bin", name))
+        if state["status"] != "completed" or not allowed:
             raise ValueError("Artifact unavailable")
         entry = next((a for a in state["result"].get("artifacts",[]) if a["path"] == name),None)
         if not entry or entry["size_bytes"] > 8_000_000: raise ValueError("Artifact unavailable or too large")
         content = (self.root/payload["id"]/name).read_bytes()
         if hashlib.sha256(content).hexdigest() != entry["sha256"]: raise ValueError("Artifact integrity failed")
-        return dict(content=base64.b64encode(content).decode(),type="image/svg+xml" if name.endswith(".svg") else "text/csv")
+        return dict(content=base64.b64encode(content).decode(),type="image/svg+xml" if name.endswith(".svg") else "application/octet-stream" if name.endswith(".bin") else "application/json" if name.endswith(".json") else "text/csv")
 
     def submit(self, raw):
         p, m = validate(raw)

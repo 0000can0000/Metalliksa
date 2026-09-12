@@ -657,7 +657,7 @@ export const HardnessToTensileLab: React.FC<HardnessToTensileLabProps> = ({ onNa
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-600 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50 shrink-0"
             >
               {isSynthesizing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              <span>Certify Tensile Properties</span>
+              <span>Estimate Tensile Properties</span>
             </button>
           </div>
         </div>
@@ -1025,7 +1025,7 @@ export const HardnessToTensileLab: React.FC<HardnessToTensileLabProps> = ({ onNa
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
                 <h4 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                  Zero Error Margin: Monte Carlo Stochastic Uncertainty & MMPDS Statistical Bounds
+                  Monte Carlo uncertainty · model-dependent statistical bounds
                 </h4>
               </div>
               <span className="text-[10px] font-mono text-slate-400">

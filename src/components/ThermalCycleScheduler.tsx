@@ -1114,11 +1114,20 @@ STAGE BREAKDOWN:
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExportThermalTrace = () => {
+    const columns = ["time_min", "temperature_C", "grainSize_um", "yieldStrength_MPa", "hardness_HV"] as const;
+    const rows = simulationResults.timePoints.map(point => columns.map(key => point[key]).join(","));
+    const url = URL.createObjectURL(new Blob([columns.join(",")+"\n"+rows.join("\n")], {type:"text/csv"}));
+    const link=document.createElement("a");link.href=url;link.download=`ThermalCycle_${material.id}_predicted_trace.csv`;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+
   const handleExportRecipeJSON = () => {
     const payload = {
       title: `Furnace_Cycle_${material.id}_${Date.now()}`,
       material: material.name,
       standardSpecification: material.standardRef,
+      evidence: { status: "Unvalidated model prediction", scope: "Prescribed furnace schedule; empirical grain growth and strength estimates", experimentalValidation: "pending", furnaceControllerApproval: false },
       kinetics: {
         initialGrainSize_um: customInitialGrainSize,
         finalGrainSize_um: simulationResults.finalPoint.grainSize_um,
@@ -1856,8 +1865,10 @@ STAGE BREAKDOWN:
                 className="flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs font-mono hover:bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)] transition"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Export Furnace JSON Recipe</span>
+                <span>Export research schedule JSON</span>
               </button>
+              <button onClick={handleExportThermalTrace} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Export predicted thermal trace CSV</button>
+              <p className="text-xs text-amber-200/80">Research prediction only. The prescribed furnace schedule and estimated properties require experimental verification before process qualification.</p>
             </div>
           </div>
         </div>

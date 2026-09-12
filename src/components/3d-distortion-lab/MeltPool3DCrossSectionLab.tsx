@@ -654,6 +654,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   return (
     <div className="space-y-4 font-mono text-xs">
       <LpbfEngineeringSimulation input={{ material: selectedMaterial, power_W: laserPower_W, speed_mm_s: scanSpeed_mms, beamDiameter_um, preheat_C: preheatTemp_C, layer_um: layerThickness_um, hatch_um: hatchSpacing_um }} />
+      <details className="rounded-xl border border-slate-800 p-4"><summary className="cursor-pointer text-sm font-sans text-slate-300">Analytical screening studio · Rosenthal / Goldak / Eagar–Tsai / Fabbro / Marangoni</summary>
       {/* HEADER BAR & REGIME STATUS */}
       <div className="p-4 rounded-2xl bg-[#090e18] border border-[#1e2d46] space-y-3 shadow-xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
@@ -1380,6 +1381,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
           )}
         </div>
       </div>
+      </details>
     </div>
   );
 };

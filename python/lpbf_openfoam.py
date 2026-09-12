@@ -80,10 +80,13 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     samples = np.loadtxt(folder/"snapshots.dat", ndmin=2)
     if not np.isfinite(samples).all() or samples.shape[1] != len(coords)+14:
         raise ValueError("Invalid OpenFOAM field output")
+    from lpbf_evidence import FieldRecorder
+    recorder = FieldRecorder(artifact_dir, coords[:, :3], dx, m)
     history, best = [], dict(width_um=0., depth_um=0., length_um=0., volume_um3=0., crossSectionArea_um2=0.)
     xs = np.unique(coords[:, 0]); ever = np.zeros(len(coords), bool); remelt = ever.copy(); previous = ever.copy()
     for row in samples:
         t, ei, eo, stored, dt, steps, surface, peak = row[:8]; T = row[14:]
+        recorder.record(t, T, surface)
         melt = (T >= m["liquidus_K"]) & (coords[:, 2] < surface)
         remelt |= melt&ever&~previous; ever |= melt; previous = melt
         history.append(dict(time_s=t, peak_K=float(T.max()), storedEnergy_J=stored, inputEnergy_J=ei, lossEnergy_J=eo))
@@ -110,7 +113,7 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
                 pecletNumber=p["speed_mm_s"]*.001*w/alpha, aspectRatio=best["depth_um"]/best["width_um"] if w else None,
                 trackOverlapRatio=max(0.,1-p["hatch_um"]/best["width_um"]) if w else 0.,
                 remeltingRatio=float(row[13]/row[12]) if row[12] else 0.)
-    return dict(metrics=best, thermalHistory=history, scanPath=segments,
+    return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(), scanPath=segments,
                 energyBalance=dict(input_J=float(row[1]), losses_J=float(row[2]), stored_J=float(row[3]), relativeError=float(balance)),
                 discretization=dict(cells=len(coords), mesh_m=dx, minimumDt_s=float(row[4]), meanDt_s=float(row[0]/row[5]), steps=int(row[5])),
                 **thermal_audits(coords[:,:3],coords[:,3],p,m,np.clip((samples[-1,14:]-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)),

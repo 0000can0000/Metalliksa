@@ -30,3 +30,8 @@ Ubuntu-22.04 / WSL2 and `foamVersion = OpenFOAM-14` were verified. Sandbox WSL a
 Each completed change set records proof and operational status, then commits only task files. Final delivery explicitly distinguishes delivered thermal capability from unresolved research phases.
 
 Scientific basis: [OpenFOAM Foundation 14](https://openfoam.org/version/14/), [NIST model uncertainty](https://www.nist.gov/publications/identifying-uncertainty-laser-powder-bed-fusion-models), and the enthalpy references already recorded in LPBF_ENGINEERING.md. No new experimental measurements are introduced.
+
+
+## 2026-09-12 follow-up: resolved field workspace
+Audit: the thermal backends already solve transient enthalpy conduction. The UI primarily exposes static slices beside analytical geometry, and the application eagerly imports all modules. No momentum or gas interface is available.
+Plan: (1) export bounded, checksum-tracked sampled cell-temperature artifacts from both real thermal backends; (2) add an isolated 3D cell-field viewer with time selection, phase coloring and section controls, without interpolated flow; (3) simplify navigation, persist workspace selection and load modules on demand; (4) test artifact contracts, actual OpenFOAM cases, browser interaction, lint/build, then commit/push. Numerical outputs and analytical models remain unchanged.

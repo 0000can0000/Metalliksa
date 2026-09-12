@@ -460,7 +460,7 @@ export const LPBF_ALLOY_PRESETS: LpbfAlloyPreset[] = [
 
 export const Additive3DDistortionLab: React.FC = () => {
   // Navigation Sub-tab
-  const [activeSubTab, setActiveSubTab] = useState<LpbfDistortionSubTab>("industrial-decision");
+  const [activeSubTab, setActiveSubTab] = useState<LpbfDistortionSubTab>("3d-cross-section-melt-pool");
   const [focusedWizardStage, setFocusedWizardStage] = useState<LpbfBuildJobStage>("process");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const labStageRef = useRef<HTMLDivElement | null>(null);
@@ -1219,7 +1219,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
   const otherPhysicsLabs = ADVANCED_PHYSICS_LABS.filter((lab) => lab.id !== "3d-cross-section-melt-pool");
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto font-mono pb-24 lg:pb-4">
+    <div className="space-y-4 max-w-7xl mx-auto font-sans pb-24 lg:pb-4">
       <div className="sticky top-0 z-20 -mx-1 px-1 py-1 bg-[#070b13]/90 backdrop-blur-md border-b border-[#162032]/80">
         <div className="grid grid-cols-3 gap-1.5">
           <button
@@ -2441,7 +2441,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
         </>
       )}
       </div>
-      {inAdvanced && (
+      {inAdvanced && activeSubTab !== "3d-cross-section-melt-pool" && (
         <LpbfBuildJobRail
           activeSubTab={activeSubTab}
           focusedWizardStage={focusedWizardStage}

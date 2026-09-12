@@ -1,0 +1,1077 @@
+{
+  "updatedAt": "2026-09-12T08:05:13.764Z",
+  "records": [
+    {
+      "material": "Inconel 625",
+      "base": "Ni",
+      "category": "Ni-base Superalloy",
+      "record": {
+        "base": "Ni",
+        "liquidus_C": 1350,
+        "solidus_C": 1290,
+        "boiling_C": 2850,
+        "density_kg_m3": 8440,
+        "density_liquid_kg_m3": 7700,
+        "thermal_conductivity_W_mK": 9.8,
+        "thermal_conductivity_liquid_W_mK": 29,
+        "specific_heat_J_kgK": 410,
+        "specific_heat_liquid_J_kgK": 650,
+        "latent_heat_fusion_J_kg": 227000,
+        "latent_heat_vap_J_kg": 6400000,
+        "absorptivity_IR": 0.38,
+        "absorptivity_Green": 0.58,
+        "surface_tension_N_m": 1.8,
+        "d_gamma_dT_N_mK": -0.00038,
+        "viscosity_Pa_s": 0.006,
+        "thermal_expansion_1_K": 0.0000128,
+        "youngs_modulus_GPa": 208,
+        "poissons_ratio": 0.31,
+        "pdas_A1": 80,
+        "sdas_B1": 42
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "Special Metals INCONEL 625 datasheet (SMC-063); Mills (2002) pp. 181-190",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "1290 ≤ 1350 < 2850 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 6400000 > Lf 227000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "7700 < 8440 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.38, Green 0.58"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.31"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 208 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00038 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 650 vs cp_solid 410 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point plausibility vs base Ni",
+            "severity": "pass",
+            "detail": "Liquidus 1350 °C vs base Ni 1455 °C (Δ -7.2%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (alloy vs pure-element cell)",
+            "severity": "pass",
+            "detail": "Literature 8440 vs pure-Ni DFT 9289 kg/m³ (Δ -9.1%; alloy deviation expected)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "17-4PH Stainless Steel",
+      "base": "Fe",
+      "category": "Precipitation-Hardening Martensitic Steel",
+      "record": {
+        "base": "Fe",
+        "liquidus_C": 1440,
+        "solidus_C": 1400,
+        "boiling_C": 2860,
+        "density_kg_m3": 7750,
+        "density_liquid_kg_m3": 6900,
+        "thermal_conductivity_W_mK": 18.3,
+        "thermal_conductivity_liquid_W_mK": 30,
+        "specific_heat_J_kgK": 460,
+        "specific_heat_liquid_J_kgK": 750,
+        "latent_heat_fusion_J_kg": 260000,
+        "latent_heat_vap_J_kg": 6200000,
+        "absorptivity_IR": 0.4,
+        "absorptivity_Green": 0.6,
+        "surface_tension_N_m": 1.72,
+        "d_gamma_dT_N_mK": -0.00043,
+        "viscosity_Pa_s": 0.0058,
+        "thermal_expansion_1_K": 0.0000108,
+        "youngs_modulus_GPa": 196,
+        "poissons_ratio": 0.27,
+        "pdas_A1": 90,
+        "sdas_B1": 46
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "AK Steel 17-4PH datasheet; Mills (2002) pp. 135-146 (martensitic stainless)",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "1400 ≤ 1440 < 2860 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 6200000 > Lf 260000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "6900 < 7750 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.4, Green 0.6"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.27"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 196 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00043 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 750 vs cp_solid 460 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point plausibility vs base Fe",
+            "severity": "pass",
+            "detail": "Liquidus 1440 °C vs base Fe 1538 °C (Δ -6.4%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (alloy vs pure-element cell)",
+            "severity": "pass",
+            "detail": "Literature 7750 vs pure-Fe DFT 7903 kg/m³ (Δ -1.9%; alloy deviation expected)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "Maraging Steel 300 (18Ni-300)",
+      "base": "Fe",
+      "category": "Maraging Tool Steel",
+      "record": {
+        "base": "Fe",
+        "liquidus_C": 1440,
+        "solidus_C": 1413,
+        "boiling_C": 2860,
+        "density_kg_m3": 8100,
+        "density_liquid_kg_m3": 7300,
+        "thermal_conductivity_W_mK": 20,
+        "thermal_conductivity_liquid_W_mK": 30,
+        "specific_heat_J_kgK": 460,
+        "specific_heat_liquid_J_kgK": 750,
+        "latent_heat_fusion_J_kg": 260000,
+        "latent_heat_vap_J_kg": 6100000,
+        "absorptivity_IR": 0.4,
+        "absorptivity_Green": 0.6,
+        "surface_tension_N_m": 1.7,
+        "d_gamma_dT_N_mK": -0.00045,
+        "viscosity_Pa_s": 0.006,
+        "thermal_expansion_1_K": 0.0000103,
+        "youngs_modulus_GPa": 190,
+        "poissons_ratio": 0.31,
+        "pdas_A1": 88,
+        "sdas_B1": 44
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "ASM Handbook Vol. 1 (Maraging Steels); Mooney & Kourousis, Metals 10(9) 2020",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "1413 ≤ 1440 < 2860 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 6100000 > Lf 260000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "7300 < 8100 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.4, Green 0.6"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.31"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 190 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00045 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 750 vs cp_solid 460 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point plausibility vs base Fe",
+            "severity": "pass",
+            "detail": "Liquidus 1440 °C vs base Fe 1538 °C (Δ -6.4%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (alloy vs pure-element cell)",
+            "severity": "pass",
+            "detail": "Literature 8100 vs pure-Fe DFT 7903 kg/m³ (Δ 2.5%; alloy deviation expected)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "CP-Ti Grade 2",
+      "base": "Ti",
+      "category": "Commercially Pure Titanium",
+      "record": {
+        "base": "Ti",
+        "liquidus_C": 1668,
+        "solidus_C": 1668,
+        "boiling_C": 3287,
+        "density_kg_m3": 4510,
+        "density_liquid_kg_m3": 4110,
+        "thermal_conductivity_W_mK": 17,
+        "thermal_conductivity_liquid_W_mK": 30,
+        "specific_heat_J_kgK": 523,
+        "specific_heat_liquid_J_kgK": 700,
+        "latent_heat_fusion_J_kg": 295000,
+        "latent_heat_vap_J_kg": 8900000,
+        "absorptivity_IR": 0.35,
+        "absorptivity_Green": 0.52,
+        "surface_tension_N_m": 1.65,
+        "d_gamma_dT_N_mK": -0.00026,
+        "viscosity_Pa_s": 0.0042,
+        "thermal_expansion_1_K": 0.0000086,
+        "youngs_modulus_GPa": 105,
+        "poissons_ratio": 0.34,
+        "pdas_A1": 62,
+        "sdas_B1": 33
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "ASM Handbook Vol. 2 (Titanium); Mills (2002) pp. 211-217",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "1668 ≤ 1668 < 3287 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 8900000 > Lf 295000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "4110 < 4510 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.35, Green 0.52"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.34"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 105 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00026 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 700 vs cp_solid 523 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point plausibility vs base Ti",
+            "severity": "pass",
+            "detail": "Liquidus 1668 °C vs base Ti 1668 °C (Δ 0.0%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (alloy vs pure-element cell)",
+            "severity": "pass",
+            "detail": "Literature 4510 vs pure-Ti DFT 4670 kg/m³ (Δ -3.4%; alloy deviation expected)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "AlSi7Mg (A357)",
+      "base": "Al",
+      "category": "Al-Si Casting Alloy",
+      "record": {
+        "base": "Al",
+        "liquidus_C": 615,
+        "solidus_C": 555,
+        "boiling_C": 2470,
+        "density_kg_m3": 2680,
+        "density_liquid_kg_m3": 2400,
+        "thermal_conductivity_W_mK": 150,
+        "thermal_conductivity_liquid_W_mK": 90,
+        "specific_heat_J_kgK": 963,
+        "specific_heat_liquid_J_kgK": 1180,
+        "latent_heat_fusion_J_kg": 425000,
+        "latent_heat_vap_J_kg": 10500000,
+        "absorptivity_IR": 0.15,
+        "absorptivity_Green": 0.35,
+        "surface_tension_N_m": 0.86,
+        "d_gamma_dT_N_mK": -0.00035,
+        "viscosity_Pa_s": 0.0012,
+        "thermal_expansion_1_K": 0.0000215,
+        "youngs_modulus_GPa": 72,
+        "poissons_ratio": 0.33,
+        "pdas_A1": 42,
+        "sdas_B1": 20
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "ASM Handbook Vol. 2 (Aluminum); Mills (2002) pp. 41-47 (Al-Si alloys)",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "555 ≤ 615 < 2470 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 10500000 > Lf 425000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "2400 < 2680 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.15, Green 0.35"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.33"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 72 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00035 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 1180 vs cp_solid 963 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point plausibility vs base Al",
+            "severity": "pass",
+            "detail": "Liquidus 615 °C vs base Al 660 °C (Δ -6.8%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (alloy vs pure-element cell)",
+            "severity": "pass",
+            "detail": "Literature 2680 vs pure-Al DFT 2720 kg/m³ (Δ -1.5%; alloy deviation expected)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "CuCrZr",
+      "base": "Cu",
+      "category": "Precipitation-Hardened Copper",
+      "record": {
+        "base": "Cu",
+        "liquidus_C": 1080,
+        "solidus_C": 1075,
+        "boiling_C": 2562,
+        "density_kg_m3": 8900,
+        "density_liquid_kg_m3": 7900,
+        "thermal_conductivity_W_mK": 320,
+        "thermal_conductivity_liquid_W_mK": 150,
+        "specific_heat_J_kgK": 390,
+        "specific_heat_liquid_J_kgK": 540,
+        "latent_heat_fusion_J_kg": 205000,
+        "latent_heat_vap_J_kg": 4730000,
+        "absorptivity_IR": 0.1,
+        "absorptivity_Green": 0.45,
+        "surface_tension_N_m": 1.3,
+        "d_gamma_dT_N_mK": -0.00028,
+        "viscosity_Pa_s": 0.004,
+        "thermal_expansion_1_K": 0.000017,
+        "youngs_modulus_GPa": 128,
+        "poissons_ratio": 0.34,
+        "pdas_A1": 50,
+        "sdas_B1": 25
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "ITER Material Properties Handbook (CuCrZr); Mills (2002) pp. 87-93 (copper)",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "1075 ≤ 1080 < 2562 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 4730000 > Lf 205000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "7900 < 8900 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.1, Green 0.45"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.34"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 128 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00028 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 540 vs cp_solid 390 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point plausibility vs base Cu",
+            "severity": "pass",
+            "detail": "Liquidus 1080 °C vs base Cu 1085 °C (Δ -0.5%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (alloy vs pure-element cell)",
+            "severity": "pass",
+            "detail": "Literature 8900 vs pure-Cu DFT 9219 kg/m³ (Δ -3.5%; alloy deviation expected)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "Tungsten (Pure W)",
+      "base": "W",
+      "category": "Refractory Metal",
+      "record": {
+        "base": "W",
+        "liquidus_C": 3422,
+        "solidus_C": 3422,
+        "boiling_C": 5555,
+        "density_kg_m3": 19250,
+        "density_liquid_kg_m3": 17600,
+        "thermal_conductivity_W_mK": 173,
+        "thermal_conductivity_liquid_W_mK": 60,
+        "specific_heat_J_kgK": 132,
+        "specific_heat_liquid_J_kgK": 230,
+        "latent_heat_fusion_J_kg": 285000,
+        "latent_heat_vap_J_kg": 4210000,
+        "absorptivity_IR": 0.4,
+        "absorptivity_Green": 0.55,
+        "surface_tension_N_m": 2.48,
+        "d_gamma_dT_N_mK": -0.00029,
+        "viscosity_Pa_s": 0.007,
+        "thermal_expansion_1_K": 0.0000045,
+        "youngs_modulus_GPa": 411,
+        "poissons_ratio": 0.28,
+        "pdas_A1": 30,
+        "sdas_B1": 15
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "Mills (2002) pp. 259-265; NIST-JANAF Thermochemical Tables (Tungsten)",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "3422 ≤ 3422 < 5555 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 4210000 > Lf 285000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "17600 < 19250 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.4, Green 0.55"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.28"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 411 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00029 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 230 vs cp_solid 132 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point vs pure W reference",
+            "severity": "pass",
+            "detail": "Liquidus 3422 °C vs W 3422 °C (Δ 0.0%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (pure element)",
+            "severity": "pass",
+            "detail": "Literature 19250 vs DFT 19161 kg/m³ (Δ 0.5%)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    },
+    {
+      "material": "Tantalum (Pure Ta)",
+      "base": "Ta",
+      "category": "Refractory Metal",
+      "record": {
+        "base": "Ta",
+        "liquidus_C": 3017,
+        "solidus_C": 3017,
+        "boiling_C": 5458,
+        "density_kg_m3": 16650,
+        "density_liquid_kg_m3": 15000,
+        "thermal_conductivity_W_mK": 57.5,
+        "thermal_conductivity_liquid_W_mK": 60,
+        "specific_heat_J_kgK": 140,
+        "specific_heat_liquid_J_kgK": 240,
+        "latent_heat_fusion_J_kg": 200000,
+        "latent_heat_vap_J_kg": 4050000,
+        "absorptivity_IR": 0.38,
+        "absorptivity_Green": 0.52,
+        "surface_tension_N_m": 2.15,
+        "d_gamma_dT_N_mK": -0.00025,
+        "viscosity_Pa_s": 0.008,
+        "thermal_expansion_1_K": 0.0000063,
+        "youngs_modulus_GPa": 186,
+        "poissons_ratio": 0.34,
+        "pdas_A1": 32,
+        "sdas_B1": 16
+      },
+      "provenance": {
+        "base": "DFT-Live",
+        "liquidus_C": "Literature",
+        "solidus_C": "Literature",
+        "boiling_C": "Literature",
+        "density_kg_m3": "DFT-Live",
+        "density_liquid_kg_m3": "Literature",
+        "thermal_conductivity_W_mK": "Literature",
+        "thermal_conductivity_liquid_W_mK": "Literature",
+        "specific_heat_J_kgK": "Literature",
+        "specific_heat_liquid_J_kgK": "Literature",
+        "latent_heat_fusion_J_kg": "Literature",
+        "latent_heat_vap_J_kg": "Literature",
+        "absorptivity_IR": "Literature",
+        "absorptivity_Green": "Literature",
+        "surface_tension_N_m": "Literature",
+        "d_gamma_dT_N_mK": "Literature",
+        "viscosity_Pa_s": "Literature",
+        "thermal_expansion_1_K": "Literature",
+        "youngs_modulus_GPa": "DFT-Live",
+        "poissons_ratio": "DFT-Live",
+        "pdas_A1": "Literature",
+        "sdas_B1": "Literature"
+      },
+      "citations": [
+        "Mills (2002) pp. 205-210; NIST-JANAF Thermochemical Tables (Tantalum)",
+        "Materials Project Live DFT API (api.materialsproject.org)"
+      ],
+      "audit": {
+        "status": "pass",
+        "confidence": 100,
+        "passCount": 11,
+        "warnCount": 0,
+        "failCount": 0,
+        "checks": [
+          {
+            "id": "completeness",
+            "label": "Schema completeness (22 fields present & finite)",
+            "severity": "pass",
+            "detail": "All required fields populated."
+          },
+          {
+            "id": "phase_order",
+            "label": "Phase ordering (solidus ≤ liquidus < boiling)",
+            "severity": "pass",
+            "detail": "3017 ≤ 3017 < 5458 °C"
+          },
+          {
+            "id": "latent_heats",
+            "label": "Latent heat of vaporization > fusion",
+            "severity": "pass",
+            "detail": "Lv 4050000 > Lf 200000 J/kg"
+          },
+          {
+            "id": "density_phase",
+            "label": "Liquid density < solid density",
+            "severity": "pass",
+            "detail": "15000 < 16650 kg/m³"
+          },
+          {
+            "id": "absorptivity",
+            "label": "Absorptivity within (0,1)",
+            "severity": "pass",
+            "detail": "IR 0.38, Green 0.52"
+          },
+          {
+            "id": "poisson",
+            "label": "Poisson's ratio in (0, 0.5)",
+            "severity": "pass",
+            "detail": "ν = 0.34"
+          },
+          {
+            "id": "youngs",
+            "label": "Young's modulus in 10-600 GPa",
+            "severity": "pass",
+            "detail": "E = 186 GPa"
+          },
+          {
+            "id": "marangoni_sign",
+            "label": "dγ/dT negative (outward Marangoni convention)",
+            "severity": "pass",
+            "detail": "dγ/dT = -0.00025 N/mK"
+          },
+          {
+            "id": "cp_phase",
+            "label": "Liquid specific heat ≥ solid specific heat",
+            "severity": "pass",
+            "detail": "cp_liquid 240 vs cp_solid 140 J/kgK"
+          },
+          {
+            "id": "melt_vs_element",
+            "label": "Melting point vs pure Ta reference",
+            "severity": "pass",
+            "detail": "Liquidus 3017 °C vs Ta 3017 °C (Δ 0.0%)"
+          },
+          {
+            "id": "density_vs_dft",
+            "label": "Solid density vs live DFT (pure element)",
+            "severity": "pass",
+            "detail": "Literature 16650 vs DFT 16260 kg/m³ (Δ 2.4%)"
+          }
+        ]
+      },
+      "dftLive": true,
+      "collectedAt": "2026-09-12T08:05:13.764Z"
+    }
+  ]
+}

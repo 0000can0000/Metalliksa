@@ -1,0 +1,49 @@
+{
+  "totalRows": 640,
+  "batches": [
+    {
+      "batchId": "batch-2026-09-12-1789200313764",
+      "collectedAt": "2026-09-12T08:05:13.764Z",
+      "rows": 640,
+      "alloys": 16,
+      "perAlloyCounts": {
+        "Inconel 625": 40,
+        "17-4PH Stainless Steel": 40,
+        "Maraging Steel 300 (18Ni-300)": 40,
+        "CP-Ti Grade 2": 40,
+        "AlSi7Mg (A357)": 40,
+        "CuCrZr": 40,
+        "Tungsten (Pure W)": 40,
+        "Tantalum (Pure Ta)": 40,
+        "Inconel 718": 40,
+        "Ti-6Al-4V": 40,
+        "316L Stainless Steel": 40,
+        "AlSi10Mg": 40,
+        "CoCrMo": 40,
+        "Scalmalloy (Al-Mg-Sc-Zr)": 40,
+        "Hastelloy X": 40,
+        "Pure Copper (Cu-OF)": 40
+      },
+      "samplesPerAlloy": 40
+    }
+  ],
+  "alloysSeen": [
+    "Inconel 625",
+    "17-4PH Stainless Steel",
+    "Maraging Steel 300 (18Ni-300)",
+    "CP-Ti Grade 2",
+    "AlSi7Mg (A357)",
+    "CuCrZr",
+    "Tungsten (Pure W)",
+    "Tantalum (Pure Ta)",
+    "Inconel 718",
+    "Ti-6Al-4V",
+    "316L Stainless Steel",
+    "AlSi10Mg",
+    "CoCrMo",
+    "Scalmalloy (Al-Mg-Sc-Zr)",
+    "Hastelloy X",
+    "Pure Copper (Cu-OF)"
+  ],
+  "lastCollectedAt": "2026-09-12T08:05:13.764Z"
+}

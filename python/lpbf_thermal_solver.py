@@ -222,12 +222,27 @@ def calculate_meltpool_physics(
     preheat_temp_C: float = 80.0,
     layer_thickness_um: float = 40.0,
     hatch_spacing_um: float = 100.0,
-    laser_wavelength: str = "IR_1064nm"
+    laser_wavelength: str = "IR_1064nm",
+    material_props: dict = None
 ):
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
+
+    If ``material_props`` is supplied (e.g. a researched/audited thermophysical
+    record from the LPBF Data Research pipeline), it is used directly instead of
+    the built-in THERMOPHYSICAL_DB lookup. This lets alloys that are not yet in
+    the engine be simulated and lets the daily data-collection job generate
+    labeled melt-pool samples for newly researched alloys.
     """
-    props = THERMOPHYSICAL_DB.get(material_name, THERMOPHYSICAL_DB["Inconel 718"])
+    if material_props:
+        # Fall back to Inconel 718 only for any field the override omits.
+        merged = dict(THERMOPHYSICAL_DB["Inconel 718"])
+        merged.update({k: v for k, v in material_props.items() if v is not None})
+        props = merged
+        props_source = "override"
+    else:
+        props = THERMOPHYSICAL_DB.get(material_name, THERMOPHYSICAL_DB["Inconel 718"])
+        props_source = "builtin_db" if material_name in THERMOPHYSICAL_DB else "fallback_inconel718"
     
     P_laser = max(10.0, float(laser_power_W))
     v_scan = max(10.0, float(scan_speed_mm_s)) * 1e-3  # m/s
@@ -526,6 +541,8 @@ def calculate_meltpool_physics(
         "success": True,
         "engine": "MetalliX-Python-HPC-LPBF-MeltPool-v4.0",
         "material": material_name,
+        "materialPropsSource": props_source,
+        "thermophysicalProps": props,
         "baseMetal": props["base"],
         "laserWavelength": laser_wavelength,
         "processParameters": {
@@ -630,9 +647,10 @@ if __name__ == "__main__":
         layer = float(data.get("layerThickness_um", 40.0))
         hatch = float(data.get("hatchSpacing_um", 110.0))
         wavelength = data.get("laserWavelength", "IR_1064nm")
+        material_props = data.get("materialProps")
         
         t0 = time.time()
-        result = calculate_meltpool_physics(mat, power, speed, beam, preheat, layer, hatch, wavelength)
+        result = calculate_meltpool_physics(mat, power, speed, beam, preheat, layer, hatch, wavelength, material_props=material_props)
         result["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
         print(json.dumps(result, indent=2))
     except Exception as e:

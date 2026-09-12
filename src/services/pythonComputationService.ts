@@ -1489,6 +1489,114 @@ class PythonComputationService {
     });
     return await res.json();
   }
+
+  /**
+   * Fetch the LPBF thermophysical data schema, the alloys already present in the
+   * solver DB, and the researchable reference library (for the data-gap dashboard).
+   */
+  async getLPBFResearchSchema(): Promise<LPBFResearchSchema> {
+    const res = await fetch("/api/research/lpbf-schema");
+    if (!res.ok) {
+      throw new Error(`LPBF research schema error: HTTP ${res.status}`);
+    }
+    return await res.json();
+  }
+
+  /**
+   * Research a full LPBF thermophysical record for a reference-library alloy,
+   * cross-validating curated literature values with a live Materials Project DFT query.
+   */
+  async researchLPBFThermophysical(material: string): Promise<LPBFResearchResult> {
+    const res = await fetch("/api/research/lpbf-thermophysical", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ material }),
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail?.error || `LPBF research error: HTTP ${res.status}`);
+    }
+    return await res.json();
+  }
+}
+
+export type LPBFResearchProvenance = "DFT-Live" | "Literature" | "Derived";
+
+export interface LPBFSchemaField {
+  key: string;
+  label: string;
+  unit: string;
+  category: string;
+  typicalSource: LPBFResearchProvenance;
+}
+
+export interface LPBFReferenceAlloyMeta {
+  name: string;
+  base: string;
+  category: string;
+  applicationNote: string;
+  citation: string;
+  alreadyInSolver: boolean;
+}
+
+export interface LPBFResearchSchema {
+  success: boolean;
+  requiredFields: LPBFSchemaField[];
+  fieldCount: number;
+  existingMaterials: string[];
+  existingCount: number;
+  referenceLibrary: LPBFReferenceAlloyMeta[];
+  referenceCount: number;
+}
+
+export interface LPBFDFTEvidence {
+  live: boolean;
+  material_id?: string;
+  formula_pretty?: string;
+  density_g_cm3?: number;
+  is_stable?: boolean;
+  energy_above_hull?: number;
+  crystal_system?: string;
+  symmetry_symbol?: string;
+  source: string;
+  note?: string;
+}
+
+export type LPBFAuditSeverity = "pass" | "warn" | "fail";
+
+export interface LPBFAuditCheck {
+  id: string;
+  label: string;
+  severity: LPBFAuditSeverity;
+  detail: string;
+}
+
+export interface LPBFAuditReport {
+  status: LPBFAuditSeverity;
+  confidence: number;
+  passCount: number;
+  warnCount: number;
+  failCount: number;
+  checks: LPBFAuditCheck[];
+}
+
+export interface LPBFResearchResult {
+  success: boolean;
+  material: string;
+  base: string;
+  category: string;
+  applicationNote: string;
+  record: Record<string, number | string>;
+  provenance: Record<string, LPBFResearchProvenance>;
+  citations: string[];
+  dftEvidence: LPBFDFTEvidence;
+  densityCrossCheck: {
+    literature_kg_m3: number;
+    dft_kg_m3: number;
+    deviationPct: number;
+  } | null;
+  schemaComplete: boolean;
+  audit: LPBFAuditReport;
 }
 
 export interface PythonLPBFResult {

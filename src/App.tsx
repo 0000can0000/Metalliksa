@@ -44,6 +44,7 @@ import { MechanicalPropertyAILab } from "./components/MechanicalPropertyAILab";
 import { Additive3DDistortionLab } from "./components/Additive3DDistortionLab";
 import { AerospaceAuditReportGenerator } from "./components/AerospaceAuditReportGenerator";
 import { AdvancedResearchHub } from "./components/AdvancedResearchHub";
+import { LPBFDataResearchPanel } from "./components/research/LPBFDataResearchPanel";
 import { ThermalCycleScheduler } from "./components/ThermalCycleScheduler";
 import { PhaseDiagramViewer } from "./components/PhaseDiagramViewer";
 import { EDSSpectrumLab } from "./components/EDSSpectrumLab";
@@ -81,6 +82,7 @@ export type NavSubTab =
   | "alloy-builder"
   | "calculators"
   | "research-hub"
+  | "lpbf-data-research"
   | "copilot";
 
 interface SubTabItem {
@@ -348,6 +350,15 @@ const DISCIPLINE_HUBS: DisciplineHub[] = [
         category: "Academic Literature",
       },
       {
+        id: "lpbf-data-research",
+        label: "LPBF Data Research & Acquisition",
+        shortLabel: "LPBF Data Research",
+        sublabel: "Live Materials Project DFT + Curated Literature for Melt-Pool Thermophysical Data",
+        icon: FlaskConical,
+        badge: "Live DFT + Literature",
+        category: "Data Acquisition",
+      },
+      {
         id: "copilot",
         label: "Metallurgy AI Copilot",
         shortLabel: "AI Advisor",
@@ -610,6 +621,7 @@ export default function App() {
         {activeTab === "thermal-scheduler" && <ThermalCycleScheduler onNavigate={(tabId) => navigateToTab(tabId as NavSubTab)} />}
         {activeTab === "qualification" && <StandardQualificationEngine />}
         {activeTab === "research-hub" && <AdvancedResearchHub />}
+        {activeTab === "lpbf-data-research" && <LPBFDataResearchPanel />}
         {activeTab === "materials-project" && (
           <MaterialsProjectExplorer
             onSelectToCrystal={(formula, crystalSystem) => {

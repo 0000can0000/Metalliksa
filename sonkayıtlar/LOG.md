@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 08:32 — Recall MELTPOOL + 3D plan
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: User asked (Turkish) what the MELTPOOL and other 3D plan was.
+- **Done**: Recalled the two-layer plan: (1) Additive LPBF wizard + Advanced 3D labs; (2) physics fidelity order Rosenthal → Eagar–Tsai/Goldak (locked) → keyhole/Marangoni → G/R/CET → inherent strain → defects/fatigue. No code change.
+- **Where we left off**: Nothing left on this recall. Next physics unlock is still Eagar–Tsai / Goldak only if the user opens the fidelity flag.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — recall only; no app or solver change
+
+---
+
 ## 2026-09-06 22:45 — LPBF Faz 5 (cache, lazy UQ/NIST, Murakami, SBOM, air-gap)
 - **Agent**: Cursor Auto (Composer) / Grok inherit for survey
 - **Result**: PASS

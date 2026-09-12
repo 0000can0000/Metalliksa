@@ -20,6 +20,7 @@ import time
 
 import numpy as np
 
+from eagar_tsai_solver import EagarTsaiField, MODEL_ID as EAGAR_TSAI_MODEL_ID
 from four_alloy_materials import four_alloy_thermophysical_db, thermal_props
 
 # Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
@@ -174,6 +175,13 @@ def sample_thermal_slice(eval_T, axis_a, axis_b, na, nb):
     return temps
 
 
+def _normalize_heat_source(heat_source: str | None) -> str:
+    key = (heat_source or "rosenthal").strip().lower().replace("_", "-")
+    if key in ("eagar-tsai", "eagar-tsai-v1", "et", "eager-tsai"):
+        return "eagar-tsai"
+    return "rosenthal"
+
+
 def calculate_meltpool_physics(
     material_name: str,
     laser_power_W: float,
@@ -186,10 +194,12 @@ def calculate_meltpool_physics(
     incline_angle_deg: float = 0.0,
     process_seed: int = 42,
     prop_overrides: dict | None = None,
+    heat_source: str | None = None,
 ):
     """
     Evaluates 3D multi-regime melt pool physics, geometry, defects, and microstructure.
     Optional prop_overrides merge onto the resolved thermophysical dict (UQ / AM-Bench).
+    heat_source: "rosenthal" (Build Job default) or "eagar-tsai" (finite Gaussian).
     """
     base = (
         thermal_props(material_name)
@@ -255,8 +265,19 @@ def calculate_meltpool_physics(
     P_geom = effective_power / (1.0 + 0.55 * stefan)
     r_reg = max(r_beam / math.sqrt(2.0), 8e-6)
 
-    def T_ros(x_m, y_m, z_m):
-        return rosenthal_temperature_C(x_m, y_m, z_m, T_preheat, P_geom, k_th, v_scan, alpha_th, r_reg)
+    source = _normalize_heat_source(heat_source)
+    if source == "eagar-tsai":
+        et_field = EagarTsaiField(T_preheat, P_geom, k_th, alpha_th, r_beam).bind_speed(v_scan)
+
+        def T_field(x_m, y_m, z_m):
+            return et_field.temperature_C(x_m, y_m, z_m)
+
+        heat_source_id = EAGAR_TSAI_MODEL_ID
+    else:
+        def T_field(x_m, y_m, z_m):
+            return rosenthal_temperature_C(x_m, y_m, z_m, T_preheat, P_geom, k_th, v_scan, alpha_th, r_reg)
+
+        heat_source_id = "rosenthal-screening-v1"
 
     # Seed search box from the high-speed Rosenthal width scale
     denom_thermal = rho * cp * max(50.0, T_liq - T_preheat) * v_scan
@@ -265,18 +286,21 @@ def calculate_meltpool_physics(
     search_len = max(d_beam * 3.0, w_analytical * 4.5, 80e-6)
     search_depth = max(d_beam * 2.2, w_analytical * 2.0, 40e-6)
 
-    t_peak_C = T_preheat + (2.0 * eta_eff * P_laser) / (math.pi * k_th * d_beam * math.sqrt(math.pi))
-    # No artificial 3900 °C display ceiling — report the Rosenthal peak (may exceed boiling).
+    if source == "eagar-tsai":
+        t_peak_C = float(T_field(0.0, 0.0, 0.0))
+    else:
+        t_peak_C = T_preheat + (2.0 * eta_eff * P_laser) / (math.pi * k_th * d_beam * math.sqrt(math.pi))
+    # No artificial 3900 °C display ceiling — report the field peak (may exceed boiling).
 
-    # 4. Liquidus extents from the regularized Rosenthal field (conduction baseline)
-    x_front = _binary_extent(lambda x: T_ros(x, 0.0, 0.0) >= T_liq, 0.0, search_len)
-    x_rear = _binary_extent(lambda s: T_ros(-s, 0.0, 0.0) >= T_liq, 0.0, search_len * 1.4)
+    # 4. Liquidus extents from the conduction field (Rosenthal or Eagar–Tsai)
+    x_front = _binary_extent(lambda x: T_field(x, 0.0, 0.0) >= T_liq, 0.0, search_len)
+    x_rear = _binary_extent(lambda s: T_field(-s, 0.0, 0.0) >= T_liq, 0.0, search_len * 1.4)
     half_w = 0.0
     for x_probe in (-x_rear * 0.35, -x_rear * 0.15, -x_rear * 0.05, 0.0, x_front * 0.35):
-        half_w = max(half_w, _binary_extent(lambda y: T_ros(x_probe, y, 0.0) >= T_liq, 0.0, search_half_w))
+        half_w = max(half_w, _binary_extent(lambda y: T_field(x_probe, y, 0.0) >= T_liq, 0.0, search_half_w))
     d_iso = 0.0
     for x_probe in (-x_rear * 0.25, -x_rear * 0.1, -x_rear * 0.04, 0.0):
-        d_iso = max(d_iso, _binary_extent(lambda z: T_ros(x_probe, 0.0, z) >= T_liq, 0.0, search_depth))
+        d_iso = max(d_iso, _binary_extent(lambda z: T_field(x_probe, 0.0, z) >= T_liq, 0.0, search_depth))
 
     if half_w < 8e-6 or d_iso < 3e-6:
         w_fb = math.sqrt(max(1e-12, w_analytical ** 2 + (0.65 * d_beam) ** 2))
@@ -435,7 +459,7 @@ def calculate_meltpool_physics(
     for i in range(num_pts + 1):
         s = i / num_pts
         x_m = goldak_af_um * 1e-6 - (goldak_af_um + goldak_ar_um) * 1e-6 * s
-        y_half = _binary_extent(lambda y: T_ros(x_m, y, 0.0) >= T_liq, 0.0, search_half_w)
+        y_half = _binary_extent(lambda y: T_field(x_m, y, 0.0) >= T_liq, 0.0, search_half_w)
         x_um = x_m * 1e6
         y_um = y_half * 1e6
         top_down_contour.append({"x_um": round(float(x_um), 1), "y_um": round(float(y_um), 1)})
@@ -447,7 +471,7 @@ def calculate_meltpool_physics(
     for i in range(num_pts + 1):
         s = i / num_pts
         x_m = goldak_af_um * 1e-6 - (goldak_af_um + goldak_ar_um) * 1e-6 * s
-        z_iso = _binary_extent(lambda z: T_ros(x_m, 0.0, z) >= T_liq, 0.0, search_depth)
+        z_iso = _binary_extent(lambda z: T_field(x_m, 0.0, z) >= T_liq, 0.0, search_depth)
         z_depth = z_iso * depth_scale * 1e6
         longitudinal_contour.append({
             "x_um": round(float(x_m * 1e6), 1),
@@ -459,7 +483,7 @@ def calculate_meltpool_physics(
     for i in range(33):
         phi = (math.pi * i) / 32.0
         y_m = (goldak_b_um * 1e-6) * math.cos(phi)
-        z_iso = _binary_extent(lambda z: T_ros(0.0, y_m, z) >= T_liq, 0.0, search_depth)
+        z_iso = _binary_extent(lambda z: T_field(0.0, y_m, z) >= T_liq, 0.0, search_depth)
         if regime.startswith("Keyhole"):
             z_pt = z_iso * depth_scale * (max(0.05, math.sin(phi)) ** 0.75)
         else:
@@ -476,10 +500,10 @@ def calculate_meltpool_physics(
     z_span = (0.0, d_melt_um * 1.25)
 
     def T_xz(x_um, z_um):
-        return T_ros(x_um * 1e-6, 0.0, z_um * 1e-6)
+        return T_field(x_um * 1e-6, 0.0, z_um * 1e-6)
 
     def T_yz(y_um, z_um):
-        return T_ros(0.0, y_um * 1e-6, z_um * 1e-6)
+        return T_field(0.0, y_um * 1e-6, z_um * 1e-6)
 
     thermal_slices = {
         "liquidus_C": T_liq,
@@ -567,7 +591,9 @@ def calculate_meltpool_physics(
 
     return {
         "success": True,
-        "engine": "MetalliX-Python-HPC-LPBF-MeltPool-v5.0",
+        "engine": "MetalliX-Python-HPC-LPBF-MeltPool-v6.0",
+        "modelId": heat_source_id,
+        "heatSourceModel": heat_source_id,
         "material": material_name,
         "baseMetal": props["base"],
         "laserWavelength": laser_wavelength,
@@ -589,7 +615,8 @@ def calculate_meltpool_physics(
             "volumetricEnergyDensity_J_mm3": round(ved_J_mm3, 2),
             "linearEnergyDensity_J_m": round(led_J_m, 1),
             "peakIntensity_MW_cm2": round(peak_intensity_MW_cm2, 3),
-            "normalizedEnthalpy": round(normalized_enthalpy, 2)
+            "normalizedEnthalpy": round(normalized_enthalpy, 2),
+            "heatSource": source,
         },
         "meltPoolGeometry": {
             "length_um": round(l_melt_um, 1),
@@ -688,9 +715,13 @@ if __name__ == "__main__":
         layer = float(data.get("layerThickness_um", 40.0))
         hatch = float(data.get("hatchSpacing_um", 110.0))
         wavelength = data.get("laserWavelength", "IR_1064nm")
+        heat_source = data.get("heatSource") or data.get("heat_source") or "rosenthal"
         
         t0 = time.time()
-        result = calculate_meltpool_physics(mat, power, speed, beam, preheat, layer, hatch, wavelength)
+        result = calculate_meltpool_physics(
+            mat, power, speed, beam, preheat, layer, hatch, wavelength,
+            heat_source=heat_source,
+        )
         result["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
         print(json.dumps(result, indent=2))
     except Exception as e:

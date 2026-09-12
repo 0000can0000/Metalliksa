@@ -65,6 +65,22 @@ export const MELT_POOL_LITERATURE_CASES: MeltPoolLiteratureCase[] = [
     source: "Typical IN718 single-track window near King ΔH/hs ≈ 30 onset",
     doi: "10.1016/j.jmatprotec.2014.04.021",
   },
+  {
+    id: "in718-amb2022-03-baseline",
+    label: "IN718 NIST AMB2022-03 baseline",
+    material: "Inconel 718",
+    laserPower_W: 285,
+    scanSpeed_mm_s: 960,
+    beamDiameter_um: 67,
+    preheatTemp_C: 23.5,
+    layerThickness_um: 40,
+    hatchSpacing_um: 110,
+    publishedWidth_um: 136.3,
+    publishedDepth_um: 139.7,
+    publishedRegime: "Keyhole",
+    source: "Lane et al., Integr. Mater. Manuf. Innov. (2024) — bare-plate single track, D4σ = 67 µm",
+    doi: "10.1007/s40192-024-00355-5",
+  },
 ];
 
 export function regimeFamily(regime: string): "Conduction" | "Transition" | "Keyhole" {

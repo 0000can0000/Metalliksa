@@ -252,4 +252,20 @@ This logbook records all empirically tested and mathematically verified models, 
 - **Fixtures**: `python/test_lpbf_build_job.py` (fast default + `--slow`); `npx tsc --noEmit`; `py -3 python/generate_sbom.py`.
 - **Status**: **PASS**
 
+---
+
+## Proof Entry 018: Eagar–Tsai 3D Gaussian melt-pool field (`eagar-tsai-v1`)
+- **Date**: 2026-09-12
+- **Module**: `python/eagar_tsai_solver.py` / `lpbf_thermal_solver.py` / `MeltPool3DCrossSectionLab.tsx`
+- **Academic basis**:
+  - Eagar & Tsai, *Welding Journal* (Dec 1983) 346-s–354-s — traveling Gaussian on a semi-infinite solid. Dimensionless integral as in `METALLURGY_VALIDATION.md` §2.3 with LPBF 1/e² radius \(r_0\) (\(D_{4\sigma}=2r_0\)).
+  - Finite peak \(T\) and spot-size flattening vs Rosenthal point source (Eagar–Tsai §2.4).
+  - Not CFD: no Marangoni, no recoil cavity. King extra depth remains a semi-empirical increment on the conduction isotherm.
+- **Literature numbers** (search-sourced, not invented):
+  - NIST AMB2022-03 IN718 bare-plate baseline (Lane et al., *Integr. Mater. Manuf. Innov.* 2024, DOI `10.1007/s40192-024-00355-5`): \(P=285\,\text{W}\), \(v=960\,\text{mm/s}\), \(D_{4\sigma}=67\,\mu\text{m}\), \(T_0=23.5^\circ\text{C}\). Measured \(W=136.3\,\mu\text{m}\), \(D=139.7\,\mu\text{m}\) (aspect \(D/(W/2)=2.1\), keyhole). ET is tested on **width** (factor-of-two band) and on the **spot-size trend** (49 vs 82 µm: larger spot not narrower / not deeper conduction isotherm). Depth is **not** claimed — vapor depression is outside ET.
+  - 316L order-of-magnitude: Guo et al., *Micromachines* 15(2):170 (2024), DOI `10.3390/mi15020170` — 260 W, 1.47 m/s, 100 µm spot; \(W\) band 60–280 µm.
+- **Product split**: Melt Pool 3D lab defaults to `eagar-tsai-v1`. `POST /api/python/lpbf-build-job` stays `rosenthal-screening-v1` (verdict unchanged).
+- **Functional proof**: `py -3 python/test_eagar_tsai.py`; `py -3 python/test_lpbf_meltpool_accuracy.py`; `npx tsc --noEmit`.
+- **Status**: **PASS** (pending fixture run in this change set)
+
 

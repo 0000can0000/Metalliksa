@@ -107,6 +107,9 @@ $$\theta(x^*, y^*, z^*) = \frac{n^*}{\sqrt{2\pi}} \int_0^\infty \frac{\tau^{-1/2
 - **Finite Peak Centerline Temperature**: Accurately bounds maximum melt pool temperature below the boiling point $T_b$ during conduction-mode melting.
 - **Spot Size Dependency**: Demonstrates that for identical laser power $P$ and speed $v$, increasing beam spot $r_0$ broadens and flattens the melt pool, lowering peak temperature and suppressing vaporization.
 
+### 2.5 Implementation Note
+The integral in §2.3 is evaluated in `python/eagar_tsai_solver.py` (`eagar-tsai-v1`) with \(\tau = u^2\) Gauss–Legendre quadrature. The Melt Pool 3D lab requests this field; the industrial Build Job remains regularized Rosenthal. The model is conduction-only (no recoil keyhole). NIST AMB2022-03 IN718 width is a literature check; keyhole depth is not an Eagar–Tsai claim.
+
 ---
 
 ## 3. Rayleigh-Plateau Capillary Instability & Balling Threshold

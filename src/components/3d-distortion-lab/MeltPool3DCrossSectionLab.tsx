@@ -84,6 +84,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
   const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(initialHatch_um);
   const [selectedMaterial, setSelectedMaterial] = useState<string>(initialMaterial);
   const [laserWavelength, setLaserWavelength] = useState<"IR_1064nm" | "Green_515nm" | "Blue_450nm">("IR_1064nm");
+  const [heatSource, setHeatSource] = useState<"eagar-tsai" | "rosenthal">("eagar-tsai");
 
   useEffect(() => {
     setLaserPower_W(initialPower_W);
@@ -152,6 +153,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         layerThickness_um,
         hatchSpacing_um,
         laserWavelength,
+        heatSource,
       });
       setPyResult(res);
 
@@ -181,6 +183,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
     layerThickness_um,
     hatchSpacing_um,
     laserWavelength,
+    heatSource,
     onParametersChange,
   ]);
 
@@ -203,16 +206,17 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
 
     let modeName = pyResult?.meltPoolGeometry?.regime || "Conduction Mode (Stable)";
     let badgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
-    let desc = "Stable conduction-mode pool. Width and depth from the T = T_liquidus isotherm of a regularized Rosenthal field (King ΔH/hs < 15).";
+    const sourceLabel = heatSource === "eagar-tsai" ? "Eagar–Tsai Gaussian" : "regularized Rosenthal";
+    let desc = `Stable conduction-mode pool. Width and depth from the T = T_liquidus isotherm of a ${sourceLabel} field (King ΔH/hs < 15).`;
     let keyRisk = "Low (ASTM F3055 Compliant)";
 
     if (isKeyhole) {
       badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]";
-      desc = "King keyhole onset (ΔH/hs ≥ 30). Extra vapor-depression depth is added on top of the conduction isotherm; recoil can trap keyhole pores.";
+      desc = `King keyhole onset (ΔH/hs ≥ 30). Extra vapor-depression depth is added on top of the ${sourceLabel} conduction isotherm; recoil can trap keyhole pores.`;
       keyRisk = "HIGH (Keyhole Porosity Danger)";
     } else if (isTransition) {
       badgeColor = "bg-amber-500/20 text-amber-300 border-amber-500/40";
-      desc = "Transition band (15 ≤ ΔH/hs < 30). Mild vapor depression; depth is the liquidus isotherm plus a fractional cavity increment.";
+      desc = `Transition band (15 ≤ ΔH/hs < 30). Mild vapor depression on the ${sourceLabel} liquidus isotherm plus a fractional cavity increment.`;
       keyRisk = "Moderate / Near Threshold";
     }
 
@@ -227,7 +231,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
       desc,
       keyRisk,
     };
-  }, [pyResult]);
+  }, [pyResult, heatSource]);
 
   // Persist renderer / camera; only rebuild melt-pool content when results change.
   useEffect(() => {
@@ -713,16 +717,40 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1">
                   <Cpu className="w-3 h-3 text-sky-400" />
-                  Python HPC Solver
+                  {pyResult?.modelId || (heatSource === "eagar-tsai" ? "eagar-tsai-v1" : "rosenthal-screening-v1")}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Volumetric 3D Goldak double-ellipsoid, Knudsen recoil vapor keyhole cavity, and Marangoni convection cross-sections.
+                Eagar–Tsai 3D Gaussian (finite spot) or regularized Rosenthal. King ΔH/hs keyhole increment. Build Job verdict stays Rosenthal screening.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-xl border border-slate-700 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setHeatSource("eagar-tsai")}
+                className={`px-2.5 py-2 text-[10px] font-bold ${
+                  heatSource === "eagar-tsai"
+                    ? "bg-sky-600 text-white"
+                    : "bg-[#050810] text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                Eagar–Tsai
+              </button>
+              <button
+                type="button"
+                onClick={() => setHeatSource("rosenthal")}
+                className={`px-2.5 py-2 text-[10px] font-bold ${
+                  heatSource === "rosenthal"
+                    ? "bg-sky-600 text-white"
+                    : "bg-[#050810] text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                Rosenthal
+              </button>
+            </div>
             <button
               type="button"
               onClick={solvePhysics}
@@ -1241,11 +1269,11 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                   <h4 className="text-xs font-bold text-white">Literature Benchmarks</h4>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-600">
-                  King / Rosenthal
+                  NIST AMB2022-03 / King
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Predicted W, D, and regime versus published single-track anchors. Errors are shown honestly; regime must match the King family.
+                Predicted W, D, and regime versus published single-track anchors (NIST AMB2022-03 IN718 and King windows). Depth on keyhole coupons is not an Eagar–Tsai claim.
               </p>
               {MELT_POOL_LITERATURE_CASES.map((c) => {
                 const same =

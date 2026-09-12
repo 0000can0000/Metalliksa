@@ -4,6 +4,17 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 
 ---
 
+## 2026-09-12 07:57 — Nerde kalmıştık (durum sorusu)
+- **Agent**: Cursor Grok 4.6
+- **Result**: PASS
+- **Task**: Kullanıcı “Nerde kalmıştık” diye sordu; son biten iş ve açık kalanlar.
+- **Done**: `main` @ `7454998` (2026-09-06) — LPBF Build Job Faz 0→5 landed; PROOF 015–017. Working tree clean. Briefed remaining open items (Eagar–Tsai, DOE, NVIDIA key, STL upload, Goldak).
+- **Where we left off**: Product LPBF screening is complete through Phase 5. No unfinished code on this checkout. Next step is whatever the user picks from the open list.
+- **Files**: `sonkayıtlar/LOG.md`
+- **Tests**: N/A — status briefing only
+
+---
+
 ## 2026-09-06 22:45 — LPBF Faz 5 (cache, lazy UQ/NIST, Murakami, SBOM, air-gap)
 - **Agent**: Cursor Auto (Composer) / Grok inherit for survey
 - **Result**: PASS

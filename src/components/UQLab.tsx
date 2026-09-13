@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   ShieldCheck,
@@ -37,7 +38,6 @@ import {
   Table as TableIcon
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from '../VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Focus,
@@ -36,7 +37,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   AreaChart,
   Area,
 } from "recharts";

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Terminal,
@@ -36,7 +37,6 @@ import {
 } from "lucide-react";
 import { ExperimentalEISDataset } from "../types/eisData";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

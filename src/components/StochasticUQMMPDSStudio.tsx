@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   ShieldCheck,
@@ -34,7 +35,6 @@ import {
   Layers
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -307,10 +307,10 @@ export function StochasticUQMMPDSStudio() {
               </span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
-              Stochastic Uncertainty Quantification & Aerospace Allowables
+              Stochastic Uncertainty Quantification & Allowable Screening
             </h1>
             <p className="text-xs md:text-sm text-slate-400 max-w-3xl">
-              Propagates <span className="text-sky-300 font-medium">compositional tolerances</span> and <span className="text-indigo-300 font-medium">thermal process scatter</span> through multi-scale physics using <span className="text-amber-300 font-medium">Sobol Quasi-Monte Carlo sequences</span> to accelerate <span className="text-emerald-300 font-medium">A-Basis ($T_{99}$) & B-Basis ($T_{90}$) allowables</span> and <span className="text-amber-300 font-medium">Saltelli variance sensitivity</span>.
+              Research · Screening only. Propagates assumed compositional and thermal scatter through a model to estimate A/B-style statistical bounds and sensitivity. Simulated samples are not experimental coupon populations, MMPDS handbook allowables or certification evidence.
             </p>
           </div>
 
@@ -330,15 +330,15 @@ export function StochasticUQMMPDSStudio() {
         {uqResult && (
           <div className="mt-5 pt-4 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
             <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
-              <div className="text-[10px] text-slate-400">AEROSPACE CERTIFICATION</div>
+              <div className="text-[10px] text-slate-400">QUALIFICATION SCOPE</div>
               <div className="text-sm font-bold text-emerald-400 mt-0.5 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                {uqResult.aerospaceReliability.qualificationStatus}
+                Screening only · not assessed
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
-              <div className="text-[10px] text-slate-400">A-BASIS YIELD ALLOWABLE (T₉₉)</div>
+              <div className="text-[10px] text-slate-400">SIMULATED A-STYLE YIELD BOUND (T₉₉)</div>
               <div className="text-sm font-bold text-sky-300 mt-0.5">
                 {uqResult.stochasticProperties.yieldStrength_Rp02.aBasisAllowable} MPa
                 <span className="text-[10px] text-slate-400 font-normal ml-1">
@@ -929,7 +929,7 @@ export function StochasticUQMMPDSStudio() {
               Alloy Variance Reduction & Tightening Strategy:
             </div>
             <p className="text-xs text-slate-300 leading-relaxed font-mono">
-              The primary driver of property scatter is <strong className="text-amber-300">{uqResult.sobolSensitivityAnalysis[0]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[0]?.varianceContributionPct}% of total variance), followed by <strong className="text-sky-300">{uqResult.sobolSensitivityAnalysis[1]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[1]?.varianceContributionPct}%). Tightening the control band on these two parameters will increase the certified A-Basis allowable by up to <strong className="text-emerald-400">+35–50 MPa</strong> without altering nominal base chemistry.
+              The model attributes the largest share of simulated scatter to <strong className="text-amber-300">{uqResult.sobolSensitivityAnalysis[0]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[0]?.varianceContributionPct}%), followed by <strong className="text-sky-300">{uqResult.sobolSensitivityAnalysis[1]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[1]?.varianceContributionPct}%). Use these estimates to prioritize controlled experiments. A change in an allowable cannot be inferred without representative test populations, traceable conditions and a qualified statistical assessment.
             </p>
           </div>
         </div>
@@ -941,7 +941,7 @@ export function StochasticUQMMPDSStudio() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-bold text-emerald-300 flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              MMPDS-01 Aerospace Design Allowables & QMC Confidence Intervals
+              Simulated A/B-style screening bounds & QMC intervals
             </h3>
             <span className="text-xs font-mono text-slate-400">ASTM E8 / E1820 / MIL-HDBK-5</span>
           </div>
@@ -1042,19 +1042,19 @@ export function StochasticUQMMPDSStudio() {
             </div>
 
             <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
-              <div className="text-slate-400 text-[10px]">A-BASIS CONSERVATIVE FLAW (P10)</div>
+              <div className="text-slate-400 text-[10px]">SIMULATED FLAW SIZE (P10)</div>
               <div className="text-2xl font-bold text-sky-400">
                 {uqResult.aerospaceReliability.criticalFlaw_P10_mm} mm
               </div>
               <div className="text-[11px] text-slate-400">
-                NDI Required Resolution: <strong className="text-emerald-400">&lt; 0.5 mm</strong>
+                NDI resolution and probability of detection require measured inspection evidence.
               </div>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
-              <div className="text-slate-400 text-[10px]">STRUCTURAL FAILURE PROBABILITY</div>
+              <div className="text-slate-400 text-[10px]">MODEL FAILURE FRACTION</div>
               <div className="text-2xl font-bold text-emerald-400">
-                {uqResult.aerospaceReliability.yieldFailureProbability_Pf === 0 ? "< 10⁻⁶" : uqResult.aerospaceReliability.yieldFailureProbability_Pf}
+                {uqResult.aerospaceReliability.yieldFailureProbability_Pf === 0 ? "0 in simulated samples" : uqResult.aerospaceReliability.yieldFailureProbability_Pf}
               </div>
               <div className="text-[11px] text-slate-400">
                 Hasofer-Lind Reliability Index: <strong className="text-purple-300">β = {uqResult.aerospaceReliability.hasoferLindBetaIndex}</strong>

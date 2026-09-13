@@ -99,9 +99,9 @@ const ADVANCED_PHYSICS_LABS: {
 }[] = [
   {
     id: "3d-macro-distortion",
-    label: "3D CAD/STL Distortion & Residual Stress FEA",
-    shortLabel: "Distortion FEA",
-    badge: "ASTM F3055",
+    label: "3D CAD/STL Distortion Screening",
+    shortLabel: "Distortion screening",
+    badge: "Research",
     icon: Box,
     activeClass: "bg-cyan-500/20 text-cyan-200 border-cyan-400/50",
   },
@@ -115,7 +115,7 @@ const ADVANCED_PHYSICS_LABS: {
   },
   {
     id: "marangoni-pore-heatmap",
-    label: "3D Marangoni Flow & Gas Entrapment Heatmap",
+    label: "Marangoni Indicators & Pore-Risk Screening",
     shortLabel: "Marangoni map",
     badge: "Screening",
     icon: Waves,
@@ -458,9 +458,9 @@ export const LPBF_ALLOY_PRESETS: LpbfAlloyPreset[] = [
   },
 ];
 
-export const Additive3DDistortionLab: React.FC = () => {
+export const Additive3DDistortionLab: React.FC<{ initialSubTab?: string }> = ({ initialSubTab }) => {
   // Navigation Sub-tab
-  const [activeSubTab, setActiveSubTab] = useState<LpbfDistortionSubTab>("3d-cross-section-melt-pool");
+  const [activeSubTab, setActiveSubTab] = useState<LpbfDistortionSubTab>(isLpbfDistortionSubTab(initialSubTab || "") ? initialSubTab as LpbfDistortionSubTab : "3d-cross-section-melt-pool");
   const [focusedWizardStage, setFocusedWizardStage] = useState<LpbfBuildJobStage>("process");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const labStageRef = useRef<HTMLDivElement | null>(null);
@@ -486,6 +486,7 @@ export const Additive3DDistortionLab: React.FC = () => {
       else setFocusedWizardStage("process");
     };
 
+    applySubTab(initialSubTab);
     const params = new URLSearchParams(window.location.search);
     applySubTab(params.get("lpbfSubTab") || params.get("activeSubTab") || undefined);
     const hash = window.location.hash.replace(/^#/, "");
@@ -502,7 +503,7 @@ export const Additive3DDistortionLab: React.FC = () => {
       window.removeEventListener("metallix-lpbf-subtab", onNav);
       window.removeEventListener("metallix-navigate-tab", onNav);
     };
-  }, []);
+  }, [initialSubTab]);
 
   // 3D Canvas Ref
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -743,10 +744,10 @@ export const Additive3DDistortionLab: React.FC = () => {
   const processRegime = useMemo(() => {
     if (meltPoolPhysics.isKeyholing || meltPoolPhysics.depthToWidthRatio > 0.85) {
       return {
-        status: "Keyhole Vaporization Cavity",
+        status: "Keyhole-risk screening",
         color: "text-rose-400",
         severity: "CRITICAL DEFECT DANGER",
-        desc: `Normalized Enthalpy (ΔH/hs = ${meltPoolPhysics.normalizedEnthalpy}) exceeds keyhole threshold (${meltPoolPhysics.keyholeThreshold}). Trapped vapor pores form behind melt pool.`,
+        desc: `Normalized Enthalpy (ΔH/hs = ${meltPoolPhysics.normalizedEnthalpy}) exceeds keyhole threshold (${meltPoolPhysics.keyholeThreshold}). This flags a regime risk; pore formation and trapping are not resolved.`,
       };
     } else if (meltPoolPhysics.meltPoolDepth_um < layerThickness_um * 1.3) {
       return {
@@ -757,10 +758,10 @@ export const Additive3DDistortionLab: React.FC = () => {
       };
     }
     return {
-      status: "Stable Conduction Regime",
+      status: "Conduction screening band",
       color: "text-emerald-400",
-      severity: "CONFORMING (ASTM F3055)",
-      desc: `Optimal semicircular melt pool (d/w = ${meltPoolPhysics.depthToWidthRatio}). High relative density >99.85% conforming to aerospace structural standards.`,
+      severity: "SCREENING ONLY",
+      desc: `Analytical melt-pool aspect ratio (d/w = ${meltPoolPhysics.depthToWidthRatio}). Relative density, defect freedom and standards compliance are not established.`,
     };
   }, [meltPoolPhysics, layerThickness_um]);
 
@@ -819,7 +820,7 @@ export const Additive3DDistortionLab: React.FC = () => {
       badgeVariant = "warning";
     } else {
       riskLevel = "CONFORMING_SAFE";
-      statusTitle = "SAFE: Nominal Thermal Gradient (ASTM F3055 Conforming)";
+      statusTitle = "SCREENING: Nominal Thermal Gradient";
       statusBadgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/50";
       badgeVariant = "success";
     }
@@ -1182,7 +1183,8 @@ export const Additive3DDistortionLab: React.FC = () => {
   const handleRunAiAudit = () => {
     setIsAuditing(true);
     setTimeout(() => {
-      const report = `### 🚀 ASTM F3055 / ASTM F3184 Additive Manufacturing Defect & Stress Audit
+      const report = `### LPBF Research Screening Note — not a standards certificate
+Model scope: analytical indicators and heuristic stress/warpage estimates. No resolved momentum, free surface, pore trapping or residual-stress field. Independent experimental validation is unresolved.
 **Component Geometry:** ${modelType.toUpperCase()} (${uploadedFileName || "Procedural Aerospace CAD"})
 **Material / Alloy:** ${alloy.name}
 **Volumetric Energy Density (VED):** **${ved_J_mm3} J/mm³** (Target Window: 55 - 85 J/mm³)
@@ -1190,8 +1192,8 @@ export const Additive3DDistortionLab: React.FC = () => {
 ---
 
 #### 1. Thermal Stress & Warpage Prediction:
-- **Peak Residual Stress ($\sigma_{res}$):** **${residualStress_MPa} MPa** (${(residualStress_MPa / (alloy.elasticModulus_E_GPa * 10)).toFixed(1)}% of Young's Modulus)
-- **Predicted Maximum Warpage ($\delta_{max}$):** **${maxWarpage_um} µm**
+- **Heuristic Stress Estimate ($\sigma_{res}$):** **${residualStress_MPa} MPa** (${(residualStress_MPa / (alloy.elasticModulus_E_GPa * 10)).toFixed(1)}% of Young's Modulus)
+- **Heuristic Warpage Estimate ($\delta_{max}$):** **${maxWarpage_um} µm**
 - **Baseplate Pre-heat:** **${bedPreheat_C}°C** (Reduces thermal gradient $G$ by ~${((bedPreheat_C / 500) * 35).toFixed(1)}%)
 - **Scan Strategy:** ${scanStrategy.toUpperCase()} (Rotational interlayer shift minimizes directional texture anisotropy)
 
@@ -1208,7 +1210,7 @@ export const Additive3DDistortionLab: React.FC = () => {
 ---
 
 #### 3. Machine Process Optimization Recommendations:
-${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Reduce laser power or increase scan speed to bring Normalized Intensity P* below the King-Gouge threshold line." : meltPoolPhysics.isLoFRisk ? "⚠️ LACK OF FUSION: Increase laser power or reduce hatch spacing to achieve adequate layer penetration (>130% layer thickness)." : "✅ OPTIMAL MICROSTRUCTURE & CONDUCTION REGIME: Conforming to Class A aerospace flight-hardware standards with dense, defect-free fine cellular microstructure."}`;
+${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Reduce laser power or increase scan speed to bring Normalized Intensity P* below the King-Gouge threshold line." : meltPoolPhysics.isLoFRisk ? "⚠️ LACK OF FUSION: Increase laser power or reduce hatch spacing to achieve adequate layer penetration (>130% layer thickness)." : "SCREENING BAND: No selected screening threshold is exceeded. Density, defects and flight-hardware qualification require independent experimental evidence."}`;
 
       setAuditReport(report);
       setIsAuditing(false);
@@ -1477,17 +1479,17 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  3D CAD / STL Multi-Physics Thermal & Defect Heatmap Lab
+                  3D CAD / STL Thermal & Defect Screening Lab
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">
                   LPBF / SLM 3D
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-bold hidden sm:inline-block">
-                  ASTM F3055 / F3184
+                  Preview · Screening only
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-400">
-                Predict residual stress (σ_res), thermal warpage (δ_max), keyhole porosity, and lack of fusion directly mapped on 3D CAD/STL surfaces.
+                Inspect heuristic stress/warpage estimates and analytical defect-risk indicators on CAD/STL surfaces. No resolved residual-stress or pore field is produced.
               </p>
             </div>
           </div>
@@ -1623,7 +1625,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                     ? "warning"
                     : "success"
                 }
-                criterionName="ASTM F3055 / ASTM F3184 Solidification Criteria"
+                criterionName="Research solidification screening"
                 formula={`G_{crit} = ${(a.criticalGradient_G_Km / 1e6).toFixed(1)} \\times 10^6\\text{ K/m} \\quad | \\quad \\Delta T_f = ${a.freezingRange_dT_C}^\\circ\\text{C}`}
                 currentValue={`k = ${a.thermalConductivity_k_WmK} W/m·K, CTE = ${a.thermalExpansion_CTE_10e6}×10⁻⁶/K`}
                 criticalThreshold={`Max Gradient: ${(a.criticalGradient_G_Km / 1000).toFixed(0)} K/mm`}
@@ -1753,7 +1755,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                 {[
                   {
                     id: "residual-stress",
-                    label: "Residual Stress (σ_res)",
+                    label: "Stress estimate (σ_res)",
                     tooltip: "Residual stress field (MPa) caused by thermal contraction and scan vector overlay.",
                   },
                   {
@@ -1781,7 +1783,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                     key={hm.id}
                     title={`${hm.label} Heatmap Analysis`}
                     explanation={hm.tooltip}
-                    criterionName="ASTM F3055 LPBF Surface Defect FEA Mapping"
+                    criterionName="Heuristic surface screening; no resolved FEA field"
                   >
                     <button
                       type="button"
@@ -1843,7 +1845,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                 </span>
                 <div className="w-28 h-2.5 rounded-full bg-gradient-to-r from-blue-600 via-green-500 via-yellow-400 to-red-600 border border-white/20" />
                 <div className="flex justify-between text-[9px] text-slate-400">
-                  <span>Min / Conforming</span>
+                  <span>Low screening indicator</span>
                   <span>Peak Critical</span>
                 </div>
               </div>
@@ -1877,18 +1879,18 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
 
             {/* 2. Peak Residual Stress */}
             <MetallurgicalTooltip
-              title="Peak Tensile Residual Stress (σ_res)"
+              title="Heuristic Tensile Stress Estimate (σ_res)"
               badgeText={`${residualStress_MPa} MPa`}
               badgeVariant={residualStress_MPa > 400 ? "danger" : residualStress_MPa > 250 ? "warning" : "success"}
               criterionName="Thermo-Elastic Inversion Model"
               formula="\\sigma_{res} \\approx E \\cdot \\text{CTE} \\cdot (T_m - T_{bed}) \\cdot \\beta_{scan}"
               currentValue={`${residualStress_MPa} MPa`}
               criticalThreshold={`Yield Limit: ~${Math.round(alloy.elasticModulus_E_GPa * 3.5)} MPa`}
-              explanation="Accumulated tensile residual stress at the top scan surface and baseplate interface. High tensile stress triggers delamination, baseplate debonding, and macroscopic curling."
+              explanation="Heuristic elastic thermal-stress estimate. No mechanical equilibrium, plasticity history or measured residual-stress field is resolved; use as an unvalidated screening indicator only."
             >
               <div className="p-3 bg-[#090e18] border border-[#1e2d46] hover:border-rose-400/50 rounded-xl space-y-1 w-full transition">
                 <span className="text-slate-400 text-[10px] uppercase font-bold block flex items-center justify-between">
-                  <span>Residual Stress:</span>
+                  <span>Estimated stress:</span>
                   <Info className="w-3 h-3 text-rose-400" />
                 </span>
                 <span className="text-lg font-bold text-rose-400 block">
@@ -2247,7 +2249,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Predicts as-solidified grain morphology and flags vapor depression keyhole pore generation based on normalized laser intensity $P^*$ and normalized scan speed (Péclet number $Pe$).
+                    Screens grain-morphology and keyhole-regime indicators from normalized laser intensity $P^*$ and scan speed (Péclet number $Pe$). Pore generation is not solved.
                   </p>
                 </div>
               </div>
@@ -2274,7 +2276,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                     ? "KEYHOLE POROSITY RISK: CRITICAL"
                     : meltPoolPhysics.isKeyholeRiskModerate
                     ? "KEYHOLE RISK: MODERATE / TRANSITION"
-                    : "MICROSTRUCTURE: OPTIMAL CONDUCTION"}
+                    : "CONDUCTION SCREENING BAND"}
                 </span>
               </div>
             </div>
@@ -2380,7 +2382,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                 <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
                   {meltPoolPhysics.isKeyholeRiskHigh ? (
                     <span className="text-rose-200">
-                      <strong>Warning:</strong> High normalized intensity ($P^* = {meltPoolPhysics.normalizedLaserIntensity_Pstar}$) produces an unstable recoil pressure vapor cavity (~{meltPoolPhysics.keyholeCavityDepth_um} µm depth). Keyhole tip collapses during laser traversal, trapping spherical argon/vapor pores.
+                      <strong>Screening warning:</strong> High normalized intensity ($P^* = {meltPoolPhysics.normalizedLaserIntensity_Pstar}$) exceeds the selected regime threshold. Recoil, cavity collapse and pore trapping are unresolved; the indicator does not predict actual trapped pores.
                     </span>
                   ) : meltPoolPhysics.isKeyholeRiskModerate ? (
                     <span className="text-amber-200">
@@ -2388,7 +2390,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                     </span>
                   ) : (
                     <span className="text-emerald-200">
-                      <strong>Conforming:</strong> Stable Marangoni-driven conduction melt pool. Vapor recoil pressure is balanced by surface tension, preventing pore entrapment.
+                      <strong>Screening band:</strong> The selected keyhole indicator is below threshold. Fluid stability, density and absence of pores have not been established.
                     </span>
                   )}
                 </p>
@@ -2409,7 +2411,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
                       className="w-full py-1.5 px-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 text-[10px] font-bold transition flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
                     >
                       <RotateCcw className="w-3 h-3" />
-                      <span>Auto-Tune: Suppress Keyholing</span>
+                      <span>Apply screening parameter adjustment</span>
                     </button>
                   </div>
                 )}
@@ -2423,7 +2425,7 @@ ${meltPoolPhysics.isKeyholeRiskHigh ? "⚠️ CRITICAL KEYHOLE VAPORIZATION: Red
               <div className="flex justify-between items-center border-b border-[#162032] pb-2 text-cyan-400 font-bold font-mono">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  <span>ASTM F3055 LPBF Defect Audit</span>
+                  <span>LPBF Research Screening Note</span>
                 </div>
                 <button
                   type="button"

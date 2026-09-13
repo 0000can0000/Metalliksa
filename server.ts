@@ -7,6 +7,8 @@ import { physicsRouter } from "./routes/physics.ts";
 import { lpbfSimulationRouter } from "./routes/lpbfSimulation.ts";
 import { characterizationRouter } from "./routes/characterization.ts";
 import { copilotRouter } from "./routes/copilot.ts";
+import { researchRouter } from "./routes/research.ts";
+import { createResearchRegistryRouter } from "./routes/researchRegistry.ts";
 import { processOrchestrationMiddleware } from "./server/processOrchestrator.ts";
 import {
   AIRGAP_ALLOWED_LOCAL,
@@ -29,7 +31,11 @@ process.on("uncaughtException", (error: Error) => {
 });
 
 const app = express();
-const PORT = 3000;
+const configuredPort = Number(process.env.PORT ?? 3000);
+const PORT = Number.isInteger(configuredPort) && configuredPort >= 1 && configuredPort <= 65535 ? configuredPort : 3000;
+
+// Registry payloads have a smaller limit and must run before the global parser.
+app.use(createResearchRegistryRouter());
 
 // Body parsing with generous payload capacity for base64 micrograph scans & CAD models
 app.use(express.json({ limit: "50mb" }));
@@ -69,6 +75,7 @@ app.use(characterizationRouter);
 
 // 3. AI Copilot, Metallurgy Consultation, Alloy Formulation & Materials Project
 app.use(copilotRouter);
+app.use(researchRouter);
 
 // Explicit JSON 404 for unmatched /api routes (prevents SPA index.html fallback for API calls)
 app.all("/api/*", (req: Request, res: Response) => {

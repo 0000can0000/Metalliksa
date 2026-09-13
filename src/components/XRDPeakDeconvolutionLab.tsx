@@ -1,6 +1,6 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

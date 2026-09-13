@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Atom,
@@ -28,7 +29,6 @@ import {
   Check,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

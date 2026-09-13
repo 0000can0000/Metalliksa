@@ -1,6 +1,7 @@
+import { ResponsiveContainer } from '../VisibleResponsiveContainer';
 import React from "react";
 import { SimulationJob, SimulationResult } from "../../services/lpbfSimulationService";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceDot, CartesianGrid, ReferenceArea, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ReferenceDot, CartesianGrid, ReferenceArea, ReferenceLine } from "recharts";
 
 export const number = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? (value!==0 && (Math.abs(value)<.001 || Math.abs(value)>=1e7) ? value.toExponential(2) : value.toLocaleString("en-US", { maximumSignificantDigits: 5 })) : "—";
 export const surface = "rounded-2xl border border-slate-700/60 bg-slate-900/40 p-5 sm:p-6";

@@ -17,6 +17,7 @@ import {
 import { inferSlicerPreset, mapSpecimenToSolverMaterials } from "../utils/lpbfIndustrialDecision";
 import { useMaterialSpecimenStore } from "./useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "./useLpbfBuildMeshStore";
+import { canonicalLpbfMaterialName } from "../utils/lpbfMaterialIdentity";
 
 export interface LpbfMurakamiSessionInput {
   defectSqrtAreasPaste: string;
@@ -34,6 +35,8 @@ interface LpbfBuildJobPythonState {
   /** Retained when a later fast job omits UQ. */
   sessionUq: PythonLpbfUqBlock | null;
   sessionAmbench: PythonLpbfAmbenchBlock | null;
+  sessionEvidenceKey: string | null;
+  lastUqSamples: number;
   murakamiInput: LpbfMurakamiSessionInput;
   lastFlags: { enableUq: boolean; includeAmbench: boolean };
 }
@@ -47,6 +50,8 @@ export const useLpbfBuildJobStore = create<LpbfBuildJobPythonState>(() => ({
   seq: 0,
   sessionUq: null,
   sessionAmbench: null,
+  sessionEvidenceKey: null,
+  lastUqSamples: 96,
   murakamiInput: {
     defectSqrtAreasPaste: "",
     hardness_HV: null,
@@ -55,8 +60,17 @@ export const useLpbfBuildJobStore = create<LpbfBuildJobPythonState>(() => ({
   lastFlags: { enableUq: false, includeAmbench: false },
 }));
 
+const meshIdentities = new WeakMap<object, number>();
+let nextMeshIdentity = 0;
+function meshIdentity(mesh: object | null): number {
+  if (!mesh) return 0;
+  if (!meshIdentities.has(mesh)) meshIdentities.set(mesh, ++nextMeshIdentity);
+  return meshIdentities.get(mesh)!;
+}
+
 let inFlightKey: string | null = null;
 let inFlightPromise: Promise<void> | null = null;
+let inFlightSeq = 0;
 
 export type LpbfBuildJobRequestOptions = {
   force?: boolean;
@@ -68,6 +82,7 @@ export type LpbfBuildJobRequestOptions = {
 
 function buildJobKey(flags: { enableUq: boolean; includeAmbench: boolean; uqSamples: number }): {
   key: string;
+  evidenceKey: string;
   payload: Parameters<typeof pythonComputationService.solveLpbfBuildJob>[0];
 } {
   const specimen = useMaterialSpecimenStore.getState().activeSpecimen;
@@ -110,29 +125,11 @@ function buildJobKey(flags: { enableUq: boolean; includeAmbench: boolean; uqSamp
       ? { ctDetectionThreshold_um: murakamiInput.ctDetectionThreshold_um }
       : {}),
   };
-  const key = [
-    materials.alloyId,
-    payload.laserPower_W,
-    payload.scanSpeed_mm_s,
-    payload.beamDiameter_um,
-    payload.preheatTemp_C,
-    payload.layerThickness_um,
-    payload.hatchSpacing_um,
-    payload.preset,
-    payload.cadAssetName,
-    liveMesh?.usedTriangleCount ?? 0,
-    liveMesh?.nativeTriangleCount ?? 0,
-    payload.processSeed,
-    payload.scanStrategy,
-    payload.inclineAngle_deg,
-    payload.downskinOverhang_deg,
-    flags.enableUq ? 1 : 0,
-    flags.includeAmbench ? 1 : 0,
-    flags.enableUq ? flags.uqSamples : 0,
-    murakamiInput.defectSqrtAreasPaste.trim().slice(0, 80),
-    murakamiInput.hardness_HV ?? "",
-  ].join("|");
-  return { key, payload };
+  // Include the complete CT/defect input and mesh identity. Names/counts do not identify geometry.
+  const { customTriangles: _triangles, enableUq: _uq, includeAmbench: _ambench, uqSamples: _samples, ...basePayload } = payload;
+  const evidenceKey = JSON.stringify([basePayload, {id:specimen.id,name:specimen.name,composition:specimen.composition}, meshIdentity(liveMesh)]);
+  const key = JSON.stringify([evidenceKey, flags.enableUq, flags.includeAmbench, flags.enableUq ? flags.uqSamples : 0]);
+  return { key, evidenceKey, payload };
 }
 
 export function peekLpbfBuildJobKey(): string {
@@ -140,7 +137,7 @@ export function peekLpbfBuildJobKey(): string {
   return buildJobKey({
     enableUq: st.lastFlags.enableUq,
     includeAmbench: st.lastFlags.includeAmbench,
-    uqSamples: 96,
+    uqSamples: st.lastUqSamples,
   }).key;
 }
 
@@ -154,11 +151,18 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
   const enableUq = options?.enableUq === true;
   const includeAmbench = options?.includeAmbench === true;
   const uqSamples = options?.uqSamples ?? 96;
-  const { key, payload } = buildJobKey({ enableUq, includeAmbench, uqSamples });
+  const { key, evidenceKey, payload } = buildJobKey({ enableUq, includeAmbench, uqSamples });
   if (options?.bypassCache || force) {
     payload.bypassCache = true;
   }
   const st = useLpbfBuildJobStore.getState();
+  const materialName = canonicalLpbfMaterialName(useMaterialSpecimenStore.getState().activeSpecimen.name);
+  const supported = ["Ti-6Al-4V","316L Stainless Steel","AlSi10Mg","Inconel 718"].includes(materialName);
+  const invalidProcess = [payload.laserPower_W,payload.scanSpeed_mm_s,payload.beamDiameter_um,payload.layerThickness_um,payload.hatchSpacing_um].some(value=>!Number.isFinite(value)||value<=0) || !Number.isFinite(payload.preheatTemp_C) || payload.preheatTemp_C<0;
+  if (!supported || invalidProcess) {
+    useLpbfBuildJobStore.setState({job:null,busy:false,seq:st.seq+1,lastKey:key,lastFlags:{enableUq,includeAmbench},lastUqSamples:uqSamples,error:!supported?`Build screening has no supported material mapping for ${materialName}. Select a supported LPBF alloy; no surrogate alloy was submitted.`:"Build screening requires finite positive power, speed, beam, hatch and layer inputs, and nonnegative preheat."});
+    return;
+  }
 
   // Client-side short-circuit only for identical fast jobs (no force).
   if (
@@ -173,7 +177,7 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
   ) {
     return;
   }
-  if (!force && inFlightKey === key && inFlightPromise) {
+  if (!force && inFlightKey === key && inFlightPromise && inFlightSeq === st.seq) {
     return inFlightPromise;
   }
 
@@ -183,6 +187,7 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
     seq,
     error: force ? null : st.error,
     lastFlags: { enableUq, includeAmbench },
+    lastUqSamples: uqSamples,
   });
 
   const run = (async () => {
@@ -191,13 +196,14 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
       const job = await pythonComputationService.solveLpbfBuildJob(payload);
       if (useLpbfBuildJobStore.getState().seq !== seq) return;
       const prev = useLpbfBuildJobStore.getState();
-      const sessionUq = job.uq ?? prev.sessionUq;
-      const sessionAmbench = job.ambench ?? prev.sessionAmbench;
+      const sameEvidence = prev.sessionEvidenceKey === evidenceKey;
+      const sessionUq = job.uq ?? (sameEvidence ? prev.sessionUq : null);
+      const sessionAmbench = job.ambench ?? (sameEvidence ? prev.sessionAmbench : null);
       // Attach retained blocks for UI when this call skipped them.
       const displayJob: PythonLpbfBuildJobResult = {
         ...job,
-        uq: job.uq ?? prev.sessionUq,
-        ambench: job.ambench ?? prev.sessionAmbench,
+        uq: sessionUq,
+        ambench: sessionAmbench,
       };
       useLpbfBuildJobStore.setState({
         job: displayJob,
@@ -207,6 +213,7 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
         roundTripMs: Math.round(performance.now() - t0),
         sessionUq,
         sessionAmbench,
+        sessionEvidenceKey: evidenceKey,
         lastFlags: { enableUq, includeAmbench },
       });
     } catch (err: unknown) {
@@ -219,7 +226,7 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
         job: prev.lastKey === key ? prev.job : null,
       });
     } finally {
-      if (inFlightKey === key) {
+      if (inFlightKey === key && inFlightSeq === seq) {
         inFlightKey = null;
         inFlightPromise = null;
       }
@@ -227,6 +234,7 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
   })();
 
   inFlightKey = key;
+  inFlightSeq = seq;
   inFlightPromise = run;
   return run;
 }
@@ -253,7 +261,9 @@ export function useLpbfBuildJobPython() {
     }, 280);
     return () => clearTimeout(timer);
   }, [
+    specimen.id,
     specimen.name,
+    specimen.composition,
     specimen.baseMetal,
     lpbf.laserPower_W,
     lpbf.scanSpeed_mms,
@@ -266,9 +276,7 @@ export function useLpbfBuildJobPython() {
     lpbf.scanStrategy,
     lpbf.inclineAngle_deg,
     lpbf.downskinOverhang_deg,
-    liveMesh?.name,
-    liveMesh?.usedTriangleCount,
-    liveMesh?.nativeTriangleCount,
+    liveMesh,
     murakamiInput.defectSqrtAreasPaste,
     murakamiInput.hardness_HV,
     murakamiInput.ctDetectionThreshold_um,
@@ -276,7 +284,7 @@ export function useLpbfBuildJobPython() {
 
   return {
     job: aligned ? job : null,
-    error,
+    error: aligned ? error : null,
     busy,
     roundTripMs: aligned ? roundTripMs : null,
     lastFlags,

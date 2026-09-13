@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo } from "react";
 import {
   Zap,
@@ -32,7 +33,6 @@ import {
   FileCode,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

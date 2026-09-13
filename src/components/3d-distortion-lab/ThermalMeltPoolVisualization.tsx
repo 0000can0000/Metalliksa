@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from '../VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 import {
@@ -30,7 +31,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   AreaChart,
   Area,
   ReferenceLine,

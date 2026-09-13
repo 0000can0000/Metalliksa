@@ -1,3 +1,45 @@
+## 2026-09-13 20:12 — Local commit complete; GitHub push blocked
+
+- **Agent:** GPT-6 Astra (Codex). **Result:** PARTIAL for publication; verified implementation is committed locally.
+- **Done:**106task files staged explicitly; credential-pattern/artifact scan and staged diff checks passed. Removed trailing blank EOF lines in three new research panels. Local commit created; unchanged59/59tests,lint/build/browser evidence remains valid. Bytecode and `.cursor/mcp.json` excluded.
+- **Blocked:** automatic approval review rejected `git push origin main` before execution, stating that the user's `commit push` request does not explicitly authorize this private code payload to the specific GitHub destination. Normal remote inspection confirmed `https://github.com/0000can0000/Metalliksa.git` and its previous main hash, but push requires direct destination approval. No workaround attempted; no force/config/hook bypass.
+- **Where we left off:** request explicit approval to send this repository's committed code to that GitHub origin/main. This record is included in the local commit. Remote publication and final local/remote hash equality remain pending.
+
+## 2026-09-13 20:08 — User-requested final commit and push
+
+- **Agent:** GPT-6 Astra (Codex). **Result:** PASS for the completed change set and its verification.
+- **Done:** user explicitly requested `commit push`, superseding the earlier quota threshold and new-task transfer plan. Reviewed final task paths, Git branch/remote and verification logs; no application changes since the passing59/59unit tests,lint/build and production browser checks documented above.
+- **Files:** accumulated workstation, LPBF integration, traceable research/server registry, material/twin evidence, visibility, tests and documentation; this log and PROOF updated for publication. Pre-existing Python bytecode and `.cursor/mcp.json`, ignored runtime data and external handoff are excluded.
+- **Where we left off:** prepare task-only commit on verified `main` and normal push to `https://github.com/0000can0000/Metalliksa.git`; compare local/remote HEAD after push. Publication outcome/hash reported in the final response. No new-task creation or further feature work in this turn.
+
+## 2026-09-13 20:04 — Continuation transfer blocked by automatic approval review
+
+- **Agent:** GPT-6 Astra (Codex). **Result:** PARTIAL for transfer/publication; completed implementation remains PASS.
+- **Done:** completed59/59unit tests,lint/build/browser and20:01 proof/log; devir note preserved outside repo. Latest actual weekly remaining54%.
+- **Block:** create_thread rejected twice by automatic approval review. Read source task confirmed direct prior user message requesting fresh-task continuation and quota-controlled commit/push; reviewer still requires direct current-task approval and declines prior-message/tool-output authorization. No alternative/indirect creation attempted.
+- **Files touched:** this operational log and external handoff note only after verification. **Tests:** N/A for transfer-status notes; prior59/59/lint/build stand.
+- **Where we left off:** no new task created; awaiting user approval for same-local-tree continuation. No staging,commit,push. Existing pycache/.cursor exclusions unchanged; current server3002 remains running.
+
+## 2026-09-13 20:01 — Server evidence revisions, visibility and browser conflict recovery
+
+- **Agent:** GPT-6 Astra (Codex), with authorized bounded visibility/category/server/test subagents. All stopped editing before handoff.
+- **Result:** PASS for this bounded increment; PARTIAL for overall continuing development and final publication.
+- **Done:** versioned local evidence registry/API and three-way client review; immutable history and CAS; provenance-sensitive link/review withdrawal; foreign-tab storage guard and draft recovery import/export; hidden chart lifecycle and thermal/slicer RAF pause; Alloy Builder category/route/unit/current-process corrections. No scientific model changes.
+- **Files:** `server/researchEvidenceRegistry.ts`, `routes/researchRegistry.ts`, `server.ts`, `.gitignore`, `src/services/researchRegistrySync.ts`, `src/utils/researchSync.ts`, `researchRegistry.ts`, `src/store/useResearchStore.ts`, `src/components/research/ResearchSyncPanel.tsx`, `AdvancedResearchHub.tsx`, visibility wrappers/App/LPBF and chart import sites, materialCategory/bridge/store/AlloyBuilder, new/extended tests, `docs/RESEARCH_WORKSTATION.md`, `PROOF.md`.
+- **Checks:** final59/59 unit tests; lint PASS; build PASS31.56s; diff--check PASS. Browser verified category40/850, retained UQ form/no hidden chart nodes/no main-tab console warnings/errors, LPBF stages, responsive widths, server revision1/2/3 plus409-and-review, refresh and final multi-tab pause/recovery button. Recovery disk download unverified; serialization/import tests pass. Prior unchanged solver checks remain recorded in19:39/original proof.
+- **Where we left off:** fresh task continues useful bounded quality work with56% weekly quota remaining at latest check. No exact context percentage is exposed. No commit/push until user-directed finish threshold; reserve validation/publication quota. Next task should inspect remaining evidence trust/operational boundaries and only add sourced scientific data if primary sources justify them; do not spend quota aimlessly.
+- **Git/runtime:** same `Metalliksa-1` main, origin `https://github.com/0000can0000/Metalliksa.git`; no staging/commit/push. Existing pycache and `.cursor/mcp.json` excluded. Server3002 restarted from verified own PID24668 with new bundle; running exec session93542. `.research-registry/` contains synthetic QA revisions and is ignored. Browser temporary peers closed, viewport reset.
+
+## 2026-09-13 19:39 — Workstation continuation, production checks and refresh repair
+
+- **Agent:** GPT-6 Astra (Codex).
+- **Result:** PARTIAL for ongoing product development under the user's new quota/checkpoint instruction; current workstation increment and targeted production smoke PASS with documented limitations.
+- **Done:** finished production research review/link/contradiction/refresh flow, all eight LPBF stages, new unresolved twin, shared alloy context, responsive widths and traceability export controls. Fixed root-level saved simulation restoration so report/evidence routes recover the job without first mounting Thermal Simulation; current and executed inputs stay distinct, late restore cannot overwrite a new submission.
+- **Files touched:** current increment spans App/workspace navigation, LPBF workflow/store/report and slicer integration, research components/store/types/registry/search route, material context bridge/identity, digital twin evidence and UQ scope, tests and docs. Continuation-specific edits: `src/App.tsx`, `src/store/useLpbfEngineeringStore.ts`, `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `tests/lpbf-workflow.test.ts`, `PROOF.md`, this log. Handoff note outside repository is excluded from commit.
+- **Tests:** final lint PASS; 33 unit tests PASS; production build PASS (3048 modules, 29.54 s). Inherited physics/API test results retained in PROOF; unchanged physics not needlessly rerun. Production browser scopes and synthetic fixtures detailed in PROOF. No console errors; hidden mounted chart size warnings remain. Actual downloaded JSON file saving remains unverified by browser automation; serialization passes. Temporary viewport reset.
+- **Where we left off:** continue useful development in a fresh task to keep context small. Prioritize hidden chart visibility and observed material category metadata consistency; then versioned server-backed evidence registry with conflict-safe persistence and tests. No new scientific evidence may be invented. Latest weekly remaining quota 61%; user explicitly requests final commit/push at approximately 35%, so no commit/push now. Poll actual usage between bounded increments and reserve final validation/push time. Context percentage is not exposed by the available tool; do not fabricate an exact reading.
+- **Git:** verified `main`, origin `https://github.com/0000can0000/Metalliksa.git`. Pre-existing modified `python/__pycache__/lpbf_thermal_solver.cpython-310.pyc` and untracked `.cursor/mcp.json` untouched/excluded. All changes remain in the same working tree; no stage, commit or push in this continuation.
+
 ## 2026-09-13 00:22 — LPBF numerical integrity and scientific viewer
 
 - **Agent:** GPT-6 Astra (Codex).

@@ -500,19 +500,19 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
         <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-3">
           <div className="flex items-center gap-2">
             <Thermometer className="w-4 h-4 text-orange-400" />
-            <h3 className="text-xs font-bold text-white">Is warpage acceptable?</h3>
+            <h3 className="text-xs font-bold text-white">Stress and distortion screening proxies</h3>
           </div>
           {thermal ? (
             <>
               <div className="grid grid-cols-2 gap-2">
                 <Metric
-                  label="Distortion index"
+                  label="Distortion screening index"
                   value={thermal.defectDiagnostics.distortionIndex.toFixed(2)}
                   ok={thermal.defectDiagnostics.distortionIndex < 0.65}
-                  hint="< 0.65"
+                  hint="Screening threshold < 0.65"
                 />
                 <Metric
-                  label="σ_res (MPa)"
+                  label="Stress proxy (MPa); unresolved field"
                   value={String(thermal.defectDiagnostics.effectiveResidualStress_MPa)}
                   ok={thermal.defectDiagnostics.effectiveResidualStress_MPa < specimen.yieldStrength_25C_MPa * 0.7}
                   hint={`< 0.7 Rp0.2 (${Math.round(specimen.yieldStrength_25C_MPa * 0.7)})`}
@@ -521,7 +521,7 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
                 <Metric label="Preheat (°C)" value={String(lpbf.preheatTemp_C)} ok={lpbf.preheatTemp_C >= 80} />
               </div>
               <p className="text-[10px] text-slate-500">
-                Layer-equivalent inherent strain proxy from the Python residual-stress index — not melt-pool FEM. Raise preheat or switch to island scan if the index stays high.
+                Research screening only. The stress value is an elastic/inherent-strain proxy, not a resolved or measured residual-stress field. Plastic relaxation and mechanical equilibrium are unresolved; this is not a part acceptance criterion.
               </p>
             </>
           ) : (
@@ -532,9 +532,9 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
         <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-3">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-sky-400" />
-            <h3 className="text-xs font-bold text-white">Does the specimen pass vs literature?</h3>
+            <h3 className="text-xs font-bold text-white">Literature context and estimated specimen properties</h3>
             <button type="button" onClick={onOpenGroundTruth} className="ml-auto text-[10px] text-sky-300 underline">
-              Ground truth
+              Experimental comparison
             </button>
           </div>
           {literature ? (
@@ -550,19 +550,19 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <Metric
-                  label="Density %"
+                  label="Literature density %"
                   value={literature.record.properties.relativeDensity_pct.toFixed(2)}
                   ok={literature.record.properties.relativeDensity_pct >= 99.5}
                 />
                 <Metric
-                  label="Rp0.2 twin vs lit"
+                  label="Estimated Rp0.2 / literature"
                   value={`${specimen.yieldStrength_25C_MPa} / ${literature.record.properties.yieldStrength_MPa ?? "—"}`}
-                  ok={yieldOk !== false}
+                  hint="Context only; not an acceptance test"
                 />
                 <Metric
-                  label="UTS twin vs lit"
+                  label="Estimated UTS / literature"
                   value={`${specimen.uts_25C_MPa} / ${literature.record.properties.ultimateTensileStrength_MPa ?? "—"}`}
-                  ok={utsOk !== false}
+                  hint="Context only; not an acceptance test"
                 />
               </div>
               {htCohorts.length > 0 && (

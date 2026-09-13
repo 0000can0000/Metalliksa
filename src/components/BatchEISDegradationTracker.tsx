@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef } from "react";
 import {
   Layers,
@@ -28,7 +29,6 @@ import {
   ArrowRight
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   LineChart,
   Line,

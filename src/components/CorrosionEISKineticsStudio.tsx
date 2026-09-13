@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect } from "react";
 import {
   ShieldAlert,
@@ -18,7 +19,6 @@ import {
   Compass
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   LineChart,
   Line,

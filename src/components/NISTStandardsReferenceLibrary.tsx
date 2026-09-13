@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo } from "react";
 import {
   Search,
@@ -19,7 +20,6 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   LineChart,
@@ -117,7 +117,7 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
   // Handle Apply Standard Calibration
   const handleApplyCalibration = (std: XRDStandardRef) => {
     onSelectAndApplyStandard(std);
-    setAppliedNotification(`Applied calibration profile from ${std.name}!`);
+    setAppliedNotification(`Loaded reference profile from ${std.name}; verify instrument calibration with a measured reference scan.`);
     setTimeout(() => setAppliedNotification(null), 4000);
   };
 
@@ -128,7 +128,7 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
       return;
     }
 
-    let fileContent = `# NIST XRD Standard Profile: ${std.name}\n`;
+    let fileContent = `# SYNTHETIC XRD reference profile: ${std.name}\n# Evidence: simulated illustration; not a measured NIST SRM certificate or instrument calibration\n`;
     fileContent += `# Formula: ${std.formula} | Space Group: ${std.spaceGroup}\n`;
     fileContent += `# Lattice: a = ${std.lattice_a_A} A${std.lattice_c_A ? `, c = ${std.lattice_c_A} A` : ""}\n`;
     fileContent += `# Caglioti: U=${std.caglioti_UVW.U}, V=${std.caglioti_UVW.V}, W=${std.caglioti_UVW.W}\n`;
@@ -154,8 +154,9 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${std.id}_certified_calibration_pattern.csv`;
+    link.download = `${std.id}_synthetic_reference_pattern.csv`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -168,13 +169,13 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
           </div>
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span>Certified NIST Standards &amp; Instrumental Profile Library</span>
+              <span>XRD Reference &amp; Instrumental Profile Library</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold lowercase">
                 SRM Database (ASTM E915 / ISO 14704)
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              Select certified NIST reference standards (LaB₆, Si, Corundum, Ceria) or annealed metallurgical bases to instantly load Caglioti slit broadening ($U,V,W$) and calibrate raw diffractograms.
+              Preview reference reflections and assumed Caglioti broadening profiles. Generated patterns are synthetic. Instrument calibration requires a measured reference specimen and its applicable certificate.
             </p>
           </div>
         </div>
@@ -386,10 +387,10 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
                 type="button"
                 onClick={() => handleExportStandardFile(currentStandard)}
                 className="px-3 py-1.5 rounded-lg bg-[#090e18] border border-[#1e2d46] hover:border-amber-500/40 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5"
-                title="Download certified synthetic diffractogram (.csv)"
+                title="Download synthetic reference diffractogram (.csv); not calibration evidence"
               >
                 <Download className="w-3.5 h-3.5 text-amber-400" />
-                <span>Export Standard</span>
+                <span>Export Synthetic Pattern</span>
               </button>
 
               <button
@@ -398,7 +399,7 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
                 className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-1.5"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
-                <span>Pull &amp; Apply Calibration</span>
+                <span>Load Reference Profile</span>
               </button>
             </div>
           </div>
@@ -437,7 +438,7 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
               {[
                 { id: "overview", label: "Diffractogram Stick Pattern", icon: Activity },
                 { id: "caglioti", label: "Instrument Broadening Curve FWHM(2θ)", icon: Sliders },
-                { id: "peaks", label: "Certified Reflections Table", icon: FileSpreadsheet },
+                { id: "peaks", label: "Reference Reflections Table", icon: FileSpreadsheet },
               ].map((tab) => {
                 const isAct = activeTab === tab.id;
                 const Icon = tab.icon;
@@ -464,7 +465,7 @@ export const NISTStandardsReferenceLibrary: React.FC<NISTStandardsReferenceLibra
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-[11px] text-slate-400">
                   <span>Theoretical Cu-Kα Bragg Peaks (2θ vs. I/I₀)</span>
-                  <span>{currentStandard.standardPeaks.length} Certified Reflections</span>
+                  <span>{currentStandard.standardPeaks.length} Reference Reflections</span>
                 </div>
                 <div className="h-56 w-full bg-[#090e18] p-2 rounded-lg border border-[#162032]">
                   <ResponsiveContainer width="100%" height="100%">

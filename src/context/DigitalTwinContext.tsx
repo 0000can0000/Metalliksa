@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { SampleDigitalTwin, DigitalTwinAttachment } from "../types/digitalTwin";
 import { DEFAULT_DIGITAL_TWINS } from "../data/digitalTwinStore";
+import { createUnresolvedDigitalTwin, labelTwinEvidence } from "../utils/digitalTwinEvidence";
 import {
   loadDigitalTwinsFromIDB,
   saveDigitalTwinsToIDB,
@@ -29,9 +30,11 @@ export interface DigitalTwinContextType {
 }
 
 const DigitalTwinContext = createContext<DigitalTwinContextType | undefined>(undefined);
+const demoIds = DEFAULT_DIGITAL_TWINS.map(twin => twin.id);
+const demoTwins = DEFAULT_DIGITAL_TWINS.map(twin => labelTwinEvidence(twin, demoIds));
 
 export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [twins, setTwins] = useState<SampleDigitalTwin[]>(DEFAULT_DIGITAL_TWINS);
+  const [twins, setTwins] = useState<SampleDigitalTwin[]>(demoTwins);
   const [activeTwinId, setActiveTwinId] = useState<string>(DEFAULT_DIGITAL_TWINS[0].id);
   const [storageInfo, setStorageInfo] = useState<StorageQuotaInfo | null>(null);
   const [isStorageLoading, setIsStorageLoading] = useState<boolean>(true);
@@ -54,7 +57,7 @@ export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         if (isMounted) {
           if (loadedTwins && loadedTwins.length > 0) {
-            setTwins(loadedTwins);
+            setTwins(loadedTwins.map(twin => labelTwinEvidence(twin, demoIds)));
             if (loadedActiveId && loadedTwins.some((t) => t.id === loadedActiveId)) {
               setActiveTwinId(loadedActiveId);
             } else {
@@ -110,7 +113,7 @@ export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, []);
 
-  const activeTwin = twins.find((t) => t.id === activeTwinId) || twins[0] || DEFAULT_DIGITAL_TWINS[0];
+  const activeTwin = twins.find((t) => t.id === activeTwinId) || twins[0] || demoTwins[0];
 
   const updateActiveTwin = useCallback(
     (updater: Partial<SampleDigitalTwin> | ((prev: SampleDigitalTwin) => SampleDigitalTwin)) => {
@@ -143,21 +146,10 @@ export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const createNewTwin = useCallback(
     (base?: Partial<SampleDigitalTwin>): SampleDigitalTwin => {
-      const newId = `twin-${Date.now()}`;
-      const newSerial = `TWIN-CUSTOM-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-      const newTwin: SampleDigitalTwin = {
-        ...DEFAULT_DIGITAL_TWINS[0],
-        id: newId,
-        serialNumber: newSerial,
-        sampleName: base?.sampleName || "Custom Metallurgical Specimen Twin",
-        creationDate: new Date().toISOString().split("T")[0],
-        lastUpdated: new Date().toISOString().split("T")[0],
-        attachments: [],
-        ...base,
-      };
+      const newTwin = createUnresolvedDigitalTwin(base);
 
       setTwins((prev) => [newTwin, ...prev]);
-      setActiveTwinId(newId);
+      setActiveTwinId(newTwin.id);
       return newTwin;
     },
     []
@@ -167,7 +159,7 @@ export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setTwins((prev) => {
       const filtered = prev.filter((t) => t.id !== id);
       if (filtered.length === 0) {
-        return DEFAULT_DIGITAL_TWINS;
+        return demoTwins;
       }
       return filtered;
     });
@@ -219,7 +211,7 @@ export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const exportTwinAsJSON = useCallback(
     (twinToExport?: SampleDigitalTwin) => {
-      const target = twinToExport || activeTwin;
+      const target = labelTwinEvidence(twinToExport || activeTwin, demoIds);
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(target, null, 2));
       const downloadAnchor = document.createElement("a");
       downloadAnchor.setAttribute("href", dataStr);
@@ -234,10 +226,16 @@ export const DigitalTwinProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const importTwinFromJSON = useCallback((jsonString: string): boolean => {
     try {
       const parsed = JSON.parse(jsonString);
-      if (parsed && parsed.id && parsed.sampleName && parsed.chemistry) {
+      if (parsed && typeof parsed.id === "string" && typeof parsed.sampleName === "string" && parsed.chemistry?.nominalComposition
+        && parsed.thermodynamics?.scheilSolidification && Array.isArray(parsed.thermodynamics?.stablePhasesAtRoomTemp)
+        && Array.isArray(parsed.processHistory?.thermalCycles) && Array.isArray(parsed.microstructure?.phasesDetected)
+        && parsed.microstructure?.ebsdTexture && parsed.microstructure?.xrdVerification
+        && parsed.mechanical?.hardness && parsed.mechanical?.mmpdsStatisticalBasis
+        && parsed.electrochemistry && parsed.extremeService && Array.isArray(parsed.certification?.applicableStandards)
+        && parsed.certification?.nonDestructiveTestResults && typeof parsed.serialNumber === "string") {
         const uniqueId = `twin-imported-${Date.now()}`;
         const imported: SampleDigitalTwin = {
-          ...parsed,
+          ...labelTwinEvidence(parsed, demoIds),
           id: uniqueId,
           lastUpdated: new Date().toISOString().split("T")[0],
         };

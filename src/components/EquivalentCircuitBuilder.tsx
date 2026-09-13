@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   Activity,
@@ -39,7 +40,6 @@ import {
   RadioTower,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

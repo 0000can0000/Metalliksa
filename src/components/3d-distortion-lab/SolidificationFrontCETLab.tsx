@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from '../VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Flame,
@@ -48,7 +49,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   AreaChart,
   Area,
   ScatterChart,

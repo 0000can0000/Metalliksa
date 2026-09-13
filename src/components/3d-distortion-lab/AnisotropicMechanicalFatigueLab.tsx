@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from '../VisibleResponsiveContainer';
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Brain,
@@ -28,7 +29,6 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Upload,
@@ -34,7 +35,6 @@ import {
   FileCode,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

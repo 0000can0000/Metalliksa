@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { materialProfileIdentity } from "../utils/materialProfileIdentity";
+import { materialCategoryForBase } from "../utils/materialCategory";
 import { setActivePipelineMaterial, PipelineMaterialPayload } from "../utils/materialDataPipeline";
 
 export type BaseMetalType = "Ni" | "Fe" | "Ti" | "Al" | "Cu" | "Co" | "Mg" | "Refractory" | "Other";
@@ -129,6 +131,8 @@ export interface ActiveSpecimenState {
     crystalliteSize_nm: number;
   };
   
+  // Identity transfer never upgrades existing estimates to measured evidence.
+  materialTransfer?: {sourceModule:string;sourceRecordId:string;compositionInterpretation:string;resultType:"Screening only";note:string};
   // Provenance & Digital Thread
   sourceTab: string;
   lastModified: number;
@@ -420,7 +424,7 @@ export function deriveSpecimenProperties(
   return {
     name,
     chemicalFormula,
-    category: baseMetal === "Ni" ? "Nickel Superalloy" : `${baseMetal}-Base Alloy`,
+    category: materialCategoryForBase(baseMetal),
     baseMetal,
     composition,
     unit: "wt_pct",
@@ -568,7 +572,7 @@ export const useMaterialSpecimenStore = create<MaterialSpecimenStore>()(
         const previousProcess = get().activeSpecimen?.lpbf;
         const derived = deriveSpecimenProperties(newComposition, customName, forcedBaseMetal);
         const nextSpecimen: ActiveSpecimenState = {
-          id: `specimen-${Date.now()}`,
+          id: materialProfileIdentity(derived.name, derived.baseMetal, newComposition),
           ...derived,
           lpbf: withLpbfProcessDefaults({
             ...derived.lpbf,
@@ -600,6 +604,8 @@ export const useMaterialSpecimenStore = create<MaterialSpecimenStore>()(
             sourceModule: sourceTab,
             timestamp: Date.now(),
             composition: nextSpecimen.composition,
+            compositionUnit: nextSpecimen.unit,
+            compositionInterpretation: "nominal",
             baseMetal: nextSpecimen.baseMetal as any,
             yieldStrength: nextSpecimen.yieldStrength_25C_MPa,
             tensileStrength: nextSpecimen.uts_25C_MPa,

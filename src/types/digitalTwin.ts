@@ -17,145 +17,145 @@ export interface DigitalTwinChemistry {
   nominalComposition: Record<string, number>; // e.g. { Fe: 68.5, Cr: 18.0, Ni: 10.0, Mo: 2.5, C: 0.03 }
   measuredComposition?: Record<string, number>; // EDS / OES verified
   carbonEquivalent?: {
-    ceIIW?: number;
-    pcm?: number;
-    cen?: number;
+    ceIIW?: number | null;
+    pcm?: number | null;
+    cen?: number | null;
   };
   schaefflerCoordinates?: {
-    crEq: number;
-    niEq: number;
-    estimatedFerriteNumber: number;
+    crEq: number | null;
+    niEq: number | null;
+    estimatedFerriteNumber: number | null;
     matrixPrediction: string;
   };
 }
 
 export interface DigitalTwinThermodynamics {
   calphadSystemId: string; // e.g. "fe-c", "ni-al", "ti-al", "cu-ni"
-  liquidusTemperatureC: number;
-  solidusTemperatureC: number;
-  freezingRangeC: number;
+  liquidusTemperatureC: number | null;
+  solidusTemperatureC: number | null;
+  freezingRangeC: number | null;
   stablePhasesAtRoomTemp: {
     phaseId: string;
     phaseName: string;
-    fractionPct: number;
+    fractionPct: number | null;
     crystalStructure: string;
   }[];
   scheilSolidification: {
-    eutecticFractionPct: number;
-    hotTearingIndexKou: number;
-    microsegregationSeverity: "Low" | "Moderate" | "High" | "Critical";
+    eutecticFractionPct: number | null;
+    hotTearingIndexKou: number | null;
+    microsegregationSeverity: "Low" | "Moderate" | "High" | "Critical" | "Unresolved";
   };
   transformationTemps?: {
-    ac1?: number;
-    ac3?: number;
-    ms?: number;
-    mf?: number;
-    bs?: number;
+    ac1?: number | null;
+    ac3?: number | null;
+    ms?: number | null;
+    mf?: number | null;
+    bs?: number | null;
   };
 }
 
 export interface DigitalTwinProcessHistory {
-  manufacturingRoute: "LPBF (Laser Powder Bed)" | "Forged & Rolled" | "Investment Cast" | "DED (Direct Energy)" | "Extruded" | "HIP (Hot Isostatic Pressed)";
-  currentCondition: "As-Built / As-Cast" | "Solution Treated" | "Peak Aged (T6)" | "Stress Relieved" | "Annealed" | "Quenched & Tempered";
+  manufacturingRoute: "LPBF (Laser Powder Bed)" | "Forged & Rolled" | "Investment Cast" | "DED (Direct Energy)" | "Extruded" | "HIP (Hot Isostatic Pressed)" | "Unresolved";
+  currentCondition: "As-Built / As-Cast" | "Solution Treated" | "Peak Aged (T6)" | "Stress Relieved" | "Annealed" | "Quenched & Tempered" | "Unresolved";
   thermalCycles: {
     stageName: string;
-    targetTempC: number;
-    holdTimeMinutes: number;
+    targetTempC: number | null;
+    holdTimeMinutes: number | null;
     coolingMethod: "Furnace Cool" | "Air Cool" | "Oil Quench" | "Water Quench" | "Gas Fan";
     notes?: string;
   }[];
   additiveParameters?: {
-    laserPowerW: number;
-    scanSpeedMmS: number;
-    hatchDistanceUm: number;
-    layerThicknessUm: number;
-    volumetricEnergyDensityJ_mm3: number;
-    predictedResidualStressMpa: number;
-    maxDeflectionMm: number;
+    laserPowerW: number | null;
+    scanSpeedMmS: number | null;
+    hatchDistanceUm: number | null;
+    layerThicknessUm: number | null;
+    volumetricEnergyDensityJ_mm3: number | null;
+    predictedResidualStressMpa: number | null;
+    maxDeflectionMm: number | null;
   };
 }
 
 export interface DigitalTwinMicrostructure {
-  primaryCrystalStructure: "FCC" | "BCC" | "HCP" | "BCT" | "L12" | "B2" | "Amorphous";
-  astmGrainSizeNumber: number; // e.g. 8.5
-  meanGrainDiameterUm: number; // e.g. 18.5 um
-  porosityPct: number; // e.g. 0.08%
+  primaryCrystalStructure: "FCC" | "BCC" | "HCP" | "BCT" | "L12" | "B2" | "Amorphous" | "Unresolved";
+  astmGrainSizeNumber: number | null; // e.g. 8.5
+  meanGrainDiameterUm: number | null; // e.g. 18.5 um
+  porosityPct: number | null; // e.g. 0.08%
   phasesDetected: {
     name: string;
-    fractionPct: number;
+    fractionPct: number | null;
     morphology: string; // e.g. "Cellular Dendritic", "Equiaxed", "Acicular Martensite", "Lamellar Pearlite"
   }[];
   ebsdTexture: {
     preferredOrientation: string; // e.g. "<001> Build Direction Fiber"
-    misorientationAngleMeanDeg: number;
-    lowAngleBoundaryPct: number;
-    highAngleBoundaryPct: number;
-    kosselSchmidFactorMean: number;
+    misorientationAngleMeanDeg: number | null;
+    lowAngleBoundaryPct: number | null;
+    highAngleBoundaryPct: number | null;
+    kosselSchmidFactorMean: number | null;
   };
   xrdVerification: {
-    primaryPeaks: { hkl: string; twoTheta: number; intensityPct: number }[];
-    residualStressSin2PsiMpa: number; // e.g. +145 MPa (tensile)
-    crystalliteSizeNm: number;
+    primaryPeaks: { hkl: string; twoTheta: number | null; intensityPct: number }[];
+    residualStressSin2PsiMpa: number | null; // e.g. +145 MPa (tensile)
+    crystalliteSizeNm: number | null;
   };
-  edsPurityPurityPct: number;
+  edsPurityPurityPct: number | null;
 }
 
 export interface DigitalTwinMechanicalProperties {
-  yieldStrengthMpa: number;
-  ultimateTensileStrengthMpa: number;
-  elongationPct: number;
-  reductionOfAreaPct: number;
+  yieldStrengthMpa: number | null;
+  ultimateTensileStrengthMpa: number | null;
+  elongationPct: number | null;
+  reductionOfAreaPct: number | null;
   hardness: {
-    value: number;
-    scale: "HV" | "HRC" | "HRB" | "HBW";
-    convertedHRC?: number;
-    convertedHV?: number;
+    value: number | null;
+    scale: "HV" | "HRC" | "HRB" | "HBW" | "Unresolved";
+    convertedHRC?: number | null;
+    convertedHV?: number | null;
   };
-  fractureToughnessK1cMpaSqrtM?: number;
-  fatigueLimitMpa?: number; // 10^7 cycles
+  fractureToughnessK1cMpaSqrtM?: number | null;
+  fatigueLimitMpa?: number | null; // 10^7 cycles
   mmpdsStatisticalBasis: {
-    basisLevel: "A-Basis Qualified" | "B-Basis Qualified" | "S-Basis Provisional" | "Tentative R&D";
-    sampleCountN: number;
-    cpkReliability: number;
+    basisLevel: "A-Basis Qualified" | "B-Basis Qualified" | "S-Basis Provisional" | "Tentative R&D" | "Not assessed";
+    sampleCountN: number | null;
+    cpkReliability: number | null;
   };
 }
 
 export interface DigitalTwinElectrochemistry {
-  corrosionRateMpy: number; // Mils per year
-  openCircuitPotentialEcorrV: number; // V vs SCE
-  pittingPotentialEpitV?: number;
-  polarizationResistanceRpOhmCm2: number;
-  eisImpedanceModuleOhm: number;
-  passivationQuality: "Immune" | "Passive Stable" | "Susceptible to Pitting" | "Active Dissolution";
+  corrosionRateMpy: number | null; // Mils per year
+  openCircuitPotentialEcorrV: number | null; // V vs SCE
+  pittingPotentialEpitV?: number | null;
+  polarizationResistanceRpOhmCm2: number | null;
+  eisImpedanceModuleOhm: number | null;
+  passivationQuality: "Immune" | "Passive Stable" | "Susceptible to Pitting" | "Active Dissolution" | "Unresolved";
   batteryCompatibility?: {
-    lithiumIntercalationVoltageV: number;
-    capacityMah_g: number;
-    cycleRetentionPct1000: number;
+    lithiumIntercalationVoltageV: number | null;
+    capacityMah_g: number | null;
+    cycleRetentionPct1000: number | null;
   };
 }
 
 export interface DigitalTwinExtremeService {
-  operatingMaxTempC: number;
-  hypersonicAblationRecessionRateMm_s?: number;
-  thermalConductivityW_mK: number;
-  thermalDiffusivityMm2_s: number;
-  oxidationResistanceCategory: "Excellent (Protective Cr2O3/Al2O3)" | "Moderate" | "Severe Scaling";
+  operatingMaxTempC: number | null;
+  hypersonicAblationRecessionRateMm_s?: number | null;
+  thermalConductivityW_mK: number | null;
+  thermalDiffusivityMm2_s: number | null;
+  oxidationResistanceCategory: "Excellent (Protective Cr2O3/Al2O3)" | "Moderate" | "Severe Scaling" | "Unresolved";
   creepRuptureLifeHours?: {
-    temperatureC: number;
-    stressMpa: number;
-    hoursToRupture: number;
+    temperatureC: number | null;
+    stressMpa: number | null;
+    hoursToRupture: number | null;
   };
 }
 
 export interface DigitalTwinQualityAndCert {
   applicableStandards: string[]; // e.g. ["AMS 5662", "ASTM B348", "MIL-STD-810H", "AS9100D"]
-  aerospaceFlightReadinessScorePct: number; // 0 - 100
-  qualificationAuditStatus: "Fully Certified (Flight-Grade)" | "Conditional Pass (Requires HIP)" | "Non-Conformance Flagged";
-  complianceRiskLevel: "Negligible" | "Low" | "Moderate" | "High";
+  aerospaceFlightReadinessScorePct: number | null; // 0 - 100
+  qualificationAuditStatus: "Fully Certified (Flight-Grade)" | "Conditional Pass (Requires HIP)" | "Non-Conformance Flagged" | "Not assessed";
+  complianceRiskLevel: "Negligible" | "Low" | "Moderate" | "High" | "Unresolved";
   nonDestructiveTestResults: {
     ultrasonicInspection: "Accept (Level A)" | "Reject" | "Pending";
-    xrayRadiography: "ASTM E1742 Class I" | "Class II" | "Flaw Detected";
-    surfaceDyePenetrant: "No Indications" | "Micro-cracks present";
+    xrayRadiography: "ASTM E1742 Class I" | "Class II" | "Flaw Detected" | "Pending";
+    surfaceDyePenetrant: "No Indications" | "Micro-cracks present" | "Pending";
   };
   blockchainHashCertificate?: string;
 }
@@ -170,11 +170,21 @@ export interface DigitalTwinAttachment {
   uploadedAt: string;
 }
 
+/** Original declared claims retained for traceability, never effective qualification. */
+export interface DigitalTwinReportedClaims {
+  verification: "unverified";
+  currentStatus?: SampleDigitalTwin["currentStatus"];
+  certification?: DigitalTwinQualityAndCert;
+  mmpdsStatisticalBasis?: DigitalTwinMechanicalProperties["mmpdsStatisticalBasis"];
+}
+
 export interface SampleDigitalTwin {
+  /** Record provenance does not establish measurement validity or qualification. */
+  evidence?: { kind: "demo" | "unresolved" | "user-supplied"; note: string; qualification: "not-assessed"; reportedClaims?: DigitalTwinReportedClaims };
   id: string; // Unique Twin UUID / Serial
   serialNumber: string; // e.g. "TWIN-IN718-LPBF-2026-088"
   sampleName: string; // e.g. "Inconel 718 LPBF High-Pressure Turbine Blade"
-  materialCategory: "Nickel Superalloy" | "Titanium Alloy" | "Stainless Steel" | "Alloy Steel" | "Aluminum Aerospace" | "Refractory / CMC";
+  materialCategory: "Nickel Superalloy" | "Titanium Alloy" | "Stainless Steel" | "Alloy Steel" | "Aluminum Aerospace" | "Refractory / CMC" | "Unresolved";
   standardDesignation: string; // e.g. "UNS N07718 / AMS 5662"
   creationDate: string;
   lastUpdated: string;

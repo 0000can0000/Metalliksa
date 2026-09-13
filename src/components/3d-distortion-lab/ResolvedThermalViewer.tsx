@@ -1,3 +1,4 @@
+import { useWorkspaceVisible } from '../WorkspaceVisibility';
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -23,6 +24,7 @@ export function decodeField(buffer: ArrayBuffer, count: number): Float32Array {
   return values;
 }
 export function ResolvedThermalViewer({jobId,result,onTimeChange}:{jobId:string;result?:SimulationResult;onTimeChange?:(time:number)=>void}) {
+  const workspaceVisible=useWorkspaceVisible();
   const resetVersion=useRef(0);
   const cameraState=useRef<{position:THREE.Vector3;target:THREE.Vector3}>();
   const rendererRef=useRef<THREE.WebGLRenderer>();
@@ -51,9 +53,9 @@ export function ResolvedThermalViewer({jobId,result,onTimeChange}:{jobId:string;
     fetch(base+series.frames[index].path,{signal:abort.signal}).then(async r=>{if(!r.ok)throw new Error(`Field frame HTTP ${r.status}`);const v=decodeField(await r.arrayBuffer(),series.cells);if(v.some(t=>t<=0))throw new Error("Nonphysical temperature");if(!abort.signal.aborted){setValues(v);setLoadedIndex(index);}}).catch(e=>{if(!abort.signal.aborted){setError(e.message);setPlaying(false);}});
     return()=>abort.abort();
   },[series,index,base]);
-  useEffect(()=>{if(!playing||!series||loadedIndex!==index)return;const timer=setTimeout(()=>{if(index===series.frames.length-1)setPlaying(false);else setIndex(index+1);},200);return()=>clearTimeout(timer);},[playing,series,index,loadedIndex]);
+  useEffect(()=>{if(!workspaceVisible||!playing||!series||loadedIndex!==index)return;const timer=setTimeout(()=>{if(index===series.frames.length-1)setPlaying(false);else setIndex(index+1);},200);return()=>clearTimeout(timer);},[workspaceVisible,playing,series,index,loadedIndex]);
   useEffect(()=>{
-    if(!host.current||!series||!coordinates||!values||loadedIndex<0)return;
+    if(!workspaceVisible||!host.current||!series||!coordinates||!values||loadedIndex<0)return;
     const element=host.current;let renderer:THREE.WebGLRenderer;
     try{renderer=rendererRef.current ?? new THREE.WebGLRenderer({antialias:true});rendererRef.current=renderer;}catch{setError("WebGL unavailable. Download the field artifacts or use the resolved X–Z slices.");return;}
     renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));element.appendChild(renderer.domElement);
@@ -121,7 +123,7 @@ export function ResolvedThermalViewer({jobId,result,onTimeChange}:{jobId:string;
     const visibility=new IntersectionObserver(entries=>{inView=entries[0]?.isIntersecting??false;});visibility.observe(element);
     const render=()=>{if(inView&&!document.hidden){controls.update();renderer.render(scene,camera);}raf=requestAnimationFrame(render);};render();
     return()=>{cameraState.current={position:camera.position.clone(),target:controls.target.clone()};cancelAnimationFrame(raf);observer.disconnect();visibility.disconnect();controls.dispose();mesh.dispose();mushyMesh.dispose();mushyMaterial.dispose();geometry.dispose();material.dispose();cutGeometry.dispose();cutMaterial.dispose();contourGeometry.dispose();contourMaterial.dispose();dimensionObjects.forEach(o=>{o.geometry.dispose();o.material.dispose();o.texture?.dispose();});axes.geometry.dispose();(axes.material as THREE.Material).dispose();box.geometry.dispose();(box.material as THREE.Material).dispose();renderer.renderLists.dispose();};
-  },[series,coordinates,values,loadedIndex,quantity,section,hotOnly,reset,wireframe,rotate,view,normal,contour,dimensions]);
+  },[workspaceVisible,series,coordinates,values,loadedIndex,quantity,section,hotOnly,reset,wireframe,rotate,view,normal,contour,dimensions]);
   const frame=series?.frames[loadedIndex];
   const activeScan=frame&&result?.scanPath?.find(s=>s.start_s<=frame.time_s&&frame.time_s<s.end_s);
   const lastScan=result?.scanPath?.at(-1);

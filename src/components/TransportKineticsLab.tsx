@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Activity,
@@ -22,7 +23,6 @@ import {
   Split
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   LineChart,
   Line,

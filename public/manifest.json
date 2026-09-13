@@ -1,7 +1,7 @@
 {
-  "name": "MetalliX: AI Metallurgy & Materials Pocket Model",
-  "short_name": "MetalliX",
-  "description": "Comprehensive AI pocket workstation for metallurgists and material scientists featuring alloy formulation, crystal lattice visualization, phase equilibria, heat treatment simulation, and microscopy diagnostics.",
+  "name": "Metalliksa Research Engineering Workstation",
+  "short_name": "Metalliksa",
+  "description": "LPBF Engineering, Materials Intelligence and Evidence & Qualification with traceable research records.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070b12",

@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "test:unit": "tsx --test tests/*.test.ts tests/*.test.tsx",
     "sbom": "py -3 python/generate_sbom.py",
     "test:lpbf": "py -3 python/test_lpbf_build_job.py",
     "test:lpbf:engineering": "py -3 python/test_lpbf_engineering.py",

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from '../VisibleResponsiveContainer';
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Database,
@@ -24,7 +25,6 @@ import {
   Share2,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ScatterChart,
   Scatter,
   XAxis,

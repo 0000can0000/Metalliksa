@@ -28,6 +28,9 @@ export interface PipelineMaterialPayload {
   sourceModule: string;
   timestamp: number;
   composition: Record<string, number>;
+  compositionUnit?: "wt_pct" | "at_pct";
+  compositionInterpretation?: "nominal" | "range-midpoint";
+  originalComposition?: Record<string, number | { min: number; max: number }>;
   baseMetal: "Ni" | "Fe" | "Ti" | "Al" | "Cu" | "Co" | "Mg" | "Other";
   
   // Mechanical & Physical Properties
@@ -599,6 +602,9 @@ export function createPipelinePayloadFromMaterialSpec(mat: MaterialSpec, sourceM
     sourceModule,
     timestamp: Date.now(),
     composition: normComp,
+    compositionUnit: "wt_pct",
+    compositionInterpretation: Object.values(mat.composition).some(value => typeof value === "object") ? "range-midpoint" : "nominal",
+    originalComposition: mat.composition,
     baseMetal,
     yieldStrength: mat.yieldStrength,
     tensileStrength: mat.tensileStrength,
@@ -664,6 +670,8 @@ export function createPipelinePayloadFromCandidate(
     sourceModule,
     timestamp: Date.now(),
     composition: comp,
+    compositionUnit: "wt_pct",
+    compositionInterpretation: "nominal",
     baseMetal,
     yieldStrength,
     tensileStrength,

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Microscope,
@@ -23,7 +24,6 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,

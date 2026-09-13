@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useMaterialSpecimenStore } from "../store/useMaterialSpecimenStore";
 import {
@@ -41,7 +42,6 @@ import {
   Gauge,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

@@ -1,10 +1,11 @@
+import { canonicalLpbfMaterialName } from "../../utils/lpbfMaterialIdentity";
 import { Badge, ResultHeader, ThermalHistory, ConvergencePanel, MeasurementPanel, surface, number } from "./LpbfResultPresentation";
 import { ResolvedThermalViewer } from "./ResolvedThermalViewer";
 import React, { useEffect, useRef, useState } from "react";
 import { simulationApi, SimulationInput, SimulationJob, SimulationMode, SimulationCapabilities, ResourceEstimate, SimulationResult } from "../../services/lpbfSimulationService";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 
-const defaults: Partial<SimulationInput> = { stripeWidth_um:500,islandSize_um:200,mesh_um:20,maxDt_s:1e-6,tracks:1,layers:1,trackLength_um:600,dwell_s:.0002,cooling_s:.0005,packingFraction:.55,powderConductivityRatio:.12,convection_W_m2K:20,timeout_s:300,scanAngle_deg:0,layerRotation_deg:67,study:"none",backend:"auto" };
+import { LPBF_ENGINEERING_DEFAULTS as defaults, resumeEngineeringJob, useEngineeringField, useLpbfEngineeringStore } from "../../store/useLpbfEngineeringStore";
 const controls = [
   ["stripeWidth_um","Stripe width (µm)",20,3000], ["islandSize_um","Island size (µm)",50,3000],
   ["mesh_um","Mesh spacing (µm)",5,80], ["maxDt_s","Maximum timestep (s)",1e-9,1e-4],
@@ -20,36 +21,36 @@ const modes: {id:SimulationMode;name:string;scope:string}[] = [
   {id:"high-fidelity",name:"High-Fidelity CFD",scope:"Free-surface CFD unavailable · falls back to Screening only · no solved velocity or keyhole"},
   {id:"calibration",name:"Calibration / Validation",scope:"Transient thermal + measured comparison · matching process vector required for calibration · independent validation pending"},
 ];
-const storageKey = "metalliksa.lpbf.engineering.job.v2";
 const fmt = number;
 const inputClass = "w-full min-w-0 rounded-lg bg-slate-950/60 border border-slate-600/70 px-3 py-2.5 text-slate-100 transition-colors hover:border-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300";
 
 export function LpbfEngineeringSimulation({input:providedInput}:{input:SimulationInput}) {
-  const process=useMaterialSpecimenStore(s=>s.activeSpecimen.lpbf);
-  const input:SimulationInput={...providedInput,power_W:process.laserPower_W,speed_mm_s:process.scanSpeed_mms,beamDiameter_um:process.beamDiameter_um,preheat_C:process.preheatTemp_C,layer_um:process.layer_um,hatch_um:process.hatch_um};
+  const sharedSpecimen=useMaterialSpecimenStore(s=>s.activeSpecimen);
+  const process=sharedSpecimen.lpbf;
+  const input:SimulationInput={...providedInput,material:canonicalLpbfMaterialName(sharedSpecimen.name),power_W:process.laserPower_W,speed_mm_s:process.scanSpeed_mms,beamDiameter_um:process.beamDiameter_um,preheat_C:process.preheatTemp_C,layer_um:process.layer_um,hatch_um:process.hatch_um};
   const updateProcess = useMaterialSpecimenStore(s=>s.updateLpbfProcess);
   const sharedStrategy = useMaterialSpecimenStore(s=>s.activeSpecimen.lpbf.scanStrategy);
-  const [settings,setSettings] = useState(defaults);
-  const [mode,setMode] = useState<SimulationMode>("standard");
+  const [settings,setSettings] = useEngineeringField("settings");
+  const [mode,setMode] = useEngineeringField("mode");
   const [caps,setCaps] = useState<SimulationCapabilities>();
-  const [job,setJob] = useState<SimulationJob>();
+  const [job,setJob] = useEngineeringField("job");
   const [estimate,setEstimate] = useState<ResourceEstimate>();
   const [estimateError,setEstimateError] = useState("");
-  const [error,setError] = useState("");
-  const [busy,setBusy] = useState(false);
+  const [error,setError] = useEngineeringField("error");
+  const [busy,setBusy] = useEngineeringField("busy");
   const [cancelling,setCancelling] = useState(false);
   const [elapsed,setElapsed] = useState(0);
   const [fieldTime,setFieldTime] = useState<number>();
   const initialProcess = useRef(input);
-  const [material,setMaterial] = useState("");
-  const [properties,setProperties] = useState("");
-  const [measurements,setMeasurements] = useState("");
-  const [specimen,setSpecimen]=useState(""); const [uncertainty,setUncertainty]=useState(""); const [holdout,setHoldout]=useState("unknown");
-  const [width,setWidth] = useState(""); const [depth,setDepth] = useState(""); const [source,setSource] = useState("");
+  const [material,setMaterial] = useEngineeringField("material");
+  const [properties,setProperties] = useEngineeringField("properties");
+  const [measurements,setMeasurements] = useEngineeringField("measurements");
+  const [specimen,setSpecimen]=useEngineeringField("specimen"); const [uncertainty,setUncertainty]=useEngineeringField("uncertainty"); const [holdout,setHoldout]=useEngineeringField("holdout");
+  const [width,setWidth] = useEngineeringField("width"); const [depth,setDepth] = useEngineeringField("depth"); const [source,setSource] = useEngineeringField("source");
   const signature = JSON.stringify([input,settings,mode,material,properties,measurements,width,depth,source,specimen,uncertainty,holdout,sharedStrategy]);
-  const submitted = useRef("");
+  const submittedSignature = useLpbfEngineeringStore(s=>s.submittedSignature);
   const cancelledJob = useRef("");
-  const [resultSignature,setResultSignature] = useState("");
+  const [resultSignature] = useEngineeringField("resultSignature");
   const active = job?.status === "queued" || job?.status === "running";
   useEffect(()=>{if(!active)return;setElapsed(0);const start=Date.now();const timer=setInterval(()=>setElapsed((Date.now()-start)/1000),1000);return()=>clearInterval(timer);},[active,job?.id]);
   const cancel=async()=>{if(!job || cancelling)return;setCancelling(true);try{const next=await simulationApi.cancel(job.id);if(next.status!=="queued"&&next.status!=="running")cancelledJob.current=job.id;setJob(next);}catch(e){setError(e instanceof Error?e.message:"Cancellation failed");}finally{setCancelling(false);}};
@@ -65,28 +66,8 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   useEffect(()=>{
     let live=true;
     simulationApi.capabilities().then(c=>{if(live)setCaps(c);}).catch(e=>{if(live)setError(e.message);});
-    try {
-      const saved=JSON.parse(localStorage.getItem(storageKey)||"null");
-      if(saved?.id) simulationApi.get(saved.id).then(j=>{if(live){submitted.current=saved.signature||"";setResultSignature(saved.signature||"");setJob({...j,cacheHit:saved.cacheHit});}}).catch(e=>{if(live)setError(`Saved job unavailable: ${e.message}`);});
-    } catch { /* Invalid browser storage must not block a new simulation. */ }
     return ()=>{live=false;};
   },[]);
-  useEffect(()=>{
-    if(!job)return;
-    try {localStorage.setItem(storageKey,JSON.stringify({id:job.id,signature:submitted.current,cacheHit:job.cacheHit}));} catch { /* Storage may be disabled. */ }
-  },[job]);
-  useEffect(()=>{
-    if(!active || !job)return;
-    let live=true; let timer:ReturnType<typeof setTimeout>;
-    const poll=async()=>{
-      let terminal=false;
-      try { const next=await simulationApi.get(job.id); terminal=next.status!=="queued" && next.status!=="running";
-        if(live&&cancelledJob.current!==job.id){setError("");setJob(old=>({...next,cacheHit:old?.cacheHit,deduplicated:old?.deduplicated}));if(next.status==="completed")setResultSignature(submitted.current);}
-      } catch(e){if(live)setError(e instanceof Error?e.message:"Worker connection failed");}
-      if(live&&!terminal&&cancelledJob.current!==job.id)timer=setTimeout(poll,document.hidden?5000:1500);
-    };
-    timer=setTimeout(poll,500);return()=>{live=false;clearTimeout(timer);};
-  },[active,job?.id]);
   useEffect(()=>{
     let live=true;setEstimate(undefined);setEstimateError("");
     const timer=setTimeout(()=>{
@@ -107,7 +88,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
         if(uncertainty!==""&&(!Number.isFinite(Number(uncertainty))||Number(uncertainty)<0))throw new Error("Measurement uncertainty must be nonnegative in µm.");
         p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})}];
       }
-      const next=await simulationApi.submit(p);submitted.current=signature;setFieldTime(undefined);setJob(next);if(next.status==="completed")setResultSignature(signature);
+      const next=await simulationApi.submit(p);useLpbfEngineeringStore.setState({job:next,submittedSignature:signature,submittedInput:p,resultSignature:next.status==="completed"?signature:""});setFieldTime(undefined);resumeEngineeringJob();
     }catch(e){setError(e instanceof Error?e.message:"Submission failed");}finally{setBusy(false);}
   };
   const download=()=>{if(!r)return;const url=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download=`lpbf-${job.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
@@ -115,13 +96,13 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   return <section aria-label="LPBF engineering simulation" className="min-w-0 rounded-3xl border border-slate-700/60 bg-[#090f1b] p-4 md:p-7 space-y-6 text-slate-200 font-sans [&_button]:transition-colors [&_button]:duration-150 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-sky-300 [&_button:focus-visible]:outline-offset-4 [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-sky-300 [&_summary]:rounded-md [&_summary]:py-2 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-sky-300 motion-reduce:[&_*]:transition-none">
     <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-[10px] tracking-[.3em] uppercase text-slate-400">Metalliksa / Advanced manufacturing</p><h3 className="text-3xl font-medium tracking-tight mt-2">LPBF <span className="text-slate-400">/</span> Melt Pool</h3><p className="mt-2 text-sm text-slate-400">Thermal response, process screening and traceable evidence.</p></div><Badge tone={caps?.openfoamThermal?"active":"neutral"}>{caps?caps.openfoamThermal?"OpenFOAM thermal worker available":"Reference worker · OpenFOAM unavailable":"Connecting to worker…"}</Badge></header>
     <ResultHeader job={job} material={material||input.material} availability={caps?`${caps.openfoamVersion||"Unavailable"} · free-surface ${caps.freeSurfaceSolver?"reported available":"unavailable"}`:"Checking…"} stale={resultSignature!==signature} elapsed={elapsed} cancel={cancel} cancelling={cancelling}/>
-    {active&&submitted.current!==signature&&<p role="status" className="text-sm text-amber-200">Inputs changed — the running job uses submitted settings. Local changes apply to the next run.</p>}
+    {active&&submittedSignature!==signature&&<p role="status" className="text-sm text-amber-200">Inputs changed — the running job uses submitted settings. Local changes apply to the next run.</p>}
     {(error||job?.error)&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200 whitespace-pre-wrap">{error||job?.error}</p>}
     {job&&<details className="border-t border-slate-700 pt-3"><summary className="cursor-pointer">Worker log · {job.id}</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-slate-400 mt-3">{job.log||job.status}</pre></details>}
     {(!caps?.freeSurfaceSolver)&&<p role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-5 py-3 text-sm leading-6 text-amber-200">{mode==="high-fidelity"?"Free-surface LPBF CFD is unavailable. Result is Screening only.":"Free-surface LPBF CFD is unavailable. Thermal runs do not resolve fluid flow, recoil pressure or a keyhole cavity."}</p>}
     <section aria-label="Simulation mode" className="space-y-4"><div className="flex items-center justify-between"><h4 className="text-sm font-medium">Simulation mode</h4><span className="text-xs text-slate-400">Scope before compute</span></div><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" role="group" aria-label="Simulation modes">{modes.map((m,i)=><button key={m.id} aria-pressed={mode===m.id} onClick={()=>setMode(m.id)} className={`rounded-xl border p-4 text-left ${mode===m.id?"border-slate-400 bg-slate-700/40 text-white":"border-slate-700/60 bg-slate-900/30 text-slate-400 hover:bg-slate-800/60"}`}><span className="block text-[10px] tracking-widest text-slate-500">0{i+1}</span><span className="mt-2 block text-sm font-medium">{m.name}</span><span className="mt-2 block text-xs leading-5">{i===0?"Seconds · low compute":i===2?"Unavailable · screening fallback":i===3?"Seconds–minutes · 1–3 solves":"Seconds–minutes · mesh dependent"}</span></button>)}</div><div className="grid gap-3 rounded-xl border border-slate-700/50 bg-slate-900/30 p-4 text-xs sm:grid-cols-3"><p><span className="block mb-1 text-slate-500">Solver / physical scope</span>{modes.find(m=>m.id===mode)?.scope}</p><p><span className="block mb-1 text-slate-500">Expected fidelity / limitations</span>{mode==="screening"||mode==="high-fidelity"?"Analytical geometry · literature-based approximation. No transient field or resolved keyhole.":"Unvalidated transient thermal · enthalpy phase change. Free-surface, velocity and stress not solved."}</p><p><span className="block mb-1 text-slate-500">Experimental validation</span>Pending · neither calibration nor numerical convergence establishes independent validation.</p></div></section>
     <details className={surface} aria-label="Engineering controls"><summary className="cursor-pointer font-medium">Process settings <span className="ml-3 text-xs font-normal text-slate-400">Shared vector · {input.power_W} W / {input.speed_mm_s} mm/s / {input.beamDiameter_um} µm beam</span></summary>
-      <label className="block my-3">Material for this engineering run<select className={inputClass} value={material} onChange={e=>{setMaterial(e.target.value);setProperties("");}}><option value="">Shared: {input.material}</option>{caps?.materials.map(m=><option key={m.name} value={m.name}>{m.name} · {m.quality}</option>)}</select></label><p className="text-xs text-slate-400 mb-4">Material override applies to this engineering run. The analytical studio retains its own displayed material.</p>{missingMaterial&&<p role="alert" className="mb-4 rounded-lg border border-amber-400/30 p-3 text-sm text-amber-200">Thermophysical data is missing for this alloy. Supply a sourced property table before running the engineering solver.</p>}
+      <label className="block my-3">Material for this engineering run<select className={inputClass} value={material} onChange={e=>{setMaterial(e.target.value);setProperties("");}}><option value="">Shared: {input.material}</option>{caps?.materials.map(m=><option key={m.name} value={m.name}>{m.name} · {m.quality}</option>)}</select></label><p className="text-xs text-slate-400 mb-4">Material override applies to this engineering run. The run override is included in the executed input snapshot and qualification report.</p>{missingMaterial&&<p role="alert" className="mb-4 rounded-lg border border-amber-400/30 p-3 text-sm text-amber-200">Thermophysical data is missing for this alloy. Supply a sourced property table before running the engineering solver.</p>}
     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">{([
       ["power_W","laserPower_W","Laser power","W",10,1500], ["speed_mm_s","scanSpeed_mms","Scan speed","mm/s",10,10000],
       ["beamDiameter_um","beamDiameter_um","Beam diameter","µm",20,500], ["hatch_um","hatch_um","Hatch spacing","µm",10,1000],
@@ -165,6 +146,6 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
       <textarea aria-label="Replicate measurement JSON" className={inputClass} placeholder="Optional replicate measurement JSON" value={measurements} onChange={e=>setMeasurements(e.target.value)}/>
 
     </details>
-    <p className="text-xs text-amber-300">The 3D studio below displays analytical screening geometry. Marangoni quantities remain screening estimates; no velocity arrows are rendered. It does not render an OpenFOAM free surface.</p>
+    <p className="text-xs text-amber-300">The specialist 3D studio displays analytical screening geometry. Marangoni quantities remain screening estimates; no velocity arrows are rendered. It does not render an OpenFOAM free surface.</p>
   </section>;
 }

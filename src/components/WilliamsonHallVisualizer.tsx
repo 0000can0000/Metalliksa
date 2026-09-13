@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo } from "react";
 import {
   calculateWilliamsonHallMonteCarlo,
@@ -28,7 +29,6 @@ import {
   Compass,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   Line,
   Scatter,

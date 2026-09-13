@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState } from "react";
 import {
   Boxes,
@@ -38,12 +39,6 @@ import { useDigitalTwin } from "../context/DigitalTwinContext";
 import { useMaterialStore } from "../store/useMaterialStore";
 import { SampleDigitalTwin, DigitalTwinAttachment } from "../types/digitalTwin";
 import {
-  ResponsiveContainer,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
   BarChart,
   Bar,
   XAxis,
@@ -85,11 +80,14 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [isGeneratingMockBinary, setIsGeneratingMockBinary] = useState<boolean>(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const isDemo = activeTwin.evidence?.kind === "demo";
+  const canShareComposition = !isDemo && Object.keys(activeTwin.chemistry.nominalComposition).length > 0;
 
   // Sync active digital twin FROM global shared material specimen
   const handleSyncFromGlobalSpecimen = () => {
     updateActiveTwin((prev) => ({
       ...prev,
+      evidence: prev.evidence?.kind === "demo" ? prev.evidence : { ...prev.evidence, kind: "user-supplied", qualification: "not-assessed", note: "Composition and property estimates synchronized from the material store. Measurement provenance and qualification remain unresolved." },
       sampleName: activeMaterialSpecimen.name,
       materialCategory: (activeMaterialSpecimen.metadata?.category || prev.materialCategory) as any,
       standardDesignation: activeMaterialSpecimen.metadata?.standardDesignation || prev.standardDesignation,
@@ -97,6 +95,7 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
         ...prev.chemistry,
         baseElement: activeMaterialSpecimen.metadata?.baseMetal || prev.chemistry.baseElement,
         nominalComposition: { ...activeMaterialSpecimen.composition },
+        measuredComposition: undefined,
       },
       mechanical: {
         ...prev.mechanical,
@@ -120,7 +119,7 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
         manufacturingRoute: activeTwin.processHistory.manufacturingRoute,
         condition: activeTwin.processHistory.currentCondition,
         leadMetallurgist: activeTwin.leadMetallurgist,
-        notes: `Synchronized from Sample Digital Twin (${activeTwin.serialNumber})`,
+        notes: `Synchronized from Sample Digital Twin (${activeTwin.serialNumber ?? "Unresolved"})`,
       },
       "Digital Twin Hub"
     );
@@ -178,7 +177,7 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
         const dummyBuffer = "DATA_STL_BINARY_FACETS_" + "X".repeat(Math.min(approxSize, 8 * 1024 * 1024));
         const att: DigitalTwinAttachment = {
           id: `att-stl-${Date.now()}`,
-          name: `${activeTwin.serialNumber}_Coupon_50k_Facets.stl`,
+          name: `${activeTwin.serialNumber ?? "Unresolved"}_Coupon_50k_Facets.stl`,
           type: "stl_geometry",
           sizeBytes: 10485760, // 10.0 MB
           data: dummyBuffer,
@@ -196,7 +195,7 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
         const dummyBuffer = "EBSD_EULER_GRID_1M_" + "E".repeat(7 * 1024 * 1024);
         const att: DigitalTwinAttachment = {
           id: `att-ebsd-${Date.now()}`,
-          name: `${activeTwin.serialNumber}_EBSD_Map_1M_Grid.ctf`,
+          name: `${activeTwin.serialNumber ?? "Unresolved"}_EBSD_Map_1M_Grid.ctf`,
           type: "ebsd_map",
           sizeBytes: 8808038, // 8.4 MB
           data: dummyBuffer,
@@ -215,7 +214,7 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
         const dummyBuffer = "EIS_HIGH_RES_SPECTRA_" + "Z".repeat(1 * 1024 * 1024);
         const att: DigitalTwinAttachment = {
           id: `att-eis-${Date.now()}`,
-          name: `${activeTwin.serialNumber}_EIS_FullDecade_Sweep.dta`,
+          name: `${activeTwin.serialNumber ?? "Unresolved"}_EIS_FullDecade_Sweep.dta`,
           type: "raw_eis",
           sizeBytes: 1572864, // 1.5 MB
           data: dummyBuffer,
@@ -252,45 +251,11 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
     reader.readAsText(file);
   };
 
-  // Radar chart multi-dimensional fitness metrics
-  const radarData = [
-    {
-      subject: "Strength (UTS/Yield)",
-      A: Math.min(100, Math.round((activeTwin.mechanical.yieldStrengthMpa / 1200) * 100)),
-      fullMark: 100,
-    },
-    {
-      subject: "Ductility & Elongation",
-      A: Math.min(100, Math.round((activeTwin.mechanical.elongationPct / 25) * 100)),
-      fullMark: 100,
-    },
-    {
-      subject: "Corrosion Passivity",
-      A: activeTwin.electrochemistry.passivationQuality === "Immune" ? 98 : activeTwin.electrochemistry.passivationQuality === "Passive Stable" ? 85 : 45,
-      fullMark: 100,
-    },
-    {
-      subject: "High-T Oxidation",
-      A: activeTwin.extremeService.operatingMaxTempC >= 600 ? 95 : activeTwin.extremeService.operatingMaxTempC >= 400 ? 75 : 50,
-      fullMark: 100,
-    },
-    {
-      subject: "EBSD Homogeneity",
-      A: Math.min(100, Math.round(activeTwin.microstructure.ebsdTexture.highAngleBoundaryPct)),
-      fullMark: 100,
-    },
-    {
-      subject: "Flight Readiness (MMPDS)",
-      A: Math.round(activeTwin.certification.aerospaceFlightReadinessScorePct),
-      fullMark: 100,
-    },
-  ];
-
   // Composition Bar Chart Data
   const compositionData = Object.entries(activeTwin.chemistry.nominalComposition).map(([element, pct]) => ({
     element,
     nominal: pct,
-    measured: activeTwin.chemistry.measuredComposition?.[element] || pct,
+    measured: activeTwin.chemistry.measuredComposition?.[element] ?? null,
   }));
 
   // Run Global AI Digital Twin Audit
@@ -298,22 +263,23 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
     setIsAiAuditing(true);
     setAiReport(null);
 
-    const prompt = `Act as Chief Metallurgical Specialist & Digital Twin Systems Architect.
+    const prompt = `Provide a research review of an unqualified digital record. This is NOT a validation or certification report.
+Record evidence: ${JSON.stringify(activeTwin.evidence)}. All values require source and measurement-condition review. Demo values are synthetic, not measured. Do not infer MMPDS qualification, flight readiness, experimental validation, or physical coherence from numbers alone. Identify missing evidence explicitly.
 Audit this Sample Digital Twin across all scales:
-- Serial / Designation: ${activeTwin.serialNumber} (${activeTwin.standardDesignation})
-- Material & Route: ${activeTwin.materialCategory} via ${activeTwin.processHistory.manufacturingRoute}
-- Condition: ${activeTwin.processHistory.currentCondition}
+- Serial / Designation: ${activeTwin.serialNumber ?? "Unresolved"} (${activeTwin.standardDesignation ?? "Unresolved"})
+- Material & Route: ${activeTwin.materialCategory ?? "Unresolved"} via ${activeTwin.processHistory.manufacturingRoute ?? "Unresolved"}
+- Condition: ${activeTwin.processHistory.currentCondition ?? "Unresolved"}
 - Chemistry: ${JSON.stringify(activeTwin.chemistry.nominalComposition)}
-- Thermodynamics: CALPHAD Liquidus=${activeTwin.thermodynamics.liquidusTemperatureC}°C, Solidus=${activeTwin.thermodynamics.solidusTemperatureC}°C, Scheil Kou Index=${activeTwin.thermodynamics.scheilSolidification.hotTearingIndexKou}
-- Microstructure: Primary Crystal=${activeTwin.microstructure.primaryCrystalStructure}, ASTM Grain Size=${activeTwin.microstructure.astmGrainSizeNumber}, Residual Stress=${activeTwin.microstructure.xrdVerification.residualStressSin2PsiMpa} MPa
-- Mechanical: Yield=${activeTwin.mechanical.yieldStrengthMpa} MPa, UTS=${activeTwin.mechanical.ultimateTensileStrengthMpa} MPa, Elongation=${activeTwin.mechanical.elongationPct}%, Hardness=${activeTwin.mechanical.hardness.value} ${activeTwin.mechanical.hardness.scale}, MMPDS Basis=${activeTwin.mechanical.mmpdsStatisticalBasis.basisLevel}
-- Electrochemistry: Corrosion Rate=${activeTwin.electrochemistry.corrosionRateMpy} mpy, Passivity=${activeTwin.electrochemistry.passivationQuality}
-- Certification: Score=${activeTwin.certification.aerospaceFlightReadinessScorePct}%, Status=${activeTwin.certification.qualificationAuditStatus}
+- Thermodynamics: CALPHAD Liquidus=${activeTwin.thermodynamics.liquidusTemperatureC ?? "Unresolved"}°C, Solidus=${activeTwin.thermodynamics.solidusTemperatureC ?? "Unresolved"}°C, Scheil Kou Index=${activeTwin.thermodynamics.scheilSolidification.hotTearingIndexKou ?? "Unresolved"}
+- Microstructure: Primary Crystal=${activeTwin.microstructure.primaryCrystalStructure ?? "Unresolved"}, ASTM Grain Size=${activeTwin.microstructure.astmGrainSizeNumber ?? "Unresolved"}, Residual Stress=${activeTwin.microstructure.xrdVerification.residualStressSin2PsiMpa ?? "Unresolved"} MPa
+- Mechanical: Yield=${activeTwin.mechanical.yieldStrengthMpa ?? "Unresolved"} MPa, UTS=${activeTwin.mechanical.ultimateTensileStrengthMpa ?? "Unresolved"} MPa, Elongation=${activeTwin.mechanical.elongationPct ?? "Unresolved"}%, Hardness=${activeTwin.mechanical.hardness.value ?? "Unresolved"} ${activeTwin.mechanical.hardness.scale ?? "Unresolved"}, MMPDS Basis=${activeTwin.mechanical.mmpdsStatisticalBasis.basisLevel ?? "Unresolved"}
+- Electrochemistry: Corrosion Rate=${activeTwin.electrochemistry.corrosionRateMpy ?? "Unresolved"} mpy, Passivity=${activeTwin.electrochemistry.passivationQuality ?? "Unresolved"}
+- Qualification: not assessed. No verified qualification record is attached.
 
-Provide an exhaustive physical-to-digital twin validation report:
+Provide an evidence-gap review:
 1. Multi-scale coherence check (Do thermodynamics, microstructure, heat-treatment, and mechanical properties align?).
 2. Manufacturing defects, residual stress & hot tearing risk evaluation.
-3. MMPDS statistical reliability & Aerospace flight qualification readiness.
+3. Evidence required for statistical reliability and qualification review.
 4. Actionable process optimization recommendation for the digital thread.`;
 
     try {
@@ -321,18 +287,16 @@ Provide an exhaustive physical-to-digital twin validation report:
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
+        signal: AbortSignal.timeout(30000),
       });
       if (!res.ok) throw new Error("API call failed");
       const data = await res.json();
-      setAiReport(data.reply || data.text);
+      const report = data.reply || data.text;
+      if (typeof report !== "string" || !report.trim()) throw new Error("Empty review response");
+      setAiReport(`Research draft — unverified AI interpretation; not qualification evidence.\n\n${report}`);
     } catch {
       setAiReport(
-        `### Physical-to-Digital Twin Multi-Scale Validation Report\n\n` +
-          `**Specimen Identity:** ${activeTwin.sampleName} (${activeTwin.serialNumber})\n\n` +
-          `**1. Multi-Scale Coherence:** The nominal chemical composition ($\text{Base } ${activeTwin.chemistry.baseElement}$) and CALPHAD phase constitution correlate strongly with the measured microstructure (${activeTwin.microstructure.primaryCrystalStructure} matrix with ${activeTwin.microstructure.phasesDetected.map((p) => p.name).join(", ")}). Mechanical yield strength ($${activeTwin.mechanical.yieldStrengthMpa}\text{ MPa}$) adheres to the Hall-Petch grain boundary refinement predicted from ASTM $G=${activeTwin.microstructure.astmGrainSizeNumber}$.\n\n` +
-          `**2. Solidification & Residual Stress:** The Kou hot tearing index ($${activeTwin.thermodynamics.scheilSolidification.hotTearingIndexKou}$) indicates a ${activeTwin.thermodynamics.scheilSolidification.microsegregationSeverity.toLowerCase()} risk during non-equilibrium freezing. XRD $\sin^2\psi$ shows a surface residual stress of $${activeTwin.microstructure.xrdVerification.residualStressSin2PsiMpa}\text{ MPa}$.\n\n` +
-          `**3. Aerospace MMPDS Qualification:** The specimen holds **${activeTwin.mechanical.mmpdsStatisticalBasis.basisLevel}** qualification with $C_{pk} = ${activeTwin.mechanical.mmpdsStatisticalBasis.cpkReliability}$, demonstrating high process capability according to ${activeTwin.certification.applicableStandards.join(", ")}.\n\n` +
-          `**4. Digital Thread Recommendation:** Maintain the strict thermal schedule at ${activeTwin.processHistory.thermalCycles[0]?.targetTempC}°C to ensure complete dissolution of deleterious phases and optimize the flight readiness index (currently **${activeTwin.certification.aerospaceFlightReadinessScorePct}%**).`
+        "Research review unavailable or timed out. No review was generated. Check the service connection and retry. Source records, measurement conditions and independent qualification remain unresolved."
       );
     } finally {
       setIsAiAuditing(false);
@@ -341,6 +305,10 @@ Provide an exhaustive physical-to-digital twin validation report:
 
   return (
     <div id="digital-twin-hub-root" className="space-y-6 text-slate-100 font-sans">
+      <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        <strong>{isDemo ? "Preview · Synthetic demonstration record" : "Research · Unresolved evidence"}</strong>
+        <p className="mt-1 text-xs leading-5">{activeTwin.evidence?.note ?? "Record provenance requires review."} Qualification is not assessed. Missing values remain unresolved; importing or synchronizing a record does not validate it.</p>
+      </div>
       {/* Top Banner & Digital Twin Selector */}
       <div className="bg-slate-900/90 border border-sky-500/30 rounded-2xl p-5 shadow-2xl relative overflow-hidden backdrop-blur-md">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -360,11 +328,11 @@ Provide an exhaustive physical-to-digital twin validation report:
                     Integrated Multi-Scale Data Spine
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    {activeTwin.currentStatus}
+                    {activeTwin.currentStatus ?? "Unresolved"}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Single source of truth linking Chemistry, Thermodynamics, Process History, Microstructure, Mechanical, Electrochemistry & Certification.
+                  Traceable record linking chemistry, process history, characterization and evidence review.
                 </p>
               </div>
             </div>
@@ -399,7 +367,7 @@ Provide an exhaustive physical-to-digital twin validation report:
               className="px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-sky-500/20 cursor-pointer disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{isAiAuditing ? "Auditing Twin..." : "AI Digital Twin Audit"}</span>
+              <span>{isAiAuditing ? "Reviewing evidence..." : "AI Evidence Review"}</span>
             </button>
 
             {/* IndexedDB Storage Engine Quota Badge */}
@@ -452,6 +420,7 @@ Provide an exhaustive physical-to-digital twin validation report:
             <button
               id="btn-push-to-store"
               onClick={handlePushToGlobalSpecimen}
+              disabled={!canShareComposition}
               className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
               title="Push this digital twin's chemistry and metadata into activeMaterialSpecimen"
             >
@@ -495,7 +464,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Overview & Radar
+              Overview & Evidence
             </button>
             <button
               onClick={() => setActiveTab("chemistry_thermo")}
@@ -549,7 +518,7 @@ Provide an exhaustive physical-to-digital twin validation report:
               <span>Binary Datasets (STL / EBSD)</span>
               {activeTwin.attachments && activeTwin.attachments.length > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-sky-500/30 text-sky-300 font-mono">
-                  {activeTwin.attachments.length}
+                  {activeTwin.attachments.length ?? "Unresolved"}
                 </span>
               )}
             </button>
@@ -578,37 +547,37 @@ Provide an exhaustive physical-to-digital twin validation report:
                   <span className="text-[10px] font-mono text-sky-400 uppercase tracking-widest block">
                     Digital Passport
                   </span>
-                  <h3 className="text-base font-bold text-slate-100">{activeTwin.sampleName}</h3>
+                  <h3 className="text-base font-bold text-slate-100">{activeTwin.sampleName ?? "Unresolved"}</h3>
                 </div>
                 <span className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono text-xs font-bold">
-                  {activeTwin.materialCategory}
+                  {activeTwin.materialCategory ?? "Unresolved"}
                 </span>
               </div>
 
               <div className="space-y-2.5 text-xs font-mono">
                 <div className="flex justify-between py-1 border-b border-slate-800/60">
                   <span className="text-slate-400">Serial UUID:</span>
-                  <span className="text-slate-200 font-bold">{activeTwin.serialNumber}</span>
+                  <span className="text-slate-200 font-bold">{activeTwin.serialNumber ?? "Unresolved"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-800/60">
                   <span className="text-slate-400">Standard:</span>
-                  <span className="text-sky-300 font-bold">{activeTwin.standardDesignation}</span>
+                  <span className="text-sky-300 font-bold">{activeTwin.standardDesignation ?? "Unresolved"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-800/60">
                   <span className="text-slate-400">Process Route:</span>
-                  <span className="text-slate-200">{activeTwin.processHistory.manufacturingRoute}</span>
+                  <span className="text-slate-200">{activeTwin.processHistory.manufacturingRoute ?? "Unresolved"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-800/60">
                   <span className="text-slate-400">Condition:</span>
-                  <span className="text-emerald-400 font-bold">{activeTwin.processHistory.currentCondition}</span>
+                  <span className="text-emerald-400 font-bold">{activeTwin.processHistory.currentCondition ?? "Unresolved"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-800/60">
                   <span className="text-slate-400">Lead Specialist:</span>
-                  <span className="text-slate-200">{activeTwin.leadMetallurgist}</span>
+                  <span className="text-slate-200">{activeTwin.leadMetallurgist ?? "Unresolved"}</span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-slate-400">Last Synced:</span>
-                  <span className="text-slate-300">{activeTwin.lastUpdated}</span>
+                  <span className="text-slate-300">{activeTwin.lastUpdated ?? "Unresolved"}</span>
                 </div>
               </div>
 
@@ -644,7 +613,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                     className="p-2 rounded-lg bg-slate-950/70 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-500/40 text-left transition-all cursor-pointer flex items-center gap-1.5 text-xs text-emerald-300"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>MMPDS Cert</span>
+                    <span>Qualification Screening</span>
                   </button>
                 </div>
               </div>
@@ -655,25 +624,25 @@ Provide an exhaustive physical-to-digital twin validation report:
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5">
                 <span className="text-[10px] text-slate-400 block">Yield Strength (Rp0.2)</span>
                 <span className="text-lg font-bold font-mono text-sky-400">
-                  {activeTwin.mechanical.yieldStrengthMpa} MPa
+                  {activeTwin.mechanical.yieldStrengthMpa ?? "Unresolved"} MPa
                 </span>
               </div>
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5">
-                <span className="text-[10px] text-slate-400 block">Aerospace Readiness</span>
+                <span className="text-[10px] text-slate-400 block">Qualification</span>
                 <span className="text-lg font-bold font-mono text-emerald-400">
-                  {activeTwin.certification.aerospaceFlightReadinessScorePct}%
+                  Not assessed
                 </span>
               </div>
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5">
                 <span className="text-[10px] text-slate-400 block">Hardness (Converted)</span>
                 <span className="text-lg font-bold font-mono text-amber-400">
-                  {activeTwin.mechanical.hardness.value} {activeTwin.mechanical.hardness.scale}
+                  {activeTwin.mechanical.hardness.value ?? "Unresolved"} {activeTwin.mechanical.hardness.scale ?? "Unresolved"}
                 </span>
               </div>
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5">
                 <span className="text-[10px] text-slate-400 block">Hot Tearing (Kou)</span>
                 <span className="text-lg font-bold font-mono text-rose-400">
-                  {activeTwin.thermodynamics.scheilSolidification.hotTearingIndexKou}
+                  {activeTwin.thermodynamics.scheilSolidification.hotTearingIndexKou ?? "Unresolved"}
                 </span>
               </div>
             </div>
@@ -685,52 +654,28 @@ Provide an exhaustive physical-to-digital twin validation report:
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <span>Physical-to-Digital Twin 6-Axis Coherence Radar</span>
-                    <span className="text-xs font-mono text-sky-400">({activeTwin.standardDesignation})</span>
+                    <span>Evidence and composition record</span>
+                    <span className="text-xs font-mono text-sky-400">({activeTwin.standardDesignation ?? "Unresolved"})</span>
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Real-time synthesis across Mechanical, Thermal, Microstructural, Corrosion and Qualification domains.
+                    Values require source, method, conditions and uncertainty before engineering use.
                   </p>
                 </div>
                 <span className="px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-300 border border-sky-500/30 text-xs font-mono font-bold">
-                  {activeTwin.certification.qualificationAuditStatus}
+                  {activeTwin.certification.qualificationAuditStatus ?? "Unresolved"}
                 </span>
               </div>
 
-              {/* Radar Chart */}
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                    <PolarGrid stroke="#334155" />
-                    <PolarAngleAxis dataKey="subject" stroke="#94a3b8" fontSize={11} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#475569" fontSize={10} />
-                    <Radar
-                      name={activeTwin.sampleName}
-                      dataKey="A"
-                      stroke="#38bdf8"
-                      fill="#38bdf8"
-                      fillOpacity={0.4}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#090d16",
-                        borderColor: "#38bdf8",
-                        borderRadius: "8px",
-                        fontSize: "11px",
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
+              <p className="rounded-xl bg-slate-950/60 p-4 text-xs leading-6 text-slate-300">{isDemo ? "This specimen contains synthetic example values. Start a new twin and attach your own source records for an engineering assessment." : "Attach characterization data and record their source, test method, process conditions and uncertainty. A record alone does not establish experimental validity."}</p>
 
               {/* Composition Matrix Bar Chart */}
               <div className="mt-4 pt-4 border-t border-slate-800">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-300">
-                    Chemical Composition (Nominal vs Measured EDS / OES wt%):
+                    Chemical composition (wt%) · {isDemo ? "synthetic example" : "supplied values; measurement provenance pending"}:
                   </span>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    Purity: {activeTwin.microstructure.edsPurityPurityPct}%
+                    Purity: {activeTwin.microstructure.edsPurityPurityPct ?? "Unresolved"}%
                   </span>
                 </div>
                 <div className="h-40 w-full">
@@ -748,7 +693,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                         }}
                       />
                       <Bar dataKey="nominal" fill="#38bdf8" name="Nominal wt%" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="measured" fill="#a855f7" name="Measured wt%" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="measured" fill="#a855f7" name={isDemo ? "Synthetic example wt%" : "Reported measured wt% (unverified)"} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -774,6 +719,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400 block">Full Elemental Breakdown (wt%):</span>
                   <button
+                    disabled={!canShareComposition}
                     onClick={() => {
                       updateGlobalComposition(
                         activeTwin.chemistry.nominalComposition,
@@ -812,7 +758,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                               nominalComposition: nextComp,
                             },
                           }));
-                          updateGlobalComposition(nextComp, activeTwin.sampleName, undefined, "Digital Twin Hub (Live Edit)");
+                          if (!isDemo) updateGlobalComposition(nextComp, activeTwin.sampleName, undefined, "Digital Twin Hub (Live Edit; unverified composition)");
                         }}
                         className="w-12 px-1 py-0.5 bg-slate-950 border border-slate-700 rounded text-right font-mono text-xs text-slate-100 focus:outline-none focus:border-sky-400"
                       />
@@ -826,15 +772,15 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1.5 text-xs font-mono">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Schaeffler Cr_eq:</span>
-                    <span className="text-slate-200 font-bold">{activeTwin.chemistry.schaefflerCoordinates.crEq}</span>
+                    <span className="text-slate-200 font-bold">{activeTwin.chemistry.schaefflerCoordinates.crEq ?? "Unresolved"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Schaeffler Ni_eq:</span>
-                    <span className="text-slate-200 font-bold">{activeTwin.chemistry.schaefflerCoordinates.niEq}</span>
+                    <span className="text-slate-200 font-bold">{activeTwin.chemistry.schaefflerCoordinates.niEq ?? "Unresolved"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Predicted Matrix:</span>
-                    <span className="text-emerald-400">{activeTwin.chemistry.schaefflerCoordinates.matrixPrediction}</span>
+                    <span className="text-emerald-400">{activeTwin.chemistry.schaefflerCoordinates.matrixPrediction ?? "Unresolved"}</span>
                   </div>
                 </div>
               )}
@@ -843,11 +789,11 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1.5 text-xs font-mono">
                   <div className="flex justify-between">
                     <span className="text-slate-400">CE (IIW):</span>
-                    <span className="text-amber-400 font-bold">{activeTwin.chemistry.carbonEquivalent.ceIIW}</span>
+                    <span className="text-amber-400 font-bold">{activeTwin.chemistry.carbonEquivalent.ceIIW ?? "Unresolved"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Pcm (Ito-Bessyo):</span>
-                    <span className="text-slate-200">{activeTwin.chemistry.carbonEquivalent.pcm}</span>
+                    <span className="text-slate-200">{activeTwin.chemistry.carbonEquivalent.pcm ?? "Unresolved"}</span>
                   </div>
                 </div>
               )}
@@ -868,15 +814,15 @@ Provide an exhaustive physical-to-digital twin validation report:
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="p-2.5 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">Liquidus (T_liq)</span>
-                <span className="text-sm font-bold font-mono text-cyan-400">{activeTwin.thermodynamics.liquidusTemperatureC}°C</span>
+                <span className="text-sm font-bold font-mono text-cyan-400">{activeTwin.thermodynamics.liquidusTemperatureC ?? "Unresolved"}°C</span>
               </div>
               <div className="p-2.5 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">Solidus (T_sol)</span>
-                <span className="text-sm font-bold font-mono text-rose-400">{activeTwin.thermodynamics.solidusTemperatureC}°C</span>
+                <span className="text-sm font-bold font-mono text-rose-400">{activeTwin.thermodynamics.solidusTemperatureC ?? "Unresolved"}°C</span>
               </div>
               <div className="p-2.5 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">Freezing Range</span>
-                <span className="text-sm font-bold font-mono text-amber-400">{activeTwin.thermodynamics.freezingRangeC} K</span>
+                <span className="text-sm font-bold font-mono text-amber-400">{activeTwin.thermodynamics.freezingRangeC ?? "Unresolved"} K</span>
               </div>
             </div>
 
@@ -906,7 +852,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <span>Manufacturing & Thermal History</span>
               </h3>
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono">
-                {activeTwin.processHistory.manufacturingRoute}
+                {activeTwin.processHistory.manufacturingRoute ?? "Unresolved"}
               </span>
             </div>
 
@@ -929,10 +875,10 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1.5 text-xs font-mono mt-3">
                   <span className="text-slate-300 font-bold block mb-1">LPBF Additive Process Parameters:</span>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>Laser Power: <span className="text-sky-400">{activeTwin.processHistory.additiveParameters.laserPowerW} W</span></div>
-                    <div>Scan Speed: <span className="text-sky-400">{activeTwin.processHistory.additiveParameters.scanSpeedMmS} mm/s</span></div>
-                    <div>Layer Thickness: <span className="text-sky-400">{activeTwin.processHistory.additiveParameters.layerThicknessUm} µm</span></div>
-                    <div>Energy Density: <span className="text-emerald-400">{activeTwin.processHistory.additiveParameters.volumetricEnergyDensityJ_mm3} J/mm³</span></div>
+                    <div>Laser Power: <span className="text-sky-400">{activeTwin.processHistory.additiveParameters.laserPowerW ?? "Unresolved"} W</span></div>
+                    <div>Scan Speed: <span className="text-sky-400">{activeTwin.processHistory.additiveParameters.scanSpeedMmS ?? "Unresolved"} mm/s</span></div>
+                    <div>Layer Thickness: <span className="text-sky-400">{activeTwin.processHistory.additiveParameters.layerThicknessUm ?? "Unresolved"} µm</span></div>
+                    <div>Energy Density: <span className="text-emerald-400">{activeTwin.processHistory.additiveParameters.volumetricEnergyDensityJ_mm3 ?? "Unresolved"} J/mm³</span></div>
                   </div>
                 </div>
               )}
@@ -945,31 +891,31 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <Microscope className="w-4 h-4 text-sky-400" />
                 <span>Microstructure, EBSD & XRD Characterization</span>
               </h3>
-              <span className="text-xs font-mono text-sky-400">ASTM G = {activeTwin.microstructure.astmGrainSizeNumber}</span>
+              <span className="text-xs font-mono text-sky-400">ASTM G = {activeTwin.microstructure.astmGrainSizeNumber ?? "Unresolved"}</span>
             </div>
 
             <div className="space-y-2.5 text-xs">
               <div className="grid grid-cols-3 gap-2 text-center font-mono">
                 <div className="p-2 bg-slate-950/80 rounded-lg border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Grain Size</span>
-                  <span className="text-slate-200 font-bold">{activeTwin.microstructure.meanGrainDiameterUm} µm</span>
+                  <span className="text-slate-200 font-bold">{activeTwin.microstructure.meanGrainDiameterUm ?? "Unresolved"} µm</span>
                 </div>
                 <div className="p-2 bg-slate-950/80 rounded-lg border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Porosity</span>
-                  <span className="text-emerald-400 font-bold">{activeTwin.microstructure.porosityPct}%</span>
+                  <span className="text-emerald-400 font-bold">{activeTwin.microstructure.porosityPct ?? "Unresolved"}%</span>
                 </div>
                 <div className="p-2 bg-slate-950/80 rounded-lg border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Residual Stress</span>
-                  <span className="text-amber-400 font-bold">{activeTwin.microstructure.xrdVerification.residualStressSin2PsiMpa} MPa</span>
+                  <span className="text-amber-400 font-bold">{activeTwin.microstructure.xrdVerification.residualStressSin2PsiMpa ?? "Unresolved"} MPa</span>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
                 <span className="text-slate-400 font-semibold block text-[11px]">EBSD Crystallographic Texture:</span>
-                <p className="text-slate-200 font-mono text-[11px]">{activeTwin.microstructure.ebsdTexture.preferredOrientation}</p>
+                <p className="text-slate-200 font-mono text-[11px]">{activeTwin.microstructure.ebsdTexture.preferredOrientation ?? "Unresolved"}</p>
                 <div className="flex justify-between text-[10px] text-slate-400 font-mono pt-1">
-                  <span>HAGB Fraction: {activeTwin.microstructure.ebsdTexture.highAngleBoundaryPct}%</span>
-                  <span>Mean Misorientation: {activeTwin.microstructure.ebsdTexture.misorientationAngleMeanDeg}°</span>
+                  <span>HAGB Fraction: {activeTwin.microstructure.ebsdTexture.highAngleBoundaryPct ?? "Unresolved"}%</span>
+                  <span>Mean Misorientation: {activeTwin.microstructure.ebsdTexture.misorientationAngleMeanDeg ?? "Unresolved"}°</span>
                 </div>
               </div>
 
@@ -1000,22 +946,22 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <span>Mechanical Properties & MMPDS Statistical Basis</span>
               </h3>
               <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono">
-                {activeTwin.mechanical.mmpdsStatisticalBasis.basisLevel}
+                {activeTwin.mechanical.mmpdsStatisticalBasis.basisLevel ?? "Unresolved"}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 font-mono text-xs">
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-slate-400 block text-[10px]">Yield Strength (Rp0.2):</span>
-                <span className="text-base font-bold text-sky-400">{activeTwin.mechanical.yieldStrengthMpa} MPa</span>
+                <span className="text-base font-bold text-sky-400">{activeTwin.mechanical.yieldStrengthMpa ?? "Unresolved"} MPa</span>
               </div>
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-slate-400 block text-[10px]">Tensile Strength (Rm):</span>
-                <span className="text-base font-bold text-emerald-400">{activeTwin.mechanical.ultimateTensileStrengthMpa} MPa</span>
+                <span className="text-base font-bold text-emerald-400">{activeTwin.mechanical.ultimateTensileStrengthMpa ?? "Unresolved"} MPa</span>
               </div>
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-slate-400 block text-[10px]">Elongation at Fracture:</span>
-                <span className="text-base font-bold text-amber-400">{activeTwin.mechanical.elongationPct}%</span>
+                <span className="text-base font-bold text-amber-400">{activeTwin.mechanical.elongationPct ?? "Unresolved"}%</span>
               </div>
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
                 <span className="text-slate-400 block text-[10px]">Fracture Toughness K_1c:</span>
@@ -1025,7 +971,7 @@ Provide an exhaustive physical-to-digital twin validation report:
 
             <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center text-xs font-mono">
               <span className="text-slate-400">Statistical Process Capability (Cpk):</span>
-              <span className="text-emerald-400 font-bold">{activeTwin.mechanical.mmpdsStatisticalBasis.cpkReliability} (N={activeTwin.mechanical.mmpdsStatisticalBasis.sampleCountN})</span>
+              <span className="text-emerald-400 font-bold">{activeTwin.mechanical.mmpdsStatisticalBasis.cpkReliability ?? "Unresolved"} (N={activeTwin.mechanical.mmpdsStatisticalBasis.sampleCountN ?? "Unresolved"})</span>
             </div>
           </div>
 
@@ -1036,26 +982,26 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <span>Electrochemistry, Corrosion & High-T Service</span>
               </h3>
               <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-xs font-mono">
-                {activeTwin.electrochemistry.passivationQuality}
+                {activeTwin.electrochemistry.passivationQuality ?? "Unresolved"}
               </span>
             </div>
 
             <div className="space-y-2.5 font-mono text-xs">
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between">
                 <span className="text-slate-400">Corrosion Rate:</span>
-                <span className="text-cyan-400 font-bold">{activeTwin.electrochemistry.corrosionRateMpy} mpy</span>
+                <span className="text-cyan-400 font-bold">{activeTwin.electrochemistry.corrosionRateMpy ?? "Unresolved"} mpy</span>
               </div>
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between">
                 <span className="text-slate-400">Open Circuit Potential (Ecorr):</span>
-                <span className="text-slate-200 font-bold">{activeTwin.electrochemistry.openCircuitPotentialEcorrV} V vs SCE</span>
+                <span className="text-slate-200 font-bold">{activeTwin.electrochemistry.openCircuitPotentialEcorrV ?? "Unresolved"} V vs SCE</span>
               </div>
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between">
                 <span className="text-slate-400">Polarization Resistance (Rp):</span>
-                <span className="text-slate-200 font-bold">{activeTwin.electrochemistry.polarizationResistanceRpOhmCm2.toLocaleString()} Ω·cm²</span>
+                <span className="text-slate-200 font-bold">{activeTwin.electrochemistry.polarizationResistanceRpOhmCm2?.toLocaleString() ?? "Unresolved"} Ω·cm²</span>
               </div>
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between">
                 <span className="text-slate-400">Max Operating Temperature:</span>
-                <span className="text-rose-400 font-bold">{activeTwin.extremeService.operatingMaxTempC}°C</span>
+                <span className="text-rose-400 font-bold">{activeTwin.extremeService.operatingMaxTempC ?? "Unresolved"}°C</span>
               </div>
             </div>
           </div>
@@ -1068,10 +1014,10 @@ Provide an exhaustive physical-to-digital twin validation report:
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Aerospace Flight-Readiness & Standard Compliance</span>
+              <span>Standards and qualification evidence</span>
             </h3>
             <span className="text-sm font-mono font-bold text-emerald-400">
-              Score: {activeTwin.certification.aerospaceFlightReadinessScorePct}%
+              Not assessed
             </span>
           </div>
 
@@ -1087,7 +1033,7 @@ Provide an exhaustive physical-to-digital twin validation report:
               </div>
               <div className="pt-2 border-t border-slate-800 text-xs font-mono flex justify-between">
                 <span className="text-slate-400">Compliance Risk Level:</span>
-                <span className="text-emerald-400 font-bold">{activeTwin.certification.complianceRiskLevel}</span>
+                <span className="text-emerald-400 font-bold">{activeTwin.certification.complianceRiskLevel ?? "Unresolved"}</span>
               </div>
             </div>
 
@@ -1095,15 +1041,15 @@ Provide an exhaustive physical-to-digital twin validation report:
               <span className="text-xs font-semibold text-slate-300 block">Non-Destructive Testing (NDT) Logs:</span>
               <div className="flex justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Ultrasonic Testing:</span>
-                <span className="text-emerald-400 font-bold">{activeTwin.certification.nonDestructiveTestResults.ultrasonicInspection}</span>
+                <span className="text-emerald-400 font-bold">{activeTwin.certification.nonDestructiveTestResults.ultrasonicInspection ?? "Unresolved"}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">X-Ray Radiography:</span>
-                <span className="text-emerald-400 font-bold">{activeTwin.certification.nonDestructiveTestResults.xrayRadiography}</span>
+                <span className="text-emerald-400 font-bold">{activeTwin.certification.nonDestructiveTestResults.xrayRadiography ?? "Unresolved"}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-400">Surface Dye Penetrant:</span>
-                <span className="text-emerald-400 font-bold">{activeTwin.certification.nonDestructiveTestResults.surfaceDyePenetrant}</span>
+                <span className="text-emerald-400 font-bold">{activeTwin.certification.nonDestructiveTestResults.surfaceDyePenetrant ?? "Unresolved"}</span>
               </div>
             </div>
           </div>
@@ -1204,7 +1150,7 @@ Provide an exhaustive physical-to-digital twin validation report:
                 <span>Attached Characterization Datasets & Meshes ({activeTwin.attachments?.length || 0})</span>
               </h4>
               <span className="text-[11px] font-mono text-slate-400">
-                Specimen: {activeTwin.serialNumber}
+                Specimen: {activeTwin.serialNumber ?? "Unresolved"}
               </span>
             </div>
 
@@ -1331,7 +1277,7 @@ Provide an exhaustive physical-to-digital twin validation report:
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-sky-400" />
               <span className="text-xs font-bold text-sky-300">
-                Chief Metallurgical Specialist & Digital Twin Systems Audit Report
+                Research evidence review · unverified draft
               </span>
             </div>
             <button

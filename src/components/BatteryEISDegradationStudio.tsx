@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect } from "react";
 import {
   BatteryCharging,
@@ -17,7 +18,6 @@ import {
   Gauge
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   LineChart,
   Line,

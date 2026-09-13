@@ -10,5 +10,6 @@ __pycache__/
 *.pyc
 *.pyo
 .lpbf-jobs/
+.research-registry/
 python/openfoam/Make/linux*/
 python/openfoam/bin/

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useMemo } from "react";
 import { TransportKineticsLab } from "./TransportKineticsLab";
 import {
@@ -25,7 +26,6 @@ import {
   CheckCircle2
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   LineChart,
   Line,

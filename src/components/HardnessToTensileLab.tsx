@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   PipelineMaterialPayload,
@@ -34,7 +35,6 @@ import {
   Zap,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,

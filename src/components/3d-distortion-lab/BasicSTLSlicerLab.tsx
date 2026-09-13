@@ -1,3 +1,6 @@
+import { useWorkspaceVisible } from '../WorkspaceVisibility';
+import { inferSlicerPreset } from "../../utils/lpbfIndustrialDecision";
+import { canonicalLpbfMaterialName, isSupportedSlicerMaterial } from "../../utils/lpbfMaterialIdentity";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import {
@@ -88,35 +91,37 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
   initialMaterial = "Inconel 718",
   onApplyParametersToLPBF,
 }) => {
-  // CAD / STL Source State
-  const [selectedPreset, setSelectedPreset] = useState<"bracket" | "turbine" | "nozzle" | "gyroid" | "hip_implant" | "custom">("bracket");
-  const [customGeometry, setCustomGeometry] = useState<THREE.BufferGeometry | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const workspaceVisible = useWorkspaceVisible();
+  // CAD and process use the same session/specimen context as the build job.
+  const sharedSpecimen = useMaterialSpecimenStore(s => s.activeSpecimen);
+  const liveMesh = useLpbfBuildMeshStore(s => s.mesh);
+  const selectedPreset = liveMesh ? "custom" : inferSlicerPreset(sharedSpecimen.lpbf.cadAssetName);
+  const uploadedFileName = liveMesh?.name ?? null;
+  const customGeometry = useMemo(() => {
+    if (!liveMesh) return null;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(liveMesh.triangles.flat(2), 3));
+    geometry.computeVertexNormals();
+    return geometry;
+  }, [liveMesh]);
+  useEffect(() => () => customGeometry?.dispose(), [customGeometry]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Material & LPBF Machine Parameters
-  const [selectedMaterial, setSelectedMaterial] = useState<string>(initialMaterial);
-  const matInfo = MATERIAL_DENSITY_MAP[selectedMaterial] || MATERIAL_DENSITY_MAP["Inconel 718"];
-
-  const [laserPower_W, setLaserPower_W] = useState<number>(initialPower_W);
-  const [scanSpeed_mms, setScanSpeed_mms] = useState<number>(initialSpeed_mms);
-  const [layerThickness_um, setLayerThickness_um] = useState<number>(initialLayer_um);
-  const [hatchSpacing_um, setHatchSpacing_um] = useState<number>(initialHatch_um);
+  const loadSharedPreset = useMaterialSpecimenStore(s => s.loadPreset);
+  const selectedMaterial = canonicalLpbfMaterialName(sharedSpecimen.name);
+  const matInfo = MATERIAL_DENSITY_MAP[selectedMaterial] || MATERIAL_DENSITY_MAP[selectedMaterial === "Ti-6Al-4V" ? "Ti-6Al-4V ELI" : selectedMaterial === "316L Stainless Steel" ? "SS 316L" : ""] || {name: selectedMaterial, density_gcm3: sharedSpecimen.density_gcm3, thermal_k: sharedSpecimen.lpbf.thermalConductivity_k_WmK};
+  const laserPower_W = sharedSpecimen.lpbf.laserPower_W;
+  const scanSpeed_mms = sharedSpecimen.lpbf.scanSpeed_mms;
+  const layerThickness_um = sharedSpecimen.lpbf.layer_um;
+  const hatchSpacing_um = sharedSpecimen.lpbf.hatch_um;
   const [recoatTimePerLayer_s, setRecoatTimePerLayer_s] = useState<number>(9.5);
   const [hatchStrategy, setHatchStrategy] = useState<"meander_67" | "meander_90" | "unidirectional" | "cross_0_90">("meander_67");
   const [contourSkinPasses, setContourSkinPasses] = useState<number>(2);
   const updateLpbfProcess = useMaterialSpecimenStore((s) => s.updateLpbfProcess);
   const setFromGeometry = useLpbfBuildMeshStore((s) => s.setFromGeometry);
   const clearLiveMesh = useLpbfBuildMeshStore((s) => s.clearMesh);
-
-  useEffect(() => {
-    setLaserPower_W(initialPower_W);
-    setScanSpeed_mms(initialSpeed_mms);
-    setLayerThickness_um(initialLayer_um);
-    setHatchSpacing_um(initialHatch_um);
-    setSelectedMaterial(initialMaterial);
-  }, [initialPower_W, initialSpeed_mms, initialLayer_um, initialHatch_um, initialMaterial]);
 
   // Slicer Interactive Scrubbing State
   const [activeLayerIndex, setActiveLayerIndex] = useState<number>(1);
@@ -129,6 +134,7 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
   const [pythonExecutionData, setPythonExecutionData] = useState<any | null>(null);
   const [pythonExecutionDurationMs, setPythonExecutionDurationMs] = useState<number | null>(null);
   const [pythonError, setPythonError] = useState<string | null>(null);
+  const pythonRequestSeq = useRef(0);
   const [pythonSubTab, setPythonSubTab] = useState<"script_code" | "live_output" | "cli_guide">("script_code");
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
@@ -264,8 +270,7 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
     if (!file) return;
 
     setUploadError(null);
-    setUploadedFileName(file.name);
-    updateLpbfProcess({ cadAssetName: file.name });
+
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -275,9 +280,9 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
         if (!geom || geom.attributes.position.count === 0) {
           throw new Error("Empty or invalid STL mesh data.");
         }
-        setCustomGeometry(geom);
         setFromGeometry(file.name, geom);
-        setSelectedPreset("custom");
+        geom.dispose();
+        updateLpbfProcess({ cadAssetName: file.name });
         setActiveLayerIndex(1);
       } catch (err: any) {
         setUploadError(`Failed to load STL: ${err.message}`);
@@ -288,22 +293,24 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
   };
 
   const handleClearUploadedSTL = () => {
-    setCustomGeometry(null);
-    setUploadedFileName(null);
-    setSelectedPreset("bracket");
+
     setActiveLayerIndex(1);
     clearLiveMesh();
-    updateLpbfProcess({ cadAssetName: "" });
+    updateLpbfProcess({ cadAssetName: "bracket-demo" });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Run CPython 3.10+ Slicer & LPBF Build Time Solver
   const runPythonSlicer = useCallback(async () => {
+    const requestSeq = ++pythonRequestSeq.current;
+    setPythonExecutionData(null);
     setIsPythonLoading(true);
     setPythonError(null);
     const startTime = performance.now();
 
     try {
+      if ([laserPower_W,scanSpeed_mms,layerThickness_um,hatchSpacing_um].some(value=>!Number.isFinite(value)||value<=0)) throw new Error("Slicer requires finite positive process inputs.");
+      if (!isSupportedSlicerMaterial(selectedMaterial)) throw new Error(`No verified slicer material mapping for ${selectedMaterial}. Select a supported shared preset; no surrogate alloy was submitted.`);
       // If custom mesh, extract triangle vertices
       let customTriangles: number[][][] | null = null;
       if (selectedPreset === "custom" && customGeometry) {
@@ -322,12 +329,11 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
         hatchStrategy,
         customTriangles,
         cadAssetName: uploadedFileName || "",
-        triangleCountNative: customGeometry
-          ? Math.floor((customGeometry.attributes.position?.count || 0) / 3)
-          : undefined,
+        triangleCountNative: liveMesh?.nativeTriangleCount,
       };
 
       const res = await fetch("/api/python/stl-slicer-build-time", {
+        signal: AbortSignal.timeout(25000),
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -339,14 +345,16 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
       }
 
       const result = await res.json();
+      if (pythonRequestSeq.current !== requestSeq) return;
       const elapsed = Math.round(performance.now() - startTime);
       setPythonExecutionData(result);
       setPythonExecutionDurationMs(result.pythonDurationMs || elapsed);
     } catch (err: any) {
+      if (pythonRequestSeq.current !== requestSeq) return;
       console.warn("Python execution warning:", err);
       setPythonError(err.message || "Failed to execute Python slicer solver");
     } finally {
-      setIsPythonLoading(false);
+      if (pythonRequestSeq.current === requestSeq) setIsPythonLoading(false);
     }
   }, [
     selectedPreset,
@@ -360,14 +368,16 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
     customGeometry,
   ]);
 
-  // Initial Python solver run
+  // Debounce process edits; a superseded response cannot overwrite the current geometry/process.
   useEffect(() => {
-    runPythonSlicer();
-  }, [selectedPreset, selectedMaterial, runPythonSlicer]);
+    setPythonExecutionData(null);
+    const timer = setTimeout(() => { void runPythonSlicer(); }, 280);
+    return () => { clearTimeout(timer); pythonRequestSeq.current += 1; };
+  }, [runPythonSlicer]);
 
   // Auto-play Layer Scrubber Animation
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!workspaceVisible || !isPlaying) return;
     const intervalMs = Math.max(25, 120 / playbackSpeed);
     const timer = setInterval(() => {
       setActiveLayerIndex((prev) => {
@@ -378,13 +388,13 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
       });
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [isPlaying, playbackSpeed, stackSummary.totalLayers]);
+  }, [workspaceVisible, isPlaying, playbackSpeed, stackSummary.totalLayers]);
 
   // -------------------------------------------------------------------------
   // 2D High-Precision Slice Canvas Renderer
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (viewMode !== "2d_slicer" || !canvas2DRef.current) return;
+    if (!workspaceVisible || viewMode !== "2d_slicer" || !canvas2DRef.current) return;
     const canvas = canvas2DRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -575,6 +585,7 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
     ctx.font = "9px JetBrains Mono, monospace";
     ctx.fillText(`${barLength_mm} mm`, 25 + barLength_px / 2 - 12, height - 12);
   }, [
+    workspaceVisible,
     viewMode,
     activeSlice,
     currentLayerZ,
@@ -595,7 +606,7 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
   // 3D Wireframe Slicer Preview Viewport
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (viewMode !== "3d_wire_preview" || !threePreviewMountRef.current) return;
+    if (!workspaceVisible || viewMode !== "3d_wire_preview" || !threePreviewMountRef.current) return;
     const container = threePreviewMountRef.current;
     const width = container.clientWidth || 500;
     const height = container.clientHeight || 380;
@@ -699,9 +710,18 @@ export const BasicSTLSlicerLab: React.FC<BasicSTLSlicerLabProps> = ({
       dom.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
+      ghostMesh.geometry.dispose();
+      ghostMat.dispose();
+      planeGeom.dispose();
+      planeMat.dispose();
+      grid.geometry.dispose();
+      if (Array.isArray(grid.material)) grid.material.forEach(material => material.dispose());
+      else grid.material.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
+      dom.remove();
     };
-  }, [viewMode, geometry, currentLayerZ, meshMetrics]);
+  }, [workspaceVisible, viewMode, geometry, currentLayerZ, meshMetrics]);
 
   // Export CSV of full slice stack
   const handleExportCSV = () => {
@@ -875,8 +895,8 @@ Generated by MetalliX 2D Layer-by-Layer Slicer & Inherent Strain Engine
               key={preset.id}
               type="button"
               onClick={() => {
-                setSelectedPreset(preset.id as any);
-                if (customGeometry) setCustomGeometry(null);
+                clearLiveMesh();
+                updateLpbfProcess({cadAssetName:`${preset.id}-demo`});
                 setActiveLayerIndex(1);
               }}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition ${
@@ -1551,17 +1571,19 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
             <div className="space-y-1.5">
               <label className="text-xs text-slate-400 font-bold">Alloy Material Preset</label>
               <select
-                value={selectedMaterial}
-                onChange={(e) => setSelectedMaterial(e.target.value)}
+                value=""
+                onChange={(e) => { if (e.target.value) loadSharedPreset(e.target.value); }}
                 className="w-full bg-[#0c1424] border border-[#1e2d46] rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400"
               >
-                {Object.keys(MATERIAL_DENSITY_MAP).map((mat) => (
-                  <option key={mat} value={mat}>
-                    {MATERIAL_DENSITY_MAP[mat].name} (ρ = {MATERIAL_DENSITY_MAP[mat].density_gcm3} g/cm³)
-                  </option>
-                ))}
+                <option value="">Shared: {selectedMaterial}</option>
+                <option value="inconel-718">Inconel 718</option>
+                <option value="ti-6al-4v">Ti-6Al-4V</option>
+                <option value="ss-316l">316L</option>
+                <option value="alsi10mg">AlSi10Mg</option>
               </select>
             </div>
+
+            <p className="text-xs text-amber-200">Research estimate. Material and process use the shared specimen. Mass uses its estimated density; Python slicer material support must be checked in the returned assumptions.</p>
 
             {/* Layer Thickness */}
             <div className="space-y-1.5">
@@ -1575,7 +1597,7 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                     key={t}
                     type="button"
                     onClick={() => {
-                      setLayerThickness_um(t);
+
                       setActiveLayerIndex(1);
                       updateLpbfProcess({ layer_um: t });
                     }}
@@ -1599,21 +1621,21 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
               </div>
               <input
                 type="range"
-                min={60}
-                max={200}
-                step={5}
+                min={10}
+                max={1000}
+                step="any"
                 value={hatchSpacing_um}
                 onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  setHatchSpacing_um(v);
+                  const v = Number(e.target.value);
+
                   updateLpbfProcess({ hatch_um: v });
                 }}
                 className="w-full h-1.5 bg-[#0c1424] rounded-lg appearance-none cursor-pointer accent-emerald-400"
               />
               <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>Dense (60 µm)</span>
+                <span>10 µm</span>
                 <span>Std (110 µm)</span>
-                <span>Fast (200 µm)</span>
+                <span>1000 µm</span>
               </div>
             </div>
 
@@ -1625,13 +1647,13 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
               </div>
               <input
                 type="range"
-                min={100}
-                max={600}
-                step={10}
+                min={10}
+                max={1500}
+                step="any"
                 value={laserPower_W}
                 onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  setLaserPower_W(v);
+                  const v = Number(e.target.value);
+
                   updateLpbfProcess({ laserPower_W: v });
                 }}
                 className="w-full h-1.5 bg-[#0c1424] rounded-lg appearance-none cursor-pointer accent-amber-400"
@@ -1646,13 +1668,13 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
               </div>
               <input
                 type="range"
-                min={400}
-                max={2000}
-                step={20}
+                min={10}
+                max={10000}
+                step="any"
                 value={scanSpeed_mms}
                 onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  setScanSpeed_mms(v);
+                  const v = Number(e.target.value);
+
                   updateLpbfProcess({ scanSpeed_mms: v });
                 }}
                 className="w-full h-1.5 bg-[#0c1424] rounded-lg appearance-none cursor-pointer accent-sky-400"
@@ -1731,7 +1753,7 @@ def slice_mesh(stl_path, t_layer=0.040, h_s=0.110, p_laser=285, v_scan=960, t_re
                 of total build time.
               </li>
               <li>
-                <span className="text-slate-300 font-semibold">67° Rotation:</span> ASTM F3055 recommends 67° interlayer vector rotation to homogenize in-plane shrinkage and prevent preferential columnar growth.
+                <span className="text-slate-300 font-semibold">67° Rotation:</span> 67° interlayer rotation is a run-specific toolpath assumption in this slicer preview; the shared LPBF scan strategy remains separately recorded. Its effect on shrinkage or grain texture requires an appropriate model and experimental comparison.
               </li>
             </ul>
           </div>

@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Microscope,
@@ -33,7 +34,6 @@ import {
   Plus,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   AreaChart,
   Area,
   LineChart,

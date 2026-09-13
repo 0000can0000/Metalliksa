@@ -20,6 +20,8 @@ import {
   Cpu,
 } from "lucide-react";
 import { useMaterialStore, MATERIAL_PRESETS, BaseMetalType } from "../store/useMaterialStore";
+import { useMaterialSpecimenStore } from "../store/useMaterialSpecimenStore";
+import { MATERIAL_CATEGORIES, normalizeMaterialCategory } from "../utils/materialCategory";
 import { InverseAlloyStudio } from "./InverseAlloyStudio";
 
 interface AlloyBuilderProps {
@@ -29,6 +31,10 @@ interface AlloyBuilderProps {
 const COMMON_ALLOYING_ELEMENTS = [
   "Ni", "Fe", "Cr", "Co", "Mo", "W", "Ta", "Nb", "Ti", "Al",
   "V", "Mn", "Si", "Cu", "Mg", "Zr", "Hf", "Re", "Sc", "C", "B"
+];
+const MANUFACTURING_ROUTES = [
+  "Unspecified", "LPBF (Laser Powder Bed Fusion)", "Forged & Rolled", "Investment Cast",
+  "DED (Direct Energy Deposition)", "HIP (Hot Isostatic Pressed)",
 ];
 
 export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
@@ -45,6 +51,13 @@ export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
     resetToDefault,
     saveCurrentSpecimen,
   } = useMaterialStore();
+  const currentProcess = useMaterialSpecimenStore((state) => state.activeSpecimen.lpbf);
+  const category = normalizeMaterialCategory(activeMaterialSpecimen.metadata?.category, activeMaterialSpecimen.metadata?.baseMetal);
+  const categoryOptions: string[] = Object.values(MATERIAL_CATEGORIES);
+  if (!categoryOptions.includes(category)) categoryOptions.push(category);
+  const manufacturingRoute = activeMaterialSpecimen.metadata?.manufacturingRoute || "Unspecified";
+  const routeOptions = MANUFACTURING_ROUTES.includes(manufacturingRoute)
+    ? MANUFACTURING_ROUTES : [...MANUFACTURING_ROUTES, manufacturingRoute];
 
   // Local UI state for tab switching & element selection dropdown only
   const [activeSubView, setActiveSubView] = useState<"specimen-studio" | "inverse-pareto">("specimen-studio");
@@ -196,16 +209,11 @@ export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
                 <label className="text-slate-400 font-semibold block">Material Category</label>
                 <select
                   id="select-specimen-category"
-                  value={activeMaterialSpecimen.metadata?.category || "Nickel Superalloy"}
+                  value={category}
                   onChange={(e) => updateMetadata({ category: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-emerald-500 transition-colors"
                 >
-                  <option value="Nickel Superalloy">Nickel Superalloy</option>
-                  <option value="Titanium Alloy">Titanium Alloy</option>
-                  <option value="Steels &amp; Irons">Steels &amp; Irons</option>
-                  <option value="Aluminum Alloys">Aluminum Alloys</option>
-                  <option value="Cobalt / Bio">Cobalt / Bio-Alloy</option>
-                  <option value="Refractory / CMC">Refractory / High-Entropy</option>
+                  {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </div>
 
@@ -227,15 +235,11 @@ export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
                 <label className="text-slate-400 font-semibold block">Manufacturing Route</label>
                 <select
                   id="select-specimen-route"
-                  value={activeMaterialSpecimen.metadata?.manufacturingRoute || "LPBF (Laser Powder Bed Fusion)"}
+                  value={manufacturingRoute}
                   onChange={(e) => updateMetadata({ manufacturingRoute: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-emerald-500 transition-colors"
                 >
-                  <option value="LPBF (Laser Powder Bed Fusion)">LPBF (Laser Powder Bed Fusion)</option>
-                  <option value="Forged &amp; Rolled">Forged &amp; Rolled</option>
-                  <option value="Investment Cast">Investment Cast</option>
-                  <option value="DED (Direct Energy Deposition)">DED (Direct Energy Deposition)</option>
-                  <option value="HIP (Hot Isostatic Pressed)">HIP (Hot Isostatic Pressed)</option>
+                  {routeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </div>
             </div>
@@ -270,7 +274,7 @@ export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
               <div className="flex items-center gap-2">
                 <Atom className="w-4 h-4 text-cyan-400" />
                 <h3 className="text-sm font-bold text-slate-100">
-                  Chemical Composition Matrix (% wt)
+                  Chemical Composition Matrix ({activeMaterialSpecimen.unit === "at_pct" ? "at.%" : "wt.%"})
                 </h3>
                 <span
                   className={`px-2 py-0.5 rounded text-xs font-mono font-bold border ${
@@ -418,7 +422,7 @@ export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-1">
               <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                 <Cpu className="w-3.5 h-3.5 text-violet-400" />
-                <span>LPBF Recommended Power</span>
+                <span>LPBF Starting Estimate (Screening)</span>
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl font-black font-mono text-violet-300">
@@ -426,6 +430,10 @@ export const AlloyBuilder: React.FC<AlloyBuilderProps> = ({ onNavigate }) => {
                 </span>
                 <span className="text-xs text-slate-400 font-mono">W @ {activeMaterialSpecimen.lpbf?.recommendedScanSpeed_mms} mm/s</span>
               </div>
+              <p className="text-xs text-slate-300" data-testid="alloy-current-process">
+                Current shared process: {currentProcess.laserPower_W} W @ {currentProcess.scanSpeed_mms} mm/s
+              </p>
+              <p className="text-[11px] text-slate-400">Composition-based estimate; unvalidated. Current process settings are retained.</p>
             </div>
           </div>
         </>

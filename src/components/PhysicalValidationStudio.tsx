@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useEffect } from "react";
 import {
   ShieldCheck,
@@ -21,7 +22,6 @@ import {
   RotateCcw,
 } from "lucide-react";
 import {
-  ResponsiveContainer,
   ComposedChart,
   LineChart,
   Line,

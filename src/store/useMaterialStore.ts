@@ -650,6 +650,12 @@ export const useMaterialStore = create<MaterialStore>()(
       updateComposition: (newComposition, customName, metadataPatch, sourceTab = "Alloy Formulator (Tab 1)") => {
         const current = get().activeMaterialSpecimen;
         const resolvedComp = typeof newComposition === "function" ? newComposition(current.composition) : newComposition;
+        // Atomic-percent edits retain their unit and identity; weight-percent models are not evaluated.
+        if (current.unit === "at_pct") {
+          const next: MaterialSpecimen = {...current,composition:resolvedComp,name:customName||current.name,sourceTab,lastModified:Date.now(),isCustomModified:true,metadata:{...current.metadata,...metadataPatch,source:"Atomic-percent composition; weight-percent property estimates unresolved"}};
+          set({activeMaterialSpecimen:next,activeSpecimen:next});
+          return;
+        }
         const updatedMetadata = { ...current.metadata, ...metadataPatch, lastModified: Date.now() };
         const derived = deriveProperties(resolvedComp, customName || current.name, undefined, updatedMetadata);
 
@@ -676,6 +682,8 @@ export const useMaterialStore = create<MaterialStore>()(
             sourceModule: sourceTab,
             timestamp: Date.now(),
             composition: nextSpecimen.composition,
+            compositionUnit: nextSpecimen.unit,
+            compositionInterpretation: "nominal",
             baseMetal: nextSpecimen.metadata.baseMetal as any,
             yieldStrength: nextSpecimen.yieldStrength_25C_MPa,
             tensileStrength: nextSpecimen.uts_25C_MPa,

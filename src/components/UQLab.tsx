@@ -1,3 +1,5 @@
+import { createUqRunSession } from '../utils/uqRunSession';
+import { CouponSummary, CouponWorksheet, formatUqNumber } from './UqCouponReport';
 import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
@@ -106,7 +108,10 @@ export function UQLab({ onNavigate }: UQLabProps) {
   const [synthLotCount, setSynthLotCount] = useState<number>(4);
 
   // Python QMC Computation Result
-  const [uqResult, setUqResult] = useState<PythonStochasticUQResult | null>(null);
+  const [resultRecord, setResultRecord] = useState<{ key: string; result: PythonStochasticUQResult } | null>(null);
+  const requestSession = useRef(createUqRunSession<PythonStochasticUQResult>());
+  const requestKey = JSON.stringify({ id: activeDataset.id, chemistry: activeDataset.nominalChemistry, tolerances: activeDataset.chemicalTolerances, thermal: activeDataset.nominalThermal, minima: [activeDataset.specMinYieldMPa, activeDataset.specMinUTSMPa, activeDataset.specMinElongationPct], mcSamples, samplingMethod, scramble, seed });
+  const uqResult = resultRecord?.key === requestKey ? resultRecord.result : null;
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastRunTimestamp, setLastRunTimestamp] = useState<string>("");
@@ -119,7 +124,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
   // --------------------------------------------------------------------------
   const empiricalStats = useMemo(() => {
     const coupons = activeDataset.coupons;
-    const lotIds = coupons.map((c) => c.heatLotId);
+    const rawLotIds = coupons.map((c) => c.heatLotId);
+    const lotIds = rawLotIds.some(id => id.trim()) ? rawLotIds : [];
 
     let values: number[] = [];
     let specMin = 0;
@@ -139,15 +145,14 @@ export function UQLab({ onNavigate }: UQLabProps) {
   }, [activeDataset, selectedProperty]);
 
   const isSyntheticCoupons = isSyntheticCouponDataset(activeDataset);
-  const showMmpdsAllowables = !isSyntheticCoupons;
+  const showMmpdsAllowables = !isSyntheticCoupons && empiricalStats.toleranceEligible;
 
   // --------------------------------------------------------------------------
   // RUN PYTHON QMC SOBOL SOLVER
   // --------------------------------------------------------------------------
   const runQMCSolver = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMsg(null);
-    try {
+    const key = requestKey;
+    await requestSession.current.run(async () => {
       const res = await pythonComputationService.calculateStochasticUQMMPDS({
         alloyName: activeDataset.name,
         baseMetal: activeDataset.baseMetal,
@@ -167,20 +172,20 @@ export function UQLab({ onNavigate }: UQLabProps) {
         scramble,
         seed
       });
-      setUqResult(res);
-      setLastRunTimestamp(new Date().toLocaleTimeString());
-    } catch (err: any) {
-      console.error("UQ-Lab Python computation failed:", err);
-      setErrorMsg(err.message || "Failed to execute Python Quasi-Monte Carlo solver.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeDataset, mcSamples, samplingMethod, scramble, seed]);
+      if (!res.success) throw new Error('UQ solver did not return a successful result.');
+      return res;
+    }, state => {
+      setIsLoading(state.loading);
+      setErrorMsg(state.error);
+      setResultRecord(state.result ? { key, result: state.result } : null);
+      if (state.result) setLastRunTimestamp(new Date().toLocaleTimeString());
+    });
+  }, [requestKey]);
 
-  // Initial Run on Dataset Change
   useEffect(() => {
-    runQMCSolver();
-  }, [activeDataset.id, samplingMethod, scramble, mcSamples]);
+    void runQMCSolver();
+    return () => requestSession.current.invalidate();
+  }, [runQMCSolver]);
 
   // --------------------------------------------------------------------------
   // DATASET MODIFICATION HANDLERS
@@ -189,24 +194,21 @@ export function UQLab({ onNavigate }: UQLabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const datasetId = activeDataset.id;
+    if (file.size > 5 * 1024 * 1024) { setErrorMsg('Coupon CSV exceeds the 5 MB limit. Existing coupons were preserved.'); e.target.value = ''; return; }
+    setErrorMsg(null);
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target?.result as string;
-      if (!text) return;
-
-      const parsedCoupons = parseCSVToCoupons(text, activeDataset.id);
-      if (parsedCoupons.length === 0) {
-        alert("Unable to parse valid coupon test specimens from CSV. Please check formatting.");
-        return;
-      }
-
-      setDatasets((prev) =>
-        prev.map((d) => (d.id === activeDataset.id ? { ...d, coupons: parsedCoupons, couponSource: "uploaded" } : d))
-      );
-      setCouponPage(1);
+    reader.onload = evt => {
+      try {
+        const parsedCoupons = parseCSVToCoupons(String(evt.target?.result ?? ''), datasetId);
+        if (!parsedCoupons.length) throw new Error('CSV contains no coupon records.');
+        setDatasets(prev => prev.map(d => d.id === datasetId ? { ...d, coupons: parsedCoupons, couponSource: parsedCoupons.some(c => c.evidenceOrigin === 'synthetic') ? 'synthetic' : 'uploaded' } : d));
+        setCouponPage(1);
+      } catch (error) { setErrorMsg(`${error instanceof Error ? error.message : 'Unable to read coupon CSV.'} Existing coupons were preserved.`); }
     };
+    reader.onerror = () => setErrorMsg('Unable to read coupon CSV. Existing coupons were preserved.');
     reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleExportCSV = () => {
@@ -217,10 +219,12 @@ export function UQLab({ onNavigate }: UQLabProps) {
     a.href = url;
     a.download = `MMPDS_Dataset_${activeDataset.id}_Coupons.csv`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleSynthesizeBatch = () => {
+    if (!Number.isInteger(synthSampleSize) || synthSampleSize < 10 || synthSampleSize > 200 || !Number.isInteger(synthLotCount) || synthLotCount < 2 || synthLotCount > 12 || synthLotCount > synthSampleSize) { setErrorMsg("Synthetic samples must be 10–200, with 2–12 lots and no more lots than samples."); return; }
+    setErrorMsg(null);
     const newCoupons = generateSyntheticCoupons({
       datasetId: activeDataset.id,
       sampleSize: synthSampleSize,
@@ -251,10 +255,9 @@ export function UQLab({ onNavigate }: UQLabProps) {
     );
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedNotification(label);
-    setTimeout(() => setCopiedNotification(null), 2500);
+  const copyToClipboard = async (text: string, label: string) => {
+    try { await navigator.clipboard.writeText(text); setCopiedNotification(label); setTimeout(() => setCopiedNotification(null), 2500); }
+    catch { setErrorMsg("Clipboard unavailable. No copy was confirmed."); }
   };
 
   // Property Metadata Helper
@@ -274,7 +277,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
           symbol: "F_tu / R_m",
           unit: "MPa",
           specMin: activeDataset.specMinUTSMPa,
-          stochasticStat: uqResult?.stochasticProperties?.ultimateTensileStrength_Rm
+          stochasticStat: uqResult?.stochasticProperties?.ultimateTensileStrength_UTS
         };
       case "elongation":
         return {
@@ -282,7 +285,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
           symbol: "e / A_%",
           unit: "%",
           specMin: activeDataset.specMinElongationPct,
-          stochasticStat: uqResult?.stochasticProperties?.elongation_pct
+          stochasticStat: uqResult?.stochasticProperties?.elongationPct
         };
     }
   }, [selectedProperty, activeDataset, uqResult]);
@@ -323,6 +326,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
   }, [activeDataset.coupons, searchLot]);
 
   const totalPages = Math.ceil(filteredCoupons.length / couponsPerPage) || 1;
+  useEffect(() => setCouponPage(page => Math.min(page, totalPages)), [totalPages]);
   const paginatedCoupons = useMemo(() => {
     const start = (couponPage - 1) * couponsPerPage;
     return filteredCoupons.slice(start, start + couponsPerPage);
@@ -330,6 +334,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
+      {errorMsg && <p role="alert" className="rounded-xl border border-rose-700 bg-rose-950/30 p-3 text-sm text-rose-200">{errorMsg}</p>}
+      <p className="text-xs text-slate-400">Coupon edits and uploads are session-only. Export CSV before reloading. Missing measurements and provenance are never inferred from the selected material preset.</p>
       {/* ==================================================================== */}
       {/* 1. HERO HEADER BANNER & QMC BADGES */}
       {/* ==================================================================== */}
@@ -342,13 +348,13 @@ export function UQLab({ onNavigate }: UQLabProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1.5 shadow-sm">
                 <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-                MMPDS-01 Section 9 methods (screening)
+                Normal-model statistics (screening)
               </span>
 
               {samplingMethod === "sobol_qmc" ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 shadow-sm">
                   <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  Sobol QMC Accelerated (O(N⁻¹))
+                  Sobol sampling · screening
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
@@ -369,7 +375,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
             <p className="text-xs md:text-sm text-slate-400 max-w-3xl leading-relaxed">
               Propagate composition tolerances and thermal scatter using{" "}
               <strong className="text-amber-300">Quasi-Monte Carlo Sobol sequences</strong> for teaching and screening.
-              MMPDS A/B handbook allowables are shown only for uploaded coupon CSVs — not for synthetic lots.
+              Uploaded CSV values remain unverified; normal-model tolerance estimates do not establish MMPDS handbook allowables.
             </p>
             <EngineeringEstimateBanner className="mt-3 max-w-3xl" />
           </div>
@@ -431,7 +437,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 </span>
                 <span className="font-bold text-slate-200">
                   {uqResult.samplingMetadata.samplingMethod === "sobol_qmc"
-                    ? "Quasi-Monte Carlo (QMC) Sobol Sequence Acceleration"
+                    ? "Sobol digital-net sampling diagnostics"
                     : "Standard Pseudo-Random Monte Carlo (PRNG)"}
                 </span>
                 <span className="text-[10px] text-slate-400 hidden md:inline">
@@ -443,45 +449,46 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   Rate: {uqResult.samplingMetadata.theoreticalConvergenceRate}
                 </span>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                  {uqResult.samplingMetadata.qmcAccelerationFactor.toFixed(1)}× Speedup
+                  Speedup not estimated
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2.5 text-[11px]">
               <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800">
-                <div className="text-[9px] text-slate-400">EFFECTIVE SAMPLE (N_eff)</div>
+                <div className="text-[9px] text-slate-400">PROPAGATED SAMPLES</div>
                 <div className="font-bold text-amber-300 mt-0.5">
-                  {uqResult.samplingMetadata.effectiveSampleSize.toLocaleString()}
+                  {uqResult.sampleSizeN.toLocaleString()}
                   <span className="text-[9px] text-slate-400 font-normal ml-1">
-                    ({(uqResult.samplingMetadata.effectiveSampleSize / uqResult.sampleSizeN).toFixed(1)}× N)
+                    (actual N; effective N not estimated)
                   </span>
                 </div>
               </div>
               <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800">
                 <div className="text-[9px] text-slate-400">CENTERED L2 DISCREPANCY</div>
                 <div className="font-bold text-sky-300 mt-0.5">
-                  {uqResult.samplingMetadata.centeredL2Discrepancy.toFixed(5)}
+                  {formatUqNumber(uqResult.samplingMetadata.centeredL2Discrepancy, 5)}
                   <span className="text-[9px] text-emerald-400 font-normal ml-1">
-                    (-{uqResult.samplingMetadata.discrepancyReductionPct}%)
+                    (first {uqResult.samplingMetadata.discrepancySampleSize} points)
                   </span>
                 </div>
               </div>
               <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800">
                 <div className="text-[9px] text-slate-400">VARIANCE REDUCTION (VRR)</div>
                 <div className="font-bold text-emerald-300 mt-0.5">
-                  {uqResult.samplingMetadata.varianceReductionRatio.toFixed(1)}×
-                  <span className="text-[9px] text-slate-400 font-normal ml-1">tighter SE</span>
+                  Not estimated
+                  <span className="text-[9px] text-slate-400 font-normal ml-1">independent replicate comparison required</span>
                 </div>
               </div>
               <div className="p-2 rounded-xl bg-slate-900/70 border border-slate-800">
                 <div className="text-[9px] text-slate-400">EXECUTION LATENCY</div>
                 <div className="font-bold text-purple-300 mt-0.5">
                   {uqResult.computeTimeMs.toFixed(1)} ms
-                  <span className="text-[9px] text-slate-400 font-normal ml-1">Gray-code</span>
+                  <span className="text-[9px] text-slate-400 font-normal ml-1">reported solver time</span>
                 </div>
               </div>
             </div>
+            <p className="mt-2 text-[11px] text-slate-400">{uqResult.samplingMetadata.diagnosticsLimitations}</p>
           </div>
         )}
       </div>
@@ -556,7 +563,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   onChange={(e) => setScramble(e.target.checked)}
                   className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
                 />
-                <span>Owen Scramble</span>
+                <span>Digital shift</span>
               </label>
             )}
 
@@ -569,9 +576,9 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 className="bg-slate-800 border border-slate-700 text-sky-300 rounded-lg px-2 py-1 text-xs"
               >
                 <option value="1000">1,000 runs</option>
-                <option value="2500">2,500 runs (Optimal)</option>
-                <option value="5000">5,000 runs (MMPDS)</option>
-                <option value="10000">10,000 runs (High-Res)</option>
+                <option value="2500">2,500 runs</option>
+                <option value="5000">5,000 runs</option>
+                <option value="10000">10,000 runs</option>
               </select>
             </div>
           </div>
@@ -616,121 +623,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
       {/* ==================================================================== */}
       {/* 3. EXECUTIVE ALLOWABLE COMPARISON KPI CARDS */}
       {/* ==================================================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* A-BASIS ALLOWABLE */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-950/50 to-slate-900 border border-sky-500/30 shadow-lg space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-mono text-sky-400">
-            <span className="flex items-center gap-1.5 font-bold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              A-BASIS (SCREENING)
-            </span>
-          </div>
-
-          {showMmpdsAllowables ? (
-            <>
-              <div className="text-2xl font-extrabold text-sky-200 tracking-tight">
-                {empiricalStats.aBasisAllowable}{" "}
-                <span className="text-xs font-normal text-slate-400">{propertyMeta.unit}</span>
-              </div>
-              <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between pt-1 border-t border-sky-900/40">
-                <span>95% CI: [{empiricalStats.aBasisAllowable95CI[0]}–{empiricalStats.aBasisAllowable95CI[1]}]</span>
-                <span className={empiricalStats.marginOfSafetyPct >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                  MS: {empiricalStats.marginOfSafetyPct > 0 ? `+${empiricalStats.marginOfSafetyPct}%` : `${empiricalStats.marginOfSafetyPct}%`}
-                </span>
-              </div>
-              <p className="text-[10px] text-amber-200/80 pt-1">{ENGINEERING_ESTIMATE_DISCLAIMER}</p>
-            </>
-          ) : (
-            <>
-              <div className="text-lg font-extrabold text-amber-200 tracking-tight">Not applicable</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-sky-900/40">
-                {SYNTHETIC_COUPON_MMPDS_NOTICE}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* B-BASIS ALLOWABLE */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/30 shadow-lg space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-mono text-emerald-400">
-            <span className="flex items-center gap-1.5 font-bold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              B-BASIS (SCREENING)
-            </span>
-          </div>
-
-          {showMmpdsAllowables ? (
-            <>
-              <div className="text-2xl font-extrabold text-emerald-200 tracking-tight">
-                {empiricalStats.bBasisAllowable}{" "}
-                <span className="text-xs font-normal text-slate-400">{propertyMeta.unit}</span>
-              </div>
-              <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between pt-1 border-t border-emerald-900/40">
-                <span>95% CI: [{empiricalStats.bBasisAllowable95CI[0]}–{empiricalStats.bBasisAllowable95CI[1]}]</span>
-                <span className="text-emerald-400">90% @ 95% Conf</span>
-              </div>
-              <p className="text-[10px] text-amber-200/80 pt-1">{ENGINEERING_ESTIMATE_DISCLAIMER}</p>
-            </>
-          ) : (
-            <>
-              <div className="text-lg font-extrabold text-amber-200 tracking-tight">Not applicable</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-emerald-900/40">
-                {SYNTHETIC_COUPON_MMPDS_NOTICE}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* STATISTICAL MEAN & SCATTER */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 shadow-lg space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-            <span className="font-bold flex items-center gap-1.5 text-slate-300">
-              <Scale className="w-3.5 h-3.5 text-amber-400" />
-              SAMPLE MEAN & COV
-            </span>
-            <span className="text-amber-300 font-mono">COV {empiricalStats.covPct}%</span>
-          </div>
-
-          <div className="text-2xl font-extrabold text-slate-100 tracking-tight">
-            {empiricalStats.mean}{" "}
-            <span className="text-xs font-normal text-slate-400">± {empiricalStats.stdDev} {propertyMeta.unit}</span>
-          </div>
-
-          <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800">
-            <span>Range: [{empiricalStats.min} – {empiricalStats.max}]</span>
-            <span className={empiricalStats.isNormalDistribution ? "text-emerald-400" : "text-amber-400"}>
-              {empiricalStats.isNormalDistribution ? "Gaussian" : "Skewed"} (p={empiricalStats.andersonDarlingPVal})
-            </span>
-          </div>
-        </div>
-
-        {/* PROCESS CAPABILITY CPK */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/40 to-slate-900 border border-purple-500/30 shadow-lg space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-mono text-purple-400">
-            <span className="font-bold flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5" />
-              PROCESS CAPABILITY (Cpk)
-            </span>
-            <span className="text-purple-300 font-mono">{empiricalStats.conformancePct}% Passing</span>
-          </div>
-
-          <div className="text-2xl font-extrabold text-purple-200 tracking-tight">
-            {empiricalStats.cpk}{" "}
-            <span className="text-xs font-normal text-slate-400">
-              {empiricalStats.cpk >= 1.67 ? "(high Cpk)" : empiricalStats.cpk >= 1.33 ? "(screening Cpk)" : "(low Cpk)"}
-            </span>
-          </div>
-
-          <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between pt-1 border-t border-purple-900/40">
-            <span>Spec: ≥ {propertyMeta.specMin} {propertyMeta.unit}</span>
-            <span className="text-purple-300">
-              {showMmpdsAllowables
-                ? (empiricalStats.aBasisAllowable >= propertyMeta.specMin ? "Estimate vs spec" : "Below spec min")
-                : "Synthetic — not MMPDS"}
-            </span>
-          </div>
-        </div>
-      </div>
+      <CouponSummary stats={empiricalStats} unit={propertyMeta.unit} synthetic={isSyntheticCoupons} />
 
       {/* ==================================================================== */}
       {/* 4. WORKFLOW TABS: DISTRIBUTION, SENSITIVITY, COUPONS, CERTIFICATE */}
@@ -833,12 +726,12 @@ export function UQLab({ onNavigate }: UQLabProps) {
             <div>
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-sky-400" />
-                Coupon Sample Histogram & Gaussian PDF
+                Coupon histogram & normal-model expected counts
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 {showMmpdsAllowables
                   ? "Uploaded coupons: A/B cutoffs are screening estimates, not handbook allowables."
-                  : SYNTHETIC_COUPON_MMPDS_NOTICE}
+                  : isSyntheticCoupons ? SYNTHETIC_COUPON_MMPDS_NOTICE : "Uploaded records have insufficient data for tolerance estimates; existing values remain unverified."}
               </p>
             </div>
 
@@ -847,15 +740,15 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 <>
                   <span className="flex items-center gap-1 text-sky-400">
                     <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
-                    A-Basis: {empiricalStats.aBasisAllowable} {propertyMeta.unit}
+                    Approx. normal T99: {formatUqNumber(empiricalStats.aBasisAllowable)} {propertyMeta.unit}
                   </span>
                   <span className="flex items-center gap-1 text-emerald-400">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                    B-Basis: {empiricalStats.bBasisAllowable} {propertyMeta.unit}
+                    Approx. normal T90: {formatUqNumber(empiricalStats.bBasisAllowable)} {propertyMeta.unit}
                   </span>
                 </>
               ) : (
-                <span className="text-amber-200">A/B allowables hidden (synthetic coupons)</span>
+                <span className="text-amber-200">Tolerance estimates withheld (synthetic or insufficient data)</span>
               )}
               <span className="flex items-center gap-1 text-rose-400">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
@@ -871,6 +764,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis
                   dataKey="midpoint"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
                   tick={{ fill: "#94a3b8", fontSize: 11, fontFamily: "monospace" }}
                   unit={` ${propertyMeta.unit}`}
                 />
@@ -889,7 +784,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   }}
                   formatter={(value: any, name: string) => {
                     if (name === "couponCount") return [`${value} specimens`, "Coupon Frequency"];
-                    if (name === "gaussianCurve") return [`${value}`, "Gaussian Fit"];
+                    if (name === "gaussianCurve") return [`${value}`, "Normal-model expected counts"];
                     return [value, name];
                   }}
                   labelFormatter={(label) => `${propertyMeta.title}: ${label} ${propertyMeta.unit}`}
@@ -924,7 +819,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   yAxisId="left"
                   type="monotone"
                   dataKey="gaussianCurve"
-                  name="Fitted Gaussian PDF"
+                  name="Normal-model expected counts"
                   stroke="#fbbf24"
                   strokeWidth={2.5}
                   dot={false}
@@ -933,27 +828,27 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 {/* Vertical Reference Thresholds */}
                 {showMmpdsAllowables && (
                   <>
-                <ReferenceLine
+                <ReferenceLine ifOverflow="extendDomain"
                   yAxisId="left"
                   x={empiricalStats.aBasisAllowable}
                   stroke="#38bdf8"
                   strokeWidth={2}
                   strokeDasharray="4 4"
                   label={{
-                    value: `A-Basis (${empiricalStats.aBasisAllowable})`,
+                    value: `Approx. T99 (${formatUqNumber(empiricalStats.aBasisAllowable)})`,
                     fill: "#38bdf8",
                     fontSize: 10,
                     position: "top"
                   }}
                 />
-                <ReferenceLine
+                <ReferenceLine ifOverflow="extendDomain"
                   yAxisId="left"
                   x={empiricalStats.bBasisAllowable}
                   stroke="#34d399"
                   strokeWidth={2}
                   strokeDasharray="4 4"
                   label={{
-                    value: `B-Basis (${empiricalStats.bBasisAllowable})`,
+                    value: `Approx. T90 (${formatUqNumber(empiricalStats.bBasisAllowable)})`,
                     fill: "#34d399",
                     fontSize: 10,
                     position: "top"
@@ -961,7 +856,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 />
                   </>
                 )}
-                <ReferenceLine
+                <ReferenceLine ifOverflow="extendDomain"
                   yAxisId="left"
                   x={propertyMeta.specMin}
                   stroke="#f43f5e"
@@ -973,7 +868,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                     position: "insideTopRight"
                   }}
                 />
-                <ReferenceLine
+                {empiricalStats.mean != null && <ReferenceLine ifOverflow="extendDomain"
                   yAxisId="left"
                   x={empiricalStats.mean}
                   stroke="#94a3b8"
@@ -985,7 +880,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                     fontSize: 10,
                     position: "bottom"
                   }}
-                />
+                />}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -994,38 +889,38 @@ export function UQLab({ onNavigate }: UQLabProps) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono text-xs">
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] text-slate-400 block">TOLERANCE k_A:</span>
-              <span className="text-sky-300 font-bold text-sm">{empiricalStats.mmpds_kA}</span>
+              <span className="text-sky-300 font-bold text-sm">{formatUqNumber(empiricalStats.mmpds_kA, 3)}</span>
               <span className="text-[9px] text-slate-500 block">n={empiricalStats.sampleSize}</span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] text-slate-400 block">TOLERANCE k_B:</span>
-              <span className="text-emerald-300 font-bold text-sm">{empiricalStats.mmpds_kB}</span>
+              <span className="text-emerald-300 font-bold text-sm">{formatUqNumber(empiricalStats.mmpds_kB, 3)}</span>
               <span className="text-[9px] text-slate-500 block">n={empiricalStats.sampleSize}</span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] text-slate-400 block">SKEWNESS:</span>
-              <span className="text-amber-300 font-bold text-sm">{empiricalStats.skewness}</span>
-              <span className="text-[9px] text-slate-500 block">MMPDS |skew| &lt; 0.5</span>
+              <span className="text-amber-300 font-bold text-sm">{formatUqNumber(empiricalStats.skewness, 3)}</span>
+              <span className="text-[9px] text-slate-500 block">Descriptive moment, not a normality test</span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] text-slate-400 block">KURTOSIS:</span>
-              <span className="text-purple-300 font-bold text-sm">{empiricalStats.kurtosis}</span>
+              <span className="text-purple-300 font-bold text-sm">{formatUqNumber(empiricalStats.kurtosis, 3)}</span>
               <span className="text-[9px] text-slate-500 block">Excess kurtosis</span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-[10px] text-slate-400 block">ANDERSON-DARLING:</span>
-              <span className="text-emerald-300 font-bold text-sm">p = {empiricalStats.andersonDarlingPVal}</span>
-              <span className="text-[9px] text-slate-500 block">p &gt; 0.05 normal</span>
+              <span className="text-[10px] text-slate-400 block">NORMALITY TEST:</span>
+              <span className="text-emerald-300 font-bold text-sm">Not performed</span>
+              <span className="text-[9px] text-slate-500 block">No distribution acceptance inferred</span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-[10px] text-slate-400 block">ALLOWABLE S.E. (A):</span>
-              <span className="text-sky-300 font-bold text-sm">±{empiricalStats.standardError_A} {propertyMeta.unit}</span>
-              <span className="text-[9px] text-slate-500 block">95% Conf Bounds</span>
+              <span className="text-[10px] text-slate-400 block">TOLERANCE MODEL:</span>
+              <span className="text-sky-300 font-bold text-sm">Approximate normal model</span>
+              <span className="text-[9px] text-slate-500 block">Normality and independence unverified</span>
             </div>
           </div>
         </div>
@@ -1048,10 +943,11 @@ export function UQLab({ onNavigate }: UQLabProps) {
             </div>
             <span className="text-xs font-mono px-2.5 py-1 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60 flex items-center gap-1.5 self-start sm:self-auto">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
-              Radial Design QMC Matrix Sampling
+              Seeded Monte Carlo pick-freeze sampling
             </span>
           </div>
 
+          <p className="text-xs text-amber-200">{uqResult.sensitivityMetadata?.limitations}</p>
           {/* Bar Chart */}
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -1090,7 +986,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   <th className="py-2.5 px-3 text-amber-300 font-bold">First-Order (S_i)</th>
                   <th className="py-2.5 px-3 text-sky-300 font-bold">Total-Order (S_Ti)</th>
                   <th className="py-2.5 px-3 text-purple-300">Coupled Interaction (S_Ti - S_i)</th>
-                  <th className="py-2.5 px-3 text-right">Variance Share (%)</th>
+                  <th className="py-2.5 px-3 text-right">Raw 100 × S_i (%)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
@@ -1098,15 +994,12 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   <tr key={idx} className="hover:bg-slate-800/30">
                     <td className="py-2 px-3 font-bold text-slate-200">{s.parameter}</td>
                     <td className="py-2 px-3 text-slate-400">{s.description}</td>
-                    <td className="py-2 px-3 text-amber-300 font-bold">{s.sobolFirstOrderIndex.toFixed(3)}</td>
-                    <td className="py-2 px-3 text-sky-300 font-bold">{(s.sobolTotalOrderIndex ?? s.sobolFirstOrderIndex).toFixed(3)}</td>
+                    <td className="py-2 px-3 text-amber-300 font-bold">{formatUqNumber(s.sobolFirstOrderIndex, 3)}</td>
+                    <td className="py-2 px-3 text-sky-300 font-bold">{formatUqNumber(s.sobolTotalOrderIndex, 3)}</td>
                     <td className="py-2 px-3 text-purple-300 font-semibold">
-                      {(s.interactionIndex !== undefined
-                        ? s.interactionIndex
-                        : Math.max(0, (s.sobolTotalOrderIndex ?? s.sobolFirstOrderIndex) - s.sobolFirstOrderIndex)
-                      ).toFixed(3)}
+                      {formatUqNumber(s.interactionIndex, 3)}
                     </td>
-                    <td className="py-2 px-3 text-right font-bold text-slate-200">{s.varianceContributionPct.toFixed(1)}%</td>
+                    <td className="py-2 px-3 text-right font-bold text-slate-200">{formatUqNumber(s.varianceContributionPct)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -1120,7 +1013,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
               Alloy Tolerance Optimization Strategy:
             </div>
             <p className="text-xs text-slate-300 leading-relaxed font-mono">
-              The dominant driver of strength scatter is <strong className="text-amber-300">{uqResult.sobolSensitivityAnalysis[0]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[0]?.varianceContributionPct}% variance share), followed by <strong className="text-sky-300">{uqResult.sobolSensitivityAnalysis[1]?.parameter}</strong> ({uqResult.sobolSensitivityAnalysis[1]?.varianceContributionPct}%). Tightening melt tolerances on these factors may reduce scatter in a screening model; it does not create MMPDS handbook allowables.
+              Finite-sample sensitivity estimates can be negative or exceed one. They are not normalized shares or experimental causal evidence. Review the estimator limitations before changing material tolerances.
             </p>
           </div>
         </div>
@@ -1138,7 +1031,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
                 Material Coupon Test Records & Lot Traceability
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Full record of certified mechanical test coupons across melted heats/build jobs. Filter by Heat ID or add/remove specimens.
+                Supplied coupon records. Source claims, test methods and lot identity are unverified. Filter by supplied Heat ID or remove specimens.
               </p>
             </div>
 
@@ -1195,8 +1088,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
                   return (
                     <tr key={coupon.id} className="hover:bg-slate-800/30 transition">
                       <td className="py-2.5 px-3 font-bold text-slate-200">{coupon.specimenNumber}</td>
-                      <td className="py-2.5 px-3 text-amber-300">{coupon.heatLotId}</td>
-                      <td className="py-2.5 px-3 text-slate-400">{coupon.orientation || "L"}</td>
+                      <td className="py-2.5 px-3 text-amber-300">{coupon.heatLotId || "Not reported"}</td>
+                      <td className="py-2.5 px-3 text-slate-400">{coupon.orientation || "Not reported"}</td>
                       <td className="py-2.5 px-3 font-bold text-sky-300">
                         {coupon.yieldStrengthMPa}
                         {!passesYield && <span className="text-[9px] text-rose-400 ml-1">(!)</span >}
@@ -1206,8 +1099,8 @@ export function UQLab({ onNavigate }: UQLabProps) {
                         {!passesUTS && <span className="text-[9px] text-rose-400 ml-1">(!)</span >}
                       </td>
                       <td className="py-2.5 px-3 text-emerald-300">{coupon.elongationPct}%</td>
-                      <td className="py-2.5 px-3 text-slate-400">{coupon.reductionOfAreaPct}%</td>
-                      <td className="py-2.5 px-3 text-slate-400">{coupon.hardnessHRC ? `${coupon.hardnessHRC} HRC` : "-"}</td>
+                      <td className="py-2.5 px-3 text-slate-400">{coupon.reductionOfAreaPct == null ? "Not reported" : `${coupon.reductionOfAreaPct}%`}</td>
+                      <td className="py-2.5 px-3 text-slate-400">{coupon.hardnessHRC != null ? `${coupon.hardnessHRC} HRC` : "Not reported"}</td>
                       <td className="py-2.5 px-3">
                         {fullyCompliant ? (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -1267,116 +1160,7 @@ export function UQLab({ onNavigate }: UQLabProps) {
       {/* ==================================================================== */}
       {/* TAB 4: MMPDS QUALIFICATION CERTIFICATE */}
       {/* ==================================================================== */}
-      {activeViewTab === "certificate" && (
-        <div className="p-6 rounded-3xl bg-slate-900/90 border border-purple-500/30 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-purple-400" />
-                <h3 className="text-base font-bold text-slate-100">
-                  Coupon statistics worksheet (not a qualification certificate)
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 font-mono">
-                {isSyntheticCoupons ? SYNTHETIC_COUPON_MMPDS_NOTICE : ENGINEERING_ESTIMATE_DISCLAIMER}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const certText = `
-SCREENING COUPON STATISTICS (NOT MMPDS HANDBOOK)
-================================================
-Material: ${activeDataset.name}
-Standard: ${activeDataset.specification} (${activeDataset.mmpdsChapter})
-Product Form: ${activeDataset.productForm}
-Heat Treatment: ${activeDataset.heatTreatment}
-Coupon source: ${activeDataset.couponSource}
-
-${isSyntheticCoupons ? SYNTHETIC_COUPON_MMPDS_NOTICE : ENGINEERING_ESTIMATE_DISCLAIMER}
-
-${showMmpdsAllowables ? `SCREENING A/B (uploaded coupons, not contractual):
-A-Basis (T99 @ 95% Conf): ${empiricalStats.aBasisAllowable} MPa (k_A = ${empiricalStats.mmpds_kA})
-B-Basis (T90 @ 95% Conf): ${empiricalStats.bBasisAllowable} MPa (k_B = ${empiricalStats.mmpds_kB})` : "A/B handbook allowables: withheld (synthetic coupons)."}
-
-Specimen Count: ${empiricalStats.sampleSize} coupons across ${empiricalStats.lotCount} heats
-Generated: ${new Date().toISOString()}
-                  `.trim();
-                  copyToClipboard(certText, "Certificate copied to clipboard");
-                }}
-                className="px-3.5 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold border border-purple-500/40 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                {copiedNotification ? copiedNotification : "Copy Report"}
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
-              <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Material Specification</div>
-              <div className="text-sm font-bold text-slate-200">{activeDataset.name}</div>
-              <div className="text-slate-400">Spec: <span className="text-sky-300">{activeDataset.specification}</span></div>
-              <div className="text-slate-400">Form: <span className="text-slate-300">{activeDataset.productForm}</span></div>
-              <div className="text-slate-400">Condition: <span className="text-slate-300">{activeDataset.heatTreatment}</span></div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
-              <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Statistical Sampling Lot Traceability</div>
-              <div className="text-sm font-bold text-emerald-300">{empiricalStats.sampleSize} Test Coupons</div>
-              <div className="text-slate-400">Melt Lots / Heats: <span className="text-amber-300">{empiricalStats.lotCount} production batches</span></div>
-              <div className="text-slate-400">Normality Fit: <span className="text-emerald-400">{empiricalStats.isNormalDistribution ? "Gaussian (p>0.05)" : "Non-Parametric"}</span></div>
-              <div className="text-slate-400">Sampling Engine: <span className="text-amber-300">Quasi-Monte Carlo Sobol (O(N⁻¹))</span></div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
-            <table className="w-full text-xs font-mono text-left">
-              <thead className="text-[10px] text-slate-400 uppercase bg-slate-950 border-b border-slate-800">
-                <tr>
-                  <th className="py-2.5 px-3">Mechanical Property</th>
-                  <th className="py-2.5 px-3">Spec Minimum</th>
-                  <th className="py-2.5 px-3">Sample Mean (X)</th>
-                  <th className="py-2.5 px-3 text-sky-300 font-bold">A-Basis (T99)</th>
-                  <th className="py-2.5 px-3 text-emerald-300 font-bold">B-Basis (T90)</th>
-                  <th className="py-2.5 px-3 text-purple-300">Process Cpk</th>
-                  <th className="py-2.5 px-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 bg-slate-950/40">
-                <tr>
-                  <td className="py-3 px-3 font-bold text-slate-200">Yield Strength (F_ty)</td>
-                  <td className="py-3 px-3 text-slate-400">{activeDataset.specMinYieldMPa} MPa</td>
-                  <td className="py-3 px-3 text-slate-300">{empiricalStats.mean} MPa</td>
-                  <td className="py-3 px-3 text-sky-300 font-bold">{showMmpdsAllowables ? `${empiricalStats.aBasisAllowable} MPa` : "N/A"}</td>
-                  <td className="py-3 px-3 text-emerald-300 font-bold">{showMmpdsAllowables ? `${empiricalStats.bBasisAllowable} MPa` : "N/A"}</td>
-                  <td className="py-3 px-3 text-purple-300 font-bold">{empiricalStats.cpk}</td>
-                  <td className="py-3 px-3 text-right font-bold text-amber-300">{showMmpdsAllowables ? "Screening estimate" : "Synthetic — withheld"}</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-bold text-slate-200">Ultimate Tensile (F_tu)</td>
-                  <td className="py-3 px-3 text-slate-400">{activeDataset.specMinUTSMPa} MPa</td>
-                  <td className="py-3 px-3 text-slate-300">{activeDataset.specMinUTSMPa + 75} MPa</td>
-                  <td className="py-3 px-3 text-sky-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinUTSMPa + 15} MPa` : "N/A"}</td>
-                  <td className="py-3 px-3 text-emerald-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinUTSMPa + 38} MPa` : "N/A"}</td>
-                  <td className="py-3 px-3 text-purple-300 font-bold">1.48</td>
-                  <td className="py-3 px-3 text-right font-bold text-amber-300">{showMmpdsAllowables ? "Screening estimate" : "Synthetic — withheld"}</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-bold text-slate-200">Elongation (e)</td>
-                  <td className="py-3 px-3 text-slate-400">{activeDataset.specMinElongationPct}%</td>
-                  <td className="py-3 px-3 text-slate-300">{activeDataset.specMinElongationPct + 5.2}%</td>
-                  <td className="py-3 px-3 text-sky-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinElongationPct + 1.2}%` : "N/A"}</td>
-                  <td className="py-3 px-3 text-emerald-300 font-bold">{showMmpdsAllowables ? `${activeDataset.specMinElongationPct + 2.8}%` : "N/A"}</td>
-                  <td className="py-3 px-3 text-purple-300 font-bold">1.52</td>
-                  <td className="py-3 px-3 text-right font-bold text-amber-300">{showMmpdsAllowables ? "Screening estimate" : "Synthetic — withheld"}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeViewTab === "certificate" && <CouponWorksheet dataset={activeDataset} onCopy={copyToClipboard} notification={copiedNotification} />}
 
       {/* ==================================================================== */}
       {/* SYNTHESIZE BATCH MODAL */}
@@ -1384,6 +1168,7 @@ Generated: ${new Date().toISOString()}
       {isSynthesizeModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            {errorMsg && <p role="alert" className="text-sm text-rose-300">{errorMsg}</p>}
             <div className="flex items-center justify-between">
               <h4 className="text-base font-bold text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />

@@ -1,0 +1,85 @@
+"""Regression checks for reported UQ evidence, not validation of material physics."""
+import json
+import math
+import unittest
+from unittest.mock import patch
+
+import stochastic_uq_mmpds_solver as solver
+
+
+class SamplingEvidenceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.qmc = solver.solve_stochastic_uq({'mcSamples': 500})
+        cls.mc = solver.solve_stochastic_uq({'mcSamples': 500, 'samplingMethod': 'pseudo_mc'})
+
+    def test_single_run_does_not_invent_performance_or_effective_samples(self):
+        for result in (self.qmc, self.mc):
+            metadata = result['samplingMetadata']
+            for key in ('qmcAccelerationFactor', 'effectiveSampleSize', 'varianceReductionRatio'):
+                self.assertIsNone(metadata[key])
+            self.assertEqual(metadata['discrepancySampleSize'], 150)
+            self.assertEqual(result['sampleSizeN'], 500)
+            self.assertNotIn('Certified', result['aerospaceReliability']['qualificationStatus'])
+        self.assertFalse(self.mc['samplingMetadata']['scrambled'])
+
+    def test_qmc_uncertainty_is_unavailable_without_replicates(self):
+        for stats in self.qmc['stochasticProperties'].values():
+            for key in ('aBasisConfidenceInterval95', 'bBasisConfidenceInterval95',
+                        'allowableStandardError_A', 'allowableStandardError_B'):
+                self.assertIsNone(stats[key])
+            self.assertIn('replicates', stats['allowableUncertaintyMethod'])
+        for stats in self.mc['stochasticProperties'].values():
+            self.assertIsNotNone(stats['aBasisConfidenceInterval95'])
+            self.assertIn('iid-normal', stats['allowableUncertaintyMethod'])
+
+    def test_material_distribution_baseline_preserved(self):
+        # Recorded from the previous implementation, seed 42 / 500 draws.
+        for result, expected in ((self.qmc, (3467.7, 32.54, 3387.2, 3422.6)),
+                                 (self.mc, (3468.6, 32.7, 3387.6, 3423.3))):
+            stats = result['stochasticProperties']['yieldStrength_Rp02']
+            self.assertEqual(tuple(stats[key] for key in ('mean', 'stdDev', 'aBasisAllowable', 'bBasisAllowable')), expected)
+
+    def test_sensitivity_matches_actual_supplied_chemistry(self):
+        original = solver.solve_single_realization
+        seen = []
+        def observe(*args, **kwargs):
+            seen.append(set(kwargs['comp'] if kwargs else args[1]))
+            return original(*args, **kwargs)
+        with patch.object(solver, 'solve_single_realization', side_effect=observe):
+            result = solver.solve_stochastic_uq({'mcSamples': 500, 'baseMetal': 'Al',
+                'composition_wt': {'Si': 10.0, 'Mg': 0.3}, 'composition_tolerances': {'Si': 0.5, 'Mg': 0.1}})
+        self.assertTrue(all(keys == {'Si', 'Mg'} for keys in seen))
+        self.assertEqual(len(result['sobolSensitivityAnalysis']), 5)
+        self.assertEqual(result['sensitivityMetadata']['evaluationCount'], 150 * 7)
+
+    def test_raw_indices_are_not_clamped_or_normalized(self):
+        rows = self.qmc['sobolSensitivityAnalysis']
+        self.assertFalse(self.qmc['sensitivityMetadata']['indicesNormalized'])
+        self.assertTrue(any(row['interactionIndex'] < 0 for row in rows))
+        for row in rows:
+            self.assertAlmostEqual(row['varianceContributionPct'], 100 * row['sobolFirstOrderIndex'], delta=0.1)
+        self.assertNotAlmostEqual(sum(row['varianceContributionPct'] for row in rows), 100.0, delta=0.1)
+
+    def test_constant_population_has_no_invented_sensitivity_or_cpk(self):
+        result = solver.solve_stochastic_uq({'mcSamples': 500, 'composition_wt': {},
+            'coolingRate_cov': 0, 'agingTemp_stdDev': 0, 'agingTime_stdDev': 0,
+            'serviceStress_cov': 0, 'initialFlawSize_um_std': 0})
+        self.assertEqual(result['sensitivityMetadata']['status'], 'unavailable_zero_variance')
+        for row in result['sobolSensitivityAnalysis']:
+            self.assertIsNone(row['sobolFirstOrderIndex'])
+            self.assertIsNone(row['varianceContributionPct'])
+        self.assertIsNone(result['stochasticProperties']['yieldStrength_Rp02']['cpk'])
+        json.dumps(result, allow_nan=False)
+
+    def test_sobol_dimensions_never_silently_repeat(self):
+        with self.assertRaisesRegex(ValueError, '32 dimensions'):
+            solver.SobolSequenceGenerator(33)
+
+    def test_discrepancy_is_a_point_set_diagnostic(self):
+        # One centered 1D point has centered L2 squared discrepancy 1/12.
+        self.assertAlmostEqual(solver.compute_centered_l2_discrepancy([[0.5]]), math.sqrt(1 / 12), places=6)
+
+
+if __name__ == '__main__':
+    unittest.main()

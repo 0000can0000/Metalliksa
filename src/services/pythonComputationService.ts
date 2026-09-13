@@ -1942,10 +1942,11 @@ export interface StochasticPropertyStats {
   mmpds_kB: number;
   aBasisAllowable: number;
   bBasisAllowable: number;
-  aBasisConfidenceInterval95?: [number, number];
-  bBasisConfidenceInterval95?: [number, number];
-  allowableStandardError_A?: number;
-  allowableStandardError_B?: number;
+  aBasisConfidenceInterval95?: [number, number] | null;
+  bBasisConfidenceInterval95?: [number, number] | null;
+  allowableStandardError_A?: number | null;
+  allowableStandardError_B?: number | null;
+  allowableUncertaintyMethod?: string;
   cpk: number | null;
   conformancePct: number;
   histogram: {
@@ -1969,14 +1970,16 @@ export interface PythonStochasticUQResult {
     samplingMethod: "sobol_qmc" | "pseudo_mc";
     scrambled: boolean;
     sobolDimensions: number;
-    qmcAccelerationFactor: number;
-    effectiveSampleSize: number;
+    qmcAccelerationFactor: number | null;
+    effectiveSampleSize: number | null;
     centeredL2Discrepancy: number;
     pseudoDiscrepancyBenchmark: number;
-    discrepancyReductionPct: number;
-    varianceReductionRatio: number;
+    discrepancyReductionPct: number | null;
+    varianceReductionRatio: number | null;
     theoreticalConvergenceRate: string;
     samplingDescription: string;
+    discrepancySampleSize?: number;
+    diagnosticsLimitations?: string;
   };
   alloyMetadata: {
     alloyName: string;
@@ -2004,13 +2007,23 @@ export interface PythonStochasticUQResult {
     fractureToughness_K1c: StochasticPropertyStats;
     criticalFlawSize_ac: StochasticPropertyStats;
   };
+  sensitivityMetadata?: {
+    method: string;
+    output: string;
+    baseSampleSize: number;
+    evaluationCount: number;
+    independentInputs: boolean;
+    indicesNormalized: boolean;
+    status: string;
+    limitations: string;
+  };
   sobolSensitivityAnalysis: {
     parameter: string;
     description: string;
-    sobolFirstOrderIndex: number;
-    sobolTotalOrderIndex?: number;
-    interactionIndex?: number;
-    varianceContributionPct: number;
+    sobolFirstOrderIndex: number | null;
+    sobolTotalOrderIndex?: number | null;
+    interactionIndex?: number | null;
+    varianceContributionPct: number | null;
   }[];
   aerospaceReliability: {
     qualificationStatus: string;

@@ -1,21 +1,21 @@
 /**
- * UQ-Lab Data Models & MMPDS-01 Mathematical Solvers
- * Aerospace Material Datasets, One-Sided Tolerance Limits (k_A, k_B),
- * and Coupon Synthesis Engine for Quasi-Monte Carlo Uncertainty Quantification.
+ * UQ-Lab datasets and descriptive statistics with approximate normal-model
+ * one-sided tolerance limits. These calculations do not certify allowables.
  */
 
 export interface CouponTestSpecimen {
   id: string;
   specimenNumber: string;
   heatLotId: string;
-  testTempC: number;
+  testTempC: number | null;
   yieldStrengthMPa: number;
   utsMPa: number;
   elongationPct: number;
-  reductionOfAreaPct: number;
+  reductionOfAreaPct: number | null;
   hardnessHRC?: number;
   testStandard: string;
   orientation?: "L" | "LT" | "ST" | "Z";
+  evidenceOrigin?: "synthetic" | "user-reported" | "unknown";
 }
 
 export interface MaterialDataset {
@@ -48,218 +48,213 @@ export interface MaterialDataset {
 
 export interface MMPDSEmpiricalAllowableStats {
   sampleSize: number;
-  lotCount: number;
-  mean: number;
-  stdDev: number;
-  variance: number;
-  covPct: number;
-  median: number;
-  min: number;
-  max: number;
-  range: number;
-  skewness: number;
-  kurtosis: number;
-  andersonDarlingPVal: number;
-  isNormalDistribution: boolean;
-  mmpds_kA: number;
-  mmpds_kB: number;
-  aBasisAllowable: number;
-  bBasisAllowable: number;
-  aBasisAllowable95CI: [number, number];
-  bBasisAllowable95CI: [number, number];
-  standardError_A: number;
-  standardError_B: number;
-  cpk: number;
-  conformancePct: number;
-  marginOfSafetyPct: number;
+  lotCount: number | null;
+  status: "ready" | "insufficient-data" | "invalid-data";
+  issues: string[];
+  toleranceEligible: boolean;
+  normality: { status: "not-tested"; method: null; pValue: null; reason: string };
+  mean: number | null;
+  stdDev: number | null;
+  variance: number | null;
+  covPct: number | null;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  range: number | null;
+  skewness: number | null;
+  kurtosis: number | null;
+  andersonDarlingPVal: null;
+  isNormalDistribution: null;
+  mmpds_kA: number | null;
+  mmpds_kB: number | null;
+  aBasisAllowable: number | null;
+  bBasisAllowable: number | null;
+  aBasisAllowable95CI: null;
+  bBasisAllowable95CI: null;
+  standardError_A: null;
+  standardError_B: null;
+  cpl: number | null;
+  conformancePct: number | null;
+  marginOfSafetyPct: number | null;
   histogram: {
     binStart: number;
     binEnd: number;
     midpoint: number;
     count: number;
-    density: number;
+    density: number | null;
   }[];
 }
 
 /**
- * Calculates the exact MMPDS-01 Section 9.2.2 one-sided tolerance factor k
- * based on Lieberman-Resnikoff non-central t approximation.
- *
- * @param n Sample size (n >= 3)
- * @param p Population proportion to exceed (0.99 for A-Basis, 0.90 for B-Basis)
- * @param gamma Confidence level (default 0.95 for 95% confidence)
+ * Natrella (1963) approximate one-sided normal tolerance factor, as presented
+ * by NIST: https://www.itl.nist.gov/div898/handbook/prc/section2/prc263.htm
+ * This is not an exact noncentral-t calculation or a certified MMPDS allowable.
+ * Only the explicitly tabulated coverage/confidence probabilities are supported.
+ * Small samples (n <= 10) can differ materially from the exact method.
+ * The legacy export name is retained for callers.
  */
-export function calculateMMPDSToleranceFactor(n: number, p: number = 0.99, gamma: number = 0.95): number {
-  if (n < 3) return 5.0; // conservative fallback
-  
-  // Standard normal quantiles
-  const zp = p === 0.99 ? 2.326348 : p === 0.90 ? 1.281552 : 2.0;
-  const zGamma = gamma === 0.95 ? 1.644853 : 1.959964;
+export function calculateMMPDSToleranceFactor(n: number, p: number = 0.99, gamma: number = 0.95): number | null {
+  const quantiles: Record<string, number> = {
+    "0.9": 1.2815515655446004,
+    "0.95": 1.6448536269514722,
+    "0.99": 2.3263478740408408,
+  };
+  const zp = quantiles[String(p)];
+  const zGamma = quantiles[String(gamma)];
+  if (!Number.isSafeInteger(n) || n < 3 || zp === undefined || zGamma === undefined) return null;
+  const a = 1 - zGamma ** 2 / (2 * (n - 1));
+  const b = zp ** 2 - zGamma ** 2 / n;
+  const discriminant = zp ** 2 - a * b;
+  if (a <= 0 || discriminant < 0) return null;
+  return finiteOrNull((zp + Math.sqrt(discriminant)) / a);
+}
 
-  const a = 1 - (zGamma * zGamma) / (2 * (n - 1));
-  const b = (zp * zp) - (zGamma * zGamma) / n;
-  
-  const discriminant = (zp * zp) - a * b;
-  if (discriminant < 0 || a <= 0) {
-    // Large n asymptotic fallback
-    return zp + zGamma / Math.sqrt(n);
+function finiteOrNull(value: number): number | null {
+  return Number.isFinite(value) ? value : null;
+}
+
+function empiricalHistogram(values: number[], min: number, max: number): MMPDSEmpiricalAllowableStats["histogram"] {
+  let edges: number[];
+  if (min === max) {
+    // A single finite-width bin is sufficient for a point mass. Avoid reversed
+    // final bins and preserve all observations, including a constant zero set.
+    const padding = Math.max(1, Math.abs(min) * 1e-6);
+    const left = Number.isFinite(min - padding) ? min - padding : min;
+    const right = Number.isFinite(max + padding) ? max + padding : max;
+    edges = [left, right];
+  } else {
+    const binCount = Math.min(14, Math.max(8, Math.round(Math.sqrt(values.length)) + 2));
+    // Remove edges that collapse to the same IEEE-754 value for tiny ranges.
+    edges = [...new Set(Array.from({ length: binCount + 1 }, (_, i) =>
+      i === binCount ? max : min + (max - min) * (i / binCount)))];
   }
-
-  const k = (zp + Math.sqrt(discriminant)) / a;
-  return parseFloat(k.toFixed(3));
+  const histogram = edges.slice(0, -1).map((binStart, i) => ({
+    binStart,
+    binEnd: edges[i + 1],
+    midpoint: binStart + (edges[i + 1] - binStart) / 2,
+    count: 0,
+    density: null as number | null,
+  }));
+  for (const value of values) {
+    const index = histogram.findIndex((bin, i) => value >= bin.binStart
+      && (value < bin.binEnd || (i === histogram.length - 1 && value <= bin.binEnd)));
+    if (index >= 0) histogram[index].count += 1;
+  }
+  for (const bin of histogram) {
+    bin.density = finiteOrNull((bin.count / values.length) / (bin.binEnd - bin.binStart));
+  }
+  return histogram;
 }
 
 /**
- * Computes full empirical MMPDS-01 statistics and A/B-basis allowables for a set of values.
+ * Descriptive sample statistics and conditional normal-model screening limits.
+ * No rows are silently dropped. Normality, independence and representative
+ * lot sampling are not established by this function. Legacy A/B field names
+ * refer only to approximate 99%/95% and 90%/95% lower tolerance limits.
  */
 export function computeMMPDSEmpiricalStats(
-  values: number[],
+  values: (number | null)[],
   specMin: number,
   lotIds: string[] = []
 ): MMPDSEmpiricalAllowableStats {
   const n = values.length;
-  if (n === 0) {
-    return {
-      sampleSize: 0,
-      lotCount: 0,
-      mean: 0,
-      stdDev: 0,
-      variance: 0,
-      covPct: 0,
-      median: 0,
-      min: 0,
-      max: 0,
-      range: 0,
-      skewness: 0,
-      kurtosis: 0,
-      andersonDarlingPVal: 0,
-      isNormalDistribution: true,
-      mmpds_kA: 3.1,
-      mmpds_kB: 1.8,
-      aBasisAllowable: 0,
-      bBasisAllowable: 0,
-      aBasisAllowable95CI: [0, 0],
-      bBasisAllowable95CI: [0, 0],
-      standardError_A: 0,
-      standardError_B: 0,
-      cpk: 0,
-      conformancePct: 100,
-      marginOfSafetyPct: 0,
-      histogram: []
-    };
+  const issues: string[] = [];
+  const result: MMPDSEmpiricalAllowableStats = {
+    sampleSize: n,
+    lotCount: null,
+    status: "insufficient-data",
+    issues,
+    toleranceEligible: false,
+    normality: {
+      status: "not-tested", method: null, pValue: null,
+      reason: "No validated normality test is implemented; normality and independent representative sampling remain assumptions.",
+    },
+    mean: null, stdDev: null, variance: null, covPct: null,
+    median: null, min: null, max: null, range: null,
+    skewness: null, kurtosis: null,
+    andersonDarlingPVal: null, isNormalDistribution: null,
+    mmpds_kA: null, mmpds_kB: null,
+    aBasisAllowable: null, bBasisAllowable: null,
+    aBasisAllowable95CI: null, bBasisAllowable95CI: null,
+    standardError_A: null, standardError_B: null,
+    cpl: null, conformancePct: null, marginOfSafetyPct: null,
+    histogram: [],
+  };
+  if (values.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+    issues.push("Every selected property value must be finite and present; no rows were excluded.");
+    result.status = "invalid-data";
   }
-
-  const sorted = [...values].sort((a, b) => a - b);
-  const sum = values.reduce((acc, v) => acc + v, 0);
-  const mean = sum / n;
-
-  // Sample variance and standard deviation (Bessel corrected n - 1)
-  const ss = values.reduce((acc, v) => acc + (v - mean) ** 2, 0);
-  const variance = n > 1 ? ss / (n - 1) : 0;
-  const stdDev = Math.sqrt(variance);
-  const covPct = mean > 0 ? (stdDev / mean) * 100 : 0;
-
-  const median = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)];
+  if (!Number.isFinite(specMin)) {
+    issues.push("The lower specification limit must be finite.");
+    result.status = "invalid-data";
+  }
+  if (lotIds.length > 0) {
+    if (lotIds.length !== n || lotIds.some(id => typeof id !== "string" || id.trim().length === 0)) {
+      issues.push("Lot IDs must contain one nonempty identifier per selected value.");
+      result.status = "invalid-data";
+    } else {
+      result.lotCount = new Set(lotIds.map(id => id.trim())).size;
+    }
+  } else {
+    issues.push("Lot identifiers were not supplied; lot count and sampling representativeness are unknown.");
+  }
+  if (result.status === "invalid-data") return result;
+  if (n === 0) {
+    issues.push("No observations are available.");
+    return result;
+  }
+  // Validation above guarantees the cast; retain the original row count.
+  const numericValues = values as number[];
+  const sorted = [...numericValues].sort((a, b) => a - b);
   const min = sorted[0];
   const max = sorted[n - 1];
   const range = max - min;
-
-  // Skewness and Kurtosis
-  let m3 = 0;
-  let m4 = 0;
-  for (const v of values) {
-    const diff = v - mean;
-    m3 += diff ** 3;
-    m4 += diff ** 4;
+  // Center before summing to preserve tiny scatter around a large offset.
+  const mean = min + numericValues.reduce((acc, value) => acc + (value - min) / n, 0);
+  const ss = numericValues.reduce((acc, value) => acc + (value - mean) ** 2, 0);
+  const variance = n > 1 ? ss / (n - 1) : null;
+  if (!Number.isFinite(mean) || !Number.isFinite(range) || (variance !== null && !Number.isFinite(variance))) {
+    result.status = "invalid-data";
+    issues.push("The selected numeric range exceeds supported floating-point arithmetic.");
+    return result;
   }
-  const skewness = stdDev > 0 && n > 2 ? (m3 / n) / (stdDev ** 3) : 0;
-  const kurtosis = stdDev > 0 && n > 3 ? (m4 / n) / (stdDev ** 4) - 3 : 0;
-
-  // Normality test heuristic (Anderson-Darling approximation)
-  const adHeuristic = Math.max(0.01, 1 - Math.abs(skewness) * 0.4 - Math.abs(kurtosis) * 0.15);
-  const andersonDarlingPVal = parseFloat(Math.min(0.99, adHeuristic).toFixed(3));
-  const isNormalDistribution = andersonDarlingPVal >= 0.05;
-
-  // MMPDS Tolerance Factors
-  const kA = calculateMMPDSToleranceFactor(n, 0.99, 0.95);
-  const kB = calculateMMPDSToleranceFactor(n, 0.90, 0.95);
-
-  const aBasis = parseFloat((mean - kA * stdDev).toFixed(1));
-  const bBasis = parseFloat((mean - kB * stdDev).toFixed(1));
-
-  // Allowable standard errors per MMPDS section 9.2.2
-  const seA = stdDev * Math.sqrt(1 / n + (kA * kA) / (2 * (n - 1)));
-  const seB = stdDev * Math.sqrt(1 / n + (kB * kB) / (2 * (n - 1)));
-
-  const a95CI: [number, number] = [
-    parseFloat((aBasis - 1.96 * seA).toFixed(1)),
-    parseFloat((aBasis + 1.96 * seA).toFixed(1))
-  ];
-  const b95CI: [number, number] = [
-    parseFloat((bBasis - 1.96 * seB).toFixed(1)),
-    parseFloat((bBasis + 1.96 * seB).toFixed(1))
-  ];
-
-  // Process Capability Index Cpk
-  const cpk = stdDev > 0 ? parseFloat(((mean - specMin) / (3 * stdDev)).toFixed(2)) : 1.0;
-
-  // Spec Conformance
-  const passingCoupons = values.filter((v) => v >= specMin).length;
-  const conformancePct = parseFloat(((passingCoupons / n) * 100).toFixed(1));
-
-  // Margin of Safety on A-Basis Allowable: (A_allowable / specMin) - 1
-  const marginOfSafetyPct = specMin > 0 ? parseFloat((((aBasis - specMin) / specMin) * 100).toFixed(1)) : 0;
-
-  // Generate 12-bin Histogram
-  const numBins = Math.min(14, Math.max(8, Math.round(Math.sqrt(n)) + 2));
-  const binWidth = (max - min) / numBins || 1;
-  const histogram: { binStart: number; binEnd: number; midpoint: number; count: number; density: number }[] = [];
-
-  for (let i = 0; i < numBins; i++) {
-    const bStart = min + i * binWidth;
-    const bEnd = i === numBins - 1 ? max + 0.001 : bStart + binWidth;
-    const count = values.filter((v) => v >= bStart && v < bEnd).length;
-    histogram.push({
-      binStart: parseFloat(bStart.toFixed(1)),
-      binEnd: parseFloat(bEnd.toFixed(1)),
-      midpoint: parseFloat(((bStart + bEnd) / 2).toFixed(1)),
-      count,
-      density: parseFloat((count / (n * binWidth)).toFixed(5))
-    });
+  const stdDev = variance === null ? null : Math.sqrt(variance);
+  Object.assign(result, {
+    mean, min, max, range, variance, stdDev,
+    median: n % 2 === 0 ? sorted[n / 2 - 1] + (sorted[n / 2] - sorted[n / 2 - 1]) / 2 : sorted[Math.floor(n / 2)],
+    covPct: stdDev !== null && mean !== 0 ? finiteOrNull(stdDev / Math.abs(mean) * 100) : null,
+    conformancePct: numericValues.filter(value => value >= specMin).length / n * 100,
+    histogram: empiricalHistogram(numericValues, min, max),
+  });
+  if (stdDev !== null && stdDev > 0) {
+    const z = numericValues.map(value => (value - mean) / stdDev);
+    // Adjusted Fisher-Pearson skewness and bias-corrected excess kurtosis.
+    result.skewness = n >= 3 ? finiteOrNull(n / ((n - 1) * (n - 2)) * z.reduce((sum, value) => sum + value ** 3, 0)) : null;
+    result.kurtosis = n >= 4 ? finiteOrNull(n * (n + 1) / ((n - 1) * (n - 2) * (n - 3))
+      * z.reduce((sum, value) => sum + value ** 4, 0) - 3 * (n - 1) ** 2 / ((n - 2) * (n - 3))) : null;
+    result.cpl = finiteOrNull((mean - specMin) / (3 * stdDev));
   }
-
-  const uniqueLots = new Set(lotIds.filter(Boolean));
-
-  return {
-    sampleSize: n,
-    lotCount: uniqueLots.size || 1,
-    mean: parseFloat(mean.toFixed(1)),
-    stdDev: parseFloat(stdDev.toFixed(1)),
-    variance: parseFloat(variance.toFixed(1)),
-    covPct: parseFloat(covPct.toFixed(2)),
-    median: parseFloat(median.toFixed(1)),
-    min: parseFloat(min.toFixed(1)),
-    max: parseFloat(max.toFixed(1)),
-    range: parseFloat(range.toFixed(1)),
-    skewness: parseFloat(skewness.toFixed(3)),
-    kurtosis: parseFloat(kurtosis.toFixed(3)),
-    andersonDarlingPVal,
-    isNormalDistribution,
-    mmpds_kA: kA,
-    mmpds_kB: kB,
-    aBasisAllowable: aBasis,
-    bBasisAllowable: bBasis,
-    aBasisAllowable95CI: a95CI,
-    bBasisAllowable95CI: b95CI,
-    standardError_A: parseFloat(seA.toFixed(2)),
-    standardError_B: parseFloat(seB.toFixed(2)),
-    cpk,
-    conformancePct,
-    marginOfSafetyPct,
-    histogram
-  };
+  if (n < 3) issues.push("At least three observations are needed for the approximate tolerance calculation.");
+  if (stdDev === 0) issues.push("Zero sample variance cannot establish a tolerance limit or capability index.");
+  if (n >= 3 && stdDev !== null && stdDev > 0) {
+    const kA = calculateMMPDSToleranceFactor(n, 0.99, 0.95);
+    const kB = calculateMMPDSToleranceFactor(n, 0.90, 0.95);
+    const aBasis = kA === null ? null : finiteOrNull(mean - kA * stdDev);
+    const bBasis = kB === null ? null : finiteOrNull(mean - kB * stdDev);
+    if (aBasis !== null && bBasis !== null) {
+      Object.assign(result, {
+        status: "ready", toleranceEligible: true,
+        mmpds_kA: kA, mmpds_kB: kB,
+        aBasisAllowable: aBasis, bBasisAllowable: bBasis,
+        marginOfSafetyPct: specMin > 0 ? finiteOrNull((aBasis - specMin) / specMin * 100) : null,
+      });
+      if (n <= 10) issues.push("For n <= 10, this approximation can differ materially from the exact noncentral-t method.");
+    } else {
+      issues.push("The approximate tolerance calculation is outside its supported numeric range.");
+    }
+  }
+  return result;
 }
-
 /**
  * Synthetic Coupon Batch Generator using Box-Muller transformation
  * with realistic lot-to-lot thermal variance and within-lot test variance.
@@ -324,7 +319,8 @@ export function generateSyntheticCoupons(params: {
       reductionOfAreaPct: raVal,
       hardnessHRC: Math.round(30 + (yieldVal / 50)),
       testStandard: params.testStandard || "ASTM E8M",
-      orientation: i % 2 === 0 ? "LT" : "L"
+      orientation: i % 2 === 0 ? "LT" : "L",
+      evidenceOrigin: "synthetic"
     });
   }
 
@@ -332,7 +328,7 @@ export function generateSyntheticCoupons(params: {
 }
 
 export function isSyntheticCouponDataset(dataset: MaterialDataset): boolean {
-  return dataset.couponSource !== "uploaded";
+  return dataset.couponSource !== "uploaded" || dataset.coupons.some(c => c.evidenceOrigin === "synthetic");
 }
 
 // --------------------------------------------------------------------------
@@ -570,86 +566,4 @@ export const AEROSPACE_MATERIAL_DATASETS: MaterialDataset[] = [
   }
 ];
 
-/**
- * Parses user-uploaded CSV text into CouponTestSpecimen rows.
- */
-export function parseCSVToCoupons(csvText: string, datasetId: string): CouponTestSpecimen[] {
-  const lines = csvText.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-
-  const header = lines[0].toLowerCase().split(",").map((h) => h.trim().replace(/["']/g, ""));
-  
-  // Find column indexes
-  const yieldIdx = header.findIndex((h) => h.includes("yield") || h.includes("r_p") || h.includes("fty") || h.includes("ys"));
-  const utsIdx = header.findIndex((h) => h.includes("uts") || h.includes("tensile") || h.includes("f_tu") || h.includes("rm"));
-  const elongIdx = header.findIndex((h) => h.includes("elong") || h.includes("pct") || h.includes("strain"));
-  const lotIdx = header.findIndex((h) => h.includes("lot") || h.includes("heat") || h.includes("batch"));
-  const tempIdx = header.findIndex((h) => h.includes("temp") || h.includes("deg"));
-
-  const coupons: CouponTestSpecimen[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const rawCols = lines[i].split(",").map((c) => c.trim().replace(/["']/g, ""));
-    if (rawCols.length < 2 || !rawCols[0]) continue;
-
-    const yVal = yieldIdx >= 0 ? parseFloat(rawCols[yieldIdx]) : parseFloat(rawCols[1]);
-    const uVal = utsIdx >= 0 ? parseFloat(rawCols[utsIdx]) : parseFloat(rawCols[2]);
-    const eVal = elongIdx >= 0 ? parseFloat(rawCols[elongIdx]) : parseFloat(rawCols[3]);
-    const lotVal = lotIdx >= 0 && rawCols[lotIdx] ? rawCols[lotIdx] : `LOT-${Math.floor((i - 1) / 8) + 1}`;
-    const tVal = tempIdx >= 0 && !isNaN(parseFloat(rawCols[tempIdx])) ? parseFloat(rawCols[tempIdx]) : 23;
-
-    if (!isNaN(yVal)) {
-      coupons.push({
-        id: `${datasetId}-CSV-${String(i).padStart(3, "0")}`,
-        specimenNumber: rawCols[0] || `SPEC-${String(i).padStart(3, "0")}`,
-        heatLotId: lotVal,
-        testTempC: tVal,
-        yieldStrengthMPa: yVal,
-        utsMPa: !isNaN(uVal) ? uVal : yVal + 100,
-        elongationPct: !isNaN(eVal) ? eVal : 12,
-        reductionOfAreaPct: 25,
-        testStandard: "User Uploaded CSV"
-      });
-    }
-  }
-
-  return coupons;
-}
-
-/**
- * Converts coupon test specimens to downloadable CSV string.
- */
-export function exportCouponsToCSV(coupons: CouponTestSpecimen[], datasetName: string): string {
-  const headers = [
-    "Specimen_ID",
-    "Heat_Lot_ID",
-    "Yield_Strength_MPa",
-    "UTS_MPa",
-    "Elongation_pct",
-    "Reduction_of_Area_pct",
-    "Hardness_HRC",
-    "Test_Temp_C",
-    "Orientation",
-    "Standard"
-  ];
-
-  const rows = coupons.map((c) => [
-    c.specimenNumber,
-    c.heatLotId,
-    c.yieldStrengthMPa,
-    c.utsMPa,
-    c.elongationPct,
-    c.reductionOfAreaPct,
-    c.hardnessHRC ?? "",
-    c.testTempC,
-    c.orientation ?? "L",
-    c.testStandard
-  ]);
-
-  return [
-    `# MetalliX UQ-Lab MMPDS-01 Material Dataset: ${datasetName}`,
-    `# Exported: ${new Date().toISOString()}`,
-    headers.join(","),
-    ...rows.map((r) => r.join(","))
-  ].join("\n");
-}
+export { parseCSVToCoupons, exportCouponsToCSV } from "../utils/uqCouponCsv";

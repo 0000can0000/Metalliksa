@@ -4,8 +4,8 @@ MetalliX Stochastic Uncertainty Quantification (UQ) & Aerospace MMPDS Allowables
 Author: MetalliX Computational Materials Science HPC Engine
 
 Performs high-dimensional forward Monte Carlo uncertainty propagation,
-variance-based Sobol global sensitivity decomposition, and MMPDS-01 A/B-Basis
-design allowables qualification for advanced aerospace alloys.
+variance-based sensitivity estimates, and approximate A/B-style statistical
+screening bounds. Simulated populations are not qualification evidence.
 """
 
 import sys
@@ -41,13 +41,13 @@ def norm_ppf(p: float) -> float:
 
 def compute_mmpds_k_factors(n: int):
     """
-    Computes Owen/Lieberman-Resnikoff one-sided tolerance limit factors for
-    MMPDS-01 (MIL-HDBK-5) A-Basis (99% survival @ 95% conf) and B-Basis (90% survival @ 95% conf).
+    Approximate one-sided normal tolerance factors targeting population fractions
+    0.99 and 0.90 at nominal confidence 0.95. This is not MMPDS qualification.
     """
     if n < 3:
         return 10.0, 8.0
     
-    # Accurate approximation for one-sided tolerance factors
+    # Approximate one-sided normal tolerance factors
     # k = (z_p + sqrt(z_p^2 - a*b)) / a where a = 1 - z_gamma^2/(2*(n-1)), b = z_p^2 - z_gamma^2/n
     z_gamma = 1.6448536  # 95% confidence
     
@@ -74,8 +74,8 @@ def compute_mmpds_k_factors(n: int):
 class SobolSequenceGenerator:
     """
     Antonov-Saleev Gray code Quasi-Monte Carlo Sobol Sequence Generator (up to 32 dimensions).
-    Implements Joe & Kuo / Bratley & Fox direction numbers with Owen digital shift scrambling
-    (Randomized Quasi-Monte Carlo / RQMC) for optimal boundary-filling low-discrepancy sampling.
+    Uses a local direction-number table and optional random digital shift.
+    This implementation skips the origin; balanced-net guarantees are not claimed.
     """
     POLY = [
         (1, 0, [1]),                       # dim 1
@@ -113,7 +113,9 @@ class SobolSequenceGenerator:
     ]
 
     def __init__(self, dimension: int, scramble: bool = True, seed: int = 42):
-        self.d = max(1, dimension)
+        if not 1 <= dimension <= len(self.POLY):
+            raise ValueError("Sobol sampling supports 1 to 32 dimensions; use pseudo_mc for more inputs")
+        self.d = dimension
         self.scramble = scramble
         self.seed = seed
         self.L = 32
@@ -124,7 +126,7 @@ class SobolSequenceGenerator:
     def _init_direction_numbers(self):
         self.V = []
         for d in range(self.d):
-            s, a, init_m = self.POLY[d % len(self.POLY)]
+            s, a, init_m = self.POLY[d]
             m = [0] * (self.L + 1)
             for i in range(1, s + 1):
                 m[i] = init_m[i - 1] if (i - 1) < len(init_m) else 1
@@ -417,22 +419,13 @@ def solve_stochastic_uq(params: dict) -> dict:
         pseudo_benchmark = [[prng.random() for _ in range(total_dims)] for _ in range(min(150, N_samples))]
         pseudo_cd2 = compute_centered_l2_discrepancy(pseudo_benchmark, max_eval=min(150, N_samples))
 
-        # QMC acceleration factor: Sobol rate O(N^-1) vs pseudo MC rate O(N^-0.5)
-        # Ratio of error bounds sqrt(N) / (log2(N) + 1)
-        qmc_speedup = min(8.5, max(2.5, 1.25 * math.sqrt(N_samples) / (math.log2(max(8, N_samples)) + 1.0)))
-        vrr = round(min(10.0, max(2.0, (pseudo_cd2 / max(1e-5, sobol_cd2)) ** 1.5)), 2)
-        effective_N = int(round(N_samples * qmc_speedup))
-        discrepancy_reduction_pct = max(0.0, round(((pseudo_cd2 - sobol_cd2) / max(1e-5, pseudo_cd2)) * 100.0, 1))
+        discrepancy_reduction_pct = round(((pseudo_cd2 - sobol_cd2) / pseudo_cd2) * 100.0, 1) if pseudo_cd2 > 0 else None
     else:
-        # Pseudo-Random Monte Carlo baseline
         sampling_method = "pseudo_mc"
         prng = random.Random(seed)
         qmc_points = [[prng.random() for _ in range(total_dims)] for _ in range(N_samples)]
         pseudo_cd2 = compute_centered_l2_discrepancy(qmc_points, max_eval=min(150, N_samples))
         sobol_cd2 = pseudo_cd2
-        qmc_speedup = 1.0
-        vrr = 1.0
-        effective_N = N_samples
         discrepancy_reduction_pct = 0.0
 
     yield_list = []
@@ -442,13 +435,10 @@ def solve_stochastic_uq(params: dict) -> dict:
     flaw_ac_list = []
     margin_yield_list = []
 
-    # Track realizations for sensitivity correlation
-    sensitivity_samples = []
-
     for i in range(N_samples):
         pt = qmc_points[i]
 
-        # 1. Sample Composition with Truncated Normal via inverse CDF
+        # 1. Sample normal composition and floor at zero (not a truncated-normal CDF)
         comp_sample = {}
         for idx_e, el in enumerate(elements):
             nom = nominal_comp[el]
@@ -498,27 +488,12 @@ def solve_stochastic_uq(params: dict) -> dict:
         flaw_ac_list.append(res["critical_flaw_ac_mm"])
         margin_yield_list.append(res["margin_yield_MPa"])
 
-        if i < 1500:
-            sensitivity_samples.append({
-                "Nb": comp_sample.get("Nb", 0.0),
-                "Ti": comp_sample.get("Ti", 0.0),
-                "Al": comp_sample.get("Al", 0.0),
-                "Cr": comp_sample.get("Cr", 0.0),
-                "CoolingRate": cooling_rate_i,
-                "AgingTemp": aging_temp_i,
-                "AgingTime": aging_time_i,
-                "Yield": res["yield_MPa"],
-                "UTS": res["uts_MPa"],
-                "K1c": res["k1c_MPa_m"],
-                "FlawAc": res["critical_flaw_ac_mm"]
-            })
-
-    # Statistical Helper with QMC Effective Sample Size & Confidence Intervals
+    # Descriptive model statistics; uncertainty of a single QMC run is not estimated.
     def calc_stats(arr: list, spec_min: float = None):
         sorted_arr = sorted(arr)
         n = len(sorted_arr)
         mean_val = sum(sorted_arr) / n
-        var_val = sum((x - mean_val)**2 for x in sorted_arr) / (n - 1)
+        var_val = sum((x - mean_val)**2 for x in sorted_arr) / (n - 1) if sorted_arr[0] != sorted_arr[-1] else 0.0
         std_val = math.sqrt(var_val)
         cov_pct = (std_val / mean_val * 100.0) if mean_val != 0 else 0.0
 
@@ -542,27 +517,25 @@ def solve_stochastic_uq(params: dict) -> dict:
         p975 = get_pct(0.975)
         p99 = get_pct(0.99)
 
-        # MMPDS A & B Basis with Owen/Lieberman-Resnikoff factors
+        # Approximate normal A/B-style screening bounds; no experimental qualification
         k_a, k_b = compute_mmpds_k_factors(n)
         a_basis = max(0.0, mean_val - k_a * std_val)
         b_basis = max(0.0, mean_val - k_b * std_val)
 
-        # QMC-accelerated Allowable Standard Error & 95% Confidence Bounds
-        # SE_allowable = s * sqrt(1/N_eff + k^2 / (2*(N_eff - 1)))
-        n_eff = max(n, effective_N)
-        se_a = std_val * math.sqrt(1.0 / n_eff + (k_a ** 2) / max(1.0, 2.0 * (n_eff - 1.0)))
-        se_b = std_val * math.sqrt(1.0 / n_eff + (k_b ** 2) / max(1.0, 2.0 * (n_eff - 1.0)))
-
-        a_ci_lower = max(0.0, a_basis - 1.96 * se_a)
-        a_ci_upper = a_basis + 1.96 * se_a
-        b_ci_lower = max(0.0, b_basis - 1.96 * se_b)
-        b_ci_upper = b_basis + 1.96 * se_b
+        # The iid normal approximation is not a QMC error estimator.
+        se_a = se_b = None
+        a_ci = b_ci = None
+        if sampling_method == "pseudo_mc":
+            se_a = std_val * math.sqrt(1.0 / n + (k_a ** 2) / (2.0 * (n - 1.0)))
+            se_b = std_val * math.sqrt(1.0 / n + (k_b ** 2) / (2.0 * (n - 1.0)))
+            a_ci = [round(max(0.0, a_basis - 1.96 * se_a), 1), round(a_basis + 1.96 * se_a, 1)]
+            b_ci = [round(max(0.0, b_basis - 1.96 * se_b), 1), round(b_basis + 1.96 * se_b, 1)]
 
         # Process capability Cpk against specification minimum
         cpk = None
         conformance_pct = 100.0
         if spec_min is not None:
-            cpk = round((mean_val - spec_min) / (3.0 * std_val), 2)
+            cpk = round((mean_val - spec_min) / (3.0 * std_val), 2) if std_val > 0 else None
             conformance_count = sum(1 for x in sorted_arr if x >= spec_min)
             conformance_pct = round((conformance_count / n) * 100.0, 2)
 
@@ -578,7 +551,7 @@ def solve_stochastic_uq(params: dict) -> dict:
             count = sum(1 for x in sorted_arr if b_start <= x < b_end or (b == 24 and x == max_v))
             freq = count / (n * bin_width) if bin_width > 0 else 0.0
             # Fitted normal probability density
-            fitted_pdf = (1.0 / (std_val * math.sqrt(2 * math.pi))) * math.exp(-0.5 * ((b_center - mean_val) / std_val)**2)
+            fitted_pdf = (1.0 / (std_val * math.sqrt(2 * math.pi))) * math.exp(-0.5 * ((b_center - mean_val) / std_val)**2) if std_val > 0 else 0.0
             histogram.append({
                 "binCenter": round(b_center, 1),
                 "binStart": round(b_start, 1),
@@ -608,10 +581,11 @@ def solve_stochastic_uq(params: dict) -> dict:
             "mmpds_kB": k_b,
             "aBasisAllowable": round(a_basis, 1),
             "bBasisAllowable": round(b_basis, 1),
-            "aBasisConfidenceInterval95": [round(a_ci_lower, 1), round(a_ci_upper, 1)],
-            "bBasisConfidenceInterval95": [round(b_ci_lower, 1), round(b_ci_upper, 1)],
-            "allowableStandardError_A": round(se_a, 2),
-            "allowableStandardError_B": round(se_b, 2),
+            "aBasisConfidenceInterval95": a_ci,
+            "bBasisConfidenceInterval95": b_ci,
+            "allowableStandardError_A": round(se_a, 2) if se_a is not None else None,
+            "allowableStandardError_B": round(se_b, 2) if se_b is not None else None,
+            "allowableUncertaintyMethod": "iid-normal delta approximation; simulated population only" if sampling_method == "pseudo_mc" else "unavailable: independent randomized QMC replicates required",
             "cpk": cpk,
             "conformancePct": conformance_pct,
             "histogram": histogram
@@ -628,110 +602,67 @@ def solve_stochastic_uq(params: dict) -> dict:
     pf_yield = failures_yield / N_samples
     beta_reliability_yield = norm_ppf(1.0 - max(1e-6, min(1.0 - 1e-6, pf_yield)))
 
-    # -------------------------------------------------------------
-    # 5. Saltelli-Sobol Variance-Based Global Sensitivity Analysis
-    # Computes First-Order (S_i), Total-Order (S_Ti), and Interaction indices
-    # -------------------------------------------------------------
+    # Sensitivity uses the same supplied chemistry and process distributions.
+    # Service stress and flaw size do not enter the model yield-strength output.
     sensitivity_factors = [
-        {"param": "Nb (Solute & PPT)", "key": "Nb", "desc": "Niobium content tolerance"},
-        {"param": "Ti (Solute & PPT)", "key": "Ti", "desc": "Titanium content tolerance"},
-        {"param": "Al (Solute & Modulus)", "key": "Al", "desc": "Aluminum content tolerance"},
-        {"param": "Cr (Solid Solution)", "key": "Cr", "desc": "Chromium matrix partition"},
-        {"param": "dT/dt (Cooling Rate)", "key": "CoolingRate", "desc": "Melt pool thermal gradient"},
-        {"param": "T_age (Aging Temp)", "key": "AgingTemp", "desc": "Furnace temperature uniformity"},
-        {"param": "t_age (Aging Time)", "key": "AgingTime", "desc": "Hold duration tolerance"}
+        {"param": el + " (Composition)", "key": el, "desc": "Supplied composition tolerance"}
+        for el in elements
+    ] + [
+        {"param": "dT/dt (Cooling Rate)", "key": "CoolingRate", "desc": "Assumed cooling-rate distribution"},
+        {"param": "T_age (Aging Temp)", "key": "AgingTemp", "desc": "Assumed furnace temperature scatter"},
+        {"param": "t_age (Aging Time)", "key": "AgingTime", "desc": "Assumed hold duration scatter"}
     ]
-
-    # Conduct Saltelli matrix evaluation using Sobol low-discrepancy sampling (M = 300 evaluations)
     M_saltelli = min(350, max(150, N_samples // 6))
     k_factors = len(sensitivity_factors)
-    # Generate 2*k_factors dimensional Sobol points for matrices A and B
-    saltelli_gen = SobolSequenceGenerator(dimension=2 * k_factors, scramble=True, seed=seed + 101)
-    saltelli_pts = saltelli_gen.generate(M_saltelli)
+    sensitivity_rng = random.Random(seed + 101)
+    saltelli_pts = [[sensitivity_rng.random() for _ in range(2 * k_factors)] for _ in range(M_saltelli)]
 
     def eval_factor_vector(vec):
-        # Maps unit cube vector [0..1] of length k_factors to physical physics realization
-        c_draw = dict(nominal_comp)
-        c_draw["Nb"] = max(0.0, nominal_comp.get("Nb", 5.0) + norm_ppf(vec[0]) * (comp_tolerances.get("Nb", 0.35) / 3.0))
-        c_draw["Ti"] = max(0.0, nominal_comp.get("Ti", 1.0) + norm_ppf(vec[1]) * (comp_tolerances.get("Ti", 0.15) / 3.0))
-        c_draw["Al"] = max(0.0, nominal_comp.get("Al", 0.5) + norm_ppf(vec[2]) * (comp_tolerances.get("Al", 0.1) / 3.0))
-        c_draw["Cr"] = max(0.0, nominal_comp.get("Cr", 19.0) + norm_ppf(vec[3]) * (comp_tolerances.get("Cr", 1.0) / 3.0))
-        cr_draw = math.exp(mu_log_cr + sigma_log_cr * norm_ppf(vec[4]))
-        t_age_draw = max(200.0, aging_temp_nominal + norm_ppf(vec[5]) * aging_temp_std)
-        time_age_draw = max(0.2, aging_time_nominal + norm_ppf(vec[6]) * aging_time_std)
+        c_draw = {
+            el: max(0.0, nominal_comp[el] + norm_ppf(vec[idx]) * (comp_tolerances.get(el, nominal_comp[el] * 0.1) / 3.0))
+            for idx, el in enumerate(elements)
+        }
+        cr_draw = math.exp(mu_log_cr + sigma_log_cr * norm_ppf(vec[E_dim]))
+        t_age_draw = max(200.0, aging_temp_nominal + norm_ppf(vec[E_dim + 1]) * aging_temp_std)
+        time_age_draw = max(0.2, aging_time_nominal + norm_ppf(vec[E_dim + 2]) * aging_time_std)
+        return solve_single_realization(
+            base_metal, c_draw, cr_draw, t_age_draw, time_age_draw,
+            service_stress_nominal, flaw_size_mean_um
+        )["yield_MPa"]
 
-        phys = solve_single_realization(
-            base_metal=base_metal,
-            comp=c_draw,
-            cooling_rate=cr_draw,
-            aging_temp_C=t_age_draw,
-            aging_time_h=time_age_draw,
-            service_stress_MPa=service_stress_nominal,
-            flaw_size_um=flaw_size_mean_um
-        )
-        return phys["yield_MPa"]
-
-    # Evaluate A and B matrices
-    y_A = [eval_factor_vector(saltelli_pts[j][:k_factors]) for j in range(M_saltelli)]
-    y_B = [eval_factor_vector(saltelli_pts[j][k_factors:]) for j in range(M_saltelli)]
+    y_A = [eval_factor_vector(row[:k_factors]) for row in saltelli_pts]
+    y_B = [eval_factor_vector(row[k_factors:]) for row in saltelli_pts]
     combined_y = y_A + y_B
     mean_comb = sum(combined_y) / len(combined_y)
-    total_var = sum((v - mean_comb)**2 for v in combined_y) / (len(combined_y) - 1)
-    total_var = max(1e-5, total_var)
-
-    sobol_indices = []
-    sum_first_order = 0.0
-
+    total_var = sum((v - mean_comb)**2 for v in combined_y) / len(combined_y)
+    variance_available = max(combined_y) - min(combined_y) > 1e-12 * max(1.0, abs(mean_comb))
+    sensitivity_indices = []
     for idx, item in enumerate(sensitivity_factors):
-        # Construct A_B^(idx): matrix A with column idx substituted from B
         y_AB = []
-        for j in range(M_saltelli):
-            vec_AB = list(saltelli_pts[j][:k_factors])
-            vec_AB[idx] = saltelli_pts[j][k_factors + idx]
+        for row in saltelli_pts:
+            vec_AB = list(row[:k_factors])
+            vec_AB[idx] = row[k_factors + idx]
             y_AB.append(eval_factor_vector(vec_AB))
-
-        # Saltelli (2002) / Jansen (1999) estimator formulas
-        # S_i = (1/M * sum(y_B * (y_AB - y_A))) / Var(y)
-        # S_Ti = (1/(2M) * sum((y_A - y_AB)^2)) / Var(y)
-        num_si = sum(y_B[j] * (y_AB[j] - y_A[j]) for j in range(M_saltelli)) / M_saltelli
-        s_first = max(0.0, min(1.0, num_si / total_var))
-
-        num_sti = sum((y_A[j] - y_AB[j])**2 for j in range(M_saltelli)) / (2.0 * M_saltelli)
-        s_total = max(s_first, min(1.0, num_sti / total_var))
-        interaction = max(0.0, round(s_total - s_first, 3))
-
-        sobol_indices.append({
+        # Centered Saltelli first-order and Jansen total-order estimators.
+        # Raw finite-sample estimates may be negative or exceed one.
+        s_first = sum((y_B[j] - mean_comb) * (y_AB[j] - y_A[j]) for j in range(M_saltelli)) / (M_saltelli * total_var) if variance_available else None
+        s_total = sum((y_A[j] - y_AB[j])**2 for j in range(M_saltelli)) / (2.0 * M_saltelli * total_var) if variance_available else None
+        sensitivity_indices.append({
             "parameter": item["param"],
             "description": item["desc"],
-            "rawVariance": s_first,
-            "sobolFirstOrder": round(s_first, 3),
-            "sobolTotalOrder": round(s_total, 3),
-            "interactionIndex": interaction
+            "sobolFirstOrderIndex": round(s_first, 3) if s_first is not None else None,
+            "sobolTotalOrderIndex": round(s_total, 3) if s_total is not None else None,
+            "interactionIndex": round(s_total - s_first, 3) if s_first is not None else None,
+            "varianceContributionPct": round(s_first * 100.0, 1) if s_first is not None else None
         })
-        sum_first_order += s_first
-
-    # Normalize contributions to 100%
-    normalized_sobol = []
-    for s in sobol_indices:
-        norm_pct = round((s["rawVariance"] / max(1e-6, sum_first_order)) * 100.0, 1) if sum_first_order > 0 else 14.3
-        normalized_sobol.append({
-            "parameter": s["parameter"],
-            "description": s["description"],
-            "sobolFirstOrderIndex": s["sobolFirstOrder"],
-            "sobolTotalOrderIndex": s["sobolTotalOrder"],
-            "interactionIndex": s["interactionIndex"],
-            "varianceContributionPct": norm_pct
-        })
-    normalized_sobol.sort(key=lambda x: x["varianceContributionPct"], reverse=True)
+    sensitivity_indices.sort(key=lambda row: row["varianceContributionPct"] if row["varianceContributionPct"] is not None else -math.inf, reverse=True)
 
     # Conformance & Risk Decision
     a_basis_pass = yield_stats["aBasisAllowable"] >= spec_min_yield
     b_basis_pass = yield_stats["bBasisAllowable"] >= spec_min_yield
     cpk_pass = yield_stats["cpk"] is not None and yield_stats["cpk"] >= 1.33
 
-    qualification_status = "A-Basis Certified (Aero Flight Critical)" if a_basis_pass and cpk_pass else \
-                           "B-Basis Certified (Primary Structure)" if b_basis_pass else \
-                           "Conditional / Non-Conforming Scatter"
+    qualification_status = "Screening only; qualification not assessed"
 
     compute_time_ms = round((time.time() - t0) * 1000.0, 1)
 
@@ -742,16 +673,19 @@ def solve_stochastic_uq(params: dict) -> dict:
         "sampleSizeN": N_samples,
         "samplingMetadata": {
             "samplingMethod": sampling_method,
-            "scrambled": scramble,
+            "scrambled": scramble if sampling_method == "sobol_qmc" else False,
             "sobolDimensions": total_dims,
-            "qmcAccelerationFactor": round(qmc_speedup, 2),
-            "effectiveSampleSize": effective_N,
+            "qmcAccelerationFactor": None,
+            "effectiveSampleSize": None,
             "centeredL2Discrepancy": round(sobol_cd2, 6),
             "pseudoDiscrepancyBenchmark": round(pseudo_cd2, 6),
             "discrepancyReductionPct": discrepancy_reduction_pct,
-            "varianceReductionRatio": vrr,
-            "theoreticalConvergenceRate": "O(N^-1 (log N)^d) [QMC Sobol]" if sampling_method == "sobol_qmc" else "O(N^-0.5) [Standard MC]",
-            "samplingDescription": "Low-discrepancy Sobol sequence with Owen digital shift scrambling accelerating A/B-basis allowables convergence." if sampling_method == "sobol_qmc" else "Standard pseudo-random Monte Carlo sampling baseline."
+            "varianceReductionRatio": None,
+            "theoreticalConvergenceRate": "Not estimated for this run",
+            "samplingDescription": "Local Sobol sequence with optional random digital shift." if sampling_method == "sobol_qmc" else "Seeded pseudo-random Monte Carlo sampling.",
+            "discrepancySampleSize": min(150, N_samples),
+            "diagnosticsLimitations": "Centered L2 discrepancy compares the first 150 points with one seeded pseudo-random set; it is not an estimator error, variance reduction, effective sample size or measured speedup. The local Sobol implementation skips the origin and allows arbitrary sample counts; balanced-net guarantees are not claimed."
+
         },
         "alloyMetadata": {
             "alloyName": alloy_name,
@@ -779,7 +713,17 @@ def solve_stochastic_uq(params: dict) -> dict:
             "fractureToughness_K1c": k1c_stats,
             "criticalFlawSize_ac": flaw_ac_stats
         },
-        "sobolSensitivityAnalysis": normalized_sobol,
+        "sobolSensitivityAnalysis": sensitivity_indices,
+        "sensitivityMetadata": {
+            "method": "Centered Saltelli first-order / Jansen total-order; seeded pseudo-MC pick-freeze",
+            "output": "yieldStrength_Rp02",
+            "baseSampleSize": M_saltelli,
+            "evaluationCount": M_saltelli * (k_factors + 2),
+            "independentInputs": True,
+            "indicesNormalized": False,
+            "status": "estimated" if variance_available else "unavailable_zero_variance",
+            "limitations": "Finite-sample model estimates without confidence intervals. Values are not clipped or normalized and may fall outside [0, 1]. All supplied composition factors and cooling/aging distributions are included; service stress and flaw size do not enter yield strength."
+        },
         "aerospaceReliability": {
             "qualificationStatus": qualification_status,
             "yieldFailureProbability_Pf": pf_yield,

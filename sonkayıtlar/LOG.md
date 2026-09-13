@@ -1,3 +1,11 @@
+## 2026-09-13 20:36 — Resume through UQ evidence corrections
+
+- **Agent:** GPT-6 Astra (Codex). **Result:** PASS for implementation and validation.
+- **Task:** resumed previous work toward the user's40% remaining-quota threshold; corrected fabricated UQ diagnostics, empirical normality/capability reporting, CSV input provenance, property-specific worksheets and stale asynchronous responses.
+- **Files:** Python stochastic solver and evidence regression; UQLab, StochasticUQMMPDSStudio, uqLabData, UqCouponReport; Python service types; uqCouponCsv/uqRunSession utilities; three UQ test files; docs/UQ_EVIDENCE.md; PROOF.md and this log.
+- **Tests:**79/79 unit tests;8/8 Python evidence tests; TypeScript lint; production build; diff whitespace; production CSV success/rejection preservation, correct property means, actual-alloy sensitivity and final-build labels. Detailed assumptions and one recovered stale-build asset error are recorded in PROOF.md.
+- **Done:** software results now distinguish missing evidence, synthetic/user-supplied records and unestimated uncertainty. Existing physical model response was not refitted. Final task-only commit and normal push to the previously user-approved origin/main are the publication step; final response reports the outcome/hash.
+- **Where we left off:** this bounded UQ correction set is finished. Exact/tail-calibrated allowables, normality tests, replicated QMC error estimates and experimental validation remain future work, not claimed capabilities. Pre-existing bytecode and .cursor/mcp.json remain excluded. Previous7173323 publication succeeded after the user's explicit destination approval, superseding the old blocked-push entry below.
 ## 2026-09-13 20:12 — Local commit complete; GitHub push blocked
 
 - **Agent:** GPT-6 Astra (Codex). **Result:** PARTIAL for publication; verified implementation is committed locally.

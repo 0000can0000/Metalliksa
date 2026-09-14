@@ -167,6 +167,42 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   const invalidControls=invalidOptics||controls.some(([key,,min,max])=>typeof settings[key]!=="number"||!Number.isFinite(settings[key])||Number(settings[key])<min||Number(settings[key])>max||((key==="tracks"||key==="layers")&&!Number.isInteger(settings[key])));
   const invalidProcess=([[input.power_W,10,1500],[input.speed_mm_s,10,10000],[input.beamDiameter_um,20,500],[input.hatch_um,10,1000],[input.layer_um,10,150],[input.preheat_C,0,1200]]).some(([v,min,max])=>!Number.isFinite(v)||v<min||v>max);
   const r = job?.status === "completed" ? job.result : undefined;
+  const resolvedStrategy = settings.strategy ?? (sharedStrategy==="meander-67"?"meander":sharedStrategy);
+  const parsedMeasurements = parseMeasurementPayload(measurements, input, resolvedStrategy);
+  const isManualCalibrationProvided = width.trim() || depth.trim() || source.trim();
+  const hasManualCalibration = Boolean(width && depth && source.trim());
+  const manualCalibrationValuesPositive = hasManualCalibration && Number(width) > 0 && Number(depth) > 0;
+  const calibrationReadinessLabel = (() => {
+    if (mode !== "calibration") return "Calibration mode is not selected.";
+    if (parsedMeasurements.status === "invalid") return `Invalid replicate JSON: ${parsedMeasurements.errors.join(" ")}`;
+    if (parsedMeasurements.status === "valid") {
+      const mismatchText = parsedMeasurements.mismatchedCount
+        ? `${parsedMeasurements.mismatchedCount} replicates with processVector mismatch, `
+        : "";
+      const missingText = parsedMeasurements.missingProcessVectorCount
+        ? `${parsedMeasurements.missingProcessVectorCount} replicates with missing processVector, `
+        : "";
+      const suffix = `${parsedMeasurements.count} replicate${parsedMeasurements.count === 1 ? "" : "s"} supplied`;
+      if (parsedMeasurements.mismatchedCount > 0 || parsedMeasurements.missingProcessVectorCount > 0) {
+        return `${suffix}; ${mismatchText}${missingText}will be reported with reduced calibration confidence.`;
+      }
+      return `${suffix}; process vectors are matched and ready for calibration comparison.`;
+    }
+    if (isManualCalibrationProvided) {
+      return manualCalibrationValuesPositive ? "Manual width/depth/source is provided and usable." : "Calibration mode needs valid positive width/depth and source.";
+    }
+    return "Calibration mode needs valid JSON replicates or manual width/depth/source.";
+  })();
+  const calibrationReadinessStatus: ReadinessStatus = (() => {
+    if (mode !== "calibration") return "pass";
+    if (parsedMeasurements.status === "invalid") return "fail";
+    if (isManualCalibrationProvided && parsedMeasurements.status === "empty") return manualCalibrationValuesPositive ? "pass" : "warn";
+    if (parsedMeasurements.status === "valid") {
+      if (parsedMeasurements.mismatchedCount > 0 || parsedMeasurements.missingProcessVectorCount > 0) return "warn";
+      return "pass";
+    }
+    return "warn";
+  })();
   const readinessChecks: ReadinessItem[] = [
     {status: invalidProcess ? "fail" : "pass", label: "Shared process ranges", details: invalidProcess ? "Shared P, v, beam, hatch, layer, or preheat is outside allowed bounds." : "Shared process parameters are within expected limits."},
     {status: invalidControls ? "warn" : "pass", label: "Advanced control ranges", details: invalidControls ? "One or more advanced controls are out of valid bounds." : "Advanced control block is currently valid."},
@@ -174,11 +210,9 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
     {status: mode === "high-fidelity" && !caps?.freeSurfaceSolver ? "warn" : "pass", label: "Mode compatibility", details: mode === "high-fidelity" ? caps?.freeSurfaceSolver ? "High-fidelity free-surface solver appears available." : "Free-surface solver is unavailable; this mode will run screening fallback." : "Selected mode is compatible with current solver stack."},
     {status: estimateError ? "warn" : !estimate ? "pending" : estimate.exceedsCellBudget || estimate.exceedsStepBudget ? "warn" : "pass", label: "Resource estimate", details: estimateError ? estimateError : !estimate ? "Resource estimate is waiting for worker capabilities and input snapshot." : estimate.exceedsCellBudget ? "Estimated mesh size exceeds budget; reduce mesh resolution or shorten process history." : estimate.exceedsStepBudget ? "Estimated step count exceeds budget; increase maxDt or simplify build schedule." : "Resource estimate is within budget."},
     {status: caps ? "pass" : "pending", label: "Worker availability", details: caps ? `OpenFOAM thermal: ${caps.openfoamThermal ? "available" : "unavailable"}; free-surface: ${caps.freeSurfaceSolver ? "available" : "unavailable"}.` : "Worker capabilities are still loading."},
-    {status: mode !== "calibration" && measurements.trim() ? parsedMeasurements.status === "invalid" ? "fail" : "pass" : (()=>{if (mode !== "calibration") return "pass";if(width===""||depth===""||source.trim()===""){if(parsedMeasurements.status==="valid")return "pass";return "warn";}if(parsedMeasurements.status==="invalid")return"fail";if(parsedMeasurements.mismatchedCount>0)return"warn";return"pass";})(), label: "Calibration inputs", details: (()=>{if(mode !== "calibration")return "Calibration mode is not selected.";if(parsedMeasurements.status==="invalid")return parsedMeasurements.errors.join(" ");if(parsedMeasurements.status==="valid")return parsedMeasurements.mismatchedCount>0?`${parsedMeasurements.count} replicate JSON entr${parsedMeasurements.count===1?"y":"ies"} parsed; ${parsedMeasurements.mismatchedCount} with processVector mismatch.`:`${parsedMeasurements.count} replicate JSON entr${parsedMeasurements.count===1?"y":"ies"} parsed; calibration-ready.`;if(width === "" || depth === "" || source.trim() === "") return "Calibration mode needs width, depth and source values.";return "Calibration width, depth and source are provided.";})()},
+    {status: mode !== "calibration" && measurements.trim() ? parsedMeasurements.status === "invalid" ? "fail" : "pass" : calibrationReadinessStatus, label: "Calibration inputs", details: calibrationReadinessLabel},
     {status: r && r.material.name === (material || input.material) && Array.isArray(r.material.table) && r.material.table.length > 0 ? "pass" : r ? "warn" : "pending", label: "Executed material evidence", details: r ? r.material.name === (material || input.material) ? "Result uses current material selection." : "Result material does not match current material selection." : "No completed run to compare yet."},
   ];
-  const resolvedStrategy = settings.strategy ?? (sharedStrategy==="meander-67"?"meander":sharedStrategy);
-  const parsedMeasurements = parseMeasurementPayload(measurements, input, resolvedStrategy);
   const payload = (selectedMode:SimulationMode):SimulationInput => ({...input,...settings,mode:selectedMode,
     material:material || input.material, strategy:resolvedStrategy,
     ...(properties.trim() ? {properties:JSON.parse(properties)} : {})});
@@ -210,7 +244,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
       if (measurementState.status==="empty" && (width || depth || source)) {
         if (!width||!depth||Number(width)<=0||Number(depth)<=0||!source.trim()) throw new Error("Calibration requires positive measured width and depth and a measurement source.");
         if(uncertainty!==""&&(!Number.isFinite(Number(uncertainty))||Number(uncertainty)<0))throw new Error("Measurement uncertainty must be nonnegative in µm.");
-        p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})];
+        p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),processVector:currentProcessVectorFromInput(p,p.strategy||resolvedStrategy),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})];
       }
       const next=await simulationApi.submit(p);useLpbfEngineeringStore.setState({job:next,submittedSignature:signature,submittedInput:p,resultSignature:next.status==="completed"?signature:""});setFieldTime(undefined);resumeEngineeringJob();
     }catch(e){setError(e instanceof Error?e.message:"Submission failed");}finally{setBusy(false);}

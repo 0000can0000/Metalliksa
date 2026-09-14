@@ -765,3 +765,10 @@ px tsc --noEmit PASS
 - **Done:** Added replicated-measurement parser with JSON validation, replicate `width/depth/source` checks, optional `uncertainty_um` and `independentHoldout` checks, and processVector defaulting from current shared process snapshot. Added calibration readiness status details for parse errors, missing/mismatched processVector, and valid replicate input; `Run` button now blocks invalid parse payload.
 - **Tests:** Not run (UI/validation-only change in a bounded edit set).
 - **Where we left off:** Next step: finish this change set by staging and committing `LpbfEngineeringSimulation.tsx`, then attempt `git push` (expected to remain blocked by current network/proxy unless endpoint access is fixed).
+## 2026-09-14 17:06 — Kalibrasyon hazırbulma daha net, tek vektörli karşılaştırma davranışı düzeltildi
+- **Agent:** GPT-5 (Codex). **Result:** PARTIAL
+- **Task:** Improve LPBF calibration readiness handling so manual entries always carry process-vector context and mismatch/missing replicate vectors are explicitly shown before run.
+- **Files:** `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `sonkayıtlar/LOG.md`.
+- **Done:** Added readiness labels/status derivation helpers for calibration, including explicit reporting of replicate processVector mismatch and missing processVector; moved readiness evaluation into a stable path. Manual calibration width/depth fallback now injects current process vector to preserve process-aware comparison behavior. Changed validation path to keep this behavior traceable in a single place.
+- **Tests:** Not run (UI/validation-only edit).
+- **Where we left off:** Stage and commit the LPBF simulation hardening change, then attempt `git push -u origin HEAD` in the next step (proxy may still block upstream access).

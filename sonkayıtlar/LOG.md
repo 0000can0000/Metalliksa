@@ -1,3 +1,12 @@
+## 2026-09-14 14:01 — Simplify duplicated rules and agent guidance
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS for governance-document simplification.
+- **Task:** Remove repeated operational instructions from `AGENTS.md` and keep them centralized in `RULES.md`.
+- **Files:** `AGENTS.md`, `RULES.md`, and this log.
+- **Done:** `AGENTS.md` now points to `RULES.md` for UI language, evidence, logging, briefing, and publication policy. Repeated traceability detail now points to `SCHEMA.md`. `RULES.md` keeps the binding rules but uses narrower, evidence-sensitive testing language and meaningful-change batching.
+- **Tests:** `git diff --check` passed; no application tests were needed for this documentation-only change.
+- **Where we left off:** The simplified rule set is ready as one meaningful documentation change set. Unrelated bytecode, `.cursor/mcp.json`, and `graft/` changes remain untouched.
+
 ## 2026-09-14 13:52 — Documentation conflict cleanup and meaningful commit policy
 
 - **Agent:** GPT-5 (Codex). **Result:** PASS for documentation and governance cleanup.

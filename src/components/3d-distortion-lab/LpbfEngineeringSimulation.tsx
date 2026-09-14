@@ -37,6 +37,99 @@ const readinessClasses: Record<ReadinessStatus, string> = {
   fail: "border-red-300/30 bg-red-500/10 text-red-100",
   pending: "border-slate-500/40 bg-slate-600/10 text-slate-200",
 };
+type ParsedMeasurementState = {
+  status: "valid" | "invalid" | "empty";
+  measurements?: NonNullable<SimulationInput["measurements"]>;
+  errors: string[];
+  mismatchedCount: number;
+  missingProcessVectorCount: number;
+  count: number;
+};
+const processVectorKeys = ["power_W","speed_mm_s","beamDiameter_um","preheat_C","layer_um","hatch_um","strategy"] as const;
+const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const normalizeProcessVector = (value: unknown) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {} as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
+  for (const key of processVectorKeys) {
+    const v = (value as Record<string, unknown>)[key];
+    if (isFiniteNumber(v) || typeof v === "string") normalized[key] = v;
+  }
+  return normalized;
+};
+const currentProcessVectorFromInput = (nextInput: SimulationInput, strategy: string) => ({
+  power_W: nextInput.power_W,
+  speed_mm_s: nextInput.speed_mm_s,
+  beamDiameter_um: nextInput.beamDiameter_um,
+  preheat_C: nextInput.preheat_C,
+  layer_um: nextInput.layer_um,
+  hatch_um: nextInput.hatch_um,
+  strategy,
+});
+const processVectorMatches = (a: Record<string, unknown>, b: Record<string, unknown>) => processVectorKeys.every((key) => a[key] === b[key]);
+const parseMeasurementPayload = (raw: string, nextInput: SimulationInput, strategy: string): ParsedMeasurementState => {
+  const nextStrategy = strategy || "meander";
+  const defaultVector = currentProcessVectorFromInput(nextInput, nextStrategy);
+  const text = raw.trim();
+  if (!text) return {status:"empty", errors:[], mismatchedCount:0, missingProcessVectorCount:0, count:0, measurements: undefined};
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) {
+      return {status:"invalid", errors:["Replicate JSON must be an array of replicate objects."], mismatchedCount:0, missingProcessVectorCount:0, count:0, measurements: undefined};
+    }
+    if (!parsed.length) {
+      return {status:"invalid", errors:["Replicate JSON is empty."], mismatchedCount:0, missingProcessVectorCount:0, count:0, measurements: undefined};
+    }
+    const next: NonNullable<SimulationInput["measurements"]> = [];
+    const errors: string[] = [];
+    let mismatchedCount = 0;
+    let missingProcessVectorCount = 0;
+    for (const [index, rawEntry] of parsed.entries()) {
+      if (!rawEntry || typeof rawEntry !== "object" || Array.isArray(rawEntry)) {
+        errors.push(`Replicate #${index + 1}: expected object.`);
+        continue;
+      }
+      const width = Number(rawEntry.width_um);
+      const depth = Number(rawEntry.depth_um);
+      const source = typeof rawEntry.source === "string" ? rawEntry.source.trim() : "";
+      if (!Number.isFinite(width) || !Number.isFinite(depth) || width <= 0 || depth <= 0) {
+        errors.push(`Replicate #${index + 1}: width and depth must be positive finite numbers (µm).`);
+      }
+      if (!source) errors.push(`Replicate #${index + 1}: source is required.`);
+      const entry: NonNullable<SimulationInput["measurements"]>[number] = { width_um: width, depth_um: depth, source };
+      const hasProcessVector = typeof rawEntry.processVector === "object" && rawEntry.processVector !== null && !Array.isArray(rawEntry.processVector);
+      const suppliedVector = hasProcessVector ? normalizeProcessVector(rawEntry.processVector) : {};
+      entry.processVector = { ...defaultVector, ...suppliedVector };
+      if (!hasProcessVector) {
+        missingProcessVectorCount += 1;
+      } else if (!processVectorMatches(suppliedVector, defaultVector)) {
+        mismatchedCount += 1;
+      }
+      if (rawEntry.uncertainty_um !== undefined) {
+        if (!rawEntry.uncertainty_um || typeof rawEntry.uncertainty_um !== "object" || Array.isArray(rawEntry.uncertainty_um)) {
+          errors.push(`Replicate #${index + 1}: uncertainty_um must be an object when provided.`);
+        } else {
+          const widthUnc = Number(rawEntry.uncertainty_um.width_um);
+          const depthUnc = Number(rawEntry.uncertainty_um.depth_um);
+          if (!Number.isFinite(widthUnc) || !Number.isFinite(depthUnc) || widthUnc < 0 || depthUnc < 0) {
+            errors.push(`Replicate #${index + 1}: uncertainty_um.width_um and uncertainty_um.depth_um must be nonnegative finite numbers.`);
+          } else {
+            entry.uncertainty_um = { width_um: widthUnc, depth_um: depthUnc };
+          }
+        }
+      }
+      if (rawEntry.independentHoldout !== undefined && typeof rawEntry.independentHoldout !== "boolean") {
+        errors.push(`Replicate #${index + 1}: independentHoldout must be boolean when provided.`);
+      } else if (rawEntry.independentHoldout !== undefined) {
+        entry.independentHoldout = Boolean(rawEntry.independentHoldout);
+      }
+      next.push(entry);
+    }
+    if (errors.length) return {status:"invalid", errors, mismatchedCount, missingProcessVectorCount, count: next.length, measurements: next};
+    return {status:"valid", errors: [], mismatchedCount, missingProcessVectorCount, count: next.length, measurements: next};
+  } catch {
+    return {status:"invalid", errors:["Replicate JSON is not valid JSON."], mismatchedCount:0, missingProcessVectorCount:0, count:0, measurements: undefined};
+  }
+};
 
 export function LpbfEngineeringSimulation({input:providedInput}:{input:SimulationInput}) {
   const sharedSpecimen=useMaterialSpecimenStore(s=>s.activeSpecimen);
@@ -81,11 +174,13 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
     {status: mode === "high-fidelity" && !caps?.freeSurfaceSolver ? "warn" : "pass", label: "Mode compatibility", details: mode === "high-fidelity" ? caps?.freeSurfaceSolver ? "High-fidelity free-surface solver appears available." : "Free-surface solver is unavailable; this mode will run screening fallback." : "Selected mode is compatible with current solver stack."},
     {status: estimateError ? "warn" : !estimate ? "pending" : estimate.exceedsCellBudget || estimate.exceedsStepBudget ? "warn" : "pass", label: "Resource estimate", details: estimateError ? estimateError : !estimate ? "Resource estimate is waiting for worker capabilities and input snapshot." : estimate.exceedsCellBudget ? "Estimated mesh size exceeds budget; reduce mesh resolution or shorten process history." : estimate.exceedsStepBudget ? "Estimated step count exceeds budget; increase maxDt or simplify build schedule." : "Resource estimate is within budget."},
     {status: caps ? "pass" : "pending", label: "Worker availability", details: caps ? `OpenFOAM thermal: ${caps.openfoamThermal ? "available" : "unavailable"}; free-surface: ${caps.freeSurfaceSolver ? "available" : "unavailable"}.` : "Worker capabilities are still loading."},
-    {status: mode === "calibration" && (!width || !depth || !source.trim()) ? "warn" : mode === "calibration" ? "pass" : "pass", label: "Calibration inputs", details: mode === "calibration" ? width && depth && source.trim() ? "Calibration width, depth and source are provided." : "Calibration mode needs width, depth and source values." : "Calibration mode is not selected."},
+    {status: mode !== "calibration" && measurements.trim() ? parsedMeasurements.status === "invalid" ? "fail" : "pass" : (()=>{if (mode !== "calibration") return "pass";if(width===""||depth===""||source.trim()===""){if(parsedMeasurements.status==="valid")return "pass";return "warn";}if(parsedMeasurements.status==="invalid")return"fail";if(parsedMeasurements.mismatchedCount>0)return"warn";return"pass";})(), label: "Calibration inputs", details: (()=>{if(mode !== "calibration")return "Calibration mode is not selected.";if(parsedMeasurements.status==="invalid")return parsedMeasurements.errors.join(" ");if(parsedMeasurements.status==="valid")return parsedMeasurements.mismatchedCount>0?`${parsedMeasurements.count} replicate JSON entr${parsedMeasurements.count===1?"y":"ies"} parsed; ${parsedMeasurements.mismatchedCount} with processVector mismatch.`:`${parsedMeasurements.count} replicate JSON entr${parsedMeasurements.count===1?"y":"ies"} parsed; calibration-ready.`;if(width === "" || depth === "" || source.trim() === "") return "Calibration mode needs width, depth and source values.";return "Calibration width, depth and source are provided.";})()},
     {status: r && r.material.name === (material || input.material) && Array.isArray(r.material.table) && r.material.table.length > 0 ? "pass" : r ? "warn" : "pending", label: "Executed material evidence", details: r ? r.material.name === (material || input.material) ? "Result uses current material selection." : "Result material does not match current material selection." : "No completed run to compare yet."},
   ];
+  const resolvedStrategy = settings.strategy ?? (sharedStrategy==="meander-67"?"meander":sharedStrategy);
+  const parsedMeasurements = parseMeasurementPayload(measurements, input, resolvedStrategy);
   const payload = (selectedMode:SimulationMode):SimulationInput => ({...input,...settings,mode:selectedMode,
-    material:material || input.material, strategy:settings.strategy ?? (sharedStrategy==="meander-67"?"meander":sharedStrategy),
+    material:material || input.material, strategy:resolvedStrategy,
     ...(properties.trim() ? {properties:JSON.parse(properties)} : {})});
   useEffect(()=>{
     let live=true;
@@ -106,11 +201,16 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
       for(const [key,,min,max] of controls){const v=settings[key];if(typeof v!=="number"||!Number.isFinite(v)||v<min||v>max)throw new Error(`${key} must be in [${min}, ${max}]`);}
       if(invalidProcess||invalidControls)throw new Error("Correct the highlighted parameter ranges before running.");
       const p=payload(mode);
-      if(measurements.trim())p.measurements=JSON.parse(measurements);
-      else if(width||depth||mode==="calibration"){
-        if(!width||!depth||Number(width)<=0||Number(depth)<=0||!source.trim())throw new Error("Calibration requires positive measured width and depth and a measurement source.");
+      const measurementState=parseMeasurementPayload(measurements,p, p.strategy || resolvedStrategy);
+      if (mode==="calibration" || measurementState.status !== "empty") {
+        if (measurementState.status==="invalid") throw new Error(measurementState.errors.join(" "));
+        if (measurementState.status==="valid") p.measurements = measurementState.measurements;
+        else if(!width||!depth||Number(width)<=0||Number(depth)<=0||!source.trim()) throw new Error("Calibration requires positive measured width and depth and a measurement source.");
+      }
+      if (measurementState.status==="empty" && (width || depth || source)) {
+        if (!width||!depth||Number(width)<=0||Number(depth)<=0||!source.trim()) throw new Error("Calibration requires positive measured width and depth and a measurement source.");
         if(uncertainty!==""&&(!Number.isFinite(Number(uncertainty))||Number(uncertainty)<0))throw new Error("Measurement uncertainty must be nonnegative in µm.");
-        p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})}];
+        p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})];
       }
       const next=await simulationApi.submit(p);useLpbfEngineeringStore.setState({job:next,submittedSignature:signature,submittedInput:p,resultSignature:next.status==="completed"?signature:""});setFieldTime(undefined);resumeEngineeringJob();
     }catch(e){setError(e instanceof Error?e.message:"Submission failed");}finally{setBusy(false);}

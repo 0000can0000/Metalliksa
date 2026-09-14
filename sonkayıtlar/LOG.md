@@ -758,3 +758,10 @@ px tsc --noEmit PASS
 - **Task**: Add Rule 5 so every agent, after finishing work and tests, records itself. Recording location named `sonkayıtlar`. Wired into `RULES.md`, `AGENTS.md`, and an always-on Cursor rule.
 - **Files**: `RULES.md`, `AGENTS.md`, `.cursor/rules/sonkayitlar-session-log.mdc`, `sonkayıtlar/LOG.md`
 - **Tests**: N/A — documentation and Cursor rule only; no application code or UI change. Verified files exist and Rule 5 / AGENTS.md / log template are consistent.
+## 2026-09-14 16:58 — LPBF ölçüm doğrulama güvenliği eklendi ve devam çizelgesi güncellendi
+- **Agent:** GPT-5 (Codex). **Result:** PARTIAL
+- **Task:** Harden calibration and replicate payload behavior in LPBF engineering simulation before continuing the module.
+- **Files:** `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `sonkayıtlar/LOG.md`.
+- **Done:** Added replicated-measurement parser with JSON validation, replicate `width/depth/source` checks, optional `uncertainty_um` and `independentHoldout` checks, and processVector defaulting from current shared process snapshot. Added calibration readiness status details for parse errors, missing/mismatched processVector, and valid replicate input; `Run` button now blocks invalid parse payload.
+- **Tests:** Not run (UI/validation-only change in a bounded edit set).
+- **Where we left off:** Next step: finish this change set by staging and committing `LpbfEngineeringSimulation.tsx`, then attempt `git push` (expected to remain blocked by current network/proxy unless endpoint access is fixed).

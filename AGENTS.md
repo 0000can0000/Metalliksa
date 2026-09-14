@@ -1,5 +1,17 @@
 # Agent Operational Guidelines & Architecture (`AGENTS.md`)
 
+## 0. Repository navigation and token efficiency
+
+- For structural code questions, use the local Graft graph in `graft/` first:
+  `graft ask`, `graft callers`, `graft skeleton`, and `graft map`.
+- Use `codebase-memory-mcp` for verified graph searches, call traces,
+  architecture, and index-coverage checks when the question is broader than a
+  single Graft card.
+- Fall back to `rg` for literal strings, configuration, and non-code files.
+- Do not read whole source files when a Graft card or targeted graph snippet
+  answers the question; use the referenced file and line span only when the
+  card is insufficient.
+
 > **Note**: This file is automatically loaded into the agent system context. The rules below define validation gates; they do not imply that every existing model is experimentally validated. Current model maturity and evidence limits are maintained in [`docs/LPBF_ENGINEERING.md`](./docs/LPBF_ENGINEERING.md) and [`docs/RESEARCH_WORKSTATION.md`](./docs/RESEARCH_WORKSTATION.md).
 
 ---

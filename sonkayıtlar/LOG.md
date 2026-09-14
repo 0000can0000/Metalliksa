@@ -789,3 +789,11 @@ px tsc --noEmit PASS
 - **Done:** Wired Graft into Cursor, documented the division between Graft, codebase-memory-mcp, and Avenoxskills, ignored Graft's machine-local cache/graph, and kept the canonical `codebase-memory-mcp` clone at commit `339b3f4`.
 - **Tests:** Verified Graft initialization output and duplicate identity by matching HEAD commit and indexed file count; application tests not run because runtime code was unchanged.
 - **Where we left off:** Tooling changes are ready for review. Next natural step is to restart the agent so the Graft MCP/rules load, then run a fresh `graft build` after source changes.
+## 2026-09-14 17:42 — Graft Codex MCP olarak etkinleştirildi
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS
+- **Task:** Make Graft and codebase-memory-mcp active in Codex for lower-token code exploration.
+- **Files:** `AGENTS.md`, `sonkayıtlar/LOG.md`, global `C:\Users\can02\.codex\config.toml`.
+- **Done:** Confirmed codebase-memory-mcp was already registered globally, added Graft as a Codex MCP server targeting `Metalliksa-1`, and added project guidance to prefer Graft cards before broad source reads.
+- **Tests:** Graft MCP process smoke-tested; it stayed alive under stdio as expected. Application tests not run because runtime code was unchanged.
+- **Where we left off:** Restart Codex to load the new MCP server. After restart, use Graft for fast local lookup and codebase-memory-mcp for verified architecture/coverage traces.

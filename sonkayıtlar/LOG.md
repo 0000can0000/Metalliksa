@@ -1,3 +1,47 @@
+## 2026-09-14 16:31 — Simulation UI context panel made English and trust-focused
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS
+- **Task:** Improve simulation module usability by standardizing the newly added Scientific Context panel output to clear English and evidence-aware interpretation.
+- **Files:** `src/components/ScientificContextPanel.tsx`, `src/utils/scientificContext.ts`, `sonkayıtlar/LOG.md`.
+- **Done:** Reworked the panel text to consistent English across titles/labels, replaced Turkish terms, and rewrote module context copy to emphasize assumptions, variable impact, interpretation, and limits for LPBF and related modules.
+- **Tests:** Not run (UI copy and context helper update only; no behavioral code path changed).
+- **Where we left off:** Next action is to harden simulation trust signals by exposing a lightweight action checklist (e.g., convergence required, uncertainty check, evidence match) in LPBF simulation workflows.
+
+## 2026-09-14 16:24 — Progress continuity rule added for all modules
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS
+- **Task:** Add a repository-wide rule stating that every job must write in Markdown:
+  - what was done last,
+  - what will be done next,
+  - completion status and blockers.
+- **Files:** `RULES.md`, `README.md`, `sonkayıtlar/LOG.md`.
+- **Tests:** Not required (documentation/process update only).
+- **Where we left off:** Rule is active for all future work; next step is to continue LPBF simulation/module development and log each segment with Last/Next and status in this log.
+
+## 2026-09-14 16:05 — Production-session continuation and handoff lock
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS for handoff continuity.
+- **Task:** Kaldığımız noktayı netleştirmek ve bir sonraki adımın kapanışını hazırlık metrikleriyle dökümlemek.
+- **Files:** `METALLIKSA_HANDOFF_2026-09-13.md`, `sonkayıtlar/LOG.md`, `PROOF.md`.
+- **Done:** Kullanım bağlamı doğrulandı; kullanıcı tarafındaki aktif in-app browser hedefi `http://localhost:3002/?lpbfStage=comparison#/3d-distortion-lab` olarak yeniden teyit edildi. Bu turda uygulama kodunda yeni değişiklik yapılmadı; önceki turda kalan üretim-sürüm doğrulama ve final commit/push kapanışı için `sonkayıtlar` + `PROOF` eksik satırlarının tamamlanmasına odaklanıldı.
+- **Tests:** Bu turda yeni test/builder çalıştırılmadı; önceki turlarda `lint/test:unit/build` sonuçları geçerli kabul edildi ve yeni bir üretim değişikliği yapılmadığı için tekrarlandılmadı.
+- **Where we left off:** Uygulama son noktası olarak research/3d-distortion-lab taraması ve kayıt-tamamlama adımları (kapanış girdisi + istenen onayla yayın akışı) beklemede.
+
+## 2026-09-14 16:09 — Codebase-memory CLI call trace
+
+- **Agent:** GPT-5 (Codex). **Result:** BLOCKED for now by local MCD endpoint.
+- **Task:** Last state recovery is requested to be done via codebase-memory.
+- **Done:** `codebase-memory-mcp` binary is available (`Get-Command` confirms install). I ran CLI attempts (`list_projects`, `get_architecture`, `index_repository`) but CLI was blocked by local error `codebase-memory-mcp: secure CLI coordination could not be created (endpoint)`, so no live graph tool calls could be executed in this session.
+- **Where we left off:** until this endpoint issue is resolved, we keep using the previously recorded handoff anchor (`http://localhost:3002/?lpbfStage=comparison#/3d-distortion-lab`) from `METALLIKSA_HANDOFF_2026-09-13.md` and `PROOF.md`, and leave this note so the next session can retry MCD immediately.
+
+## 2026-09-14 16:10 — Codebase-memory yokken son bırakılan noktanın teyidi
+
+- **Agent:** GPT-5 (Codex).
+- **Result:** PASS for session-continuity tracking.
+- **Task:** Son kaldığımız yeri “her zaman codebase-memory ile bul” talebine göre doğrulamak ve kayda geçirmek.
+- **Done:** Codebase-memory graph araçlarına bu oturumda doğrudan erişilemediği için (tool listesinde `search_graph/trace_path/get_code_snippet` bulunamadı), son bırakılan nokta `METALLIKSA_HANDOFF_2026-09-13.md` içindeki en son aktif anchor doğrultusunda teyit edildi: `http://localhost:3002/?lpbfStage=comparison#/3d-distortion-lab`.
+- **Where we left off:** Kod tarafında yeni geliştirme başlamadan önce yalnızca bu continuity notu eklendi; bir sonraki turda MCD uçları görünür olduysa önce o uçlardan son commit/proof bağlamını doğrula, sonra geliştirmeye devam et.
+
 ## 2026-09-14 14:01 — Simplify duplicated rules and agent guidance
 
 - **Agent:** GPT-5 (Codex). **Result:** PASS for governance-document simplification.

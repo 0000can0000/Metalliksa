@@ -7,6 +7,15 @@
 - **Tests:** Not run (UI text/control addition only; no changed API/solver contract).
 - **Where we left off:** Next, continue LPBF module work by aligning calibration/replicate behavior in `LpbfResultPresentation.tsx` with the new readiness signals and finish by committing + pushing this change set as per continuity rules.
 
+## 2026-09-14 16:35 — Calibration evidence summary surfaced in LPBF result presentation
+
+- **Agent:** GPT-5 (Codex). **Result:** PARTIAL
+- **Task:** Align post-run comparison reporting with pre-run readiness by surfacing calibration/process-vector confidence in LPBF result header and measurement panel.
+- **Files:** `src/components/3d-distortion-lab/LpbfResultPresentation.tsx`, `sonkayıtlar/LOG.md`.
+- **Done:** Added measurement matching inference from `measurementEvidence`, introduced a compact calibration readiness summary, added a dedicated badge in result header, and added explicit calibration status rows in result metadata and experimental comparison details.
+- **Tests:** Not run (UI presentation contract and status copy only).
+- **Where we left off:** Finish by committing these two files (`LpbfResultPresentation.tsx` + log) and attempt `git push -u origin HEAD`; if network/proxy blocks, report and continue in the next turn before proceeding to next module.
+
 ## 2026-09-14 16:31 — Simulation UI context panel made English and trust-focused
 
 - **Agent:** GPT-5 (Codex). **Result:** PASS

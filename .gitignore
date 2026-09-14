@@ -13,3 +13,8 @@ __pycache__/
 .research-registry/
 python/openfoam/Make/linux*/
 python/openfoam/bin/
+
+# Graft keeps durable markdown wiring cards in source control; these are
+# machine-local indexes and caches rebuilt with `graft build`.
+graft/.cache/
+graft/.graph/

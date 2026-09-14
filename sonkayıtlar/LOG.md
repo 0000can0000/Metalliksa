@@ -781,3 +781,11 @@ px tsc --noEmit PASS
 - **Done:** Added readiness labels/status derivation helpers for calibration, including explicit reporting of replicate processVector mismatch and missing processVector; moved readiness evaluation into a stable path. Manual calibration width/depth fallback now injects current process vector to preserve process-aware comparison behavior. Changed validation path to keep this behavior traceable in a single place.
 - **Tests:** Not run (UI/validation-only edit).
 - **Where we left off:** Stage and commit the LPBF simulation hardening change, then attempt `git push -u origin HEAD` in the next step (proxy may still block upstream access).
+## 2026-09-14 17:25 — Graft etkinleştirildi ve codebase-memory tekrarı kaldırıldı
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS
+- **Task:** Make the repository tooling useful for Metalliksa and remove the duplicate codebase-memory checkout.
+- **Files:** `.gitignore`, `.cursor/mcp.json`, `.cursor/rules/graft.mdc`, `.cursor/hooks.json`, `.cursor/hooks/graft-hooks.cjs`, `docs/TOOLING_MAP.md`, `graft/` wiring cards, `sonkayıtlar/LOG.md`; removed sibling `../codebase-memory-mcp-source/` after identity checks.
+- **Done:** Wired Graft into Cursor, documented the division between Graft, codebase-memory-mcp, and Avenoxskills, ignored Graft's machine-local cache/graph, and kept the canonical `codebase-memory-mcp` clone at commit `339b3f4`.
+- **Tests:** Verified Graft initialization output and duplicate identity by matching HEAD commit and indexed file count; application tests not run because runtime code was unchanged.
+- **Where we left off:** Tooling changes are ready for review. Next natural step is to restart the agent so the Graft MCP/rules load, then run a fresh `graft build` after source changes.

@@ -1,3 +1,21 @@
+## 2026-09-14 13:52 — Documentation conflict cleanup and meaningful commit policy
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS for documentation and governance cleanup.
+- **Task:** Resolve the documented conflicts between validated, estimated, screening, and certified terminology; clarify that commit/push happens per meaningful completed change set rather than every tiny edit.
+- **Files:** `AGENTS.md`, `KNOWLEDGE.md`, `SCHEMA.md`, `ROADMAP.md`, `METALLURGY_VALIDATION.md`, `RULES.md`, and this log.
+- **Done:** Relaxed overbroad validation wording, renamed the roadmap phase to analytical/numerical thermal screening, distinguished schema validity from experimental validation, normalized the main product name in maintained documents, and added safe batching/scope rules for commits.
+- **Tests:** `git diff --check` and maintained-document link checks are the applicable checks; application tests are not needed for Markdown/governance-only edits.
+- **Where we left off:** The conflict cleanup is complete as a single meaningful documentation change set. It is ready to be committed and pushed without including unrelated working-tree files.
+
+## 2026-09-14 13:43 — Markdown documentation map and naming cleanup
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS for documentation organization.
+- **Task:** Reviewed the maintained Markdown set in `Metalliksa-1`, separating product documentation from generated `graft/` source snapshots.
+- **Files:** Added `docs/README.md`; updated `README.md`, `ROADMAP.md`, `RULES.md`; this log entry.
+- **Done:** Added a single documentation map, clarified authority/maintenance boundaries, linked the core documents, made the README the entry point, and normalized the product name to `Metalliksa` in roadmap/governance text. No source or scientific model behavior changed.
+- **Tests:** `git diff --check` passed; documentation links and target files were checked. Application test suite was not run because this was a Markdown-only change.
+- **Where we left off:** The documentation structure is cleaner and the changes remain as local working-tree edits. No commit or remote push was performed in this turn.
+
 ## 2026-09-13 20:36 — Resume through UQ evidence corrections
 
 - **Agent:** GPT-6 Astra (Codex). **Result:** PASS for implementation and validation.

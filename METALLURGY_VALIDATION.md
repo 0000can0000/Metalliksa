@@ -1,6 +1,6 @@
 # Analytical and Numerical Physics Models (`METALLURGY_VALIDATION.md`)
 
-This document presents the rigorous derivation, boundary conditions, mathematical formulations, and operational thresholds for governing thermal, hydrodynamic, and instability models implemented in the MetalliX additive manufacturing simulation suite.
+This document presents the derivation, boundary conditions, mathematical formulations, and screening thresholds for thermal, hydrodynamic, and instability models implemented in the Metalliksa additive manufacturing simulation suite. A derivation or regression proof does not by itself establish experimental validation or production qualification.
 
 > **Compliance Notice**: In accordance with Rule 1 in [`RULES.md`](./RULES.md), all mathematical derivations and engineering physics descriptions are presented in English. All analytical solutions are bench-tested against literature datasets in [`PROOF.md`](./PROOF.md).
 

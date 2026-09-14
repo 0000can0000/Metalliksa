@@ -65,7 +65,9 @@ Every experimental record, material qualification run, and simulation parameter 
 
 ---
 
-## 2. Validated Material & Thermophysical Constants
+## 2. Material & Thermophysical Reference Data
+
+The values below are reference inputs with explicit evidence labels. A populated table or literature citation does not by itself make a value measured, validated, or production-qualified; see [`docs/LPBF_ENGINEERING.md`](./docs/LPBF_ENGINEERING.md) for the current estimated and missing-data boundaries.
 
 Below are the thermophysical constants and baseline properties for LPBF alloys implemented in the platform:
 

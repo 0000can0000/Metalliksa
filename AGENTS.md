@@ -1,6 +1,6 @@
 # Agent Operational Guidelines & Architecture (`AGENTS.md`)
 
-> **Note**: This file is automatically loaded into the agent system context. Every protocol, formula, and instruction here has been validated both **academically** (against peer-reviewed metallurgy literature and thermodynamic principles) and **functionally** (against TypeScript type safety, zero build regressions, and test proofs).
+> **Note**: This file is automatically loaded into the agent system context. The rules below define validation gates; they do not imply that every existing model is experimentally validated. Current model maturity and evidence limits are maintained in [`docs/LPBF_ENGINEERING.md`](./docs/LPBF_ENGINEERING.md) and [`docs/RESEARCH_WORKSTATION.md`](./docs/RESEARCH_WORKSTATION.md).
 
 ---
 
@@ -18,7 +18,7 @@
 4. **End-of-Job User Briefing**:
    - The final message must state **what was done** and **where the user stands** (finished vs remaining, next step). See Rule 6 in [`RULES.md`](./RULES.md).
 5. **Commit and Push to GitHub**:
-   - After any completed change set, commit and push to `origin` on the current branch. See Rule 7 in [`RULES.md`](./RULES.md). Do not leave finished work uncommitted.
+   - After each meaningful, user-scoped change set is complete, batch related edits into one reviewable commit and push to `origin` on the current branch. See Rule 7 in [`RULES.md`](./RULES.md). Do not include unrelated user changes, generated artifacts, secrets, or bytecode.
 
 ---
 

@@ -1,6 +1,6 @@
 # LPBF & Metallurgy Simulation Roadmap (`ROADMAP.md`)
 
-This roadmap defines the phased developmental milestones for the **MetalliX Additive Manufacturing & Metallurgy Intelligence Platform**. Every completed phase must undergo dual academic & functional verification and be registered in [`PROOF.md`](./PROOF.md).
+This roadmap defines the phased developmental milestones for the **Metalliksa Additive Manufacturing & Metallurgy Intelligence Platform**. It is a planning document, not a claim that every checked item is production-ready. Every completed phase must undergo dual academic and functional verification and be registered in [`PROOF.md`](./PROOF.md).
 
 ---
 
@@ -24,7 +24,7 @@ This roadmap defines the phased developmental milestones for the **MetalliX Addi
 
 ---
 
-## Phase 2: High-Fidelity Melt Pool & Thermal Physics (🟡 IN PROGRESS)
+## Phase 2: Analytical & Numerical Melt-Pool Thermal Screening (🟡 IN PROGRESS)
 - [x] **Analytical Moving Heat Source**: Rosenthal 3D steady-state point source solver.
 - [x] **3D Interactive Melt Pool Visualizer**: Dynamic isotherm geometry ($T_{\text{liquidus}}$, $T_{\text{solidus}}$, $T_{\text{vaporization}}$).
 - [x] **Eagar-Tsai 3D Distributed Heat Source**: Finite 1/e² Gaussian (`eagar-tsai-v1`) on the Melt Pool 3D lab. Build Job verdict stays `rosenthal-screening-v1`. Not powder-bed k degradation and not Goldak FEA.

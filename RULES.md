@@ -1,6 +1,6 @@
 # Project Rules & Governance (`RULES.md`)
 
-This document defines the strict, binding operational and engineering rules for the **MetalliX / LPBF Simulation & Metallurgy Suite**. All developers, agents, and contributors must strictly adhere to these rules.
+This document defines the strict, binding operational and engineering rules for the **Metalliksa / LPBF Simulation & Metallurgy Suite**. All developers, agents, and contributors must strictly adhere to these rules.
 
 ---
 
@@ -65,9 +65,11 @@ This document defines the strict, binding operational and engineering rules for 
 
 ---
 
-## 7. Rule 7: Commit and Push to GitHub After Every Change
-- **Trigger**: After the agent (or contributor) finishes a set of file changes for a task — including “small” fixes, UI, docs, and rule edits — it **must** create a git commit and **push it to GitHub** (`origin`) on the current branch.
-- Do not leave completed work as uncommitted local edits. Do not wait for a second user prompt to commit or push.
-- **Sequence**: (1) finish the work and applicable tests, (2) write the `sonkayıtlar` entry (Rule 5), (3) `git add` only the files for this task (never secrets, `.env`, or bytecode), (4) commit with a concise message that states **why**, (5) `git push` to the tracked remote branch (`git push -u origin HEAD` if upstream is missing).
+## 7. Rule 7: Commit and Push After Every Meaningful Completed Job
+- **Trigger**: After an agent completes a meaningful, user-scoped change set — such as a feature, bug fix, documentation pass, or coherent group of related small edits — it **must** create one git commit and **push it to GitHub** (`origin`) on the current branch.
+- **Batching**: Do not create a separate commit for every small intermediate edit. Combine related edits made during the same task into one reviewable change set. A standalone typo or trivial correction may be bundled with the next related task.
+- Do not leave a completed meaningful change set as uncommitted local edits. Do not wait for a second user prompt to commit or push.
+- **Scope**: Stage only files intentionally changed by the current task. Preserve and exclude unrelated user edits, generated artifacts, secrets, `.env` files, and bytecode.
+- **Sequence**: (1) finish the meaningful change set and applicable tests, (2) write the `sonkayıtlar` entry (Rule 5), (3) inspect status and diff, (4) `git add` only the files for this task, (5) commit with a concise message that states **why**, (6) `git push` to the tracked remote branch (`git push -u origin HEAD` if upstream is missing).
 - **Forbidden**: `git config` changes, `--no-verify`, force-push to `main`/`master`, interactive rebase, or committing credentials.
 - If push fails (auth, network, no remote), report the error in the user briefing and in `sonkayıtlar`; the local commit must still exist.

@@ -1,8 +1,8 @@
 # Database & API Specification (`SCHEMA.md`)
 
-This document defines the architectural data schemas, TypeScript interfaces, JSON Schema validation structures, REST/IPC API endpoints, and data serialization formats governing the **MetalliX Additive Manufacturing & Metallurgy Intelligence Platform**.
+This document defines the architectural data schemas, TypeScript interfaces, JSON Schema validation structures, REST/IPC API endpoints, and data serialization formats governing the **Metalliksa Additive Manufacturing & Metallurgy Intelligence Platform**.
 
-> **Compliance Notice**: In accordance with Rule 4 in [`RULES.md`](./RULES.md), all database models enforce strict 5-tier referential integrity (`Build` $\rightarrow$ `ProcessParams` $\rightarrow$ `Sample` $\rightarrow$ `Properties` $\rightarrow$ `Source`). Mock synthetic data is strictly prohibited; all schema entities map directly to certified physical metallurgy entities and ASTM/ISO test certificates.
+> **Compliance Notice**: In accordance with Rule 4 in [`RULES.md`](./RULES.md), qualification records enforce strict 5-tier referential integrity (`Build` $\rightarrow$ `ProcessParams` $\rightarrow$ `Sample` $\rightarrow$ `Properties` $\rightarrow$ `Source`). Research imports, synthetic UI fixtures, and user-supplied drafts may exist in separate evidence or demonstration paths, but they must remain explicitly labelled as unverified and must not be promoted to certified or measured records by schema validation alone.
 
 ---
 
@@ -308,7 +308,7 @@ The platform exposes dedicated REST API routes (`server.ts` and `/routes/*`):
 ### 4.2 Material Record Registration & Ingest
 - **Endpoint**: `POST /api/materials/specimens`
 - **Request Body**: Accepts a `TraceableLPBFRecord` object.
-- **Response**: Returns HTTP 201 with verified UUID and validated physics metrics.
+- **Response**: Returns HTTP 201 with a verified UUID and schema-valid physics metrics. Schema validity is not experimental validation, calibration, standards compliance, or production qualification.
 
 ---
 

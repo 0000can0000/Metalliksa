@@ -1,0 +1,39 @@
+# Metalliksa documentation map
+
+This directory contains the maintained product and engineering documentation. The generated `graft/` tree is a source snapshot for inspection and is not the documentation authority.
+
+## Start here
+
+- [Project README](../README.md) — setup, commands, and the current product scope.
+- [Research workstation](RESEARCH_WORKSTATION.md) — workspace structure, shared state, research registry, and evidence boundaries.
+- [LPBF engineering](LPBF_ENGINEERING.md) — thermal model contract, execution modes, verification, and known limitations.
+- [UQ evidence](UQ_EVIDENCE.md) — uncertainty-quantification scope and what the worksheets do not establish.
+
+## Governing project documents
+
+These files live at the repository root because they apply across the whole application:
+
+- [AGENTS.md](../AGENTS.md) — instructions for agents and contributors.
+- [RULES.md](../RULES.md) — project governance and validation gates.
+- [ROADMAP.md](../ROADMAP.md) — planned capability phases.
+- [SCHEMA.md](../SCHEMA.md) — data and API contracts.
+- [STANDARDS.md](../STANDARDS.md) — standards and qualification reference.
+- [PROCESS_PROTOCOLS.md](../PROCESS_PROTOCOLS.md) — laboratory and production procedures.
+- [GLOSSARY.md](../GLOSSARY.md) — terminology.
+- [KNOWLEDGE.md](../KNOWLEDGE.md) — domain knowledge and reference formulations.
+
+## Evidence and history
+
+- [PROOF.md](../PROOF.md) — dated verification and proof entries. It records what was tested; it is not a release certificate.
+- [Session log](../sonkayıtlar/LOG.md) — operational work history, newest entry first.
+- [Architecture audit](LPBF_ARCHITECTURE_AUDIT.md) — bounded architecture review.
+- [UQ evidence](UQ_EVIDENCE.md) — explicit evidence limits for the UQ tools.
+
+## Authority and maintenance rules
+
+1. Runtime behavior and schemas are authoritative over descriptive prose when they differ.
+2. A claim of validation requires a matching entry in `PROOF.md`; a source citation alone is not validation.
+3. `PROOF.md` and `sonkayıtlar/LOG.md` are append/prepend records respectively; do not rewrite their history to make it look cleaner.
+4. Keep generated source snapshots under `graft/`; do not link to them as user-facing documentation.
+5. When a document describes a limitation, keep the limitation visible until the corresponding implementation and evidence exist.
+

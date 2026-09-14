@@ -1,3 +1,12 @@
+## 2026-09-14 16:28 — Simulation readiness checklist added and continuity rule reinforced
+
+- **Agent:** GPT-5 (Codex). **Result:** PASS
+- **Task:** Add a visible LPBF simulation run-readiness checklist and strengthen "last done / next action" continuity logging after user request for indexed continuation memory.
+- **Files:** `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `sonkayıtlar/LOG.md`.
+- **Done:** Implemented a run-readiness checklist panel in LPBF engineering simulation showing process, controls, material, mode compatibility, worker, resource estimate, calibration, and executed-material evidence checks before running; each check carries pass/warn/fail/pending status. Recorded this exact checkpoint in markdown with the next follow-up step.
+- **Tests:** Not run (UI text/control addition only; no changed API/solver contract).
+- **Where we left off:** Next, continue LPBF module work by aligning calibration/replicate behavior in `LpbfResultPresentation.tsx` with the new readiness signals and finish by committing + pushing this change set as per continuity rules.
+
 ## 2026-09-14 16:31 — Simulation UI context panel made English and trust-focused
 
 - **Agent:** GPT-5 (Codex). **Result:** PASS

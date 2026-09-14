@@ -23,6 +23,20 @@ const modes: {id:SimulationMode;name:string;scope:string}[] = [
 ];
 const fmt = number;
 const inputClass = "w-full min-w-0 rounded-lg bg-slate-950/60 border border-slate-600/70 px-3 py-2.5 text-slate-100 transition-colors hover:border-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300";
+type ReadinessStatus = "pass" | "warn" | "fail" | "pending";
+type ReadinessItem = { status: ReadinessStatus; label: string; details: string };
+const readinessGlyph: Record<ReadinessStatus, string> = {
+  pass: "✓",
+  warn: "!",
+  fail: "×",
+  pending: "•",
+};
+const readinessClasses: Record<ReadinessStatus, string> = {
+  pass: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100",
+  warn: "border-amber-300/30 bg-amber-500/10 text-amber-100",
+  fail: "border-red-300/30 bg-red-500/10 text-red-100",
+  pending: "border-slate-500/40 bg-slate-600/10 text-slate-200",
+};
 
 export function LpbfEngineeringSimulation({input:providedInput}:{input:SimulationInput}) {
   const sharedSpecimen=useMaterialSpecimenStore(s=>s.activeSpecimen);
@@ -60,6 +74,16 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   const invalidControls=invalidOptics||controls.some(([key,,min,max])=>typeof settings[key]!=="number"||!Number.isFinite(settings[key])||Number(settings[key])<min||Number(settings[key])>max||((key==="tracks"||key==="layers")&&!Number.isInteger(settings[key])));
   const invalidProcess=([[input.power_W,10,1500],[input.speed_mm_s,10,10000],[input.beamDiameter_um,20,500],[input.hatch_um,10,1000],[input.layer_um,10,150],[input.preheat_C,0,1200]]).some(([v,min,max])=>!Number.isFinite(v)||v<min||v>max);
   const r = job?.status === "completed" ? job.result : undefined;
+  const readinessChecks: ReadinessItem[] = [
+    {status: invalidProcess ? "fail" : "pass", label: "Shared process ranges", details: invalidProcess ? "Shared P, v, beam, hatch, layer, or preheat is outside allowed bounds." : "Shared process parameters are within expected limits."},
+    {status: invalidControls ? "warn" : "pass", label: "Advanced control ranges", details: invalidControls ? "One or more advanced controls are out of valid bounds." : "Advanced control block is currently valid."},
+    {status: missingMaterial ? "fail" : "pass", label: "Material input quality", details: missingMaterial ? "Material thermophysical table is missing; provide sourced data before reliable numerical analysis." : "Material quality input is present."},
+    {status: mode === "high-fidelity" && !caps?.freeSurfaceSolver ? "warn" : "pass", label: "Mode compatibility", details: mode === "high-fidelity" ? caps?.freeSurfaceSolver ? "High-fidelity free-surface solver appears available." : "Free-surface solver is unavailable; this mode will run screening fallback." : "Selected mode is compatible with current solver stack."},
+    {status: estimateError ? "warn" : !estimate ? "pending" : estimate.exceedsCellBudget || estimate.exceedsStepBudget ? "warn" : "pass", label: "Resource estimate", details: estimateError ? estimateError : !estimate ? "Resource estimate is waiting for worker capabilities and input snapshot." : estimate.exceedsCellBudget ? "Estimated mesh size exceeds budget; reduce mesh resolution or shorten process history." : estimate.exceedsStepBudget ? "Estimated step count exceeds budget; increase maxDt or simplify build schedule." : "Resource estimate is within budget."},
+    {status: caps ? "pass" : "pending", label: "Worker availability", details: caps ? `OpenFOAM thermal: ${caps.openfoamThermal ? "available" : "unavailable"}; free-surface: ${caps.freeSurfaceSolver ? "available" : "unavailable"}.` : "Worker capabilities are still loading."},
+    {status: mode === "calibration" && (!width || !depth || !source.trim()) ? "warn" : mode === "calibration" ? "pass" : "pass", label: "Calibration inputs", details: mode === "calibration" ? width && depth && source.trim() ? "Calibration width, depth and source are provided." : "Calibration mode needs width, depth and source values." : "Calibration mode is not selected."},
+    {status: r && r.material.name === (material || input.material) && Array.isArray(r.material.table) && r.material.table.length > 0 ? "pass" : r ? "warn" : "pending", label: "Executed material evidence", details: r ? r.material.name === (material || input.material) ? "Result uses current material selection." : "Result material does not match current material selection." : "No completed run to compare yet."},
+  ];
   const payload = (selectedMode:SimulationMode):SimulationInput => ({...input,...settings,mode:selectedMode,
     material:material || input.material, strategy:settings.strategy ?? (sharedStrategy==="meander-67"?"meander":sharedStrategy),
     ...(properties.trim() ? {properties:JSON.parse(properties)} : {})});
@@ -100,6 +124,17 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
     {(error||job?.error)&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200 whitespace-pre-wrap">{error||job?.error}</p>}
     {job&&<details className="border-t border-slate-700 pt-3"><summary className="cursor-pointer">Worker log · {job.id}</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-slate-400 mt-3">{job.log||job.status}</pre></details>}
     {(!caps?.freeSurfaceSolver)&&<p role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-5 py-3 text-sm leading-6 text-amber-200">{mode==="high-fidelity"?"Free-surface LPBF CFD is unavailable. Result is Screening only.":"Free-surface LPBF CFD is unavailable. Thermal runs do not resolve fluid flow, recoil pressure or a keyhole cavity."}</p>}
+    <section aria-label="Run readiness checklist" className="space-y-2 rounded-xl border border-slate-700/50 bg-slate-900/30 p-4">
+      <h4 className="text-sm font-medium">Run readiness checklist</h4>
+      <ul className="space-y-2 text-xs">
+        {readinessChecks.map((item) => (
+          <li key={item.label} className={`rounded-lg border px-3 py-2 ${readinessClasses[item.status]}`}>
+            <span className="mr-2 font-semibold" aria-hidden>{readinessGlyph[item.status]}</span>
+            <span className="font-medium">{item.label}:</span> {item.details}
+          </li>
+        ))}
+      </ul>
+    </section>
     <section aria-label="Simulation mode" className="space-y-4"><div className="flex items-center justify-between"><h4 className="text-sm font-medium">Simulation mode</h4><span className="text-xs text-slate-400">Scope before compute</span></div><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" role="group" aria-label="Simulation modes">{modes.map((m,i)=><button key={m.id} aria-pressed={mode===m.id} onClick={()=>setMode(m.id)} className={`rounded-xl border p-4 text-left ${mode===m.id?"border-slate-400 bg-slate-700/40 text-white":"border-slate-700/60 bg-slate-900/30 text-slate-400 hover:bg-slate-800/60"}`}><span className="block text-[10px] tracking-widest text-slate-500">0{i+1}</span><span className="mt-2 block text-sm font-medium">{m.name}</span><span className="mt-2 block text-xs leading-5">{i===0?"Seconds · low compute":i===2?"Unavailable · screening fallback":i===3?"Seconds–minutes · 1–3 solves":"Seconds–minutes · mesh dependent"}</span></button>)}</div><div className="grid gap-3 rounded-xl border border-slate-700/50 bg-slate-900/30 p-4 text-xs sm:grid-cols-3"><p><span className="block mb-1 text-slate-500">Solver / physical scope</span>{modes.find(m=>m.id===mode)?.scope}</p><p><span className="block mb-1 text-slate-500">Expected fidelity / limitations</span>{mode==="screening"||mode==="high-fidelity"?"Analytical geometry · literature-based approximation. No transient field or resolved keyhole.":"Unvalidated transient thermal · enthalpy phase change. Free-surface, velocity and stress not solved."}</p><p><span className="block mb-1 text-slate-500">Experimental validation</span>Pending · neither calibration nor numerical convergence establishes independent validation.</p></div></section>
     <details className={surface} aria-label="Engineering controls"><summary className="cursor-pointer font-medium">Process settings <span className="ml-3 text-xs font-normal text-slate-400">Shared vector · {input.power_W} W / {input.speed_mm_s} mm/s / {input.beamDiameter_um} µm beam</span></summary>
       <label className="block my-3">Material for this engineering run<select className={inputClass} value={material} onChange={e=>{setMaterial(e.target.value);setProperties("");}}><option value="">Shared: {input.material}</option>{caps?.materials.map(m=><option key={m.name} value={m.name}>{m.name} · {m.quality}</option>)}</select></label><p className="text-xs text-slate-400 mb-4">Material override applies to this engineering run. The run override is included in the executed input snapshot and qualification report.</p>{missingMaterial&&<p role="alert" className="mb-4 rounded-lg border border-amber-400/30 p-3 text-sm text-amber-200">Thermophysical data is missing for this alloy. Supply a sourced property table before running the engineering solver.</p>}

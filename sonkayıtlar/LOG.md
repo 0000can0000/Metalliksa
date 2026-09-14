@@ -654,6 +654,15 @@ px tsc --noEmit PASS
 
 ---
 
+## 2026-09-14 17:20 — Simülasyon modülü devam ve kayıt kuralı teyidi
+- **Agent:** GPT-5 (Codex).
+- **Result:** PASS
+- **Task:** Sürekli ilerleme kaydı kuralını kullanıcı isteğine göre netleştirmek ve simülasyon modülünde kaldığımız noktayı tek maddede toplamak.
+- **Done:** `Metalliksa-1` altında çalışan log dosyasında bu oturum notu eklendi; sonradan sorulduğunda `nerede kaldık` ve `ne yapacağız` bilgisini bu dosyadan okunur biçimde sakladık. Simülasyon tarafında en son hedef; `src/components/3d-distortion-lab/LpbfResultPresentation.tsx` metin/uyumluluk/kalibrasyon özeti bloklarını sonlaştırmak ve ardından değişiklikleri commit edip GitHub’a push/itmeye çalışmak.
+- **Files:** `Metalliksa-1/sonkayıtlar/LOG.md`
+- **Tests:** N/A — belge güncellemesi.
+- **Where we left off:** `LpbfResultPresentation.tsx` için metin/özet güvenilirliği iyileştirmesi ve kalibrasyon/denklem eşleşme mesajları düzenlemesi bekliyor; sonra bu değişiklikleri commit/push akışına taşımaya devam.
+
 ## 2026-09-05 19:45 — Four-alloy LPBF schema on `yeni2`
 - **Agent**: Cursor Grok 4.6
 - **Result**: PASS

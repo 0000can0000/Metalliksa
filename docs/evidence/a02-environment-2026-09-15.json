@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-15",
+  "scope": "A02 workstation/software reproduction; not scientific model validation",
+  "platform": "Windows x64",
+  "python": "3.12.10",
+  "pip": "25.0.1",
+  "clean_interpreter": ".runtime/scientific-win-py312-cu128/Scripts/python.exe",
+  "lock": {
+    "path": "python/requirements-scientific-win-py312-cu128.lock",
+    "sha256": "966bfa43a33545bb6d928c6e99ff3aab86fb952c0c56562d7f49627ecbffd598",
+    "distributions": 94,
+    "installed_versions_match": true,
+    "installation": "new venv; --no-index --find-links --only-binary=:all: --require-hashes",
+    "pip_check": "PASS"
+  },
+  "dependencies": {
+    "pycalphad": {
+      "status": "ok",
+      "version": "0.11.2"
+    },
+    "xarray": {
+      "status": "ok",
+      "version": "2026.7.0"
+    },
+    "symengine": {
+      "status": "ok",
+      "version": "0.13.0"
+    },
+    "tinydb": {
+      "status": "ok",
+      "version": "4.9.0"
+    },
+    "pint": {
+      "status": "ok",
+      "version": "0.26.1"
+    },
+    "numpy": {
+      "status": "ok",
+      "version": "2.2.6"
+    },
+    "scipy": {
+      "status": "ok",
+      "version": "1.15.3"
+    },
+    "matplotlib": {
+      "status": "ok",
+      "version": "3.11.2"
+    },
+    "scikit-learn": {
+      "status": "ok",
+      "version": "1.9.1"
+    },
+    "tqdm": {
+      "status": "ok",
+      "version": "4.70.1"
+    },
+    "pydantic": {
+      "status": "ok",
+      "version": "2.13.5"
+    },
+    "torch": {
+      "status": "ok",
+      "version": "2.11.0+cu128"
+    },
+    "torchvision": {
+      "status": "ok",
+      "version": "0.26.0+cu128"
+    },
+    "segmentation-models-pytorch": {
+      "status": "ok",
+      "version": "0.5.0"
+    },
+    "albumentations": {
+      "status": "ok",
+      "version": "2.0.8"
+    },
+    "opencv-python-headless": {
+      "status": "ok",
+      "version": "5.0.0.93"
+    },
+    "onnx": {
+      "status": "ok",
+      "version": "1.22.0"
+    },
+    "onnxruntime": {
+      "status": "ok",
+      "version": "1.30.0"
+    }
+  },
+  "repository_requirements": {
+    "status": "ok",
+    "requirements": [
+      {
+        "name": "pycalphad",
+        "constraint": "<0.13,>=0.11.2",
+        "line": 3,
+        "installed": "0.11.2",
+        "status": "ok"
+      },
+      {
+        "name": "xarray",
+        "constraint": ">=2024.0.0",
+        "line": 4,
+        "installed": "2026.7.0",
+        "status": "ok"
+      },
+      {
+        "name": "symengine",
+        "constraint": ">=0.13.0",
+        "line": 5,
+        "installed": "0.13.0",
+        "status": "ok"
+      },
+      {
+        "name": "tinydb",
+        "constraint": ">=4.8.0",
+        "line": 6,
+        "installed": "4.9.0",
+        "status": "ok"
+      },
+      {
+        "name": "pint",
+        "constraint": ">=0.23.0",
+        "line": 7,
+        "installed": "0.26.1",
+        "status": "ok"
+      },
+      {
+        "name": "numpy",
+        "constraint": "<2.3,>=1.24.0",
+        "line": 8,
+        "installed": "2.2.6",
+        "status": "ok"
+      },
+      {
+        "name": "scipy",
+        "constraint": "<1.16,>=1.10.0",
+        "line": 9,
+        "installed": "1.15.3",
+        "status": "ok"
+      },
+      {
+        "name": "matplotlib",
+        "constraint": ">=3.8.0",
+        "line": 10,
+        "installed": "3.11.2",
+        "status": "ok"
+      },
+      {
+        "name": "scikit-learn",
+        "constraint": ">=1.3.0",
+        "line": 11,
+        "installed": "1.9.1",
+        "status": "ok"
+      },
+      {
+        "name": "tqdm",
+        "constraint": ">=4.66.0",
+        "line": 12,
+        "installed": "4.70.1",
+        "status": "ok"
+      },
+      {
+        "name": "pydantic",
+        "constraint": "<3,>=2.5.0",
+        "line": 13,
+        "installed": "2.13.5",
+        "status": "ok"
+      },
+      {
+        "name": "torch",
+        "constraint": ">=2.1.0",
+        "line": 16,
+        "installed": "2.11.0+cu128",
+        "status": "ok"
+      },
+      {
+        "name": "torchvision",
+        "constraint": ">=0.16.0",
+        "line": 17,
+        "installed": "0.26.0+cu128",
+        "status": "ok"
+      },
+      {
+        "name": "segmentation-models-pytorch",
+        "constraint": ">=0.3.3",
+        "line": 18,
+        "installed": "0.5.0",
+        "status": "ok"
+      },
+      {
+        "name": "albumentations",
+        "constraint": ">=1.3.1",
+        "line": 19,
+        "installed": "2.0.8",
+        "status": "ok"
+      },
+      {
+        "name": "opencv-python-headless",
+        "constraint": ">=4.8.0",
+        "line": 20,
+        "installed": "5.0.0.93",
+        "status": "ok"
+      },
+      {
+        "name": "onnx",
+        "constraint": ">=1.15.0",
+        "line": 21,
+        "installed": "1.22.0",
+        "status": "ok"
+      },
+      {
+        "name": "onnxruntime",
+        "constraint": ">=1.16.0",
+        "line": 22,
+        "installed": "1.30.0",
+        "status": "ok"
+      }
+    ]
+  },
+  "gpu_smoke": {
+    "status": "ok",
+    "torch_version": "2.11.0+cu128",
+    "built_cuda": "12.8",
+    "available": true,
+    "device_count": 1,
+    "devices": [
+      "NVIDIA GeForce RTX 4060 Laptop GPU"
+    ],
+    "device": "cuda:0",
+    "steps": 3,
+    "losses": [
+      4.215446472167969,
+      4.02528190612793,
+      3.844669818878174
+    ],
+    "weights_updated": true
+  },
+  "doctor_gaps": [],
+  "tests": {
+    "requirement_ranges": {
+      "passed": 6
+    },
+    "environment_doctor": {
+      "passed": 10
+    },
+    "windows_lpbf_engineering": {
+      "passed": 25,
+      "skipped": 1,
+      "skip_reason": "Requires compiled OpenFOAM 14 worker",
+      "seconds": 16.7
+    },
+    "cmu_importer": {
+      "passed": 8
+    },
+    "wsl_lpbf_engineering": {
+      "passed": 26,
+      "skipped": 0,
+      "seconds": 53.334
+    }
+  },
+  "application": {
+    "snapshot": "1fc10dd",
+    "node": "24.20.0",
+    "npm": "11.19.0",
+    "clean_npm_ci_packages": 354,
+    "unit_passed": 104,
+    "lint": "PASS",
+    "build": "PASS",
+    "clean_gpu_api": "PASS",
+    "python_version": "3.12.10",
+    "channel": "http_microservice",
+    "warm_imports": 17,
+    "subsystem_status": "unverified",
+    "test_process_tree": "stopped"
+  },
+  "separate_tools": {
+    "docker_engine": "29.8.0",
+    "docker_hello_world_digest": "sha256:5e23090353324d887c48ad5e5c56d294eab81588df9605b07d1afe895f9cc8f8",
+    "paraview": "6.1.0",
+    "paraview_test": "literal synthetic VTI: 8 points, 1 cell, exact 8 scalars 300\u20131900 K",
+    "wsl": "Ubuntu-22.04 / WSL2 / OpenFOAM-14",
+    "openfoam_binary_sha256": "1abadcbe9beacbe60a9ad2228d634830f481ce6966b66de65724c172dc1159d7",
+    "initial_wsl_failure_to_windows_fallback": "PASS"
+  },
+  "limitations": [
+    "No customer pilot, experimental holdout or physical-model accuracy claim.",
+    "GPU check uses three SGD steps on synthetic tensors, not a trained engineering predictor.",
+    "Windows OpenFOAM test skipped; WSL evidence is separate.",
+    "ParaView headless synthetic reader check does not cover GUI rendering or real solver exports.",
+    "OS, driver, Python installer, Docker, WSL and standalone ParaView are outside the Python lock.",
+    "Full-stack imports do not establish each optional solver workflow."
+  ]
+}

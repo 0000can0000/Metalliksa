@@ -1,19 +1,17 @@
-# Current compact continuation — A01 closed
+# Compact continuation — A02 in progress
 
-- Repository: Metalliksa-1; branch main; remote https://github.com/0000can0000/Metalliksa.git. Check actual HEAD/remote for publication identity.
-- User preference: finish tested increments, commit/push, continue without repetitive confirmation. Sol/Terra may be selected for suitable delegated work; no Astra-only constraint. Keep updates/context concise.
-- Latest scope: finish first package A01. Earlier approximate 10% target must not create unearned credit.
-- A01 accepted after independent source review, correction of missing environment mapping and re-review. All 26 modules mapped; 120 cited paths verified; code/solver/environment/evidence/limitations covered. This is inventory acceptance, not scientific qualification.
-- Roadmap and installation outputs/progress.json: A01 = 100%, A02 = 10%; total 5.5%, remaining 94.5%, accepted 1/20; no industrial gate accepted.
-- Tests: 100/100 unit tests; lint PASS; build PASS 35.88s (existing large chunk warning). Three new inventory regression checks included. Preserve exact browser/publication result in newest LOG.md.
-- Existing foundations: GPU smoke PASS; Docker engine/hello-world PASS; ParaView synthetic VTI reader PASS; hash-locked Windows/Python3.12 CPU venv clean install, build fast suite and 25 thermal tests PASS, 1 OpenFOAM skip; CMU importer 626 rows and 8 tests PASS.
-- CMU single-track power stays null. Fatigue-coupon paper settings are not sufficient evidence for ST conditions; no approved calibration/holdout or solver validation.
-- Next A02: clean Node/application reproduction, WSL worker/fallback verification; fix hard-coded version/subsystem availability in routes/physics.ts before trusting its status fields. Full optional scientific dependencies remain outside the CPU lock.
-- Preview: localhost:3015, originally session 51497, GPU interpreter; check owned processes before restart. Separate test service 5058 was stopped. Docker left running. CPU venv/wheels are ignored under .runtime/.
-- Preserve unrelated dirty files: PROOF.md, README.md, RULES.md, src/App.tsx, LpbfResultPresentation.tsx, thermal pycache. Local diagnostic JSON snapshots are not staged.
-- Graph MCP unavailable; CLI list_projects/coverage fail secure coordination endpoint. Use exact-source fallbacks and disclose unknown freshness; do not claim current complete graph coverage.
-- Full history remains in LOG.md. This file is a concise checkpoint, not a claim that conversation context was manually compacted.
-
-- Continuation: runtime status correction tested (104 unit tests, lint/build, live CPU API smoke); WSL capabilities OpenFOAM-14 / Windows OpenFOAM unavailable observed. Next: clean committed Node/application install. Keep progressing after push until user stops work.
-
-- Clean snapshot 1fc10dd: npm ci/lint/104 tests/build/live API PASS. WSL 26/26 including OpenFOAM PASS; live WSL startup failure to Windows fallback PASS. Next: 41-wheel scientific dependency plan in .runtime/scientific-install-plan.json; GPU runtime preserved so far; install/verify/lock before A02 credit.
+- User: keep implementing tested increments, commit/push then continue until stopped; do not repeatedly ask. Sol/Terra allowed. A01 first package already accepted. Earlier 10% aim must not create unearned credit.
+- Repo: Metalliksa-1, main, origin https://github.com/0000can0000/Metalliksa.git. Latest published a5f25f9; prior 1fc10dd truthful Python status; accf368 A01 accepted. Verify actual HEAD before publication.
+- Ledger unchanged: A01 100%, A02 defined10%, overall5.5%,1/20accepted,noindustrialgates. Need A02 implementation/testing/review evidence before credit.
+- Published: docs/APPLICATION_REPRODUCTION.md; clean snapshot1fc10dd npm ci354packages, lint,104unit,build1m40,liveHTML/API PASS. WSL26/26 includingcompiledOpenFOAM PASS53.334s; actual initialWSLfailure→WindowsCPUfallback PASS. No experimentalvalidation.
+- Status fix: daemon emits version/namedimports/activechannels; supervisor buffers split JSON and clears observations on exit; API no longer fabricates3.10/allsolversavailable/15modules; client defaults removed. Unit104/lint/build/liveAPI PASS.
+- Existing GPU venv under installationroot/.venv repaired with41additional exact/hash-pinnedwheels. pipcheckPASS,doctor18/18imports,18/18rootranges,CUDASGD3stepsPASS; doctor gaps[] with temporaryDocker/ParaViewPATH. This is NOT clean-venv evidence.
+- Current new files: python/requirements-scientific-win-py312-cu128.lock (94hashedpins); docs/SCIENTIFIC_ENVIRONMENT_REPRODUCTION.md; python/check_requirement_ranges.py and test_requirement_ranges.py (6PASS). All94wheels downloaded to ignored.runtime/scientific-wheels.
+- RUNNING: clean offline94packageinstall into .runtime/scientific-win-py312-cu128, execsession96147. Log.runtime/scientific-clean-install.log. NewbasePython3.12.10/pip25.0.1; do not claim complete until sessionreturns0. On completion run cleanpipcheck/rangechecker/doctorGPU/LPBFengineering/CMUimporter and liveAPI with exactnewinterpreter. Add resulting evidence toscientificdoc, independentlyreview, updateledger only justifiedmilestones, log/commit/push thenCONTINUE.
+- Reference artifacts ignored.runtime: scientific-doctor.json (OLDrepairedGPUvenv), scientific-range-check.json, scientific-constraints.json, scientific-full-lock-report.json,scientific-pypi-hashes.json,scientific-download.log. Do not mislabeloldreportclean.
+- Existing agent /root/inventory_review: preliminaryA02review foundnostatusdefect,94lockpinsvalid,awaitscleanenvironmentresults. Currentlyreviewingnewrangechecker; askfinalreviewaftercleanrecordready. Sourcefallback; graphMCPabsent and currentCLIproject/coveragefailedsecurecoordinationendpoint; freshnessunknown.
+- Preview restarted withupdatedbackend/fullrepairedGPUenv,3015/5055,execsession93307. API3.12.10/HTTP/17imports/solverunverifiedPASS. Old27508treeverified/stopped. IABtab2 currentlymelt-poolstage (usernavigated); do not reset their route/input.
+- Preserve/exclude unrelateddirty: PROOF.md,README.md,RULES.md,src/App.tsx,LpbfResultPresentation.tsx,thermalpycache; two localJSONsnapshots untracked. Stage taskfilesonly. Runtimefoldersignored.
+- Installationroot: C:/Users/can02/Documents/Codex/2026-09-15/referenced-chatgpt-conversation-this-is-an-2. outputs/progress.json currently5.5%; sync whenledgerchanges. Requires scopedescalation.
+- RemainingA02: cleanfullGPUevidence + finalreview. Thencontinue C01/C02technicalfoundations; founderinterviews/B02/customercriteria cannotbefabricated.
+- Final A02 state: accepted after independent review. Roadmap is 10% evidenced, 90% remaining, 2/20 accepted, no industrial gate. User then requested push and stop; do not continue after the next push.

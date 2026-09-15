@@ -42,13 +42,17 @@ const recordedMilestones: Record<string, MilestoneEvidence[]> = {
     { id: 'accepted', evidence: 'A01 acceptance criterion met: all 26 modules mapped to code, solver paths, runtime requirements, evidence and unresolved limitations. Bounded inventory acceptance only; not runtime or scientific qualification.', date: '2026-09-15', reviewer: 'Codex integration acceptance after independent review' },
   ],
   A02: [
-    { id: 'defined', evidence: 'docs/ENVIRONMENT_READINESS.md defines interpreter selection, dependency diagnostics, CUDA smoke and separate Docker/ParaView checks. Full locked environment and tool verification remain incomplete.', date: '2026-09-15', reviewer: 'Codex implementation record' },
+    { id: 'defined', evidence: 'docs/ENVIRONMENT_READINESS.md defines explicit interpreter selection, dependency constraints, GPU/tool checks and clean reproduction scope.', date: '2026-09-15', reviewer: 'Codex implementation record' },
+    { id: 'implemented', evidence: 'Seven-package CPU and 94-package scientific/CUDA wheel locks, shared Python resolver, observed runtime status, requirement range checker and clean Node reproduction procedures implemented.', date: '2026-09-15', reviewer: 'Codex implementation record' },
+    { id: 'tested', evidence: 'docs/evidence/a02-environment-2026-09-15.json: new offline venv matches 94 pins; pip check, 18 imports/ranges, CUDA SGD, clean Node 104 unit/lint/build/live API, ParaView VTI, Docker and WSL 26/26 plus launch fallback passed. Windows OpenFOAM skip retained.', date: '2026-09-15', reviewer: 'Codex verification record' },
+    { id: 'reviewed', evidence: 'Independent source/artifact review matched the lock hash, all 94 clean installed versions, clean interpreter identity, imports/ranges/CUDA and API/test records. No material acceptance gap remained; graph unavailable, exact source fallback used.', date: '2026-09-15', reviewer: 'Independent Codex inventory_review agent' },
+    { id: 'accepted', evidence: 'A02 technical environment criterion met: application Python, CUDA execution, ParaView reading, Docker engine and locked clean setup verified. Workstation/software reproduction acceptance only; not scientific or industrial qualification.', date: '2026-09-15', reviewer: 'Codex integration acceptance after independent review' },
   ],
 };
 export const engineeringRoadmap: EngineeringTask[] = cards.map(([id, title, dependencies, acceptance]) => ({
   id, title, weight: 5, dependencies: dependencies ? dependencies.split(' ') : [], acceptance,
   milestones: recordedMilestones[id] ?? [], blocker: id === 'B01' ? 'Founder interviews and pilot access are not yet recorded.' : null,
-  nextAction: id === 'A01' ? 'Maintain the inventory when modules or evidence change; continue A02 environment verification.' : 'Complete prerequisites and record the next acceptance evidence.',
+  nextAction: id === 'A01' ? 'Maintain the inventory when modules or evidence change.' : id === 'A02' ? 'Repeat locked checks after environment changes; continue material-data and unit foundations.' : id === 'C01' ? 'Verify supplied material identity, units and temperature coverage; pilot-specific acceptance still requires B02.' : 'Complete prerequisites and record the next acceptance evidence.',
 }));
 export const ENGINEERING_GATES = [
   { id: 'K0', title: 'Scope and environment', tasks: ['A01', 'A02', 'B01', 'B02'] },

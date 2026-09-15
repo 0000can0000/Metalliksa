@@ -67,4 +67,4 @@ Snapshot `1fc10dd` installed 354 packages with `npm ci` in 30 seconds. Type chec
 
 The clean snapshot's production server ran on separate ports 3016/5058 with the seven-package CPU Python environment. HTML returned HTTP 200; `/api/python/status` reported Python 3.12.10, HTTP transport, 17 imported modules and unverified subsystem status. Its test process tree was stopped. This snapshot did not include unrelated local UI edits.
 
-Remaining A02 work: finish the broader scientific dependency installation/lock, verify imports and GPU execution afterward, and independently review the accumulated environment evidence. Clean CPU/application reproduction alone does not close those requirements.
+The subsequent [full scientific environment record](SCIENTIFIC_ENVIRONMENT_REPRODUCTION.md) completes the separate 94-package offline installation, import/range and GPU checks. Independent review of the accumulated A02 environment evidence is recorded there and in the roadmap; clean CPU/application reproduction alone did not close those requirements.

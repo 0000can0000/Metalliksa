@@ -8,7 +8,9 @@ Customer interviews and pilot acceptance remain founder/customer work. Technical
 
 Industrial gates are cumulative: each gate needs its own accepted tasks and every earlier gate. In particular, H01/H02 task progress cannot bypass unaccepted E02/E03/E04/F01 modules at K2. The 20-task scope is unchanged.
 
-The latest 2026-09-15 continuation closes A01 after independent review and correction of its runtime mapping (100% of that package). A02 definition remains credited (10%). Total evidenced work is 5.5%, remaining 94.5%; one package and zero industrial gates are accepted. This measures the new startup scope, not the fraction of existing application code completed. The earlier 4.25% snapshot is superseded. Full environment verification remains open; no extra credit was assigned just to reach the previously discussed 10% target.
+The latest 2026-09-15 continuation closes A01 and A02 after independent review. Each is 100% complete within its stated technical acceptance scope. Total evidenced work is **10%**, remaining **90%**, with **2/20 packages** and zero industrial gates accepted. This measures the startup work scope, not physical-model accuracy or the fraction of existing application code completed. The earlier 4.25% and 5.5% snapshots are superseded by recorded evidence, not an arbitrary progress target. A02's versioned evidence is in `docs/evidence/a02-environment-2026-09-15.json`.
+
+Next: C01/C02 technical material-data foundations. B01 founder interviews and B02 customer-specific pilot criteria remain open; no pilot acceptance, holdout split or experimental validation can be invented to close dependencies.
 
 ## Execution order
 

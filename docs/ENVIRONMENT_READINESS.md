@@ -2,9 +2,9 @@
 
 ## Latest verified boundary — 2026-09-15
 
-The [clean application reproduction record](APPLICATION_REPRODUCTION.md) supersedes the older open Node/WSL items below: a committed snapshot passed npm ci, type checking, 104 unit tests, production build and live HTML/Python-status checks. WSL passed all 26 engineering tests including the compiled OpenFOAM comparison; an isolated Node bridge test verified initial WSL failure falls back to the selected Windows CPU interpreter. Broader scientific dependency installation/locking and independent environment review remain open. A02 credit is unchanged pending that work. Earlier snapshots are retained as history, not current tool availability.
+The [clean application record](APPLICATION_REPRODUCTION.md) and [full scientific/CUDA reproduction](SCIENTIFIC_ENVIRONMENT_REPRODUCTION.md) supersede the earlier open environment items below. A new Python environment installed 94 hash-locked wheels offline and matched all locked versions. Package consistency, all 18 imports and requirement ranges, CUDA training smoke, selected LPBF/importer regressions and a clean Node application's live API passed. WSL passed all 26 engineering tests including compiled OpenFOAM; initial WSL failure to Windows fallback was exercised separately. Independent source/artifact review found no remaining material acceptance gap. A02 is accepted for technical workstation/software reproduction; no model qualification is implied.
 
-The [Windows CPU LPBF reproduction guide](LPBF_CPU_REPRODUCTION.md) provides a separate seven-package wheel lock and offline clean-venv procedure. It scopes reproduction to LPBF CPU workloads; the broader scientific and CUDA environments remain separate.
+The [CPU LPBF guide](LPBF_CPU_REPRODUCTION.md) remains a separate seven-package baseline. [Versioned evidence](evidence/a02-environment-2026-09-15.json) preserves the clean interpreter scope and lock hash. Earlier snapshots below are historical observations, not current availability.
 
 ## Tool execution verified — 2026-09-15 continuation
 
@@ -20,15 +20,15 @@ Run the same check with your installed ParaView interpreter:
 
 This checks headless VTI file reading. It does not verify the ParaView GUI, GPU rendering, real solver export compatibility or scientific accuracy. Portable ParaView and Docker may still be absent from an already-running shell's PATH; these checks used explicit executable paths and changed no persistent PATH settings.
 
-The earlier unavailable-engine snapshot below is superseded by this successful run. A02 remains incomplete: dependency locking, remaining domain packages, clean application reproduction and live WSL-to-host fallback are still open. No new A02 implementation/acceptance milestone is awarded for these partial checks.
+At this earlier tool-only checkpoint, locking, remaining packages and Node/WSL verification were still open. The latest verified boundary above supersedes that partial status.
 
 ## Continuation verification — 2026-09-15
 
-The existing GPU venv was repaired with Pydantic 2.13.5, NumPy 2.2.6 and SciPy 1.15.3. `pip check` passed. These three versions satisfy the repository ranges; this does not mean all repository dependencies are installed. The doctor still reports 12 missing optional/domain dependencies, ParaView/pvpython outside PATH, and an unavailable Docker engine.
+The existing GPU venv was repaired with Pydantic 2.13.5, NumPy 2.2.6 and SciPy 1.15.3. `pip check` passed. These three versions satisfy the repository ranges; this does not mean all repository dependencies are installed. At that earlier checkpoint the doctor reported 12 missing optional/domain dependencies, ParaView/pvpython outside PATH, and an unavailable Docker engine; the latest verified boundary supersedes those gaps.
 
 The actual production Node server was started with an explicit `METALLIX_PYTHON` override to that venv on local port 3015. Its Python supervisor loaded 17 scientific modules successfully, including the modules previously blocked by missing Pydantic. The HTTP microservice used port 5055; `METALLIX_IPC_SOCK` does not change that HTTP port. A fresh CUDA smoke passed three training steps on RTX 4060 Laptop, with finite losses 4.215446 → 4.025282 → 3.844670 and updated weights. No trained scientific predictor or experimental validation is claimed.
 
-Full clean-install locking, the remaining domain dependencies, Docker engine, ParaView output reading and WSL/host fallback under a live worker failure remain open A02 checks. The resolver's fallback policy has 14 passing unit tests; the actual host supervisor launch was separately verified.
+Those items remained open at this historical checkpoint and were subsequently verified within the scopes above. The resolver's fallback policy has 14 passing unit tests; the actual host supervisor launch was separately verified.
 
 Run the doctor with the exact interpreter that will run the workload, from the repository root:
 

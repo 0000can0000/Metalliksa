@@ -1,3 +1,14 @@
+## 2026-09-15 16:41 — Publication authorized; Docker and ParaView execution verified
+
+- **Agent:** GPT-6 (Codex). **Result:** PASS for tool execution checks; overall A02 remains PARTIAL.
+- **User instruction:** User explicitly said 'Böyle şeylerde hep push sonra devam'. Continue to commit/push completed task-owned changes to the established https://github.com/0000can0000/Metalliksa main destination before continuing, without repeated confirmation unless the destination/action changes or a new approval block requires it. Preserve unrelated edits.
+- **Done:** Normal push of 77e71bd succeeded. Local HEAD and remote main both verified as 77e71bd20804f3cd4d765c8e3c92426181f1d0a9. Started existing Docker Desktop through its CLI; desktop-linux engine 29.8.0 responded and official hello-world container completed successfully (no project mounts, network disabled, read-only root, capabilities dropped). Portable ParaView 6.1.0 read a literal synthetic VTI fixture: eight points, one cell, all expected scalars and 300–1900 K range.
+- **Files:** python/check_paraview.py; docs/ENVIRONMENT_READINESS.md; sonkayıtlar/LOG.md. No solver or UI changes.
+- **Tests:** Actual pvpython -B python/check_paraview.py PASS; initial sandbox temporary-file failure resolved with scoped execution. Docker version/info and hello-world run PASS. git diff --check PASS. No frontend rebuild needed for a standalone tool smoke script and documentation.
+- **Evidence limits:** VTI reader check is synthetic, not a real LPBF export or GUI/rendering/scientific validation. Docker hello-world is not the application container. PATH unchanged. Docker engine left running; downloaded hello-world image retained, test container automatically removed.
+- **Where we stand:** New startup ledger remains 4.25% evidenced, 95.75% remaining, 0/20 accepted. Docker-engine and headless ParaView-reader gaps are closed for this workstation. Remaining A02: domain dependencies, lock/clean app reproduction, live WSL fallback, ParaView GUI/real export. CMU Ti-6Al-4V provenance/units/importer and grouped holdout remain pending.
+- **Last completed action:** Verified Docker container and ParaView scalar readback; documented reproducible smoke command.
+- **Next action:** Complete reproducible environment dependency scope and CMU Ti-6Al-4V importer; do not promote raw records to validation without reviewed conditions/units. Publish this coherent tool-check increment first under the user's standing push instruction.
 ## 2026-09-15 16:35 — Resume engineering foundations and enforce gate order
 
 - **Agent:** GPT-6 (Codex). **Result:** PASS for this software foundation increment; overall startup plan remains PARTIAL.

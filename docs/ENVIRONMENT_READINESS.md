@@ -1,5 +1,21 @@
 # Environment readiness
 
+## Tool execution verified — 2026-09-15 continuation
+
+Docker Desktop was started using its installed CLI. The `desktop-linux` engine responded with version 29.8.0. The official `hello-world` image ran successfully in a disposable container with networking disabled, a read-only root filesystem, no Linux capabilities and no project mounts. Image digest: `sha256:5e23090353324d887c48ad5e5c56d294eab81588df9605b07d1afe895f9cc8f8`. The engine was left running. This establishes container execution, not a reproducible Metalliksa container image.
+
+The portable ParaView 6.1.0 installation responded to `pvpython --version`. Its Python runtime executed `python/check_paraview.py`: an independently written literal VTI fixture was read through `XMLImageDataReader`, yielding eight points, one cell and the exact eight synthetic scalar values with range 300–1900 K. Temporary files are scoped to a newly created directory and removed after the check.
+
+Run the same check with your installed ParaView interpreter:
+
+```powershell
+& 'C:/path/to/ParaView/bin/pvpython.exe' -B python/check_paraview.py
+```
+
+This checks headless VTI file reading. It does not verify the ParaView GUI, GPU rendering, real solver export compatibility or scientific accuracy. Portable ParaView and Docker may still be absent from an already-running shell's PATH; these checks used explicit executable paths and changed no persistent PATH settings.
+
+The earlier unavailable-engine snapshot below is superseded by this successful run. A02 remains incomplete: dependency locking, remaining domain packages, clean application reproduction and live WSL-to-host fallback are still open. No new A02 implementation/acceptance milestone is awarded for these partial checks.
+
 ## Continuation verification — 2026-09-15
 
 The existing GPU venv was repaired with Pydantic 2.13.5, NumPy 2.2.6 and SciPy 1.15.3. `pip check` passed. These three versions satisfy the repository ranges; this does not mean all repository dependencies are installed. The doctor still reports 12 missing optional/domain dependencies, ParaView/pvpython outside PATH, and an unavailable Docker engine.

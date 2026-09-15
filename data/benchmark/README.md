@@ -21,3 +21,7 @@ Ti-6Al-4V candidates to inspect before assigning holdouts:
 - [NIST-hosted Ti-6Al-4V benchmark paper](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=956754): candidate source for melt-pool/keyhole/absorptance experiments and the linked data record. No values have been transcribed or used for calibration here.
 
 No candidate is marked accepted, independently validated, or part of the training set by merely appearing in this list.
+
+## CMU Ti-6Al-4V import available
+
+The [CMU v1 archive guide](cmu-ti64-meltpool-v1/README.md) documents the verified three-file manifest and offline importer. It imports 216 single-track and 410 multi-track measurements with source lines and explicit units. Single-track laser power is absent in the CSV and remains unresolved. No training/holdout split or solver validation is assigned automatically.

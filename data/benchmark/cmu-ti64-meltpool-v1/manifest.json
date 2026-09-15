@@ -1,0 +1,37 @@
+{
+  "files": [
+    {
+      "publisher_md5": "8117111633a6facf565ddc155da4e35e",
+      "bytes": 8002,
+      "source_url": "https://ndownloader.figshare.com/files/45867030",
+      "name": "STMeasurements.csv",
+      "sha256": "2e6db89484a91b8c8c5112bc1f68dbe7388dfddea19d92428e4ae160e0372e5c",
+      "path": "raw/STMeasurements.csv"
+    },
+    {
+      "publisher_md5": "de147a56b2fb8b60558218c41feff3d9",
+      "bytes": 15548,
+      "source_url": "https://ndownloader.figshare.com/files/45867027",
+      "name": "MTMeasurements.csv",
+      "sha256": "871a915a3850754af3174c2cd14295d3351ab745bed4f3a9a4bc31d8dd693743",
+      "path": "raw/MTMeasurements.csv"
+    },
+    {
+      "publisher_md5": "de1c685aef4f0919d32a5ffb83b2790d",
+      "bytes": 6441,
+      "source_url": "https://ndownloader.figshare.com/files/46532239",
+      "name": "README.txt",
+      "sha256": "3f4c2d9fb933282faf8cb03eb43baad438b5ad3b9a54412a3dbfff0a3521f6fc",
+      "path": "raw/README.txt"
+    }
+  ],
+  "verified_at": "2026-09-15",
+  "checksum_authority": "MD5 checked against publisher API computed_md5; SHA256 is local byte provenance",
+  "attribution": "Justin Miner and Sneha Prabha Narra (2024), Carnegie Mellon University",
+  "dataset_id": "cmu-ti64-meltpool-v1",
+  "material": "Ti-6Al-4V",
+  "doi": "10.1184/R1/25696293.v1",
+  "license": "CC BY 4.0",
+  "publisher_metadata_url": "https://api.figshare.com/v2/articles/25696293/versions/1",
+  "schema_version": 1
+}

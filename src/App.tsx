@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Compass, Cpu, X, ArrowRight, Search, Layers, BookOpen, Flame } from 'lucide-react';
+import { Cpu, X, ArrowRight, Search, Layers, BookOpen, Flame } from 'lucide-react';
 import { MODULES, WORKSPACES, ModuleId, isModuleId, moduleFromHash, moduleHash } from './data/workspaces';
 import { WorkspaceVisibility } from './components/WorkspaceVisibility';
 import { ModuleBoundary } from './components/ModuleBoundary';
@@ -8,6 +8,7 @@ import { AirgapBanner } from './components/AirgapBanner';
 import { pythonComputationService, PythonEngineStatus } from './services/pythonComputationService';
 import { startMaterialContextBridge, useMaterialContextBridgeStore } from './services/materialContextBridge';
 import { startEngineeringJobPersistence } from './store/useLpbfEngineeringStore';
+import { ScientificContextPanel } from './components/ScientificContextPanel';
 const EvidenceWorkspace = lazy(() => import('./components/EvidenceWorkspace').then(m => ({ default: m.EvidenceWorkspace })));
 const ResearchIntegrationPanel = lazy(() => import('./components/ResearchIntegrationPanel').then(m => ({ default: m.ResearchIntegrationPanel })));
 const PocketCalculators = lazy(() => import("./components/PocketCalculators").then(m => ({ default: m.PocketCalculators })));
@@ -134,34 +135,37 @@ export default function App() {
     }
   }
 
-  return <div className="min-h-screen bg-[#070b12] text-slate-200 font-sans selection:bg-sky-500/25">
+  return <div className="mk-shell min-h-screen text-slate-100 selection:bg-sky-500/25">
+    <div className="mk-grid-overlay" aria-hidden="true" />
+    <div className="mk-scanline" aria-hidden="true" />
     <AirgapBanner />
-    <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#0b111c]/95 backdrop-blur px-4 lg:px-6 py-3">
+    <header className="mk-header sticky top-0 z-40 border-b px-4 lg:px-6 py-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3"><button aria-label="Toggle workspace navigation" aria-expanded={navigationOpen} onClick={() => setNavigationOpen(v => !v)} className="lg:hidden rounded-lg bg-slate-800 p-2 text-sm">Modules</button><Compass className="w-7 h-7 text-sky-400"/><div><h1 className="font-semibold tracking-tight text-lg text-white">Metalliksa</h1><p className="text-xs text-slate-500">Research engineering workstation</p></div></div>
-        <button onClick={() => setShowStatus(true)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Engine · {checking ? 'Checking…' : status?.online ? 'Connected' : 'Unavailable'}</button>
+        <div className="flex items-center gap-3"><button aria-label="Toggle workspace navigation" aria-expanded={navigationOpen} onClick={() => setNavigationOpen(v => !v)} className="lg:hidden rounded-lg border border-cyan-400/30 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100">Modules</button><div className="mk-brand-mark" aria-label="Metalliksa logo"><span className="mk-brand-crown" aria-hidden="true" /><span className="mk-brand-wing left" aria-hidden="true" /><span className="mk-brand-wing right" aria-hidden="true" /><span className="mk-brand-laser" aria-hidden="true" /><span className="mk-brand-face" aria-hidden="true"><span className="mk-brand-visor" /><span className="mk-brand-core" /></span><span className="mk-brand-orbit orbit-one" aria-hidden="true" /><span className="mk-brand-orbit orbit-two" aria-hidden="true" /></div><div><h1 className="mk-brand-title text-lg font-semibold text-white">METALLIKSA</h1><p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/80">Future materials command system</p></div></div>
+        <div className="flex items-center gap-3"><span className="mk-hud-chip hidden sm:inline">Local control plane</span><button onClick={() => setShowStatus(true)} className="mk-status px-3 py-2 text-xs text-cyan-100"><span className={`mr-2 inline-block h-1.5 w-1.5 rounded-full ${checking ? 'bg-amber-300 animate-pulse' : status?.online ? 'bg-emerald-300' : 'bg-amber-300'}`}/>{checking ? 'Checking…' : status?.online ? 'Engine connected' : 'Engine unavailable'}</button></div>
       </div>
     </header>
     <div className="flex flex-col lg:flex-row">
-      <aside className={`${navigationOpen ? 'block' : 'hidden'} lg:block lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800 bg-[#0a101a] p-4 lg:sticky lg:top-[77px] lg:h-[calc(100vh-77px)] overflow-y-auto`}>
-        <label htmlFor="module-search" className="block text-xs text-slate-400 mb-2">Find a module</label><div className="relative mb-5"><Search className="absolute left-3 top-3 w-4 h-4 text-slate-500"/><input id="module-search" type="search" value={moduleSearch} onChange={e => setModuleSearch(e.target.value)} placeholder="Materials, evidence…" className="w-full bg-slate-900 rounded-lg pl-9 pr-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-600"/></div>
+      <aside className={`${navigationOpen ? 'block' : 'hidden'} mk-sidebar lg:block lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r p-4 lg:sticky lg:top-[77px] lg:h-[calc(100vh-77px)] overflow-y-auto`}>
+        <div className="mb-5 flex items-center justify-between"><div><p className="text-[10px] uppercase tracking-[0.18em] text-cyan-100/75">Navigation</p><p className="mt-1 text-xs text-slate-200">Engineering surfaces</p></div><span className="mk-count-badge font-mono text-[10px]">{String(MODULES.length).padStart(2, '0')}</span></div><label htmlFor="module-search" className="mb-2 block text-xs text-cyan-50/85">Find a module</label><div className="relative mb-5"><Search className="absolute left-3 top-3 w-4 h-4 text-cyan-200/80"/><input id="module-search" type="search" value={moduleSearch} onChange={e => setModuleSearch(e.target.value)} placeholder="Materials, evidence…" className="aero-input w-full rounded-xl border pl-9 pr-2 py-2.5 text-sm focus:ring-2 focus:ring-cyan-400/40"/></div>
         <nav aria-label="Engineering workspaces">
           {WORKSPACES.map(workspace => {
             const Icon = workspace.id === 'lpbf' ? Flame : workspace.id === 'materials' ? Layers : BookOpen;
             const modules = filtered.filter(m => m.workspace === workspace.id);
             if (!modules.length) return null;
-            return <div key={workspace.id} className="mb-5"><button onClick={() => navigate(workspace.defaultModule)} className={`mb-2 flex items-center gap-2 text-xs font-semibold ${workspace.id === activeWorkspace.id ? 'text-sky-300' : 'text-slate-300'}`}><Icon className="w-4 h-4"/>{workspace.label}</button><div className="space-y-0.5">{modules.map(module => <button key={module.id} aria-current={activeTab === module.id ? 'page' : undefined} title={module.description} onClick={() => navigate(module.id)} className={`w-full text-left rounded-lg px-3 py-2 text-sm transition-colors ${activeTab === module.id ? 'bg-sky-500/15 text-sky-200 font-medium' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}>{module.label}</button>)}</div></div>;
+            return <div key={workspace.id} className="mb-5"><button onClick={() => navigate(workspace.defaultModule)} className={`mb-2 flex items-center gap-2 text-xs font-semibold ${workspace.id === activeWorkspace.id ? 'text-cyan-100' : 'text-slate-200'}`}><Icon className="w-4 h-4"/>{workspace.label}</button><div className="space-y-0.5">{modules.map(module => <button key={module.id} aria-current={activeTab === module.id ? 'page' : undefined} title={module.description} onClick={() => navigate(module.id)} className={`mk-nav-item w-full text-left px-3 py-2 text-sm transition-colors ${activeTab === module.id ? 'is-active text-cyan-50 font-medium' : 'text-slate-300 hover:text-white'}`}>{module.label}</button>)}</div></div>;
           })}
           {!filtered.length && <p role="status" className="text-sm text-slate-400">No matching modules. Try a material, method or workflow name.</p>}
         </nav>
       </aside>
       <main className="flex-1 min-w-0 p-4 sm:p-6 xl:p-8">
-        <div className="mb-5 border-b border-slate-800 pb-5"><p className="text-xs text-sky-400 mb-2">{activeWorkspace.label}</p><div className="flex flex-wrap items-center gap-3"><h2 className="text-2xl font-semibold tracking-tight text-white">{activeModule.label}</h2><span title="Module maturity; this is not a validation claim for any result." className={`rounded border px-2 py-0.5 text-xs ${activeModule.scope === 'Preview' ? 'border-fuchsia-500/30 text-fuchsia-300' : 'border-sky-500/30 text-sky-300'}`}>{activeModule.scope}</span></div><p className="mt-2 max-w-4xl text-sm text-slate-400">{activeModule.description}</p></div>
+        <div className="mk-content-header mb-5 border-b pb-5 pl-4"><p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-cyan-200">{activeWorkspace.label} / Active surface</p><div className="flex flex-wrap items-center gap-3"><h2 className="text-2xl font-semibold text-white">{activeModule.label}</h2><span title="Module maturity; this is not a validation claim for any result." className={`mk-scope-badge ${activeModule.scope === 'Preview' ? 'is-preview' : ''}`}>{activeModule.scope}</span></div><p className="mt-2 max-w-4xl text-sm leading-6 text-slate-200">{activeModule.description}</p></div>
         <details className="mb-5 rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs">
           <summary className="cursor-pointer text-slate-300">Shared material · <span className="text-sky-200">{specimen.name}</span> · {specimen.lpbf.laserPower_W} W / {specimen.lpbf.scanSpeed_mms} mm/s <span className="ml-2 text-slate-500">Context & trust</span></summary>
           <div className="mt-3 grid gap-3 md:grid-cols-2 text-slate-400"><p>Hatch {specimen.lpbf.hatch_um} µm · Layer {specimen.lpbf.layer_um} µm · Beam {specimen.lpbf.beamDiameter_um} µm · Preheat {specimen.lpbf.preheatTemp_C} °C. Material and process are shared across LPBF stages.</p><p>Module scope: Production / Research / Preview / Unresolved. Result evidence: Measured / Validated simulation / Calibrated simulation / Literature estimate / Screening only / Unresolved. Conservation, convergence and experimental validation are separate checks.</p><p>Visited modules retain their local view during navigation. Specimen and registry persist in this browser. Meshes and most specialist views remain session-only.</p></div>
         </details>
         {materialTransfer.message && <p role={materialTransfer.error ? 'alert' : 'status'} className={`mb-4 rounded-lg border px-4 py-3 text-xs ${materialTransfer.error ? 'border-amber-500/30 text-amber-200' : 'border-cyan-500/20 text-cyan-200'}`}>{materialTransfer.message}</p>}
+        <ScientificContextPanel moduleId={activeTab} specimen={specimen} />
         {visited.map(id => <div key={id} hidden={id !== activeTab} data-module={id}><WorkspaceVisibility visible={id === activeTab}>
           <ModuleBoundary label={MODULES.find(m => m.id === id)!.label}>
             <Suspense fallback={<div role="status" className="min-h-60 flex items-center justify-center text-slate-400">Loading engineering module…</div>}>

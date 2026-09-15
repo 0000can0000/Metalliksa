@@ -1,0 +1,5 @@
+# CPU LPBF baseline only. Windows x64 / CPython 3.12 lock is generated separately.
+# Full CALPHAD, micrograph ML and CUDA environments use python/requirements.txt.
+numpy==2.2.6
+scipy==1.15.3
+pydantic==2.13.5

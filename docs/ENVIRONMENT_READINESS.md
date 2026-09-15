@@ -1,5 +1,7 @@
 # Environment readiness
 
+The [Windows CPU LPBF reproduction guide](LPBF_CPU_REPRODUCTION.md) provides a separate seven-package wheel lock and offline clean-venv procedure. It scopes reproduction to LPBF CPU workloads; the broader scientific and CUDA environments remain separate.
+
 ## Tool execution verified — 2026-09-15 continuation
 
 Docker Desktop was started using its installed CLI. The `desktop-linux` engine responded with version 29.8.0. The official `hello-world` image ran successfully in a disposable container with networking disabled, a read-only root filesystem, no Linux capabilities and no project mounts. Image digest: `sha256:5e23090353324d887c48ad5e5c56d294eab81588df9605b07d1afe895f9cc8f8`. The engine was left running. This establishes container execution, not a reproducible Metalliksa container image.

@@ -32,3 +32,7 @@ Rows with known power and speed receive a coarse condition-group candidate using
 Solver-comparison, ML-training and independent-validation eligibility remain false. Beam profile/diameter, layer thickness, powder lot and thermal boundaries are unresolved in this adapter; specimen/build independence and the intended comparison metric must be reviewed before a split or calibration is approved. Source-reported dimensions are measurements, but ingesting them is not validation of a model. No geometry error, predictive accuracy or industrial acceptance is claimed.
 
 Next: review the associated experimental methods against a specific solver mode, resolve ST power with a cited source if possible, and define independent groups and acceptance tolerances before assigning calibration/holdout records.
+
+### Follow-up source check (2026-09-15)
+
+The indexed primary-publisher text for [Miner et al., section 2.2, fatigue coupon fabrication](https://doi.org/10.1016/j.addma.2024.104506) reports 370 W, a manufacturer-reported 100 µm spot, 140 µm hatch, 30 µm layers and 180 °C preheat for the fatigue coupons. That experiment scope does not establish applicability to every ST CSV measurement. Those values were not inserted into ST records or the solver. Direct full-text retrieval returned HTTP 403 in this session; this was a bounded indexed-text check, not a full-paper methods review. ST power, comparison geometry and independent build grouping remain unresolved.

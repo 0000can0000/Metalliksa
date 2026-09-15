@@ -16,6 +16,7 @@ python/openfoam/bin/
 
 # Local benchmark payloads; commit small provenance manifests, not raw measurements.
 data/benchmark/**/raw/
+.runtime/
 
 # Graft keeps durable markdown wiring cards in source control; these are
 # machine-local indexes and caches rebuilt with `graft build`.

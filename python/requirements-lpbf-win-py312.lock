@@ -1,0 +1,16 @@
+# Windows x64 / CPython 3.12 CPU LPBF wheel lock. Generated 2026-09-15.
+# Install with pip --require-hashes; GPU/CALPHAD/micrograph stacks are outside this lock.
+# annotated_types-0.8.0-py3-none-any.whl
+annotated-types==0.8.0 --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
+# numpy-2.2.6-cp312-cp312-win_amd64.whl
+numpy==2.2.6 --hash=sha256:c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2
+# pydantic_core-2.46.5-cp312-cp312-win_amd64.whl
+pydantic-core==2.46.5 --hash=sha256:5e81740c09e310f5aa5cbd3e434a01c154d4bef93241c7877b39f211d2b78ba8
+# pydantic-2.13.5-py3-none-any.whl
+pydantic==2.13.5 --hash=sha256:346a034f080da3755d8e9cb5e00e8b07de1d39e4f6e2c87d8ab7cafa0b269a73
+# scipy-1.15.3-cp312-cp312-win_amd64.whl
+scipy==1.15.3 --hash=sha256:52092bc0472cfd17df49ff17e70624345efece4e1a12b23783a1ac59a1b728ed
+# typing_extensions-4.16.0-py3-none-any.whl
+typing-extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+# typing_inspection-0.4.4-py3-none-any.whl
+typing-inspection==0.4.4 --hash=sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147

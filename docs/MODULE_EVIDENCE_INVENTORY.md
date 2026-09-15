@@ -70,6 +70,50 @@ Model detail and existing verification records: `docs/LPBF_ENGINEERING.md`. This
 | `traceability` / Export / Traceability | `src/components/EvidenceWorkspace.tsx`, mode `traceability` | Exports active specimen, research snapshot, engineering job/submitted input and screening alignment; shares registry/job stores. | **Research. S:** source declares meshes/full worker artifacts excluded; **L:** `tests/research-persistence.test.ts`, `tests/lpbf-workflow.test.ts` cover related snapshot/report contracts, not the entire downloaded package. | End-to-end export/reimport fixture plus manifest linking separate mesh/worker artifacts and source attachments. |
 | `copilot` / Research Assistant | `src/components/MetallurgyCopilot.tsx` | `POST /api/metallurgy/consult` in `routes/copilot.ts`. | **Preview. G:** advisory AI request path; no independently checked answer/citation accuracy established. | Source-grounded evaluation fixtures, unsupported-claim handling and explicit unavailable-provider behavior. |
 
+## Runtime and environment mapping (A01 review correction)
+
+All modules need the browser application and Node-served assets described by `package.json`, `package-lock.json` and `server.ts`. Browser-side calculations need no Python for the principal local path listed below; optional AI consultation still needs Node/provider access. Browser WebGL/Canvas, file input and storage support must be checked on the target client. This maps requirements, not universal availability.
+
+### Browser calculations and local records
+
+Modules: `database`, `alloy-builder`, `thermal-scheduler`, `ebsd-lab`, `eds-lab`, `hardness-tensile`, `mechanical-ai-lab`, `crystal`, `hypersonic-tps`, `calculators`, `experimental-data`, `traceability`.
+
+Principal paths run in the browser using the components/parsers/stores above. File import/export needs browser file APIs; persistent records depend on browser storage. Shared server registry synchronization needs `routes/researchRegistry.ts` and a writable `.research-registry/` directory. EDS consultation and other optional assistant controls additionally use the provider group below. Formula/demo AI labels do not establish an installed trained model. Registry/parser tests establish selected software contracts only.
+
+### Host Python scientific requests
+
+Modules: `phase-diagram`, `ttt-cct-kinetics`, `xrd-lab`, `electrochem-suite`, `icme-motor`, `uq-lab`.
+
+The listed Node routes dispatch through `server/processOrchestrator.ts` and `server/pythonRuntime.ts` to the scripts identified in each row. Browser-only subviews can coexist with these requests. Interpreter choice and IPC ports are documented in `docs/ENVIRONMENT_READINESS.md`; broad numerical/CALPHAD/ML requirements are in `python/requirements.txt`. Actual optional library, thermodynamic database and model availability must be checked for the selected operation. A successful import or a warm module is not successful scientific execution. CALPHAD coverage and the full domain dependency environment remain open A02 work.
+
+### LPBF worker and external solver boundary
+
+Modules: `3d-distortion-lab`.
+
+CPU build/thermal paths use the seven-package Windows/Python3.12 lock described in `docs/LPBF_CPU_REPRODUCTION.md`. Clean CPU build tests passed; thermal tests passed 25 with one native compiled-OpenFOAM skip. Windows resolved-worker dispatch is WSL-first through `server/lpbfWorkerBridge.ts`; OpenFOAM requires the configured distribution and compiled worker in `python/lpbf_openfoam.py`. Host fallback uses the selected host Python. Native CPU success is not WSL readiness. VTK/ParaView output reading and Docker execution were separately checked, but neither is a prerequisite for every browser calculation.
+
+### Browser model artifacts and optional image provider
+
+Modules: `micrograph`.
+
+The ONNX browser path requires compatible model assets and browser ONNX/WASM support (`package.json`); the diagnosis endpoint additionally requires Node/provider access in `routes/copilot.ts`. Python training, when used separately, requires the ML packages in `python/requirements.txt`, model/training data and optional CUDA. The successful synthetic GPU training smoke in `docs/ENVIRONMENT_READINESS.md` does not verify a micrograph model, model asset availability or segmentation accuracy.
+
+### Network metadata and local research registry
+
+Modules: `research-hub`.
+
+Local briefs/records use browser storage; server revision storage needs writable local registry files. Metadata search additionally needs Node and external Crossref access through `routes/research.ts` and `server/researchSearch.ts`. Network-off mode prevents remote search; it does not erase local evidence. Full-text access/extraction and scientific verification are not supplied by metadata connectivity.
+
+### Node catalog and optional consultation/report provider
+
+Modules: `materials-project`, `digital-twin`, `qualification`, `aerospace-pdf-audit`, `copilot`.
+
+The principal catalog/consultation/report endpoints live in `routes/copilot.ts`. The Materials Project search currently filters a bundled offline catalog; that path is not evidence of a live Materials Project API connection. Local twin/report content can exist without cloud AI. Provider-backed consultation requires configured service credentials and network access; configuration names are described by `.env.example` and the server code. `AIRGAPPED=1` disables external AI/data paths. Provider availability, credentials and generated-answer accuracy were not newly verified for this inventory.
+
+### Availability evidence boundary
+
+The inherited 97-unit-test pass and CPU/GPU/tool checks are recorded in `docs/ENVIRONMENT_READINESS.md` and `docs/LPBF_CPU_REPRODUCTION.md`; they cover only their declared paths. `routes/physics.ts` currently hard-codes `pythonVersion` and subsystem `available: true` in `/api/python/status`. Those fields must not be used as installation proof. Use the actual interpreter doctor, IPC details and operation-specific execution checks. Correcting that status endpoint is separate A02 implementation work, not a prerequisite to accurately inventorying its limitation.
+
 ## Next engineering priorities and maintenance
 
 1. Preserve the LPBF distinction between transient thermal output, analytical build screening, numerical checks and independent experimental validation throughout reports.
@@ -81,6 +125,10 @@ Model detail and existing verification records: `docs/LPBF_ENGINEERING.md`. This
 
 ## A01 verification performed
 
-- Structural document check: PASS — 26 unique module rows, every registry ID has an App render case, and all 115 cited repository file paths exist.
-- `tsx tests/workstation.test.ts`: PASS — 4 tests, including registry membership and route round trips. The initial `tsx --test tests/workstation.test.ts` invocation was blocked by Windows `spawn EPERM` before assertions; direct execution succeeded.
+- Current structural check: PASS — 26 unique module rows, every registry ID has an App render case, all 26 IDs have explicit runtime mappings, and all 120 cited repository file paths exist. The earlier pre-review snapshot contained 115 references.
+- `tsx --test tests/module-inventory.test.ts tests/workstation.test.ts`: PASS — 7 tests, including inventory/runtime coverage, file references, registry membership and route round trips. Scoped execution was used because sandbox Node child-process creation is restricted.
 - Whitespace check: no trailing whitespace or conflict markers in the new document. Solver suites, browser checks and experimental benchmarks were not run for this documentation-only task. Tests marked L/G remain located or unresolved as described above.
+
+### A01 acceptance — 2026-09-15
+
+An independent Codex reviewer checked registry/render alignment, source references and substantive implementation claims. The initial review withheld acceptance because the environment map was missing. After that section was added, the reviewer checked it against source and recommended acceptance with no remaining material inventory defect. A01 is accepted as a bounded inventory of all 26 user modules. This is an AI-assisted engineering review, not human scientific approval; no solver, dataset or industrial gate is qualified by this acceptance. Current graph coordination was unavailable, so the acceptance relies on direct source evidence and the checks above.

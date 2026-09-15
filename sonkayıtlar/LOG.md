@@ -1,3 +1,14 @@
+## 2026-09-15 17:34 — A01 inventory accepted after independent review
+
+- **Agent:** GPT-6 (Codex). **Result:** PASS — first package A01 completed.
+- **Scope:** User narrowed the earlier approximate 10% target to 'İlk paketi bitir'. Preserve evidence weights; close A01 only. User permits Sol/Terra for suitable future delegated work and requested concise context. CURRENT_HANDOFF.md is a compact record; no manual context-compaction capability was claimed.
+- **Done:** Independent inventory_review agent verified all 26 IDs/render mappings, 115 original source references and material claim samples, but withheld acceptance for missing environment mapping. Added six runtime groups covering all 26 IDs, dependency/configuration references, browser/Node/Python/WSL/provider boundaries and actual availability limits. Re-review recommended A01 acceptance; all 120 updated references exist. Hard-coded /api/python/status version/availability is documented as unreliable evidence, with its fix left to A02.
+- **Files:** docs/MODULE_EVIDENCE_INVENTORY.md, docs/STARTUP_EXECUTION.md, src/data/engineeringRoadmap.ts, tests/module-inventory.test.ts, sonkayıtlar/CURRENT_HANDOFF.md, this log; external installation outputs/progress.json synchronized. Unrelated dirty files preserved.
+- **Tests:** New inventory/workstation subset 7/7 PASS; complete unit suite 100/100 PASS; lint PASS; build PASS 35.88s with existing large bundles. Initial new-test evidence-label regex was corrected to match existing markdown; no application bug was involved. Browser after reload/expand visibly shows A01 100%, 1/20 accepted, 5.5% evidenced and 94.5% remaining. git diff --check PASS.
+- **Review limits:** Independent AI source review, not human scientific approval. Graph CLI project/coverage calls failed secure coordination endpoint; direct source checks used. Acceptance covers inventory completeness and honest limitations, not installation of every optional solver or validation of its physics.
+- **Where we stand:** First package A01 complete and accepted. A02 stays 10%; total5.5%, remaining94.5%, accepted1/20. K0 remains pending because A02/B01/B02 are not accepted. The earlier10% objective is not claimed achieved.
+- **Last completed action:** Final compiled browser acceptance/progress verified and both progress ledgers synchronized.
+- **Next action:** Continue A02: trustworthy status reporting, clean Node/application setup and WSL worker/fallback verification. Use CURRENT_HANDOFF.md for concise continuation; commit/push this completed A01 increment first under standing authorization.
 ## 2026-09-15 17:23 — Hash-locked clean CPU LPBF reproduction
 
 - **Agent:** GPT-6 (Codex). **Result:** PASS for the CPU baseline; overall A02/C02 remain PARTIAL.

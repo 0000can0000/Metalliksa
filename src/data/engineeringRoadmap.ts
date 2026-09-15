@@ -37,7 +37,9 @@ const recordedMilestones: Record<string, MilestoneEvidence[]> = {
   A01: [
     { id: 'defined', evidence: 'docs/MODULE_EVIDENCE_INVENTORY.md: bounded inventory of 26 navigation modules and evidence limitations.', date: '2026-09-15', reviewer: 'Codex implementation record' },
     { id: 'implemented', evidence: 'docs/MODULE_EVIDENCE_INVENTORY.md: module-to-source, solver, environment and evidence mapping completed; graph coverage limitations disclosed.', date: '2026-09-15', reviewer: 'Codex implementation record' },
-    { id: 'tested', evidence: 'tests/workstation.test.ts: four workstation checks passed within the 97-test unit suite; 115 inventory source references checked in the startup checkpoint. Independent inventory review remains pending.', date: '2026-09-15', reviewer: 'Codex verification record' },
+    { id: 'tested', evidence: 'tests/module-inventory.test.ts and tests/workstation.test.ts: 7 checks passed, covering all 26 module rows, all runtime groups and cited files. Independent review verified 120 repository references.', date: '2026-09-15', reviewer: 'Codex verification record' },
+    { id: 'reviewed', evidence: 'docs/MODULE_EVIDENCE_INVENTORY.md: independent source review found missing runtime mapping; corrected and re-reviewed with no remaining material inventory defect. Graph access unavailable, direct source checks used.', date: '2026-09-15', reviewer: 'Independent Codex inventory_review agent' },
+    { id: 'accepted', evidence: 'A01 acceptance criterion met: all 26 modules mapped to code, solver paths, runtime requirements, evidence and unresolved limitations. Bounded inventory acceptance only; not runtime or scientific qualification.', date: '2026-09-15', reviewer: 'Codex integration acceptance after independent review' },
   ],
   A02: [
     { id: 'defined', evidence: 'docs/ENVIRONMENT_READINESS.md defines interpreter selection, dependency diagnostics, CUDA smoke and separate Docker/ParaView checks. Full locked environment and tool verification remain incomplete.', date: '2026-09-15', reviewer: 'Codex implementation record' },
@@ -46,7 +48,7 @@ const recordedMilestones: Record<string, MilestoneEvidence[]> = {
 export const engineeringRoadmap: EngineeringTask[] = cards.map(([id, title, dependencies, acceptance]) => ({
   id, title, weight: 5, dependencies: dependencies ? dependencies.split(' ') : [], acceptance,
   milestones: recordedMilestones[id] ?? [], blocker: id === 'B01' ? 'Founder interviews and pilot access are not yet recorded.' : null,
-  nextAction: id === 'A01' ? 'Review the active module inventory and its evidence gaps.' : 'Complete prerequisites and record the next acceptance evidence.',
+  nextAction: id === 'A01' ? 'Maintain the inventory when modules or evidence change; continue A02 environment verification.' : 'Complete prerequisites and record the next acceptance evidence.',
 }));
 export const ENGINEERING_GATES = [
   { id: 'K0', title: 'Scope and environment', tasks: ['A01', 'A02', 'B01', 'B02'] },

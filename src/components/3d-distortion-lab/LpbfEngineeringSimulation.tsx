@@ -244,7 +244,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
       if (measurementState.status==="empty" && (width || depth || source)) {
         if (!width||!depth||Number(width)<=0||Number(depth)<=0||!source.trim()) throw new Error("Calibration requires positive measured width and depth and a measurement source.");
         if(uncertainty!==""&&(!Number.isFinite(Number(uncertainty))||Number(uncertainty)<0))throw new Error("Measurement uncertainty must be nonnegative in µm.");
-        p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),processVector:currentProcessVectorFromInput(p,p.strategy||resolvedStrategy),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})];
+        p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),processVector:currentProcessVectorFromInput(p,p.strategy||resolvedStrategy),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})}];
       }
       const next=await simulationApi.submit(p);useLpbfEngineeringStore.setState({job:next,submittedSignature:signature,submittedInput:p,resultSignature:next.status==="completed"?signature:""});setFieldTime(undefined);resumeEngineeringJob();
     }catch(e){setError(e instanceof Error?e.message:"Submission failed");}finally{setBusy(false);}

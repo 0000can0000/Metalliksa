@@ -1,3 +1,13 @@
+## 2026-09-15 16:10 — Restore LPBF simulation compilation
+
+- **Agent:** GPT-6 (Codex). **Result:** PASS
+- **Task / Done:** Corrected the missing measurement-object closing brace that prevented TypeScript parsing in calibration submission.
+- **Files:** `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `sonkayıtlar/LOG.md`.
+- **Tests:** Initial lint reproduced TS1005 at line 247; after correction `npm run lint` passed. Existing `npm run test:unit` passed 79/79 with subprocess permissions (initial sandbox attempt was EPERM, not a test assertion failure).
+- **Scope:** Software compilation fix only; no new physics or experimental validation claim. Pre-existing dirty user files excluded from this commit.
+- **Last completed action:** Restored parseable calibration measurement submission.
+- **Where we left off / Next action:** Add the evidence-based startup progress panel and finish A01 module inventory/A02 environment diagnostics. Production build is being checked before publication.
+
 ## 2026-09-14 16:28 — Simulation readiness checklist added and continuity rule reinforced
 
 - **Agent:** GPT-5 (Codex). **Result:** PASS

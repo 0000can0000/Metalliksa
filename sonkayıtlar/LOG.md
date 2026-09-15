@@ -1,3 +1,12 @@
+## 2026-09-15 21:10 — Product target expanded to part-level LPBF defect digital twin
+- Task: Add the user's clarified target—select CAD part, powder and process parameters, then estimate LoF/keyhole/balling/gas-pore risk and part-level porosity—to the project plan.
+- Files: ROADMAP.md; sonkayıtlar/LOG.md.
+- Tests: N/A — documentation-only change; roadmap wording and Markdown diff reviewed.
+- Result: PASS — roadmap updated; no scientific model or validation claim was marked complete.
+- Agent: GPT-5 (Codex).
+- Done / Last completed action: Added the north-star product target, GO-MELT baseline requirement, CAD-to-solver input contract, defect taxonomy, powder/atmosphere uncertainty, part-level aggregation, holdout validation and hotspot escalation milestones. Replaced the old Phase 5 threshold-only wording and made optimization depend on validated defect risk.
+- Where we left off / Next action: Implement the benchmark/input contract first, then build the single-material defect MVP. GO-MELT remains a reference backend/benchmark; unsupported porosity certainty must remain blocked.
+
 ## 2026-09-15 17:48 — A02 clean committed application and WSL verification
 - Task: Continue after push; verify reproducible Node/application setup and WSL boundary.
 - Files: docs/APPLICATION_REPRODUCTION.md; docs/ENVIRONMENT_READINESS.md; sonkayıtlar/LOG.md; sonkayıtlar/CURRENT_HANDOFF.md.

@@ -1,3 +1,14 @@
+## 2026-09-15 16:21 — User pause / engineering startup handoff
+
+- **Agent:** GPT-6 (Codex). **Result:** PARTIAL — user requested pause and durable continuation logs.
+- **Done:** Published compilation fix 5aa33c9; prepared module inventory, roadmap UI, Python runtime/doctor and benchmark integrity foundations. User selected Ti-6Al-4V. Both agents stopped; temporary preview server stopped.
+- **Files touched:** Full task-owned/pre-existing file separation is recorded in [STARTUP_CHECKPOINT_2026-09-15.md](./STARTUP_CHECKPOINT_2026-09-15.md).
+- **Tests:** Baseline 79/79 unit tests, lint and build passed after syntax fix. Roadmap 3/3; doctor 10/10 and resolver 14/14 (agent reports); benchmark integrity 4/4; thermal 25 passed/1 OpenFOAM skip. Real RTX4060 CUDA training smoke passed. Later combined changes are not yet fully verified.
+- **Known issue:** Independent review found K3/K4 gate acceptance can bypass K2 module acceptance; fix and regression pending.
+- **Where we left off:** New source work remains uncommitted. Ledger still has zero credited milestones pending reconciliation; do not interpret as no work done. Missing GPU-venv pydantic/SciPy, NumPy version mismatch, Docker engine, ParaView runtime and CMU CSV ingestion remain open.
+- **Last completed action:** Verified stopped-agent reports, CMU checksums and dependency gaps; saved detailed checkpoint.
+- **Next action:** Read checkpoint, fix roadmap gate sequencing, finish A02 integration, verify and commit/push task-owned changes.
+
 ## 2026-09-15 16:10 — Restore LPBF simulation compilation
 
 - **Agent:** GPT-6 (Codex). **Result:** PASS

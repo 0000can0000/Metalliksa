@@ -15,3 +15,4 @@
 - Installationroot: C:/Users/can02/Documents/Codex/2026-09-15/referenced-chatgpt-conversation-this-is-an-2. outputs/progress.json currently5.5%; sync whenledgerchanges. Requires scopedescalation.
 - RemainingA02: cleanfullGPUevidence + finalreview. Thencontinue C01/C02technicalfoundations; founderinterviews/B02/customercriteria cannotbefabricated.
 - Final A02 state: accepted after independent review. Roadmap is 10% evidenced, 90% remaining, 2/20 accepted, no industrial gate. User then requested push and stop; do not continue after the next push.
+- New decision: customer track B01/B02 is deferred. Continue C01/C02 with generic, explicitly labelled assumptions and public sourced data; keep customer, pilot, holdout and commercial acceptance gates blocked until inputs arrive.

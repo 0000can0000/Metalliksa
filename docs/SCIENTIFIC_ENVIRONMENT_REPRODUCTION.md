@@ -58,3 +58,5 @@ The [versioned evidence record](evidence/a02-environment-2026-09-15.json) record
 On 2026-09-15, the independent Codex `inventory_review` agent checked the exact sources and records, matched the lock SHA-256 and all 94 clean installed versions, and verified consistency of interpreter, import/range, CUDA, API and test evidence. It found no material acceptance gap and recommended A02 technical environment acceptance. The range checker also received independent source review. Graph access was unavailable; direct source/record inspection was used.
 
 A02 is accepted within its explicit workstation/software scope. This is AI-assisted technical review, not human scientific approval, experimental validation or industrial qualification. Operating system/tool installers remain outside the Python package lock, and the stated workflow limits still apply.
+
+The customer track is intentionally deferred. This environment acceptance does not substitute for B01 discovery, B02 pilot criteria, a customer holdout or commercial approval.

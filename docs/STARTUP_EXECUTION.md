@@ -10,7 +10,9 @@ Industrial gates are cumulative: each gate needs its own accepted tasks and ever
 
 The latest 2026-09-15 continuation closes A01 and A02 after independent review. Each is 100% complete within its stated technical acceptance scope. Total evidenced work is **10%**, remaining **90%**, with **2/20 packages** and zero industrial gates accepted. This measures the startup work scope, not physical-model accuracy or the fraction of existing application code completed. The earlier 4.25% and 5.5% snapshots are superseded by recorded evidence, not an arbitrary progress target. A02's versioned evidence is in `docs/evidence/a02-environment-2026-09-15.json`.
 
-Next: C01/C02 technical material-data foundations. B01 founder interviews and B02 customer-specific pilot criteria remain open; no pilot acceptance, holdout split or experimental validation can be invented to close dependencies.
+Customer track decision: founder interviews and customer-specific pilot criteria (B01/B02) are deferred. We may continue C01/C02 using explicitly labelled generic engineering assumptions and sourced public data, but B01/B02 remain uncredited and all pilot, holdout and commercial gates remain blocked until a customer scope is supplied. No customer evidence or scientific approval is inferred from automated tests.
+
+Next: C01/C02 technical material-data foundations under the deferred-customer scope. Record every assumption, source, unit and limitation so the work can be re-scoped when pilot inputs arrive.
 
 ## Execution order
 

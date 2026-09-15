@@ -33,6 +33,8 @@ const cards = [
 ] as const;
 export const ROADMAP_VERSION = 'v1';
 export const ROADMAP_UPDATED = '2026-09-15';
+/** Founder/customer discovery is deliberately deferred; it is never inferred from engineering tests. */
+export const CUSTOMER_TRACK_DEFERRED = true;
 const recordedMilestones: Record<string, MilestoneEvidence[]> = {
   A01: [
     { id: 'defined', evidence: 'docs/MODULE_EVIDENCE_INVENTORY.md: bounded inventory of 26 navigation modules and evidence limitations.', date: '2026-09-15', reviewer: 'Codex implementation record' },
@@ -51,7 +53,8 @@ const recordedMilestones: Record<string, MilestoneEvidence[]> = {
 };
 export const engineeringRoadmap: EngineeringTask[] = cards.map(([id, title, dependencies, acceptance]) => ({
   id, title, weight: 5, dependencies: dependencies ? dependencies.split(' ') : [], acceptance,
-  milestones: recordedMilestones[id] ?? [], blocker: id === 'B01' ? 'Founder interviews and pilot access are not yet recorded.' : null,
+  milestones: recordedMilestones[id] ?? [], blocker: id === 'B01' && CUSTOMER_TRACK_DEFERRED
+    ? 'Customer discovery is deferred by project decision; no founder interviews or pilot evidence are being inferred.' : null,
   nextAction: id === 'A01' ? 'Maintain the inventory when modules or evidence change.' : id === 'A02' ? 'Repeat locked checks after environment changes; continue material-data and unit foundations.' : id === 'C01' ? 'Verify supplied material identity, units and temperature coverage; pilot-specific acceptance still requires B02.' : 'Complete prerequisites and record the next acceptance evidence.',
 }));
 export const ENGINEERING_GATES = [

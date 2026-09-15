@@ -903,3 +903,8 @@ px tsc --noEmit PASS
 - Done / Last completed action: Independent review found no material acceptance gap; scientific and application evidence records distinguish software reproducibility from model or industrial qualification.
 - Where we left off / Next action: User requested “Pushla dur orda”; commit and push this A02 acceptance increment, then stop here.
 - Graph: codebase-memory CLI project/coverage requests failed secure coordination endpoint; direct source and artifact review used, freshness unknown.
+## 2026-09-15 — Customer track deliberately deferred
+- Decision: Continue engineering without waiting for founder interviews or pilot-specific inputs.
+- Files: src/data/engineeringRoadmap.ts; docs/STARTUP_EXECUTION.md; docs/SCIENTIFIC_ENVIRONMENT_REPRODUCTION.md; sonkayıtlar/CURRENT_HANDOFF.md; sonkayıtlar/LOG.md.
+- Scope: B01/B02 remain uncredited and pilot, holdout and commercial gates stay blocked. C01/C02 may proceed with explicitly labelled generic assumptions and public sourced data; no customer evidence or scientific approval is inferred.
+- Result: PASS — decision recorded without falsifying customer evidence. Next: begin C01/C02 material identity, units and provenance work under deferred-customer scope.

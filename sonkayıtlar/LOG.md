@@ -1,3 +1,11 @@
+## 2026-09-15 17:48 — A02 clean committed application and WSL verification
+- Task: Continue after push; verify reproducible Node/application setup and WSL boundary.
+- Files: docs/APPLICATION_REPRODUCTION.md; docs/ENVIRONMENT_READINESS.md; sonkayıtlar/LOG.md; sonkayıtlar/CURRENT_HANDOFF.md.
+- Tests: Snapshot 1fc10dd npm ci installed 354 packages (30s); lint PASS; 104/104 unit tests PASS; build PASS (1m40s, existing chunk-size warning, npm install-script policy warnings retained). Clean production HTML and runtime API on 3016/5058 PASS, Python 3.12.10 / HTTP / 17 imported modules. Test tree stopped. WSL engineering suite 26/26 PASS (53.334s), including compiled OpenFOAM comparison. Real bridge startup failure to Windows CPU fallback PASS with isolated job root; process tree stopped.
+- Result: PASS for clean reproduction/WSL increment; full A02 remains incomplete. Progress unchanged at 5.5%.
+- Agent: GPT-6 Astra.
+- Done / Last completed action: Reproduction commands and exact scope/evidence recorded. Runtime status fix was pushed as 1fc10dd before this increment.
+- Where we left off / Next action: Push these records, then install and verify the remaining scientific dependencies. Non-mutating pip plan resolved 41 additional wheel distributions and preserves installed CUDA torch; no source archives. Plan/log are ignored under .runtime. Broader dependency lock and independent review remain open.
 ## 2026-09-15 17:42 — A02 runtime status reflects observed Python readiness
 - Task: Continue tested increments and push without stopping; remove hard-coded runtime claims.
 - Files: server/pythonStatus.ts; server/processOrchestrator.ts; routes/physics.ts; python/persistent_ipc_service.py; src/services/pythonComputationService.ts; tests/python-status.test.ts; sonkayıtlar/CURRENT_HANDOFF.md; sonkayıtlar/LOG.md.

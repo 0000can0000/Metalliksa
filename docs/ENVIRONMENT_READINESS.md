@@ -1,5 +1,9 @@
 # Environment readiness
 
+## Latest verified boundary — 2026-09-15
+
+The [clean application reproduction record](APPLICATION_REPRODUCTION.md) supersedes the older open Node/WSL items below: a committed snapshot passed npm ci, type checking, 104 unit tests, production build and live HTML/Python-status checks. WSL passed all 26 engineering tests including the compiled OpenFOAM comparison; an isolated Node bridge test verified initial WSL failure falls back to the selected Windows CPU interpreter. Broader scientific dependency installation/locking and independent environment review remain open. A02 credit is unchanged pending that work. Earlier snapshots are retained as history, not current tool availability.
+
 The [Windows CPU LPBF reproduction guide](LPBF_CPU_REPRODUCTION.md) provides a separate seven-package wheel lock and offline clean-venv procedure. It scopes reproduction to LPBF CPU workloads; the broader scientific and CUDA environments remain separate.
 
 ## Tool execution verified — 2026-09-15 continuation

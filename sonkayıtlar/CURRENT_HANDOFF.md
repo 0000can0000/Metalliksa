@@ -15,3 +15,5 @@
 - Full history remains in LOG.md. This file is a concise checkpoint, not a claim that conversation context was manually compacted.
 
 - Continuation: runtime status correction tested (104 unit tests, lint/build, live CPU API smoke); WSL capabilities OpenFOAM-14 / Windows OpenFOAM unavailable observed. Next: clean committed Node/application install. Keep progressing after push until user stops work.
+
+- Clean snapshot 1fc10dd: npm ci/lint/104 tests/build/live API PASS. WSL 26/26 including OpenFOAM PASS; live WSL startup failure to Windows fallback PASS. Next: 41-wheel scientific dependency plan in .runtime/scientific-install-plan.json; GPU runtime preserved so far; install/verify/lock before A02 credit.

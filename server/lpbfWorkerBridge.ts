@@ -1,6 +1,7 @@
 import { spawn, ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { getHostPython, loadPythonEnvironment, lpbfWorkerCommand } from "./pythonRuntime.ts";
 
 /** A single WSL worker owns the queue. Requests never become shell text. */
 class LpbfWorkerBridge {
@@ -19,12 +20,12 @@ class LpbfWorkerBridge {
   }
 
   private async launch(): Promise<void> {
+    loadPythonEnvironment();
     const file = path.resolve("python/lpbf_worker.py");
     const onWindows = process.platform === "win32";
-    const linuxPath = file.replace(/^([A-Za-z]):/, (_, drive: string) => `/mnt/${drive.toLowerCase()}`).replaceAll("\\", "/");
-    const command = onWindows ? (this.localFallback ? "py" : "wsl.exe") : "python3";
-    const args = onWindows ? (this.localFallback ? ["-3", "-u", file] : ["-d", process.env.METALLIKSA_WSL_DISTRO || "Ubuntu-22.04", "--", "python3", "-u", linuxPath]) : ["-u", file];
-    const child = spawn(command, args, { windowsHide: true, stdio: "pipe" });
+    const command = lpbfWorkerCommand({ platform: process.platform, file,
+      localFallback: this.localFallback, env: process.env, hostPython: getHostPython });
+    const child = spawn(command.cmd, command.args, { windowsHide: true, stdio: "pipe" });
     this.process = child;
     this.stderr = "";
     createInterface({ input: child.stdout }).on("line", line => {

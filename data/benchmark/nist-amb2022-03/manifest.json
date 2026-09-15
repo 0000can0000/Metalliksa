@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "dataset_id": "nist-mds2-2716",
+  "version": "1.0.0",
+  "material": "IN718",
+  "process_scope": "bare-plate",
+  "citation": "Deisenroth et al. (2022), AM Bench 2022 in-situ thermography and scan strategy, https://doi.org/10.18434/mds2-2716",
+  "split": "unassigned",
+  "locally_archived_at": "2026-09-15",
+  "checksum_authority": "local acquisition snapshot, not a publisher-supplied checksum",
+  "files": [
+    {
+      "path": "raw/README.txt",
+      "kind": "readme",
+      "source_url": "https://data.nist.gov/od/ds/mds2-2716/README.txt",
+      "bytes": 12573,
+      "sha256": "ba44076ed51b69c0e4ca80ff0e2568eed2dc6459e85c9ad83b85860bee5760f2"
+    },
+    {
+      "path": "raw/AMB2022-03-AMMT-718-Pad_XYPT.h5",
+      "kind": "scan-strategy",
+      "source_url": "https://data.nist.gov/od/ds/mds2-2716/ScanStrategy/AMB2022-03-AMMT-718-Pad_XYPT.h5",
+      "bytes": 406992,
+      "sha256": "7b7004753e150bc26632e9ce356e0440429160fa92cbff8fc8559202fdce2103"
+    },
+    {
+      "path": "raw/AMB2022-03-718-AMMT-StaringCamera_Signal.h5",
+      "kind": "raw-thermography",
+      "source_url": "https://data.nist.gov/od/ds/mds2-2716/Thermography/AMB2022-03-718-AMMT-StaringCamera_Signal.h5",
+      "bytes": 549979044,
+      "sha256": "f6fe21ec911707f72e7efda2932c77eae2b75d84765848878fe5beb6b728cd43"
+    }
+  ]
+}

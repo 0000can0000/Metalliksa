@@ -2,31 +2,8 @@ import path from "path";
 import os from "os";
 import net from "net";
 import http from "http";
-import { spawn, ChildProcess, spawnSync } from "child_process";
-
-function resolvePythonCommand(): { cmd: string; prefix: string[] } {
-  if (process.env.METALLIX_PYTHON) {
-    return { cmd: process.env.METALLIX_PYTHON, prefix: [] };
-  }
-  const candidates: Array<{ cmd: string; prefix: string[] }> =
-    process.platform === "win32"
-      ? [
-          { cmd: "py", prefix: ["-3"] },
-          { cmd: "python", prefix: [] },
-          { cmd: "python3", prefix: [] },
-        ]
-      : [
-          { cmd: "python3", prefix: [] },
-          { cmd: "python", prefix: [] },
-        ];
-  for (const c of candidates) {
-    const probe = spawnSync(c.cmd, [...c.prefix, "--version"], { encoding: "utf8" });
-    if (probe.status === 0) return c;
-  }
-  return candidates[0];
-}
-
-const PYTHON = resolvePythonCommand();
+import { spawn, ChildProcess } from "child_process";
+import { getHostPython, loadPythonEnvironment } from "./pythonRuntime.ts";
 
 // Python Execution Result Interface
 export interface PythonExecResult {
@@ -78,6 +55,7 @@ export class PersistentPythonIPCSupervisor {
   private lastError: string | null = null;
 
   constructor() {
+    loadPythonEnvironment();
     this.socketPath =
       process.env.METALLIX_IPC_SOCK ||
       (process.platform === "win32"
@@ -98,7 +76,9 @@ export class PersistentPythonIPCSupervisor {
     console.log("[Python-Supervisor] Launching persistent Python IPC microservice daemon...");
     const scriptPath = path.join(process.cwd(), "python", "persistent_ipc_service.py");
 
-    this.child = spawn(PYTHON.cmd, [...PYTHON.prefix, scriptPath], {
+    const python = getHostPython();
+    this.child = spawn(python.cmd, [...python.prefix, scriptPath], {
+      windowsHide: true,
       env: {
         ...process.env,
         METALLIX_IPC_SOCK: this.socketPath,
@@ -312,7 +292,8 @@ export class PersistentPythonIPCSupervisor {
       const startTime = Date.now();
       const scriptPath = path.join(process.cwd(), scriptRelativePath);
 
-      const pyProcess = spawn(PYTHON.cmd, [...PYTHON.prefix, scriptPath, ...args]);
+      const python = getHostPython();
+      const pyProcess = spawn(python.cmd, [...python.prefix, scriptPath, ...args], { windowsHide: true });
       let stdout = "";
       let stderr = "";
 

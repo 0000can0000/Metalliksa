@@ -599,6 +599,10 @@ def run_services():
         "unixSocket": UNIX_SOCKET_PATH,
         "http": f"http://{HTTP_HOST}:{HTTP_PORT}",
         "modulesWarm": len(registry.modules),
+        "warmModules": list(registry.modules.keys()),
+        "pythonVersion": sys.version.split()[0],
+        "unixSocketActive": ipc_server is not None,
+        "httpActive": httpd is not None,
         "workers": registry.num_workers,
         "concurrency": "ProcessPoolExecutor",
     }

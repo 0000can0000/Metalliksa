@@ -13,3 +13,5 @@
 - Preserve unrelated dirty files: PROOF.md, README.md, RULES.md, src/App.tsx, LpbfResultPresentation.tsx, thermal pycache. Local diagnostic JSON snapshots are not staged.
 - Graph MCP unavailable; CLI list_projects/coverage fail secure coordination endpoint. Use exact-source fallbacks and disclose unknown freshness; do not claim current complete graph coverage.
 - Full history remains in LOG.md. This file is a concise checkpoint, not a claim that conversation context was manually compacted.
+
+- Continuation: runtime status correction tested (104 unit tests, lint/build, live CPU API smoke); WSL capabilities OpenFOAM-14 / Windows OpenFOAM unavailable observed. Next: clean committed Node/application install. Keep progressing after push until user stops work.

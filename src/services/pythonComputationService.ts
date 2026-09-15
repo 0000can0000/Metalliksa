@@ -515,7 +515,7 @@ class PythonComputationService {
   private lastCheckTime = 0;
 
   /**
-   * Check if backend Python 3.10 HPC runtime is reachable
+   * Check whether the configured Python runtime is reachable
    */
   async checkEngineStatus(forceRefresh = false): Promise<PythonEngineStatus> {
     const now = Date.now();
@@ -537,11 +537,11 @@ class PythonComputationService {
       this.statusCache = {
         online: data.success === true || data.status === "online" || data.status === "ready",
         status: data.status || "online",
-        pythonVersion: data.pythonVersion || "3.10+",
+        pythonVersion: data.pythonVersion ?? undefined,
         platform: data.platform,
         durationMs: data.durationMs,
-        warm: data.warm ?? true,
-        channel: data.channel ?? "unix_socket",
+        warm: data.warm === true,
+        channel: data.channel ?? undefined,
         ipcDaemon: data.ipcDaemon,
         subsystems: data.subsystems,
       };

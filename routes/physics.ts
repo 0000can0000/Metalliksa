@@ -1,3 +1,4 @@
+import { pythonStatusResponse } from "../server/pythonStatus.ts";
 import { Router, Request, Response } from "express";
 import { runPythonScript, pythonIPCSupervisor } from "../server/processOrchestrator.ts";
 
@@ -36,26 +37,7 @@ async function handlePythonDispatch(scriptPath: string, payload: any, res: Respo
 // System status & IPC health
 physicsRouter.get("/api/python/status", (_req: Request, res: Response) => {
   const ipc = pythonIPCSupervisor.getStatus();
-  res.json({
-    online: ipc.status === "online",
-    status: ipc.status,
-    pythonVersion: "3.10",
-    platform: process.platform,
-    ipcDaemon: ipc,
-    subsystems: {
-      calphad_solver: { available: true },
-      dft_property_calculator: { available: true },
-      cnls_fitting_solver: { available: true },
-      xrd_peak_deconvolution: { available: true },
-      lpbf_thermal_solver: { available: true },
-      lpbf_build_job_solver: { available: true },
-      inverse_alloy_optimizer: { available: true },
-      pourbaix_solver: { available: true },
-      kinetics_ttt_cct_solver: { available: true },
-      icme_multiscale_pipeline_solver: { available: true },
-      stochastic_uq_mmpds_solver: { available: true },
-    },
-  });
+  res.json(pythonStatusResponse(ipc, process.platform));
 });
 
 physicsRouter.get("/api/python/ipc-status", (_req: Request, res: Response) => {
@@ -63,7 +45,9 @@ physicsRouter.get("/api/python/ipc-status", (_req: Request, res: Response) => {
 });
 
 physicsRouter.post("/api/python/ipc-warmup", async (_req: Request, res: Response) => {
-  res.json({ success: true, message: "Python IPC pool warm" });
+  const ipc = pythonIPCSupervisor.getStatus();
+  const ready = ipc.status === "online";
+  res.status(ready ? 200 : 503).json({ success: ready, status: ipc.status, message: ready ? "Python IPC daemon ready" : "Python IPC daemon is not ready" });
 });
 
 // CALPHAD Gibbs Minimization & Databases

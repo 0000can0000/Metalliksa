@@ -1,3 +1,13 @@
+## 2026-09-15 17:42 — A02 runtime status reflects observed Python readiness
+- Task: Continue tested increments and push without stopping; remove hard-coded runtime claims.
+- Files: server/pythonStatus.ts; server/processOrchestrator.ts; routes/physics.ts; python/persistent_ipc_service.py; src/services/pythonComputationService.ts; tests/python-status.test.ts; sonkayıtlar/CURRENT_HANDOFF.md; sonkayıtlar/LOG.md.
+- Tests: lint PASS; unit 104/104 PASS; build PASS (40.82s; existing chunk-size warning). Separate production smoke on 3016/5058 PASS: Python 3.12.10, HTTP active, UNIX inactive, 17 named imports, no solver availability claim; warmup readiness response PASS. Task-owned smoke process tree stopped.
+- WSL boundary: Ubuntu-22.04 WSL2 capabilities RPC exits 0, OpenFOAM-14 detected, thermal binary SHA256 1abadcbe9beacbe60a9ad2228d634830f481ce6966b66de65724c172dc1159d7. Windows CPU RPC exits 0, OpenFOAM thermal false. These are capability observations, not numerical solver validation.
+- Result: PASS for runtime-status increment; A02 remains incomplete, progress remains 5.5%.
+- Agent: GPT-6 Astra.
+- Done / Last completed action: Buffered readiness protocol carries real version, imported module names and actual bound channels; reset clears stale metadata. Removed invented version, module count and subsystem availability. Warmup no longer declares success before readiness.
+- Where we left off / Next action: Commit and push this increment, then clean Node/application installation from the committed snapshot; retain current 3015 preview until controlled restart. Optional scientific dependency qualification remains open.
+- Graph evidence: MCP unavailable; current CLI project/coverage attempts failed secure coordination endpoint. Exact source fallback used; graph freshness unknown.
 ## 2026-09-15 17:34 — A01 inventory accepted after independent review
 
 - **Agent:** GPT-6 (Codex). **Result:** PASS — first package A01 completed.

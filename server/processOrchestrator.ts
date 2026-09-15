@@ -1,4 +1,5 @@
 import path from "path";
+import { PythonReadiness } from "./pythonStatus.ts";
 import os from "os";
 import net from "net";
 import http from "http";
@@ -32,6 +33,8 @@ export interface IPCDaemonStatus {
   avgLatencyMs: number;
   uptimeSeconds: number;
   warmModulesCount: number;
+  warmModules: string[];
+  pythonVersion: string | null;
   lastError: string | null;
 }
 
@@ -51,7 +54,7 @@ export class PersistentPythonIPCSupervisor {
   private startTime: number = Date.now();
   private requestsHandled: number = 0;
   private totalDurationMs: number = 0;
-  private warmModules: string[] = [];
+  private readiness = new PythonReadiness();
   private lastError: string | null = null;
 
   constructor() {
@@ -90,23 +93,14 @@ export class PersistentPythonIPCSupervisor {
 
     // Capture stdout for readiness signal
     this.child.stdout?.on("data", (data) => {
-      for (const line of data.toString().split(/\r?\n/)) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (parsed.status === "ready") {
-            this.isReady = true;
-            this.isRestarting = false;
-            this.restartAttempts = 0;
-            this.warmModules = parsed.modulesWarm ? Array(parsed.modulesWarm).fill("module") : [];
-            console.log(
-              `[Python-Supervisor] Daemon ONLINE. UNIX socket: ${this.socketPath} | HTTP: http://${this.httpHost}:${this.httpPort} (${parsed.modulesWarm || 15} modules warm in RAM)`
-            );
-          }
-        } catch {
-          // Non-JSON informational log
+      if (this.readiness.consume(data.toString())) {
+        this.isReady = this.readiness.ready;
+        if (this.isReady) {
+          this.isRestarting = false;
+          this.restartAttempts = 0;
+          this.lastError = null;
         }
+        console.log(`[Python-Supervisor] Daemon ${this.isReady ? "ONLINE" : "UNAVAILABLE"}; ${this.readiness.warmModules.length} modules imported.`);
       }
     });
 
@@ -133,6 +127,7 @@ export class PersistentPythonIPCSupervisor {
 
   private handleProcessExit() {
     this.isReady = false;
+    this.readiness.reset();
     this.child = null;
 
     if (!this.isRestarting && this.restartAttempts < this.maxRestartAttempts) {
@@ -389,17 +384,19 @@ export class PersistentPythonIPCSupervisor {
       channels: {
         unixSocket: {
           path: this.socketPath,
-          active: this.isReady,
+          active: this.isReady && this.readiness.unixActive,
         },
         httpMicroservice: {
           url: `http://${this.httpHost}:${this.httpPort}`,
-          active: this.isReady,
+          active: this.isReady && this.readiness.httpActive,
         },
       },
       requestsProcessed: this.requestsHandled,
       avgLatencyMs: parseFloat(avgDuration),
       uptimeSeconds: Math.round((Date.now() - this.startTime) / 1000),
-      warmModulesCount: this.warmModules.length || 15,
+      warmModulesCount: this.readiness.warmModules.length,
+      warmModules: [...this.readiness.warmModules],
+      pythonVersion: this.readiness.pythonVersion,
       lastError: this.lastError,
     };
   }

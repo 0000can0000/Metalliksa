@@ -1,3 +1,12 @@
+## 2026-09-16 — Integrated LPBF heating and liquidus crossing extraction
+
+- Scope: numerical/software verification of unvalidated transient thermal solvers; no new measured accuracy, CFD, pore percentage or qualification claim.
+- Contract/source: docs/LPBF_PHYSICS_UPGRADE_2026-09-16.md records Gaussian normalization (NIST DLMF), Harkin 2023 Eq. 5 idealized overlap, units, assumptions and manufactured acceptance oracles. G/R now uses gradient vectors reconstructed at each cooling liquidus crossing; thermal evolution remains first-order.
+- Inputs/oracles: independent Gaussian quadrature, subdivision, moving-source energy, stability, ellipse identities, spatially/temporally affine fields with rotating gradients, inactive boundaries, cancellation and SI scaling; existing single-track, multilayer and island OpenFOAM/reference fixtures.
+- Observed: rebuilt OpenFOAM; WSL combined suite 47/47 PASS in 41.127 s without skips; additional old-extraction-binary rejection PASS 1/1. Existing frontend 107/107 tests, lint, production build and fast Build Job checks passed before this Python/C++ extraction change; unchanged frontend was not needlessly rerun.
+- Live browser: new actual OpenFOAM-3 job 7ab073a5c245488db3c43468eae626a2 (316L, 40 W, 850 mm/s, 20 um mesh), 45.101 s; peak 2871.1 K; energy closure 1.46e-14%; L/W/D 200/80/20 um. Source diagnostics, overlap 5.5625, unresolved pore warnings and expandable source/assumptions rendered. This precedes version-4 extraction; its evidence is the WSL suite, not this browser check.
+- Acceptance: analytical manufactured expectations at floating-point tolerance, existing OpenFOAM/reference dimensional equality and 1-2% thermal tolerances; every relevant regression passed. Conservation and backend agreement do not establish experimental accuracy or mesh convergence. Geometry remains sampled, material tables estimated, flow/stress unresolved.
+
 ## 2026-09-13 20:36 — UQ evidence correctness and lossless coupon input
 
 - **Scope:** corrected empirical statistics, CSV provenance, stochastic diagnostic/sensitivity reporting and asynchronous UQ presentation. No LPBF solver, material constitutive law, measured dataset or published process benchmark was refitted. See `docs/UQ_EVIDENCE.md` for contracts and primary references.

@@ -26,6 +26,7 @@ from four_alloy_materials import four_alloy_thermophysical_db, thermal_props
 from goldak_solver import GoldakField, MODEL_ID as GOLDAK_MODEL_ID, seed_goldak_axes
 from solidification_front import MODEL_ID as SOLIDIFICATION_MODEL_ID, evaluate_solidification
 from marangoni_screening import MODEL_ID as MARANGONI_MODEL_ID, marangoni_screening
+from lpbf_defect_diagnostics import defect_diagnostics
 
 # Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
 SECONDARY_THERMOPHYSICAL_DB = {
@@ -705,6 +706,8 @@ def calculate_meltpool_physics(
             "pecletThermalNumber": round(peclet_number, 2),
             "powderDenudationWidth_um": round(denudation_width_um, 1)
         },
+        "geometricDefectScreen": defect_diagnostics(
+            w_melt_um, d_melt_um, l_melt_um, float(hatch_spacing_um), float(layer_thickness_um)),
         "defectDiagnostics": {
             "lackOfFusionStatus": lof_status,
             "lackOfFusionRisk": lof_risk,

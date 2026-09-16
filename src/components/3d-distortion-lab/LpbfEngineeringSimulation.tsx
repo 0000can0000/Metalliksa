@@ -1,5 +1,6 @@
 import { canonicalLpbfMaterialName } from "../../utils/lpbfMaterialIdentity";
 import { Badge, ResultHeader, ThermalHistory, ConvergencePanel, MeasurementPanel, surface, number } from "./LpbfResultPresentation";
+import { LpbfPhysicsDiagnostics } from "./LpbfPhysicsDiagnostics";
 import { ResolvedThermalViewer } from "./ResolvedThermalViewer";
 import React, { useEffect, useRef, useState } from "react";
 import { simulationApi, SimulationInput, SimulationJob, SimulationMode, SimulationCapabilities, ResourceEstimate, SimulationResult } from "../../services/lpbfSimulationService";
@@ -289,6 +290,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
       {!r.fieldSeries&&<div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6"><p className="text-sm">Analytical L / W / D are reported in the result header.</p><p className="mt-2 text-xs text-slate-400">No resolved field was produced. Open the separately labelled analytical screening studio below to inspect illustrative geometry.</p></div>}
       </section>
       <ThermalHistory result={r} currentTime={fieldTime}/>
+      <LpbfPhysicsDiagnostics result={r}/>
       <section className={surface} aria-label="Numerical audit"><h4 className="font-medium">Numerical audit</h4><div className="mt-4 grid gap-4 md:grid-cols-2"><div><p className="text-sm">Energy balance · {r.energyBalance?`${fmt(r.energyBalance.relativeError*100)}% closure error`:"Not reported"}</p><p className="mt-2 text-xs text-slate-400">{r.energyBalance?`Absorbed ${fmt(r.energyBalance.input_J)} J · stored ${fmt(r.energyBalance.stored_J)} J · losses ${fmt(r.energyBalance.losses_J)} J`:"Screening geometry does not establish energy conservation."}</p></div><div><p className="text-sm">Mass balance · {r.massBalance?`${fmt(r.massBalance.relativeError*100)}% closure error`:"Not reported"}</p><p className="mt-2 text-xs text-slate-400">{r.massBalance?.scope||"No resolved mass transport."}</p></div></div><p className="mt-4 text-xs text-amber-200">Conservation does not establish physical accuracy. Inspect the worker's numerical warnings.</p></section>
       <ConvergencePanel study={r.convergenceStudy}/>
       <MeasurementPanel result={r}/>

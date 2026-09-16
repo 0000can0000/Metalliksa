@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { LpbfPhysicsDiagnostics } from "../src/components/3d-distortion-lab/LpbfPhysicsDiagnostics";
+import { parseSimulationJob, type SimulationResult } from "../src/services/lpbfSimulationService";
+
+const result = {
+  requestedMode: "screening", effectiveMode: "screening", fallbackReason: null,
+  schemaVersion: 1, validationStatus: "unvalidated", productionReady: false, confidence: "low",
+  settings: {}, solver: { id: "synthetic-test", version: "1" },
+  material: { name: "fixture", quality: "synthetic", source: "Not experimental" },
+  label: "Screening only", regime: "test", mainRisk: "test", recommendation: "test", riskScope: "test",
+  metrics: { width_um: 120, depth_um: 60, length_um: 200 }, assumptions: [], analyticalComparison: {},
+  numericalDiagnostics: { sourceIntegration: "cell-integrated-gaussian-gl2-v1", stabilityLimit: "local-conductance-row-sum",
+    minimumCapturedSourceFraction: .9, maximumSourceRenormalization: 1/.9, maximumSurfaceOffset_um: 2,
+    maximumTimestep_s: 1e-6, maximumEnthalpyIncrement_K: 24, sourceTimestepRetries: 2 },
+  geometricDefectScreen: { modelId: "elliptic-overlap-screening-v1", scope: "single-track-cross-section", status: "geometry-screened",
+    limitations: ["Synthetic fixture, not experimental evidence"], lackOfFusion: {
+      status: "lack-of-fusion-screened", ellipseIndex: 1.14, signedMargin: -.14, overlapDepth_um: 33,
+      maximumHatch_um: 89, riskScreened: true, reason: "Idealized geometry only" } },
+};
+const parse = (patch = {}) => parseSimulationJob({ id: "c".repeat(32), status: "completed", progress: 1, log: "", error: null, result: { ...result, ...patch } });
+
+test("physics diagnostics retain numerical limits and do not claim porosity", () => {
+  const parsed = parse().result!;
+  const html = renderToStaticMarkup(<LpbfPhysicsDiagnostics result={parsed}/>);
+  assert.match(html, /90%/);
+  assert.match(html, /first-order/);
+  assert.match(html, /lack of fusion screened/);
+  assert.match(html, /porosity remain unresolved/);
+  assert.match(html, /not a recommended process setting/);
+  assert.match(html, /Harkin/);
+});
+
+test("aggregate geometry presents unknown overlap without fake zero values", () => {
+  const geometricDefectScreen = { ...result.geometricDefectScreen, scope: "aggregate-multi-track", status: "unresolved",
+    lackOfFusion: { status: "unresolved", ellipseIndex: null, signedMargin: null, overlapDepth_um: null,
+      maximumHatch_um: null, riskScreened: null, reason: "Aggregate geometry cannot identify local overlap" } };
+  const html = renderToStaticMarkup(<LpbfPhysicsDiagnostics result={parse({ geometricDefectScreen }).result!}/>);
+  assert.equal((html.match(/Unresolved/g) || []).length, 3);
+  assert.doesNotMatch(html, /Unresolved µm/);
+  assert.equal(renderToStaticMarkup(<LpbfPhysicsDiagnostics result={{} as SimulationResult}/>), "");
+});
+
+test("invalid source and overlap contracts are rejected before rendering", () => {
+  for (const patch of [{ minimumCapturedSourceFraction: 0 }, { minimumCapturedSourceFraction: 1.1 },
+    { maximumSourceRenormalization: .9 }, { sourceTimestepRetries: .5 }, { maximumTimestep_s: Infinity },
+    { sourceIntegration: "fake-CFD" }]) {
+    assert.throws(() => parse({ numericalDiagnostics: { ...result.numericalDiagnostics, ...patch } }));
+  }
+  assert.throws(() => parse({ geometricDefectScreen: { ...result.geometricDefectScreen, limitations: "invalid" } }));
+  assert.throws(() => parse({ geometricDefectScreen: { ...result.geometricDefectScreen, lackOfFusion: { ...result.geometricDefectScreen.lackOfFusion, ellipseIndex: "1.14" } } }));
+});

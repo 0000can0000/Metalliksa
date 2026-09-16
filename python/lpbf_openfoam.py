@@ -1,5 +1,6 @@
 """OpenFOAM 14 case generation and field-derived results. Thermal capability only."""
 import math
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -63,6 +64,9 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
             return thermal(p, m, report, tmp)
     folder = Path(artifact_dir)/"openfoam-case"
     dx, segments = generate_case(p, m, folder)
+    diagnostic_path = folder/"numerical-diagnostics.json"
+    # A reused case must prove the current executable, never a previous run.
+    diagnostic_path.unlink(missing_ok=True)
     # Shell program is constant; all paths are separate positional arguments.
     script = 'source /opt/openfoam14/etc/bashrc; blockMesh -case "$1" && checkMesh -case "$1" && "$2" -case "$1"'
     child = subprocess.Popen(["bash", "-lc", script, "metalliksa", str(folder.resolve()), str(BINARY.resolve())],
@@ -76,6 +80,14 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
         child.stdout.close()
     if code:
         raise ValueError("OpenFOAM thermal failed: "+(folder/"solver.log").read_text()[-2500:])
+    from lpbf_heat_source import SOURCE_INTEGRATION
+    if not diagnostic_path.is_file():
+        raise ValueError("OpenFOAM binary is outdated: rebuild metalliksaThermal for cell-integrated heating")
+    diagnostics = json.loads(diagnostic_path.read_text())
+    if diagnostics.get("sourceIntegration") != SOURCE_INTEGRATION:
+        raise ValueError("OpenFOAM source integration contract mismatch; rebuild solver")
+    if diagnostics.get("solidificationExtraction") != "linear-liquidus-crossing-v1":
+        raise ValueError("OpenFOAM solidification extraction contract mismatch; rebuild solver")
     coords = np.loadtxt(folder/"coordinates.csv", delimiter=",")
     samples = np.loadtxt(folder/"snapshots.dat", ndmin=2)
     if not np.isfinite(samples).all() or samples.shape[1] != len(coords)+14:
@@ -114,7 +126,8 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
                 trackOverlapRatio=max(0.,1-p["hatch_um"]/best["width_um"]) if w else 0.,
                 remeltingRatio=float(row[13]/row[12]) if row[12] else 0.)
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(), scanPath=segments,
+                numericalDiagnostics=diagnostics,
                 energyBalance=dict(input_J=float(row[1]), losses_J=float(row[2]), stored_J=float(row[3]), relativeError=float(balance)),
                 discretization=dict(cells=len(coords), mesh_m=dx, minimumDt_s=float(row[4]), meanDt_s=float(row[0]/row[5]), steps=int(row[5])),
                 **thermal_audits(coords[:,:3],coords[:,3],p,m,np.clip((samples[-1,14:]-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)),
-                fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions sampled at ~60 times. G/R/cooling are crossing-cell means over every timestep; remelting tracked every step.")
+                fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions sampled at ~60 times. G/R/cooling are event means at linearly reconstructed cooling liquidus crossings over every timestep; gradient vectors are interpolated before taking their magnitude, G <= 1e-6 K/m excluded. Remelting tracked every step.")

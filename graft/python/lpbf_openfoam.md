@@ -1,4 +1,6 @@
 # python/lpbf_openfoam.py
 
-- generate_case · function · L15-L55 — def generate_case(p, m, folder)
-- thermal · function · L58-L120 — def thermal(p, m, report=lambda *args: None, artifact_dir=None)
+Refreshed from Python AST after the 2026-09-16 physics increment; call graph coverage remains unknown.
+
+- generate_case · function · L16-L56 — def generate_case(p, m, folder):
+- thermal · function · L59-L133 — def thermal(p, m, report=lambda *args: None, artifact_dir=None):

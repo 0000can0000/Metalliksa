@@ -12,9 +12,11 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material, property_at, enthalpy_table
 from lpbf_verification import compare, convergence
+from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
+from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
-VERSION = "enthalpy-fv-2"
+VERSION = "enthalpy-fv-4"
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
@@ -155,13 +157,13 @@ def conduction_rate(T, k, active, dx):
     return rate
 
 
-def active_gradient(T, active, dx):
+def active_gradient_components(T, active, dx):
     """Average active face differences; one-sided at deposition boundaries.
 
     Inactive future powder is not a temperature boundary condition. Including
     its preheat temperature would contaminate the extracted G and R.
     """
-    squared = np.zeros_like(T)
+    components = []
     for axis in range(3):
         left, right = [slice(None)]*3, [slice(None)]*3
         left[axis], right[axis] = slice(None, -1), slice(1, None)
@@ -171,8 +173,34 @@ def active_gradient(T, active, dx):
         gradient, count = np.zeros_like(T), np.zeros_like(T)
         gradient[a] += difference; gradient[b] += difference
         count[a] += valid; count[b] += valid
-        squared += (gradient/np.maximum(count, 1))**2
-    return np.sqrt(squared)
+        components.append(gradient/np.maximum(count, 1))
+    return np.stack(components)
+
+
+def active_gradient(T, active, dx):
+    return np.linalg.norm(active_gradient_components(T, active, dx), axis=0)
+
+
+def liquidus_crossing_sums(old, new, active, dx, dt, liquidus):
+    """Equal event sums of G [K/m], R [m/s], cooling [K/s], and count.
+
+    Reconstruct gradient vectors at each cell's cooling liquidus crossing,
+    not at the end of the step. Thermal evolution remains first-order.
+    """
+    crossing = active & (old >= liquidus) & (new < liquidus)
+    if not crossing.any():
+        return None
+    drop = old[crossing]-new[crossing]
+    theta = (old[crossing]-liquidus)/drop
+    before = active_gradient_components(old, active, dx)[:, crossing]
+    after = active_gradient_components(new, active, dx)[:, crossing]
+    grad = np.linalg.norm(before+(after-before)*theta, axis=0)
+    cooling = drop/dt
+    good = grad > 1e-6
+    if not good.any():
+        return None
+    return [float(grad[good].sum()), float((cooling[good]/grad[good]).sum()),
+            float(cooling[good].sum()), int(good.sum())]
 
 
 def transient(p, m, report=lambda *args: None, artifact_dir=None):
@@ -209,6 +237,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     time, step, next_sample = 0., 0, 0.
     recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
     min_dt = p["maxDt_s"]
+    max_dt = max_increment = surface_offset = 0.
+    minimum_capture, source_retries = 1., 0
+    cp_floor = min(row[3] for row in m["table"])
     while time < end:
         seg = next((s for s in segments if s["start_s"] <= time+1e-14 and time < s["end_s"]-1e-14), None)
         active_layer = max([s["layer"] for s in segments if s["start_s"] <= time+1e-14] or [0])
@@ -229,19 +260,23 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         surface_loss = (p["convection_W_m2K"]*(T[:, :, top_index]-t0)
                         +m["emissivity"]*5.670374419e-8*(T[:, :, top_index]**4-t0**4))/dx
         rate[:, :, top_index] -= surface_loss
-        source = np.zeros_like(T)
-        if seg:
-            f = (time-seg["start_s"])/(seg["end_s"]-seg["start_s"])
-            pos = (1-f)*np.array(seg["start"])+f*np.array(seg["end"])
-            penetration = p["layer_um"]*1e-6  # Physical assumption independent of mesh refinement
-            shape = np.exp(-2*((x-pos[0])**2+(y-pos[1])**2)/radius**2-2*((zz-surface)/penetration)**2)*active
-            if not np.isfinite(shape).all() or shape.sum() <= 0:
-                raise ValueError("Gaussian source under-resolved; refine the mesh")
-            source = shape*(p["power_W"]*m["absorptivity"]/(shape.sum()*dx**3))
-            rate += source
-        # Source-driven enthalpy increment limited to avoid jumping through phase interval.
-        dt = min(dt, float(np.min(25.*rho*cp/np.maximum(np.abs(rate), 1e-30))))
+        # A local row-sum bound includes heterogeneous faces and boundary cooling.
+        # The table minimum cp is a lower bound on enthalpy capacity across a step.
+        diagonal = conduction_diagonal(k, active, dx)
+        diagonal[:, :, 0] += 2*k[:, :, 0]/dx**2
+        top_temperature = T[:, :, top_index]
+        diagonal[:, :, top_index] += (p["convection_W_m2K"]+m["emissivity"]*5.670374419e-8
+            *(top_temperature+t0)*(top_temperature**2+t0**2))/dx
+        dt = min(dt, float(np.min(.9*rho*cp_floor/np.maximum(diagonal, 1e-30))))
+        dt, source, rate, capture, retries = source_limited_step(
+            axis, z, dx, seg, time, dt, surface, radius, p["layer_um"]*1e-6,
+            p["power_W"]*m["absorptivity"], rate, rho*cp)
         min_dt = min(min_dt, dt)
+        max_dt = max(max_dt, dt)
+        max_increment = max(max_increment, float(np.max(dt*np.abs(rate)/(rho*cp))))
+        minimum_capture = min(minimum_capture, capture)
+        source_retries += retries
+        surface_offset = max(surface_offset, abs(z[top_index]+dx/2-surface)*1e6)
         old = T.copy()
         H += dt*rate
         h = H/rho+h0
@@ -254,13 +289,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         melt = (T >= m["liquidus_K"])&active
         remelt |= melt&ever&~previous_melt
         ever |= melt
-        crossing = (old >= m["liquidus_K"])&(T < m["liquidus_K"])
-        if crossing.any():
-            grad = active_gradient(T, active, dx)
-            cooling = (old[crossing]-T[crossing])/dt
-            good = grad[crossing] > 1e-6
-            if good.any():
-                fronts.append([float(np.sum(grad[crossing][good])), float(np.sum(cooling[good]/grad[crossing][good])), float(np.sum(cooling[good])), int(good.sum())])
+        front = liquidus_crossing_sums(old, T, active, dx, dt, m["liquidus_K"])
+        if front is not None:
+            fronts.append(front)
         previous_melt = melt
         peak = max(peak, float(T.max()))
         if time >= next_sample or time >= end:
@@ -301,6 +332,10 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 trackOverlapRatio=max(0., 1-p["hatch_um"]/best["width_um"]) if width else 0.,
                 remeltingRatio=float(remelt.sum()/ever.sum()) if ever.any() else 0.)
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
+                numericalDiagnostics=dict(sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
+                    stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
+                    maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,
+                    maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment, sourceTimestepRetries=source_retries),
                 energyBalance=dict(input_J=energy_in, losses_J=energy_out, stored_J=stored, relativeError=balance),
                 discretization=dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step),
                 scanPath=segments,
@@ -331,10 +366,12 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                                "No resolved momentum, Marangoni flow, evaporation, recoil, VOF, keyhole or pores.",
                                "Estimated material laws; fixed reference density conserves mass on a stationary grid.",
                                "Uniform effective powder, irreversible conductivity densification; no resolved powder particles.",
-                               "Gaussian penetration equals layer thickness, independent of mesh; source evaluated at step start (first-order Euler). Absorbed power normalized over domain.",
+                               ("Gaussian penetration equals layer thickness, independent of mesh. Cell-integrated source uses two time quadrature nodes; thermal evolution remains first-order Euler. Absorbed power normalized over represented domain."
+                                if p["mode"] in ("standard", "calibration") else "Analytical screening has no resolved transient heat source or time integration."),
+                               "Transient layer activation uses whole cells selected by their centers; source surface clipping does not implement cut-cell mass or conduction. Inspect numerical resolution diagnostics when available.",
                                "Geometry is sampled molten-domain extent at maximum sampled volume; multi-track pools may be disconnected.",
                                "Cross section is the maximum YZ grid section; it is not scan-normal for rotated scans.",
-                               "R = -dT/dt / |grad T| on cooling liquidus crossings. G, R, G×R are separately averaged.",
+                               "R = -dT/dt / |grad T| at linearly reconstructed cooling liquidus crossings; gradient vectors are interpolated in time. G, R, G×R are separately event-averaged; G <= 1e-6 K/m is excluded.",
                                "Ma and laser-travel Pe are screening numbers, not resolved velocities.",
                                "Thermal history is input for subsequent mechanics; no residual stress, distortion or cracking prediction."],
                   fallbackReason=("OpenFOAM is installed but a qualified free-surface LPBF solver is not registered."
@@ -343,7 +380,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         n_runs = 1 if p["study"] == "none" else 3
         result.update(thermal_solver(p, m, lambda f, msg: report(f/n_runs, msg), artifact_dir))
         if use_foam:
-            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-2"
+            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-4"
         if p["study"] != "none":
             trials = []
             key = "mesh_um" if p["study"] == "mesh" else "maxDt_s"
@@ -361,6 +398,8 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         result["metrics"] = analytical["goldak"]
     g = result["metrics"]
     w, d, length = g["width_um"], g["depth_um"], g["length_um"]
+    result["geometricDefectScreen"] = defect_diagnostics(w, d, length, p["hatch_um"], p["layer_um"],
+        aggregate=p["tracks"] > 1 and p["mode"] in ("standard", "calibration"))
     lof = w <= p["hatch_um"] or d <= p["layer_um"]
     kh = d/max(w, 1e-12) > .5
     result["regime"] = "keyhole-risk (screening)" if kh else "conduction assumption"

@@ -18,6 +18,16 @@ export interface ResourceEstimate {
   cellBudget: number; exceedsCellBudget: boolean; runtimeEstimate: string; note: string;
 }
 export interface SimulationResult {
+  numericalDiagnostics?: {
+    sourceIntegration: string; stabilityLimit: string; minimumCapturedSourceFraction: number;
+    maximumSourceRenormalization: number; maximumSurfaceOffset_um: number;
+    maximumTimestep_s: number; maximumEnthalpyIncrement_K: number; sourceTimestepRetries: number;
+  };
+  geometricDefectScreen?: {
+    modelId: string; scope: string; status: string; limitations: string[];
+    lackOfFusion: { status: string; ellipseIndex: number | null; signedMargin: number | null;
+      overlapDepth_um: number | null; maximumHatch_um: number | null; riskScreened: boolean | null; reason: string | null };
+  };
   schemaVersion: 1; requestedMode: SimulationMode; effectiveMode: SimulationMode;
   solver: { id: string; version: string; openfoam: string | null };
   settings: SimulationInput; confidence: "low"; validationStatus: "unvalidated";
@@ -101,6 +111,21 @@ export function parseSimulationJob(value: unknown): SimulationJob {
     }
     if (r.artifacts !== undefined && (!Array.isArray(r.artifacts) || !r.artifacts.every(a => object(a) && typeof a.path === "string" && !a.path.includes("..") && !a.path.startsWith("/") && typeof a.size_bytes === "number" && Number.isSafeInteger(a.size_bytes) && a.size_bytes >= 0 && typeof a.sha256 === "string" && /^[a-f0-9]{64}$/.test(a.sha256)))) throw new Error("Invalid artifact manifest");
     if (r.fieldSeries != null && r.fieldSeries !== "field-series.json") throw new Error("Invalid field series artifact");
+    if (r.numericalDiagnostics !== undefined) {
+      const d = r.numericalDiagnostics;
+      if (!object(d) || d.sourceIntegration !== "cell-integrated-gaussian-gl2-v1" || d.stabilityLimit !== "local-conductance-row-sum"
+        || !["minimumCapturedSourceFraction", "maximumSourceRenormalization", "maximumSurfaceOffset_um", "maximumTimestep_s", "maximumEnthalpyIncrement_K", "sourceTimestepRetries"].every(k => typeof d[k] === "number" && Number(d[k]) >= 0)
+        || Number(d.minimumCapturedSourceFraction) <= 0 || Number(d.minimumCapturedSourceFraction) > 1
+        || Number(d.maximumSourceRenormalization) < 1 || !Number.isSafeInteger(d.sourceTimestepRetries)) throw new Error("Invalid numerical source diagnostics");
+    }
+    if (r.geometricDefectScreen !== undefined) {
+      const d = r.geometricDefectScreen;
+      if (!object(d) || d.modelId !== "elliptic-overlap-screening-v1" || typeof d.scope !== "string" || typeof d.status !== "string"
+        || !Array.isArray(d.limitations) || !d.limitations.every(v => typeof v === "string") || !object(d.lackOfFusion)
+        || typeof d.lackOfFusion.status !== "string" || !(d.lackOfFusion.reason === null || typeof d.lackOfFusion.reason === "string")
+        || !(d.lackOfFusion.riskScreened === null || typeof d.lackOfFusion.riskScreened === "boolean")
+        || !["ellipseIndex", "signedMargin", "overlapDepth_um", "maximumHatch_um"].every(k => d.lackOfFusion[k] === null || typeof d.lackOfFusion[k] === "number")) throw new Error("Invalid geometric defect screening");
+    }
     if (r.fieldPreviews !== undefined && (!Array.isArray(r.fieldPreviews) || !r.fieldPreviews.every(a => a === "temperature-slice.svg" || a === "phase-slice.svg"))) throw new Error("Invalid field preview");
     if (r.measurementComparison !== undefined && (!object(r.measurementComparison) || !Object.values(r.measurementComparison).every(c => object(c)
       && typeof c.count === "number" && Number.isSafeInteger(c.count) && c.count > 0

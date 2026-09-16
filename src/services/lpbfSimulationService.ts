@@ -19,6 +19,9 @@ export interface ResourceEstimate {
 }
 export interface SimulationResult {
   numericalDiagnostics?: {
+    meltPoolExtraction?: string;
+    peakMeltTime_s?: number | null; peakMeltStep?: number | null;
+    meltPoolObservedSteps?: number; sampledPeakMeltVolume_um3?: number; peakMeltSamplingLossFraction?: number;
     sourceIntegration: string; stabilityLimit: string; minimumCapturedSourceFraction: number;
     maximumSourceRenormalization: number; maximumSurfaceOffset_um: number;
     maximumTimestep_s: number; maximumEnthalpyIncrement_K: number; sourceTimestepRetries: number;
@@ -117,6 +120,13 @@ export function parseSimulationJob(value: unknown): SimulationJob {
         || !["minimumCapturedSourceFraction", "maximumSourceRenormalization", "maximumSurfaceOffset_um", "maximumTimestep_s", "maximumEnthalpyIncrement_K", "sourceTimestepRetries"].every(k => typeof d[k] === "number" && Number(d[k]) >= 0)
         || Number(d.minimumCapturedSourceFraction) <= 0 || Number(d.minimumCapturedSourceFraction) > 1
         || Number(d.maximumSourceRenormalization) < 1 || !Number.isSafeInteger(d.sourceTimestepRetries)) throw new Error("Invalid numerical source diagnostics");
+      if (d.meltPoolExtraction !== undefined && (d.meltPoolExtraction !== "accepted-step-molten-volume-v1"
+        || !Number.isSafeInteger(d.meltPoolObservedSteps) || Number(d.meltPoolObservedSteps) < 1
+        || typeof d.sampledPeakMeltVolume_um3 !== "number" || d.sampledPeakMeltVolume_um3 < 0
+        || typeof d.peakMeltSamplingLossFraction !== "number" || d.peakMeltSamplingLossFraction < 0 || d.peakMeltSamplingLossFraction > 1
+        || !(d.peakMeltTime_s === null && d.peakMeltStep === null
+          || typeof d.peakMeltTime_s === "number" && d.peakMeltTime_s > 0 && Number.isSafeInteger(d.peakMeltStep)
+            && Number(d.peakMeltStep) > 0 && Number(d.peakMeltStep) <= Number(d.meltPoolObservedSteps)))) throw new Error("Invalid melt pool extraction diagnostics");
     }
     if (r.geometricDefectScreen !== undefined) {
       const d = r.geometricDefectScreen;

@@ -1,6 +1,5 @@
-# python/lpbf_openfoam.py
+# python/lpbf_peak.py
 
 Refreshed from Python AST after accepted-step peak extraction, 2026-09-16. Graph generation and call coverage remain unknown.
 
-- generate_case · function · L17-L57
-- thermal · function · L60-L147
+- PeakMeltTracker · class · L9-L55

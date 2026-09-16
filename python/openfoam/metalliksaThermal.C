@@ -69,7 +69,10 @@ int main(int argc, char *argv[])
     std::ofstream snapshots((runTime.path()/"snapshots.dat").c_str());
     snapshots<<std::setprecision(17);
     double time=0,ein=0,eout=0,nextSample=0,minDt=maxDt,peak=t0;
-    unsigned step=0;
+    unsigned step=0, peakMeltStep=0;
+    int peakMeltCount=0;
+    double peakMeltTime=0, peakMeltSurface=0;
+    std::vector<double> peakMeltField;
     double sumG=0,sumR=0,sumCooling=0,frontCount=0;
     double minimumCaptured=1,maximumSurfaceOffset=0,maximumDt=0,maximumIncrement=0;
     unsigned sourceTimestepRetries=0;
@@ -185,6 +188,7 @@ int main(int argc, char *argv[])
         maximumDt=std::max(maximumDt,dt);
         minDt=std::min(minDt,dt); old=T;
         double stored=0;
+        int moltenCount=0;
         for(int i=0;i<n;++i)
         {
             H[i]+=dt*rate[i]/volumes[i];
@@ -193,11 +197,18 @@ int main(int argc, char *argv[])
                 FatalErrorInFunction<<"Boiling/nonphysical enthalpy: thermal model invalid; free-surface CFD required"<<exit(FatalError);
             T[i]=interp(table,h,1,0);
             const bool molten=T[i]>=liquidus && active[i];
+            if(molten) ++moltenCount;
             remelt[i]=remelt[i] || (molten && ever[i] && !wasMelt[i]);
             ever[i]=ever[i] || molten; wasMelt[i]=molten;
             peak=std::max(peak,T[i]); stored+=H[i]*volumes[i];
         }
         time+=dt; ++step; ein+=(laser?power:0)*dt; eout+=loss*dt;
+        // Uniform Cartesian mesh: count avoids floating summation tie drift.
+        if(moltenCount>peakMeltCount)
+        {
+            peakMeltCount=moltenCount; peakMeltStep=step;
+            peakMeltTime=time; peakMeltSurface=surface; peakMeltField=T;
+        }
         bool crossing=false;
         for(int i=0;i<n;++i) if(active[i] && old[i]>=liquidus && T[i]<liquidus) crossing=true;
         if(crossing)
@@ -242,10 +253,17 @@ int main(int argc, char *argv[])
         }
         if(step>250000) FatalErrorInFunction<<"Step budget exceeded"<<exit(FatalError);
     }
+    std::ofstream peakState((runTime.path()/"peak-state.dat").c_str());
+    peakState<<std::setprecision(17)<<peakMeltTime<<" "<<peakMeltSurface<<" "<<peakMeltStep<<" "<<peakMeltCount;
+    for(double t:peakMeltField) peakState<<" "<<t;
+    peakState<<"\n";
+    peakState.close();
+    if(!peakState) FatalErrorInFunction<<"Could not write peak melt field"<<exit(FatalError);
     std::ofstream diagnostics((runTime.path()/"numerical-diagnostics.json").c_str());
     diagnostics<<std::setprecision(17)
         <<"{\n  \"sourceIntegration\": \"cell-integrated-gaussian-gl2-v1\",\n"
         <<"  \"solidificationExtraction\": \"linear-liquidus-crossing-v1\",\n"
+        <<"  \"meltPoolExtraction\": \"accepted-step-molten-volume-v1\",\n"
         <<"  \"stabilityLimit\": \"local-conductance-row-sum\",\n"
         <<"  \"minimumCapturedSourceFraction\": "<<minimumCaptured<<",\n"
         <<"  \"maximumSourceRenormalization\": "<<1/minimumCaptured<<",\n"

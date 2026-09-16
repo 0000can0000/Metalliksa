@@ -22,6 +22,19 @@ const result = {
 };
 const parse = (patch = {}) => parseSimulationJob({ id: "c".repeat(32), status: "completed", progress: 1, log: "", error: null, result: { ...result, ...patch } });
 
+test("accepted-step peak provenance preserves zero melt and rejects inconsistent indices", () => {
+  const d = { ...result.numericalDiagnostics, meltPoolExtraction: "accepted-step-molten-volume-v1",
+    peakMeltTime_s: .0002, peakMeltStep: 20, meltPoolObservedSteps: 100,
+    sampledPeakMeltVolume_um3: 16, peakMeltSamplingLossFraction: 1/3 };
+  assert.equal(parse({ numericalDiagnostics: d }).result!.numericalDiagnostics!.peakMeltStep, 20);
+  assert.equal(parse({ numericalDiagnostics: { ...d, peakMeltTime_s: null, peakMeltStep: null,
+    sampledPeakMeltVolume_um3: 0, peakMeltSamplingLossFraction: 0 } }).result!.numericalDiagnostics!.peakMeltTime_s, null);
+  for (const patch of [{ peakMeltStep: 101 }, { peakMeltStep: 1.5 }, { peakMeltTime_s: null },
+    { meltPoolExtraction: "sampled" }, { peakMeltSamplingLossFraction: 1.1 }, { sampledPeakMeltVolume_um3: -1 }]) {
+    assert.throws(() => parse({ numericalDiagnostics: { ...d, ...patch } }), /melt pool extraction/);
+  }
+});
+
 test("physics diagnostics retain numerical limits and do not claim porosity", () => {
   const parsed = parse().result!;
   const html = renderToStaticMarkup(<LpbfPhysicsDiagnostics result={parsed}/>);

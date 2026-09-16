@@ -130,6 +130,10 @@ def write_artifacts(result, folder):
     field = folder/"peak-field.npz"
     if field.exists():
         write_field_slices(field, folder, result)
+    else:
+        # Reused no-melt runs must not publish previews from an older peak.
+        for name in ("temperature-slice.svg", "phase-slice.svg"):
+            (folder/name).unlink(missing_ok=True)
     if result.get("thermalHistory"):
         rows = result["thermalHistory"]
         with (folder/"thermal-history.csv").open("w", newline="") as stream:

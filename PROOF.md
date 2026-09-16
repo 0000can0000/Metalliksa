@@ -1,3 +1,10 @@
+## 2026-09-16 14:33 — Accepted-step melt-volume extraction
+- Scope: enthalpy-fv-5 / metalliksaThermal-OpenFOAM14-5. Every accepted endpoint is considered; earliest equal-count maximum, peak geometry and preserved temperature/phase field share one step. Uniform Cartesian whole-cell extraction only.
+- Independent oracles: 2 um cube fixture with unsampled 24 um^3 peak, 16 um^3 playback maximum, 1/3 missed fraction; exact liquidus, inactive hot cell, 45-degree projection, rotated layer, immutable snapshot, zero-melt reuse/preview cleanup. All-step NumPy observer checked against independent counts. Old OpenFOAM contract rejected.
+- Evidence: actual WSL wmake PASS; initial combined suite 51/51 PASS; after reuse fix and two added tests, targeted peak+engineering suite 31/31 PASS (53 distinct Python tests covered across runs). Ten real backend study runs PASS, including 3 timestep limits, molten rotated layer-two peak and no melt. See docs/LPBF_PEAK_EXTRACTION.md and LPBF_PEAK_STUDY_2026-09-16.json.
+- Acceptance: independent NPZ cube-corner reconstruction rtol 1e-10; paired geometry rtol 1e-8 / atol 1e-8, peak-temperature difference <1%. Frontend 108/108 PASS; tsc --noEmit PASS. No new browser or production-build verification claimed.
+- Limits: voxel maximum stability is not continuum convergence. Real coarse fixtures had zero playback volume loss; nonzero loss is tested synthetically. Estimated thermophysics, no flow/pore prediction or experimental validation. Independent read-only review found stale previews on zero-melt reuse; corrected and regression tested.
+
 ## 2026-09-16 — Integrated LPBF heating and liquidus crossing extraction
 
 - Scope: numerical/software verification of unvalidated transient thermal solvers; no new measured accuracy, CFD, pore percentage or qualification claim.

@@ -8,6 +8,7 @@ import tempfile
 import numpy as np
 from lpbf_material_registry import enthalpy_table, property_at
 from lpbf_evidence import thermal_audits
+from lpbf_peak import PeakMeltTracker, PEAK_EXTRACTION
 
 BINARY = Path(__file__).parent/"openfoam/bin/metalliksaThermal"
 HEADER = 'FoamFile { version 2.0; format ascii; class dictionary; object %s; }\n'
@@ -67,6 +68,7 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     diagnostic_path = folder/"numerical-diagnostics.json"
     # A reused case must prove the current executable, never a previous run.
     diagnostic_path.unlink(missing_ok=True)
+    (folder/"peak-state.dat").unlink(missing_ok=True)
     # Shell program is constant; all paths are separate positional arguments.
     script = 'source /opt/openfoam14/etc/bashrc; blockMesh -case "$1" && checkMesh -case "$1" && "$2" -case "$1"'
     child = subprocess.Popen(["bash", "-lc", script, "metalliksa", str(folder.resolve()), str(BINARY.resolve())],
@@ -88,31 +90,43 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError("OpenFOAM source integration contract mismatch; rebuild solver")
     if diagnostics.get("solidificationExtraction") != "linear-liquidus-crossing-v1":
         raise ValueError("OpenFOAM solidification extraction contract mismatch; rebuild solver")
+    if diagnostics.get("meltPoolExtraction") != PEAK_EXTRACTION:
+        raise ValueError("OpenFOAM melt pool extraction contract mismatch; rebuild solver")
     coords = np.loadtxt(folder/"coordinates.csv", delimiter=",")
     samples = np.loadtxt(folder/"snapshots.dat", ndmin=2)
     if not np.isfinite(samples).all() or samples.shape[1] != len(coords)+14:
         raise ValueError("Invalid OpenFOAM field output")
     from lpbf_evidence import FieldRecorder
     recorder = FieldRecorder(artifact_dir, coords[:, :3], dx, m, p)
-    history, best = [], dict(width_um=0., depth_um=0., length_um=0., volume_um3=0., crossSectionArea_um2=0.)
-    xs = np.unique(coords[:, 0]); ever = np.zeros(len(coords), bool); remelt = ever.copy(); previous = ever.copy()
+    history = []
+    tracker = PeakMeltTracker(coords[:, :3], dx, m)
+    peak_state = np.loadtxt(folder/"peak-state.dat", ndmin=1)
+    if not np.isfinite(peak_state).all() or len(peak_state) < 4:
+        raise ValueError("Invalid OpenFOAM peak field output")
+    peak_time, peak_surface, peak_step, peak_count = peak_state[:4]
+    if peak_count != int(peak_count) or peak_count < 0 or peak_step != int(peak_step):
+        raise ValueError("Invalid OpenFOAM peak field metadata")
+    if peak_count:
+        if len(peak_state) != len(coords)+4 or not (0 < peak_step <= samples[-1, 5]) or not (0 < peak_time <= samples[-1, 0]):
+            raise ValueError("Invalid OpenFOAM peak field extent or time")
+        # Surface belongs to the accepted step, not the next layer starting at t.
+        layer = round(peak_surface/(p["layer_um"]*1e-6))-1
+        tracker.observe(peak_state[4:], peak_surface,
+                        p["scanAngle_deg"]+layer*p["layerRotation_deg"], peak_time, peak_step)
+        if tracker.count != peak_count:
+            raise ValueError("OpenFOAM peak field molten count mismatch")
+    elif len(peak_state) != 4 or peak_step != 0 or peak_time != 0:
+        raise ValueError("Invalid OpenFOAM zero-melt output")
     for row in samples:
         t, ei, eo, stored, dt, steps, surface, peak = row[:8]; T = row[14:]
         recorder.record(t, T, surface)
-        melt = (T >= m["liquidus_K"]) & (coords[:, 2] < surface)
-        remelt |= melt&ever&~previous; ever |= melt; previous = melt
+        count = int(np.count_nonzero((T >= m["liquidus_K"]) & (coords[:, 2] < surface)))
+        tracker.sampled_count = max(tracker.sampled_count, count)
         history.append(dict(time_s=t, peak_K=float(T.max()), storedEnergy_J=stored, inputEnergy_J=ei, lossEnergy_J=eo))
-        if melt.any():
-            layer = max(s["layer"] for s in segments if s["start_s"] <= t)
-            angle = math.radians(p["scanAngle_deg"]+layer*p["layerRotation_deg"])
-            x, y, z = coords[melt, :3].T
-            g = dict(length_um=float(np.ptp(x*math.cos(angle)+y*math.sin(angle))+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6,
-                     width_um=float(np.ptp(-x*math.sin(angle)+y*math.cos(angle))+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6,
-                     depth_um=float(surface-z.min()+dx/2)*1e6, volume_um3=float(coords[melt, 3].sum())*1e18,
-                     crossSectionArea_um2=float(max(np.sum(melt&(coords[:, 0] == xx)) for xx in xs))*dx*dx*1e12)
-            if g["volume_um3"] > best["volume_um3"]:
-                best = g
-                np.savez_compressed(Path(artifact_dir)/"peak-field.npz", coordinates_m=coords[:, :3], T_K=T, liquid_fraction=np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)*(coords[:,2]<surface), time_s=t)
+    if tracker.sampled_count > tracker.count:
+        raise ValueError("OpenFOAM peak field is smaller than a sampled field")
+    best, peak_diagnostics = tracker.finish(artifact_dir, int(samples[-1, 5]))
+    diagnostics.update(peak_diagnostics)
     row = samples[-1]; balance = abs(row[1]-row[2]-row[3])/max(row[1], 1e-12)
     if balance > .01: raise ValueError("OpenFOAM energy balance failed")
     w = best["width_um"]*1e-6
@@ -130,4 +144,4 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
                 energyBalance=dict(input_J=float(row[1]), losses_J=float(row[2]), stored_J=float(row[3]), relativeError=float(balance)),
                 discretization=dict(cells=len(coords), mesh_m=dx, minimumDt_s=float(row[4]), meanDt_s=float(row[0]/row[5]), steps=int(row[5])),
                 **thermal_audits(coords[:,:3],coords[:,3],p,m,np.clip((samples[-1,14:]-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)),
-                fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions sampled at ~60 times. G/R/cooling are event means at linearly reconstructed cooling liquidus crossings over every timestep; gradient vectors are interpolated before taking their magnitude, G <= 1e-6 K/m excluded. Remelting tracked every step.")
+                fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions and peak field selected at the earliest maximum molten-cell volume over every accepted timestep; playback remains sparse. Global-x slice area is not scan-normal for rotated tracks. Sampling loss measures playback decimation only, not timestep or mesh error. G/R/cooling are event means at linearly reconstructed cooling liquidus crossings over every timestep; gradient vectors are interpolated before taking their magnitude, G <= 1e-6 K/m excluded. Remelting tracked every step.")

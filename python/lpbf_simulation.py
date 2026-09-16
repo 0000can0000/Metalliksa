@@ -14,9 +14,10 @@ from lpbf_material_registry import material, property_at, enthalpy_table
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
+from lpbf_peak import PeakMeltTracker
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
-VERSION = "enthalpy-fv-4"
+VERSION = "enthalpy-fv-5"
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
@@ -232,7 +233,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     previous_melt = np.zeros_like(ever)
     energy_in = energy_out = 0.
     history, fronts = [], []
-    best = dict(width_um=0., depth_um=0., length_um=0., volume_um3=0., crossSectionArea_um2=0.)
+    peak_tracker = PeakMeltTracker(np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m)
     peak = t0
     time, step, next_sample = 0., 0, 0.
     recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
@@ -294,23 +295,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             fronts.append(front)
         previous_melt = melt
         peak = max(peak, float(T.max()))
-        if time >= next_sample or time >= end:
+        sampled = time >= next_sample or time >= end
+        peak_tracker.observe(T, surface, p["scanAngle_deg"]+active_layer*p["layerRotation_deg"],
+                             time, step, sampled=sampled)
+        if sampled:
             recorder.record(time, T, surface)
-            if melt.any():
-                ids = np.where(melt)
-                # Extents of all concurrently molten cells, not a fitted ellipsoid or pore geometry.
-                angle = math.radians(p["scanAngle_deg"]+active_layer*p["layerRotation_deg"])
-                along = x[melt]*math.cos(angle)+y[melt]*math.sin(angle)
-                across = -x[melt]*math.sin(angle)+y[melt]*math.cos(angle)
-                metrics = dict(length_um=float(np.ptp(along)+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6, width_um=float(np.ptp(across)+dx*(abs(math.cos(angle))+abs(math.sin(angle))))*1e6,
-                               depth_um=max(0., surface-float(z[ids[2]].min())+dx/2)*1e6,
-                               volume_um3=float(melt.sum())*dx**3*1e18,
-                               crossSectionArea_um2=float(melt.sum(axis=(1, 2)).max())*dx**2*1e12)
-                if metrics["volume_um3"] > best["volume_um3"]:
-                    best = metrics
-                    if artifact_dir:
-                        np.savez_compressed(Path(artifact_dir)/"peak-field.npz", T_K=T, liquid_fraction=np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]), 0, 1)*active, x_m=axis, y_m=axis, z_m=z,
-                                            time_s=time, liquidus_K=m["liquidus_K"])
             history.append(dict(time_s=time, peak_K=float(T.max()), center_K=float(T[nxy//2, nxy//2, top_index]),
                                 storedEnergy_J=float(H.sum())*dx**3, inputEnergy_J=energy_in, lossEnergy_J=energy_out))
             report(time/end, f"step={step} t={time:.7g}s peak={T.max():.1f}K cells={T.size}")
@@ -322,6 +311,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     if balance > .01:
         raise ValueError(f"Energy balance failed: {balance:.3%}")
     G, R, cooling = (np.sum(fronts, axis=0)[:3]/np.sum(fronts, axis=0)[3]).tolist() if fronts else (None, None, None)
+    best, peak_diagnostics = peak_tracker.finish(artifact_dir, step)
     width = best["width_um"]*1e-6
     alpha = float(property_at(m, m["liquidus_K"], 2)/(property_at(m, m["liquidus_K"], 1)*property_at(m, m["liquidus_K"], 3)))
     best.update(peakTemperature_K=peak, thermalGradient_K_m=G, solidificationRate_m_s=R,
@@ -332,7 +322,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 trackOverlapRatio=max(0., 1-p["hatch_um"]/best["width_um"]) if width else 0.,
                 remeltingRatio=float(remelt.sum()/ever.sum()) if ever.any() else 0.)
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
-                numericalDiagnostics=dict(sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
+                numericalDiagnostics=dict(**peak_diagnostics, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,
                     maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment, sourceTimestepRetries=source_retries),
@@ -369,7 +359,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                                ("Gaussian penetration equals layer thickness, independent of mesh. Cell-integrated source uses two time quadrature nodes; thermal evolution remains first-order Euler. Absorbed power normalized over represented domain."
                                 if p["mode"] in ("standard", "calibration") else "Analytical screening has no resolved transient heat source or time integration."),
                                "Transient layer activation uses whole cells selected by their centers; source surface clipping does not implement cut-cell mass or conduction. Inspect numerical resolution diagnostics when available.",
-                               "Geometry is sampled molten-domain extent at maximum sampled volume; multi-track pools may be disconnected.",
+                               "Geometry is the molten-domain extent at the earliest maximum volume over accepted timesteps; playback is sparse and multi-track pools may be disconnected. Sampling loss does not bound timestep or mesh error.",
                                "Cross section is the maximum YZ grid section; it is not scan-normal for rotated scans.",
                                "R = -dT/dt / |grad T| at linearly reconstructed cooling liquidus crossings; gradient vectors are interpolated in time. G, R, G×R are separately event-averaged; G <= 1e-6 K/m is excluded.",
                                "Ma and laser-travel Pe are screening numbers, not resolved velocities.",
@@ -380,7 +370,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         n_runs = 1 if p["study"] == "none" else 3
         result.update(thermal_solver(p, m, lambda f, msg: report(f/n_runs, msg), artifact_dir))
         if use_foam:
-            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-4"
+            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-5"
         if p["study"] != "none":
             trials = []
             key = "mesh_um" if p["study"] == "mesh" else "maxDt_s"

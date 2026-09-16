@@ -1,3 +1,12 @@
+## 2026-09-16 13:48 — LPBF result integrity guards
+- Task: Improve simulation reliability at the solver response boundary.
+- Files: src/services/lpbfSimulationService.ts; tests/lpbf-contract.test.ts; sonkayıtlar/LOG.md.
+- Done / Last completed action: Require supported execution modes and explicit fallback provenance; reject mismatched settings mode, reversed/duplicate thermal timestamps, invalid comparison counts, negative RMSE and nonpositive calibration factors. Preserve signed bias/errors and withheld calibration factors.
+- Tests: npm run test:unit PASS (104/104); npm run lint PASS; npm run build PASS (existing large-chunk warning); git diff --check PASS. Read-only parsing of saved OpenFOAM job 0511719a6bb4488bbc4b6fef4ed4e135 PASS. Initial sandbox test attempt hit spawn EPERM; authorized rerun passed.
+- Scope: Software contract regression only. No changed equations, new simulation run, experimental validation or browser interaction claim. Existing saved solver output was used only for compatibility. MCP graph tools unavailable; local Graft cards and targeted source fallback used. One tightly coupled service/test change handled sequentially.
+- Result: PASS for implementation/checks; publication BLOCKED. Initial push failed on the sandbox proxy. Elevated push was rejected by automatic approval review because exporting repository contents to GitHub and mutating main require direct user authorization. No bypass attempted.
+- Agent: GPT-6 (Codex).
+- Where we left off / Next action: Task-only local commit created. Await direct user authorization to push to https://github.com/0000can0000/Metalliksa.git main. All pre-existing working-tree edits preserved. Future model development still needs the benchmark/input contract and independent evidence.
 ## 2026-09-15 21:10 — Product target expanded to part-level LPBF defect digital twin
 - Task: Add the user's clarified target—select CAD part, powder and process parameters, then estimate LoF/keyhole/balling/gas-pore risk and part-level porosity—to the project plan.
 - Files: ROADMAP.md; sonkayıtlar/LOG.md.

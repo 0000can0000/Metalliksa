@@ -75,6 +75,12 @@ export function parseSimulationJob(value: unknown): SimulationJob {
   if (value.status !== "completed" && value.result !== undefined) throw new Error("Unfinished job must not contain a result");
   if (value.status === "completed") {
     const r = value.result;
+    if (!object(r)
+      || typeof r.requestedMode !== "string" || !["screening", "standard", "high-fidelity", "calibration"].includes(r.requestedMode)
+      || typeof r.effectiveMode !== "string" || !["screening", "standard", "calibration"].includes(r.effectiveMode)
+      || !(r.fallbackReason === null || typeof r.fallbackReason === "string")
+      || (r.requestedMode !== r.effectiveMode && (r.effectiveMode !== "screening" || typeof r.fallbackReason !== "string" || !r.fallbackReason.trim()))
+      || (object(r.settings) && r.settings.mode !== undefined && r.settings.mode !== r.requestedMode)) throw new Error("Invalid LPBF execution mode or fallback provenance");
     if (!object(r) || r.schemaVersion !== 1 || r.validationStatus !== "unvalidated" || r.productionReady !== false
       || r.confidence !== "low" || !dimensions(r.metrics) || !object(r.settings) || !object(r.solver)
       || typeof r.solver.id !== "string" || typeof r.solver.version !== "string" || !object(r.material)
@@ -82,7 +88,8 @@ export function parseSimulationJob(value: unknown): SimulationJob {
       || !["label", "regime", "mainRisk", "recommendation", "riskScope"].every(k => typeof r[k] === "string")
       || !Array.isArray(r.assumptions) || !r.assumptions.every(a => typeof a === "string")
       || !object(r.analyticalComparison) || !Object.values(r.analyticalComparison).every(dimensions)) throw new Error("Invalid LPBF result contract");
-    if (r.thermalHistory !== undefined && (!Array.isArray(r.thermalHistory) || !r.thermalHistory.every(h => object(h) && typeof h.time_s === "number" && h.time_s >= 0 && typeof h.peak_K === "number" && h.peak_K > 0))) throw new Error("Invalid thermal history");
+    if (r.thermalHistory !== undefined && (!Array.isArray(r.thermalHistory) || !r.thermalHistory.every((h, index, history) => object(h) && typeof h.time_s === "number" && h.time_s >= 0 && typeof h.peak_K === "number" && h.peak_K > 0
+      && (index === 0 || h.time_s > history[index - 1].time_s)))) throw new Error("Invalid thermal history");
     if (!object(r.metrics) || Object.values(r.metrics).some(v => typeof v === "number" && v < 0)) throw new Error("Negative physical result");
     if (r.energyBalance !== undefined && (!object(r.energyBalance) || !["input_J", "losses_J", "stored_J", "relativeError"].every(k => typeof (r.energyBalance as Record<string, unknown>)[k] === "number"))) throw new Error("Invalid energy audit");
     if (r.massBalance !== undefined && (!object(r.massBalance) || !["initial_kg", "deposited_kg", "final_kg", "relativeError"].every(k => typeof (r.massBalance as Record<string, unknown>)[k] === "number" && Number((r.massBalance as Record<string, unknown>)[k]) >= 0) || typeof r.massBalance.scope !== "string")) throw new Error("Invalid mass audit");
@@ -96,8 +103,10 @@ export function parseSimulationJob(value: unknown): SimulationJob {
     if (r.fieldSeries != null && r.fieldSeries !== "field-series.json") throw new Error("Invalid field series artifact");
     if (r.fieldPreviews !== undefined && (!Array.isArray(r.fieldPreviews) || !r.fieldPreviews.every(a => a === "temperature-slice.svg" || a === "phase-slice.svg"))) throw new Error("Invalid field preview");
     if (r.measurementComparison !== undefined && (!object(r.measurementComparison) || !Object.values(r.measurementComparison).every(c => object(c)
-      && ["count", "rmse_um", "bias_um"].every(k => typeof c[k] === "number") && (c.calibrationFactor === null || typeof c.calibrationFactor === "number")
-      && Array.isArray(c.errors_pct) && c.errors_pct.every(e => typeof e === "number") && typeof c.note === "string"))) throw new Error("Invalid measurement comparison");
+      && typeof c.count === "number" && Number.isSafeInteger(c.count) && c.count > 0
+      && typeof c.rmse_um === "number" && c.rmse_um >= 0 && typeof c.bias_um === "number"
+      && (c.calibrationFactor === null || (typeof c.calibrationFactor === "number" && c.calibrationFactor > 0))
+      && Array.isArray(c.errors_pct) && c.errors_pct.length === c.count && c.errors_pct.every(e => typeof e === "number") && typeof c.note === "string"))) throw new Error("Invalid measurement comparison");
   }
   return value as unknown as SimulationJob;
 }

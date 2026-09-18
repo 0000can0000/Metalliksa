@@ -305,6 +305,17 @@ def main():
                 sim = payload.get("simulationResult", {})
                 exp = payload.get("experimentalData", {})
                 data = validate_experiment(p, m, sim, exp)
+            elif method == "modulus-fno":                     # Phase 11
+                from lpbf_modulus_fno import predict_part_scale_thermal_history
+                payload = request["payload"]
+                power_W = payload.get("laserPower_W", 250.0)
+                speed_mms = payload.get("scanSpeed_mms", 1000.0)
+                preheat_C = payload.get("preheatTemp_C", 25.0)
+                hatch_um = payload.get("hatch_um", 100.0)
+                layer_um = payload.get("layer_um", 40.0)
+                data = predict_part_scale_thermal_history(
+                    power_W=power_W, speed_mms=speed_mms, preheat_C=preheat_C, hatch_um=hatch_um, layer_um=layer_um
+                )
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

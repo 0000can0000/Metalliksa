@@ -31,6 +31,7 @@ const LpbfBayesianOptimizerLab = lazy(() => import("./components/LpbfBayesianOpt
 const SolidificationMicrostructureLab = lazy(() => import("./components/SolidificationMicrostructureLab").then(m => ({ default: m.SolidificationMicrostructureLab })));  // Phase 8
 const ThermomechanicalDistortionLab = lazy(() => import("./components/ThermomechanicalDistortionLab").then(m => ({ default: m.ThermomechanicalDistortionLab })));  // Phase 9
 const ExperimentalValidationLab = lazy(() => import("./components/ExperimentalValidationLab").then(m => ({ default: m.ExperimentalValidationLab }))); // Phase 10
+const ModulusFNOLab = lazy(() => import("./components/ModulusFNOLab").then(m => ({ default: m.ModulusFNOLab }))); // Phase 11
 const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
 const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
 const ThermalCycleScheduler = lazy(() => import("./components/ThermalCycleScheduler").then(m => ({ default: m.ThermalCycleScheduler })));
@@ -115,6 +116,7 @@ export default function App() {
       case 'solidification-microstructure': return <SolidificationMicrostructureLab />;  // Phase 8
       case 'thermomechanical-distortion': return <ThermomechanicalDistortionLab />; // Phase 9
       case 'experimental-validation': return <ExperimentalValidationLab />; // Phase 10
+      case 'modulus-fno-lab': return <ModulusFNOLab />; // Phase 11
       case 'research-hub': return <AdvancedResearchHub />;
       case 'experimental-data': return <EvidenceWorkspace mode="experimental" />;
       case 'traceability': return <EvidenceWorkspace mode="traceability" />;

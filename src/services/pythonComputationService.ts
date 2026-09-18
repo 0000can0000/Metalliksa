@@ -661,6 +661,23 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 11: Modulus FNO Surrogate
+  async computeModulusFNO(data: {
+    laserPower_W: number;
+    scanSpeed_mms: number;
+    preheatTemp_C: number;
+    hatch_um: number;
+    layer_um: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-modulus-fno", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

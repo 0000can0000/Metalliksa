@@ -16,11 +16,14 @@ for (const [method, route, rpc] of [
   ["post", "/api/lpbf/estimate", "estimate"],
   ["get", "/api/lpbf/jobs/:id", "get"],
   ["delete", "/api/lpbf/jobs/:id", "cancel"],
+  ["post", "/api/python/lpbf-solidification-microstructure", "solidification-microstructure"],
+  ["post", "/api/python/lpbf-thermomechanical-distortion", "thermomechanical-distortion"],
 ] as const) {
   lpbfSimulationRouter[method](route, async (req, res) => {
     try {
       if (rpc === "submit" && Buffer.byteLength(JSON.stringify(req.body)) > 500000) return res.status(413).json({ error: "Simulation input too large" });
-      const data = await lpbfWorker.request(rpc, (rpc === "submit" || rpc === "estimate") ? req.body : ("id" in req.params ? req.params.id : null));
+      const passBody = ["submit", "estimate", "solidification-microstructure", "thermomechanical-distortion"].includes(rpc);
+      const data = await lpbfWorker.request(rpc, passBody ? req.body : ("id" in req.params ? req.params.id : null));
       res.status(rpc === "submit" ? 202 : 200).json(data);
     } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Simulation request failed" }); }
   });

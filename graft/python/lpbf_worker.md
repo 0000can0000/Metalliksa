@@ -13,6 +13,6 @@
 - cancel · method · L158-L163 — def cancel(self, job)
 - work · method · L165-L179 — def work(self)
 - execute · method · L181-L233 — def execute(self, job)
-- main · function · L236-L298 — def main()
+- main · function · L236-L305 — def main()
 - monitor_parent · function · L241-L245 — def monitor_parent()
 - report · function · L247-L248 — def report(progress, message)

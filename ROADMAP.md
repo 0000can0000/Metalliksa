@@ -17,13 +17,24 @@ This roadmap defines the phased developmental milestones for the **Metalliksa Ad
 ## North-Star Product Target: LPBF Defect Digital Twin
 
 The primary product goal is not only to solve temperature fields. Given a CAD
-part, powder/feedstock specification, machine profile, and process parameters,
+part (STL), direct toolpath (CLI / G-Code), or parametric benchmark pattern,
+along with powder/feedstock specification, machine profile, and process parameters,
 Metalliksa must produce a traceable, uncertainty-aware map of melt-pool
 behavior and defect risk across the part:
 
-`CAD + powder + machine + P/v/h/t + scan strategy`
+`CAD / CLI + powder + machine + P/v/h/t + scan strategy`
+`→ scanner kinematics (acceleration & skywriting)`
 `→ thermal history → melt-pool geometry/stability`
-`→ LoF / keyhole / balling / gas-pore risk → part-level porosity range`
+`→ LoF / keyhole / balling risk → 3D defect map & relative density (%99.X)`
+
+### 3-Tier Toolpath & Kinematics Ingestion Architecture
+1. **Tier 1 (Core & High Precision): Direct Toolpath Import (CLI / G-Code):**
+   - Parse Common Layer Interface (`.cli`) and open G-Code/Open-Laser vectors directly.
+   - Zero guessing of machine paths: provides exact hatch vectors, contour passes, and scan order.
+2. **Tier 2 (Agile R&D Screening): Parametric Benchmark Patterns:**
+   - Instant parameter optimization without CAD files: Single Track, 90° Turnaround (sharp corners), Multi-track Meander, and Island / Checkerboard (e.g. 5x5 mm).
+3. **Tier 3 (User Showcase & Rapid Inspection): In-App STL Slicing:**
+   - Drag-and-drop STL with lightweight 2D polygon slicing (`BasicSTLSlicer`) and automatic meander toolpath generation for instant 3D visualization.
 
 The system must distinguish a **keyhole regime** from **keyhole porosity** and
 must not claim an exact porosity percentage when powder gas content, atmosphere,
@@ -80,8 +91,12 @@ gaps.
 
 ## Phase 5: Part-Level Defect and Porosity Digital Twin (🟡 CORE PRODUCT MILESTONE)
 - [ ] **Defect Taxonomy and Output Contract**: Return separate LoF, keyhole, balling, and gas-pore risk; never collapse all of them into a single VED score or binary “keyhole” label.
-- [ ] **LoF Physics**: Combine local melt-pool width/depth, hatch overlap, remelt depth, layer thickness, neighboring-track history, and geometry—not only $h > W$ or $t > D$ thresholds.
-- [ ] **Keyhole Risk and Collapse Model**: Use intensity, normalized enthalpy, vaporization/recoil indicators, melt-pool aspect ratio, and temporal stability. A keyhole regime is not automatically a keyhole pore; pore formation requires collapse/entrapment evidence or calibrated probability.
+- [ ] **Scanner Kinematics & Delay Physics**: Galvanometer mirror inertia, acceleration/deceleration profiles ($a_{\text{max}}$), jump/mark delays, and skywriting simulation to capture localized thermal spikes at vector endpoints and turnarounds.
+- [ ] **LoF Physics (🟡 Harkin Criterion)**: Semi-elliptical inter-track and inter-layer overlap model: $(h/W)^2 + (t/D)^2 \le 1$ (Harkin et al. 2023) evaluated across vectors, borders, and layer rotations.
+- [ ] **Keyhole Porosity (🔴 King & Cunningham Criteria)**: Normalized enthalpy $\Delta H / h_s$ scaling and aspect ratio threshold ($D/W > 1.5$) combined with high-speed X-ray vapor depression collapse conditions at scanner turnaround points.
+- [ ] **Balling Instability (🟣 Rayleigh-Plateau Criterion)**: Melt pool cylindrical capillary breakup criterion ($L/W > \pi \approx 3.14$) and Yadroitsev continuity threshold under high scan speeds or insufficient laser power.
+- [ ] **3D Spatial Defect Mapping (Three.js)**: Direct visualization of defect coordinates on the transparent 3D part geometry (yellow LoF, red Keyhole, purple Balling markers/voxels).
+- [ ] **Relative Density (%99.X) & UQ Integration**: Cumulative defect volume integration ($1 - V_{\text{pore}}/V_{\text{total}}$) and probability density functions $P(\text{Defect})$ under laser/powder stochastic variation via Monte Carlo UQ.
 - [ ] **Powder/Atmosphere Gas-Pore Prior**: Include particle-size distribution, packing, morphology, reuse state, oxygen/moisture/gas evidence, chamber conditions, and an explicit unknown state when unavailable.
 - [ ] **Part-Level Porosity Aggregation**: Map voxel/track/layer risks back to the CAD part and report a porosity interval, defect locations, dominant mechanism, confidence, and out-of-domain warning.
 - [ ] **Experimental Holdout Validation**: Validate single-track, multi-track, and multi-layer cases with melt-pool measurements and XCT/Archimedes porosity where available; calibration and holdout builds must remain separate.

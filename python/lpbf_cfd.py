@@ -7,7 +7,7 @@ Darcy velocity damping, Marangoni tangential stress (Phase 2), and
 Knight recoil pressure & Hertz-Knudsen evaporation (Phase 3).
 
 Model ID:      multiphase-vof-csf-v1
-Solver ID:     metalliksaMeltPoolFoam-OpenFOAM14-3
+Solver ID:     metalliksaMeltPoolFoam-OpenFOAM14-4
 Marangoni ID:  tangential-dsigmadT-interface-v1
 Recoil ID:     recoil-knight-clausius-v1
 """
@@ -18,7 +18,7 @@ import os
 import subprocess
 from pathlib import Path
 
-CFD_SOLVER_ID = "metalliksaMeltPoolFoam-OpenFOAM14-3"
+CFD_SOLVER_ID = "metalliksaMeltPoolFoam-OpenFOAM14-4"
 CFD_MODEL_ID = "multiphase-vof-csf-v1"
 MARANGONI_MODEL_ID = "tangential-dsigmadT-interface-v1"
 RECOIL_MODEL_ID = "recoil-knight-clausius-v1"

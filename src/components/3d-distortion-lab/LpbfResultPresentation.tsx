@@ -10,6 +10,8 @@ const measurementMatchState = (value: string | null | undefined): MatchState => 
   if (!value) return "missing";
   return /yes|true|exact|matched/i.test(value) ? "match" : /no|false|different/i.test(value) ? "mismatch" : "missing";
 };
+const pluralize = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
+const measurementMatchLabel = (match: MatchState) => match === "match" ? "process-vector exact" : match === "mismatch" ? "process mismatch" : "provenance missing";
 
 const measurementSummary = (result: SimulationResult): { status: MatchState; details: string[] } => {
   const evidence = result.measurementEvidence ?? [];
@@ -21,14 +23,14 @@ const measurementSummary = (result: SimulationResult): { status: MatchState; det
   const unknown = evidence.filter(item => measurementMatchState(item.sameProcessVector) === "missing");
   const independent = evidence.filter(item => item.independentHoldout).length;
   const details = [
-    `Comparison metrics are available for ${Object.keys(comparison).length} dimension panel(s).`,
-    `${matched.length} replicate set(s) report exact process-vector match.`,
-    mismatched.length ? `${mismatched.length} replicate set(s) report process mismatch.` : "No process mismatch in returned evidence.",
-    unknown.length ? `${unknown.length} replicate set(s) have unresolved process-vector provenance.` : "Process-vector provenance for returned evidence is complete.",
-    independent ? `${independent} replicate set(s) are user-declared independent holdout.` : "No user-declared independent holdout replicate was provided.",
+    `Comparison metrics are available for ${pluralize(Object.keys(comparison).length, "dimension panel", "dimension panels")}.`,
+    `${pluralize(matched.length, "replicate", "replicates")} report ${measurementMatchLabel("match")}.`,
+    mismatched.length ? `${pluralize(mismatched.length, "replicate", "replicates")} report ${measurementMatchLabel("mismatch")}.` : "No process mismatch in returned evidence.",
+    unknown.length ? `${pluralize(unknown.length, "replicate", "replicates")} have ${measurementMatchLabel("missing")}.` : "Process-vector provenance for returned evidence is complete.",
+    independent ? `${pluralize(independent, "replicate", "replicates")} are user-declared independent holdout.` : "No user-declared independent holdout replicate was provided.",
   ];
   return {
-    status: mismatched.length > 0 ? "mismatch" : matched.length > 0 ? "match" : "missing",
+    status: mismatched.length > 0 ? "mismatch" : unknown.length > 0 ? "missing" : matched.length > 0 ? "match" : "missing",
     details,
   };
 };

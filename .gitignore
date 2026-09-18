@@ -22,3 +22,6 @@ data/benchmark/**/raw/
 # machine-local indexes and caches rebuilt with `graft build`.
 graft/.cache/
 graft/.graph/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

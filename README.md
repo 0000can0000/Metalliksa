@@ -13,3 +13,14 @@ Industrial LPBF Build Job path: Python owns printability (`POST /api/python/lpbf
 - **Air-gap**: set `AIRGAPPED=1` to disable Gemini / NVIDIA cloud / live external DFT & pricing; local LPBF stays open.
 - **SBOM**: `npm run sbom` → CycloneDX JSON under `sbom/` (Python + Node).
 - **Tests**: `npm run test:lpbf` (fast); `npm run test:lpbf:slow` (UQ + NIST).
+
+## Progress continuity rule
+
+Every work segment must be recorded in [sonkayıtlar/LOG.md](sonkayıtlar/LOG.md) with:
+
+- What was done last
+- What the next planned step is
+- Whether the segment is complete or partial
+- Any blocker/reason if not complete
+
+Apply this for all modules (simulation, UI, materials, evidence, tests, and docs).

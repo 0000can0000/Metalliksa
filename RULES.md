@@ -55,11 +55,18 @@ This document defines the strict, binding operational and engineering rules for 
 
 ---
 
-## 7. Rule 7: Commit and Push After Every Meaningful Completed Job
-- **Trigger**: After an agent completes a meaningful, user-scoped change set — such as a feature, bug fix, documentation pass, or coherent group of related small edits — it **must** create one git commit and **push it to GitHub** (`origin`) on the current branch.
-- **Batching**: Do not create a separate commit for every small intermediate edit. Combine related edits made during the same task into one reviewable change set. A standalone typo or trivial correction may be bundled with the next related task.
-- Do not leave a completed meaningful change set as uncommitted local edits. Do not wait for a second user prompt to commit or push.
-- **Scope**: Stage only files intentionally changed by the current task. Preserve and exclude unrelated user edits, generated artifacts, secrets, `.env` files, and bytecode.
-- **Sequence**: (1) finish the meaningful change set and applicable tests, (2) write the `sonkayıtlar` entry (Rule 5), (3) inspect status and diff, (4) `git add` only the files for this task, (5) commit with a concise message that states **why**, (6) `git push` to the tracked remote branch (`git push -u origin HEAD` if upstream is missing).
-- **Forbidden**: `git config` changes, `--no-verify`, force-push to `main`/`master`, interactive rebase, or committing credentials.
-- If push fails (auth, network, no remote), report the error in the user briefing and in `sonkayıtlar`; the local commit must still exist.
+## 7. Rule 7: Frequent Local Commits & Push on Verified Milestones
+- **Frequent Local Commits ("Commit Early & Often")**: Commit frequently in the local git repository for every logical step, sub-feature, working refactor, or meaningful checkpoint. Do not hesitate to create local commits to preserve working states and maintain an inspectable, safe history.
+- **Push Timing**: Push to GitHub (`origin`) on the tracked branch when a milestone, feature, bug fix, or user-scoped task is completed, verified, and in a working (non-broken) state.
+- **Scope & Hygiene**: Stage only files intentionally changed by the current task. Never commit secrets, `.env` files, build artifacts, or unrelated user edits. Keep commit messages concise, stating what was changed and why.
+- **Sequence**: (1) Make changes and create local commits as logical steps complete, (2) run applicable tests/checks, (3) log progress or completion in `sonkayıtlar` (Rule 5), (4) inspect `git status` / `git log`, (5) `git push` to remote once the milestone is verified and ready.
+- **Forbidden**: `git config` changes, `--no-verify`, force-push to `main`/`master`, interactive rebase on pushed commits, or committing credentials.
+- If push fails (auth, network, no upstream), report the issue in the user briefing; local commits must remain intact.
+
+## 8. Rule 8: Mandatory Continuation Note in Every Task
+- **Trigger**: Every agent job must create/update a Markdown handoff entry with a consistent structure in `sonkayıtlar/LOG.md` after work is done **or stopped**, including:
+  - **Last completed action** (the exact last code/doc change or decision),
+  - **Next action** (the immediately next concrete step, even if work is not finished),
+  - **Result** (`PASS`, `PARTIAL`, `BLOCKED`, `FAIL`) and exact blocker/reason if not complete.
+- This is required not only for code changes, but also for docs, protocol edits, and module-level planning.
+- If the job changes multiple modules (for example LPBF + evidence + materials), the handoff note must still be a single entry that names what changed in each module and what remains.

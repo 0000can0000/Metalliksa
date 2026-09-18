@@ -1,3 +1,10 @@
+## 2026-09-18 14:15 — Field-resolved inter-track overlap and remelting extraction
+- Scope: enthalpy-fv-6 / metalliksaThermal-OpenFOAM14-6. Field-based tracking of contiguous 3D molten cell envelopes per scan vector (track, layer) directly from simulated temperature and enthalpy fields. Replaces idealized single-track geometric projections (Harkin et al. 2023) for multi-track configurations.
+- Independent oracles: 7 unit tests covering single-track non-applicability, overlapping tracks with verified overlap ratio, separated tracks with powder corridor lack-of-fusion gap detection, 45-degree rotated scan vectors, cyclic remelting tracking, OpenFOAM vs Reference numerical parity, and binary contract mismatch rejection.
+- Evidence: actual WSL wmake PASS (exit 0); WSL test suite 60/60 PASS in 38.3s without skips or failures; frontend 109/109 PASS; TypeScript lint (tsc --noEmit) PASS (0 errors); frontend production build PASS in 51.8s.
+- Acceptance: OpenFOAM 14 and NumPy reference solver achieve exact numerical agreement in overlap ratio, gap volume, and remelt volume. Cell coordinate bounds exclude inactive powder above layer surface. Strict runtime rejection of outdated OpenFOAM binaries.
+- Limits: voxel-based boolean envelope extraction operates on discretized Cartesian grids. Numerical verification is not experimental validation; defect risk and lack-of-fusion screening do not substitute for free-surface multiphysics CFD or physical CT porosity qualification.
+
 ## 2026-09-16 14:33 — Accepted-step melt-volume extraction
 - Scope: enthalpy-fv-5 / metalliksaThermal-OpenFOAM14-5. Every accepted endpoint is considered; earliest equal-count maximum, peak geometry and preserved temperature/phase field share one step. Uniform Cartesian whole-cell extraction only.
 - Independent oracles: 2 um cube fixture with unsampled 24 um^3 peak, 16 um^3 playback maximum, 1/3 missed fraction; exact liquidus, inactive hot cell, 45-degree projection, rotated layer, immutable snapshot, zero-melt reuse/preview cleanup. All-step NumPy observer checked against independent counts. Old OpenFOAM contract rejected.

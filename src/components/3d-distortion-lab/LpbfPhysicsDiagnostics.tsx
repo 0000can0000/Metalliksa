@@ -5,7 +5,7 @@ const format = (value: number | null) => value === null ? "Unresolved" : value.t
 export function LpbfPhysicsDiagnostics({ result }: { result: SimulationResult }) {
   const diagnostics = result.numericalDiagnostics;
   const screen = result.geometricDefectScreen;
-  if (!diagnostics && !screen) return null;
+  if (!diagnostics && !screen && !result.fieldOverlapDiagnostics) return null;
   return <section aria-label="Physics resolution and overlap" className="rounded-xl border border-slate-700 bg-slate-900/50 p-5 space-y-5">
     <h4 className="font-medium text-slate-100">Physics resolution and overlap</h4>
     {diagnostics && <div className="space-y-3">
@@ -35,6 +35,21 @@ export function LpbfPhysicsDiagnostics({ result }: { result: SimulationResult })
         <ul className="list-disc space-y-2 pl-5 py-2">{screen.limitations.map(item => <li key={item}>{item}</li>)}</ul>
         <a className="underline" href="https://link.springer.com/article/10.1007/s00170-023-11163-0" target="_blank" rel="noreferrer">Harkin et al. (2023), Equation 5</a>
       </details>
+    </div>}
+    {result.fieldOverlapDiagnostics && <div className="space-y-3 border-t border-slate-700 pt-4">
+      <h5 className="text-sm font-medium text-slate-100">
+        Field-resolved inter-track overlap · {result.fieldOverlapDiagnostics.status.replaceAll("-", " ")}
+      </h5>
+      <p className="text-xs text-slate-400">{result.fieldOverlapDiagnostics.note}</p>
+      <dl className="grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
+        <div><dt className="text-slate-400">Inter-track overlap</dt><dd className="mt-1 tabular-nums text-slate-100">{result.fieldOverlapDiagnostics.trackOverlapRatio !== null ? `${format(result.fieldOverlapDiagnostics.trackOverlapRatio * 100)}%` : "N/A (single track)"}</dd></div>
+        <div><dt className="text-slate-400">Inter-track gap volume</dt><dd className="mt-1 tabular-nums text-slate-100">{format(result.fieldOverlapDiagnostics.interTrackGapVolume_um3)} µm³</dd></div>
+        <div><dt className="text-slate-400">Global remelting ratio</dt><dd className="mt-1 tabular-nums text-slate-100">{format(result.fieldOverlapDiagnostics.globalRemeltRatio * 100)}%</dd></div>
+        <div><dt className="text-slate-400">Substrate penetration depth</dt><dd className="mt-1 tabular-nums text-slate-100">{format(result.fieldOverlapDiagnostics.interLayerPenetrationDepth_um ?? 0)} µm</dd></div>
+        <div><dt className="text-slate-400">Total molten volume</dt><dd className="mt-1 tabular-nums text-slate-100">{format(result.fieldOverlapDiagnostics.totalMeltVolume_um3)} µm³</dd></div>
+        <div><dt className="text-slate-400">Total remelt volume</dt><dd className="mt-1 tabular-nums text-slate-100">{format(result.fieldOverlapDiagnostics.totalRemeltVolume_um3)} µm³</dd></div>
+      </dl>
+      <p className="text-xs leading-5 text-amber-200">Field-based overlap measures contiguous molten voxel envelopes across adjacent scan vectors. It does not replace full free-surface CFD or tomography qualification.</p>
     </div>}
   </section>;
 }

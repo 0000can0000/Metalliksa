@@ -20,11 +20,20 @@ export interface ResourceEstimate {
 export interface SimulationResult {
   numericalDiagnostics?: {
     meltPoolExtraction?: string;
+    overlapExtraction?: string;
     peakMeltTime_s?: number | null; peakMeltStep?: number | null;
     meltPoolObservedSteps?: number; sampledPeakMeltVolume_um3?: number; peakMeltSamplingLossFraction?: number;
     sourceIntegration: string; stabilityLimit: string; minimumCapturedSourceFraction: number;
     maximumSourceRenormalization: number; maximumSurfaceOffset_um: number;
     maximumTimestep_s: number; maximumEnthalpyIncrement_K: number; sourceTimestepRetries: number;
+  };
+  fieldOverlapDiagnostics?: {
+    modelId: string; scope: string; tracks: number; layers: number;
+    trackOverlapRatio: number | null; meanInterTrackOverlapRatio: number | null; minInterTrackOverlapRatio: number | null;
+    pairwiseOverlapRatios?: number[]; interTrackGapVolume_um3: number; hasInterTrackGap: boolean;
+    interTrackLackOfFusion: boolean; midpointPenetrationDepth_um?: number; interLayerPenetrationDepth_um?: number;
+    interLayerRemeltRatio?: number; globalRemeltRatio: number; totalMeltVolume_um3: number; totalRemeltVolume_um3: number;
+    status: string; note: string;
   };
   geometricDefectScreen?: {
     modelId: string; scope: string; status: string; limitations: string[];
@@ -127,6 +136,18 @@ export function parseSimulationJob(value: unknown): SimulationJob {
         || !(d.peakMeltTime_s === null && d.peakMeltStep === null
           || typeof d.peakMeltTime_s === "number" && d.peakMeltTime_s > 0 && Number.isSafeInteger(d.peakMeltStep)
             && Number(d.peakMeltStep) > 0 && Number(d.peakMeltStep) <= Number(d.meltPoolObservedSteps)))) throw new Error("Invalid melt pool extraction diagnostics");
+    }
+    if (r.fieldOverlapDiagnostics !== undefined) {
+      const d = r.fieldOverlapDiagnostics;
+      if (!object(d) || d.modelId !== "field-inter-track-overlap-v1" || typeof d.scope !== "string"
+        || !Number.isSafeInteger(d.tracks) || Number(d.tracks) < 1 || !Number.isSafeInteger(d.layers) || Number(d.layers) < 1
+        || !(d.trackOverlapRatio === null || (typeof d.trackOverlapRatio === "number" && d.trackOverlapRatio >= 0 && d.trackOverlapRatio <= 1))
+        || typeof d.interTrackGapVolume_um3 !== "number" || d.interTrackGapVolume_um3 < 0
+        || typeof d.hasInterTrackGap !== "boolean" || typeof d.interTrackLackOfFusion !== "boolean"
+        || typeof d.globalRemeltRatio !== "number" || d.globalRemeltRatio < 0 || d.globalRemeltRatio > 1
+        || typeof d.totalMeltVolume_um3 !== "number" || d.totalMeltVolume_um3 < 0
+        || typeof d.totalRemeltVolume_um3 !== "number" || d.totalRemeltVolume_um3 < 0
+        || typeof d.status !== "string" || typeof d.note !== "string") throw new Error("Invalid field overlap diagnostics");
     }
     if (r.geometricDefectScreen !== undefined) {
       const d = r.geometricDefectScreen;

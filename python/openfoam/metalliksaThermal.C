@@ -16,7 +16,7 @@
 #include <map>
 using namespace Foam;
 using Row = std::array<double, 6>;
-struct Segment { double a,b,x0,y0,x1,y1,surface; };
+struct Segment { double a,b,x0,y0,x1,y1,surface; int track,layer; };
 // Probability mass of a normalized 1/e^2 Gaussian. erfc preserves tail mass.
 double gaussianMass(double lower, double upper, double centre, double radius)
 {
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     std::vector<Row> table(nrows);
     for(auto& row:table) for(auto& value:row) input>>value;
     int ns; input>>ns; std::vector<Segment> scans(ns);
-    for(auto& s:scans) input>>s.a>>s.b>>s.x0>>s.y0>>s.x1>>s.y1>>s.surface;
+    for(auto& s:scans) input>>s.a>>s.b>>s.x0>>s.y0>>s.x1>>s.y1>>s.surface>>s.track>>s.layer;
     if(!input || nrows<2 || ns<1) FatalErrorInFunction<<"Invalid thermal input"<<exit(FatalError);
     const vectorField& centres=mesh.C(); const scalarField& volumes=mesh.V();
     const labelUList& owners=mesh.owner(); const labelUList& neighbours=mesh.neighbour();
@@ -56,6 +56,8 @@ int main(int argc, char *argv[])
     const int n=mesh.nCells();
     std::vector<double> T(n,t0),H(n,0),rho(n),k(n),rate(n),source(n),old(n),conductance(n),cp(n),zMass(n),nodeSource(n);
     std::vector<bool> ever(n,false),active(n,false),wasMelt(n,false),remelt(n,false);
+    std::vector<std::vector<bool>> segmentMelt(ns, std::vector<bool>(n, false));
+    int lastActiveSegment = 0;
     const double h0=interp(table,t0,0,1), hmax=interp(table,boiling,0,1);
     double cpFloor=GREAT;
     for(const auto& row:table) cpFloor=std::min(cpFloor,row[4]);
@@ -79,14 +81,16 @@ int main(int argc, char *argv[])
     while(time<end-1e-15)
     {
         const Segment* laser=nullptr; double surface=scans.front().surface;
+        int activeSegment = -1;
         double dt=std::min({maxDt,end-time,radius/(4*speed)});
-        for(const auto& s:scans)
+        for(int s=0;s<ns;++s)
         {
-            if(s.a<=time+1e-14) surface=s.surface;
-            if(s.a<=time+1e-14 && time<s.b-1e-14) laser=&s;
-            if(s.a>time+1e-14) dt=std::min(dt,s.a-time);
-            if(s.b>time+1e-14) dt=std::min(dt,s.b-time);
+            if(scans[s].a<=time+1e-14) surface=scans[s].surface;
+            if(scans[s].a<=time+1e-14 && time<scans[s].b-1e-14) { laser=&scans[s]; activeSegment=s; }
+            if(scans[s].a>time+1e-14) dt=std::min(dt,scans[s].a-time);
+            if(scans[s].b>time+1e-14) dt=std::min(dt,scans[s].b-time);
         }
+        if(activeSegment >= 0) lastActiveSegment = activeSegment;
         std::fill(rate.begin(),rate.end(),0); std::fill(source.begin(),source.end(),0);
         std::fill(conductance.begin(),conductance.end(),0);
         for(int i=0;i<n;++i)
@@ -197,7 +201,11 @@ int main(int argc, char *argv[])
                 FatalErrorInFunction<<"Boiling/nonphysical enthalpy: thermal model invalid; free-surface CFD required"<<exit(FatalError);
             T[i]=interp(table,h,1,0);
             const bool molten=T[i]>=liquidus && active[i];
-            if(molten) ++moltenCount;
+            if(molten)
+            {
+                ++moltenCount;
+                segmentMelt[lastActiveSegment][i] = true;
+            }
             remelt[i]=remelt[i] || (molten && ever[i] && !wasMelt[i]);
             ever[i]=ever[i] || molten; wasMelt[i]=molten;
             peak=std::max(peak,T[i]); stored+=H[i]*volumes[i];
@@ -259,11 +267,24 @@ int main(int argc, char *argv[])
     peakState<<"\n";
     peakState.close();
     if(!peakState) FatalErrorInFunction<<"Could not write peak melt field"<<exit(FatalError);
+    std::ofstream trackMeltFile((runTime.path()/"track-melt.dat").c_str());
+    trackMeltFile << ns << " " << n << "\n";
+    for(int s=0;s<ns;++s)
+    {
+        std::vector<int> meltedIndices;
+        for(int i=0;i<n;++i) if(segmentMelt[s][i]) meltedIndices.push_back(i);
+        trackMeltFile << scans[s].track << " " << scans[s].layer << " " << meltedIndices.size();
+        for(int idx : meltedIndices) trackMeltFile << " " << idx;
+        trackMeltFile << "\n";
+    }
+    trackMeltFile.close();
+    if(!trackMeltFile) FatalErrorInFunction<<"Could not write track melt field"<<exit(FatalError);
     std::ofstream diagnostics((runTime.path()/"numerical-diagnostics.json").c_str());
     diagnostics<<std::setprecision(17)
         <<"{\n  \"sourceIntegration\": \"cell-integrated-gaussian-gl2-v1\",\n"
         <<"  \"solidificationExtraction\": \"linear-liquidus-crossing-v1\",\n"
         <<"  \"meltPoolExtraction\": \"accepted-step-molten-volume-v1\",\n"
+        <<"  \"overlapExtraction\": \"field-inter-track-overlap-v1\",\n"
         <<"  \"stabilityLimit\": \"local-conductance-row-sum\",\n"
         <<"  \"minimumCapturedSourceFraction\": "<<minimumCaptured<<",\n"
         <<"  \"maximumSourceRenormalization\": "<<1/minimumCaptured<<",\n"

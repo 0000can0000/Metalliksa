@@ -65,3 +65,28 @@ test("invalid source and overlap contracts are rejected before rendering", () =>
   assert.throws(() => parse({ geometricDefectScreen: { ...result.geometricDefectScreen, limitations: "invalid" } }));
   assert.throws(() => parse({ geometricDefectScreen: { ...result.geometricDefectScreen, lackOfFusion: { ...result.geometricDefectScreen.lackOfFusion, ellipseIndex: "1.14" } } }));
 });
+
+test("field-resolved inter-track overlap renders correctly and rejects invalid values", () => {
+  const fieldOverlapDiagnostics = {
+    modelId: "field-inter-track-overlap-v1", scope: "multi-track-field",
+    tracks: 2, layers: 1, trackOverlapRatio: 0.354, meanInterTrackOverlapRatio: 0.354,
+    minInterTrackOverlapRatio: 0.354, pairwiseOverlapRatios: [0.354],
+    interTrackGapVolume_um3: 0, hasInterTrackGap: false, interTrackLackOfFusion: false,
+    midpointPenetrationDepth_um: 52, interLayerPenetrationDepth_um: 18, interLayerRemeltRatio: 0.22,
+    globalRemeltRatio: 0.42, totalMeltVolume_um3: 150000, totalRemeltVolume_um3: 63000,
+    status: "fused-inter-track", note: "Continuous fused volume across hatch spacing."
+  };
+  const parsed = parse({ fieldOverlapDiagnostics }).result!;
+  const html = renderToStaticMarkup(<LpbfPhysicsDiagnostics result={parsed}/>);
+  assert.match(html, /Field-resolved inter-track overlap/);
+  assert.match(html, /35\.4%/);
+  assert.match(html, /Continuous fused volume/);
+  assert.match(html, /fused inter track/);
+
+  for (const patch of [
+    { modelId: "unverified" }, { tracks: 0 }, { trackOverlapRatio: 1.5 },
+    { interTrackGapVolume_um3: -1 }, { globalRemeltRatio: 1.2 }
+  ]) {
+    assert.throws(() => parse({ fieldOverlapDiagnostics: { ...fieldOverlapDiagnostics, ...patch } }));
+  }
+});

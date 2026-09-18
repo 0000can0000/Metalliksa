@@ -53,7 +53,7 @@ mergePatchPairs ();
         np.savetxt(stream, table, fmt="%.17g")
         stream.write(str(len(segments))+"\n")
         for s in segments:
-            stream.write(" ".join(map(str, [s["start_s"], s["end_s"], *s["start"], *s["end"], (s["layer"]+1)*p["layer_um"]*1e-6]))+"\n")
+            stream.write(" ".join(map(str, [s["start_s"], s["end_s"], *s["start"], *s["end"], (s["layer"]+1)*p["layer_um"]*1e-6, s["track"], s["layer"]]))+"\n")
     return dx, segments
 
 
@@ -69,6 +69,7 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     # A reused case must prove the current executable, never a previous run.
     diagnostic_path.unlink(missing_ok=True)
     (folder/"peak-state.dat").unlink(missing_ok=True)
+    (folder/"track-melt.dat").unlink(missing_ok=True)
     # Shell program is constant; all paths are separate positional arguments.
     script = 'source /opt/openfoam14/etc/bashrc; blockMesh -case "$1" && checkMesh -case "$1" && "$2" -case "$1"'
     child = subprocess.Popen(["bash", "-lc", script, "metalliksa", str(folder.resolve()), str(BINARY.resolve())],
@@ -83,6 +84,7 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     if code:
         raise ValueError("OpenFOAM thermal failed: "+(folder/"solver.log").read_text()[-2500:])
     from lpbf_heat_source import SOURCE_INTEGRATION
+    from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
     if not diagnostic_path.is_file():
         raise ValueError("OpenFOAM binary is outdated: rebuild metalliksaThermal for cell-integrated heating")
     diagnostics = json.loads(diagnostic_path.read_text())
@@ -92,6 +94,8 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError("OpenFOAM solidification extraction contract mismatch; rebuild solver")
     if diagnostics.get("meltPoolExtraction") != PEAK_EXTRACTION:
         raise ValueError("OpenFOAM melt pool extraction contract mismatch; rebuild solver")
+    if diagnostics.get("overlapExtraction") != OVERLAP_MODEL_ID:
+        raise ValueError("OpenFOAM overlap extraction contract mismatch; rebuild solver")
     coords = np.loadtxt(folder/"coordinates.csv", delimiter=",")
     samples = np.loadtxt(folder/"snapshots.dat", ndmin=2)
     if not np.isfinite(samples).all() or samples.shape[1] != len(coords)+14:
@@ -127,6 +131,30 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError("OpenFOAM peak field is smaller than a sampled field")
     best, peak_diagnostics = tracker.finish(artifact_dir, int(samples[-1, 5]))
     diagnostics.update(peak_diagnostics)
+
+    # Process field-based track overlap
+    track_melt_path = folder/"track-melt.dat"
+    if not track_melt_path.is_file():
+        raise ValueError("OpenFOAM track melt output missing; rebuild solver")
+    overlap_tracker = FieldOverlapTracker(coords[:, :3], dx, m, p)
+    with track_melt_path.open() as tm_f:
+        header = tm_f.readline().split()
+        if header:
+            num_segs, total_cells = int(header[0]), int(header[1])
+            for _ in range(num_segs):
+                line = tm_f.readline().split()
+                if not line:
+                    break
+                trk, lyr, cnt = int(line[0]), int(line[1]), int(line[2])
+                key = (lyr, trk)
+                if key not in overlap_tracker.track_melt:
+                    overlap_tracker.track_melt[key] = np.zeros(len(coords), dtype=bool)
+                if cnt > 0 and len(line) >= 3 + cnt:
+                    indices = [int(x) for x in line[3:3 + cnt]]
+                    overlap_tracker.track_melt[key][indices] = True
+                    overlap_tracker.ever_melted[indices] = True
+    overlap_metrics = overlap_tracker.finish(artifact_dir)
+
     row = samples[-1]; balance = abs(row[1]-row[2]-row[3])/max(row[1], 1e-12)
     if balance > .01: raise ValueError("OpenFOAM energy balance failed")
     w = best["width_um"]*1e-6
@@ -137,11 +165,11 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
                 keyholeDepth_um=None, recoilPressure_Pa=None,
                 marangoniNumber=abs(m["dGamma_dT"])*max(0, row[7]-m["liquidus_K"])*w/(float(property_at(m, row[7], 4))*alpha),
                 pecletNumber=p["speed_mm_s"]*.001*w/alpha, aspectRatio=best["depth_um"]/best["width_um"] if w else None,
-                trackOverlapRatio=max(0.,1-p["hatch_um"]/best["width_um"]) if w else 0.,
-                remeltingRatio=float(row[13]/row[12]) if row[12] else 0.)
+                trackOverlapRatio=overlap_metrics["trackOverlapRatio"],
+                remeltingRatio=overlap_metrics["globalRemeltRatio"] if row[12] else 0.)
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(), scanPath=segments,
-                numericalDiagnostics=diagnostics,
+                numericalDiagnostics=diagnostics, fieldOverlapDiagnostics=overlap_metrics,
                 energyBalance=dict(input_J=float(row[1]), losses_J=float(row[2]), stored_J=float(row[3]), relativeError=float(balance)),
                 discretization=dict(cells=len(coords), mesh_m=dx, minimumDt_s=float(row[4]), meanDt_s=float(row[0]/row[5]), steps=int(row[5])),
                 **thermal_audits(coords[:,:3],coords[:,3],p,m,np.clip((samples[-1,14:]-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)),
-                fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions and peak field selected at the earliest maximum molten-cell volume over every accepted timestep; playback remains sparse. Global-x slice area is not scan-normal for rotated tracks. Sampling loss measures playback decimation only, not timestep or mesh error. G/R/cooling are event means at linearly reconstructed cooling liquidus crossings over every timestep; gradient vectors are interpolated before taking their magnitude, G <= 1e-6 K/m excluded. Remelting tracked every step.")
+                fieldHistory="openfoam-case/snapshots.dat", extractionNote="Dimensions and peak field selected at the earliest maximum molten-cell volume over every accepted timestep; playback remains sparse. Global-x slice area is not scan-normal for rotated tracks. Sampling loss measures playback decimation only, not timestep or mesh error. G/R/cooling are event means at linearly reconstructed cooling liquidus crossings over every timestep; gradient vectors are interpolated before taking their magnitude, G <= 1e-6 K/m excluded. Remelting and inter-track overlap tracked from 3D field every step.")

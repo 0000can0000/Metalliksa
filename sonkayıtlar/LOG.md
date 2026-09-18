@@ -1,3 +1,13 @@
+## 2026-09-18 14:15 — Field-resolved inter-track overlap and remelting diagnostics
+- Task: Implement field-based local inter-track overlap, gap detection, and remelting diagnostics for multi-track LPBF simulations.
+- Done / Last completed action: Implemented FieldOverlapTracker in Python reference and integrated track-melt extraction into OpenFOAM 14 thermal solver. Bumped solver versions to enthalpy-fv-6 and metalliksaThermal-OpenFOAM14-6 with extraction model field-inter-track-overlap-v1. Added powder corridor gap volume calculation, midpoint penetration depth, and global remelting. Exposed metrics in TypeScript types and LPBF diagnostics UI panel. Added 7 unit tests and UI contract tests. Rebuilt OpenFOAM binary and verified numerical parity.
+- Files touched: python/lpbf_overlap.py, python/test_lpbf_overlap.py, python/lpbf_simulation.py, python/lpbf_openfoam.py, python/openfoam/metalliksaThermal.C, src/services/lpbfSimulationService.ts, src/components/3d-distortion-lab/LpbfPhysicsDiagnostics.tsx, tests/lpbf-physics-diagnostics.test.tsx, graft/python/lpbf_overlap.md, PROOF.md, this log.
+- Tests: WSL wmake PASS; WSL Python test suite 60/60 PASS in 38.3s; frontend unit tests 109/109 PASS; tsc --noEmit PASS; npm run build PASS (51.8s).
+- Review: Python and C++ implementations audited for coordinate alignment and powder-surface boundary exclusion. OpenFOAM writes track-melt.dat; Python FieldOverlapTracker computes identical metrics across both solvers. Pre-existing user modifications preserved.
+- Result: PASS for field-resolved overlap increment. Broader LPBF multiphysics CFD roadmap ongoing. Local task commit prepared; GitHub push blocked per instructions until explicit user authorization.
+- Where we left off / Next action: Multiphysics CFD Phase 1 roadmap (metalliksaMeltPoolFoam VOF / Stefan problem) or live UI verification on free ports.
+- Agent: Antigravity. English application/code, Turkish user updates.
+
 ## 2026-09-16 14:33 — LPBF accepted-step melt maximum
 - Task: Continue broad LPBF physics improvement; complete the bounded peak extraction increment.
 - Done / Last completed action: NumPy and OpenFOAM track every accepted-step molten count; preserve earliest peak field; coherent geometry/NPZ metadata and playback loss diagnostics; reject outdated binaries; remove stale zero-melt previews. Version 5 IDs and backward-compatible English provenance label. Existing user edits preserved.

@@ -15,9 +15,10 @@ from lpbf_verification import compare, convergence
 from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_peak import PeakMeltTracker
+from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
-VERSION = "enthalpy-fv-5"
+VERSION = "enthalpy-fv-6"
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
@@ -234,6 +235,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     energy_in = energy_out = 0.
     history, fronts = [], []
     peak_tracker = PeakMeltTracker(np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m)
+    overlap_tracker = FieldOverlapTracker(np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
     peak = t0
     time, step, next_sample = 0., 0, 0.
     recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
@@ -298,6 +300,10 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         sampled = time >= next_sample or time >= end
         peak_tracker.observe(T, surface, p["scanAngle_deg"]+active_layer*p["layerRotation_deg"],
                              time, step, sampled=sampled)
+        active_track = seg["track"] if seg is not None else (
+            max([s["track"] for s in segments if s["layer"] == active_layer and s["end_s"] <= time + 1e-14] or [0])
+        )
+        overlap_tracker.observe(T, surface, active_layer, active_track)
         if sampled:
             recorder.record(time, T, surface)
             history.append(dict(time_s=time, peak_K=float(T.max()), center_K=float(T[nxy//2, nxy//2, top_index]),
@@ -312,6 +318,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError(f"Energy balance failed: {balance:.3%}")
     G, R, cooling = (np.sum(fronts, axis=0)[:3]/np.sum(fronts, axis=0)[3]).tolist() if fronts else (None, None, None)
     best, peak_diagnostics = peak_tracker.finish(artifact_dir, step)
+    overlap_metrics = overlap_tracker.finish(artifact_dir)
     width = best["width_um"]*1e-6
     alpha = float(property_at(m, m["liquidus_K"], 2)/(property_at(m, m["liquidus_K"], 1)*property_at(m, m["liquidus_K"], 3)))
     best.update(peakTemperature_K=peak, thermalGradient_K_m=G, solidificationRate_m_s=R,
@@ -319,10 +326,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 marangoniNumber=abs(m["dGamma_dT"])*max(0, peak-m["liquidus_K"])*width/(float(property_at(m, peak, 4))*alpha),
                 pecletNumber=p["speed_mm_s"]*1e-3*width/alpha,
                 aspectRatio=best["depth_um"]/best["width_um"] if width else None,
-                trackOverlapRatio=max(0., 1-p["hatch_um"]/best["width_um"]) if width else 0.,
-                remeltingRatio=float(remelt.sum()/ever.sum()) if ever.any() else 0.)
+                trackOverlapRatio=overlap_metrics["trackOverlapRatio"],
+                remeltingRatio=overlap_metrics["globalRemeltRatio"])
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
-                numericalDiagnostics=dict(**peak_diagnostics, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
+                fieldOverlapDiagnostics=overlap_metrics,
+                numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,
                     maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment, sourceTimestepRetries=source_retries),
@@ -370,7 +378,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         n_runs = 1 if p["study"] == "none" else 3
         result.update(thermal_solver(p, m, lambda f, msg: report(f/n_runs, msg), artifact_dir))
         if use_foam:
-            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-5"
+            result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-6"
         if p["study"] != "none":
             trials = []
             key = "mesh_um" if p["study"] == "mesh" else "maxDt_s"
@@ -397,10 +405,24 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     result["recommendation"] = "Reduce hatch/layer spacing; verify penetration experimentally." if lof else "Reduce power or increase speed; verify with free-surface CFD." if kh else "Compare with measured tracks before changing process parameters."
     result["riskScope"] = "Geometric screening only; no probability, density qualification or solidification cracking assessment."
     if p["tracks"] > 1 and p["mode"] in ("standard", "calibration"):
-        result["mainRisk"] = "not assessed from aggregate multi-track extents"
-        result["regime"] = "conduction assumption; local flow regime unresolved"
-        result["recommendation"] = "Inspect saved temperature fields and remelting history; aggregate width cannot establish inter-track fusion."
-        g["trackOverlapRatio"] = None
+        field_overlap = result.get("fieldOverlapDiagnostics")
+        if field_overlap and field_overlap.get("hasInterTrackGap"):
+            result["mainRisk"] = "lack-of-fusion (field-resolved inter-track gap)"
+            result["regime"] = "conduction assumption; field-resolved inter-track lack-of-fusion"
+            result["recommendation"] = "Reduce hatch spacing; simulated melt pools leave unmelted powder gap between adjacent tracks."
+        elif field_overlap and field_overlap.get("interTrackLackOfFusion"):
+            result["mainRisk"] = "lack-of-fusion (insufficient inter-track penetration)"
+            result["regime"] = "conduction assumption; marginal inter-track penetration"
+            result["recommendation"] = "Increase power or decrease speed; inter-track penetration does not reach layer thickness."
+        elif field_overlap:
+            result["mainRisk"] = "keyhole (screening)" if kh else "balling (screening)" if length > math.pi*w else "continuous inter-track fusion"
+            result["regime"] = "conduction assumption; continuous inter-track fusion"
+            result["recommendation"] = "Field-resolved inter-track fusion verified; verify penetration and porosity with free-surface CFD or experiment."
+        else:
+            result["mainRisk"] = "not assessed from aggregate multi-track extents"
+            result["regime"] = "conduction assumption; local flow regime unresolved"
+            result["recommendation"] = "Inspect saved temperature fields and remelting history; aggregate width cannot establish inter-track fusion."
+            g["trackOverlapRatio"] = None
     if p.get("measurements"):
         result["measurementComparison"] = {key: compare([g[key]]*len(p["measurements"]), [row[key] for row in p["measurements"]]) for key in ("width_um", "depth_um")}
     result["resourceEstimate"] = resource_estimate(p,m)

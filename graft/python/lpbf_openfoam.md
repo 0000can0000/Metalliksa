@@ -1,6 +1,4 @@
 # python/lpbf_openfoam.py
 
-Refreshed from Python AST after accepted-step peak extraction, 2026-09-16. Graph generation and call coverage remain unknown.
-
-- generate_case · function · L17-L57
-- thermal · function · L60-L147
+- generate_case · function · L17-L57 — def generate_case(p, m, folder)
+- thermal · function · L60-L175 — def thermal(p, m, report=lambda *args: None, artifact_dir=None)

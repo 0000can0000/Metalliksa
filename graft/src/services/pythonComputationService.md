@@ -14,53 +14,55 @@
 - PythonMarangoniPoreResult · interface · L329-L385 — interface PythonMarangoniPoreResult
 - PythonInverseAlloyResult · interface · L387-L429 — interface PythonInverseAlloyResult
 - PythonKineticsResult · interface · L433-L511 — interface PythonKineticsResult
-- PythonComputationService · class · L513-L1589 — class PythonComputationService
-- checkEngineStatus · method · L520-L559 — async checkEngineStatus(forceRefresh = false): Promise<PythonEngineStatus>
-- getIPCStatus · method · L564-L587 — async getIPCStatus(): Promise<PersistentIPCDiagnostics>
-- triggerIPCWarmup · method · L592-L602 — async triggerIPCWarmup(): Promise<{ success: boolean; durationMs?: number; message?: string }>
-- getCalphadDatabases · method · L607-L629 — async getCalphadDatabases(): Promise<{ success: boolean; engine: string; pycalphadAvailable: boolean; pycalphadVersion: string; databases: PythonCalphadDatabaseEntry[]; }>
-- solveCalphadEquilibrium · method · L634-L698 — async solveCalphadEquilibrium( alloy: MultiComponentAlloyComposition, tMin = 400, tMax = 1450, tStep = 20, usePython = true, databaseId?: string, customTdbText?: string, adaptiveGrid = true, boundaryRefinement = true, minRefineStep = 0.5 ): Promise<PythonCalphadSolveResult>
-- calculateDFTProperties · method · L703-L856 — async calculateDFTProperties( input: DFTStructureInput, usePython = true ): Promise<PythonDFTResult>
-- fitCNLSEIS · method · L861-L903 — async fitCNLSEIS(payload: { circuitModel?: string; measuredData?: Array<{ frequency: number; zReal: number; zImag: number }>; initialParams?: Record<string, number>; }): Promise<PythonCNLSResult>
-- runAutoFitCNLS · method · L908-L937 — async runAutoFitCNLS(payload: { topology: any; points: any[]; parameters?: any[]; weighting?: string; maxGenerations?: number; populationSize?: number; polishLM?: boolean; }): Promise<any>
-- deconvolveXRD · method · L942-L996 — async deconvolveXRD(payload: { twoTheta?: number[]; intensity?: number[]; radiationWavelength?: number; radiationKa1?: number; radiationKa2?: number; instrumentBroadeningDeg?: number; peaks?: Array<{ twoTheta: number; hkl: string; intensity?: number }>; }): Promise<PythonXRDResult>
-- solveLPBFThermal · method · L1001-L1021 — async solveLPBFThermal(payload: { material: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; layerThickness_um?: number; hatchSpacing_um?: number; }): Promise<PythonLPBFThermalResult>
-- solveMarangoniPoreInstability · method · L1026-L1207 — async solveMarangoniPoreInstability(payload: { material: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; surfactant_sulfur_ppm?: number; shieldingGas?: string; processSeed?: number; meltPoolWidth_um?: number; meltPoolDepth_um?: number; meltPoolLength_um?: number; peakTemperature_C?: number; }): Promise<PythonMarangoniPoreResult>
-- runInverseAlloyOptimizer · method · L1212-L1233 — async runInverseAlloyOptimizer(payload: { targetYield_MPa?: number; maxDensity_g_cm3?: number; maxCost_USD_kg?: number; maxPHACOMP_Nv?: number; minPREN?: number; allowedElements?: string[]; populationSize?: number; generations?: number; }): Promise<PythonInverseAlloyResult>
-- solvePourbaixDiagram · method · L1238-L1256 — async solvePourbaixDiagram(payload: { element?: string; temperature_C?: number; ionActivity_log10?: number; chloride_ppm?: number; experimentalPoints?: ExperimentalEpHEntry[]; }): Promise<PythonPourbaixResult>
-- calculatePhaseKineticsTTTCCT · method · L1261-L1280 — async calculatePhaseKineticsTTTCCT(payload: { alloy?: string; coolingRate_C_s?: number; grainSize_um?: number; austTemp_C?: number; agingTemp_C?: number; agingTime_h?: number; }): Promise<PythonKineticsResult>
-- calculateICMEMultiScalePipeline · method · L1285-L1309 — async calculateICMEMultiScalePipeline(payload: { alloyName?: string; baseMetal?: "Ni" | "Fe" | "Ti" | "Al"; crystalSystem?: "FCC" | "BCC" | "HCP"; composition_wt?: { [key: string]: number }; coolingRate_C_s?: number; grainSize_um?: number | null; agingTemp_C?: number; agingTime_h?: number; strainRate_s_inv?: number; serviceTemp_C?: number; componentType?: string; }): Promise<PythonICMEMultiScaleResult>
-- calculateStochasticUQMMPDS · method · L1314-L1349 — async calculateStochasticUQMMPDS(payload: { alloyName?: string; baseMetal?: "Ni" | "Fe" | "Ti" | "Al"; standardSpec?: string; composition_wt?: { [key: string]: number }; composition_tolerances?: { [key: string]: number }; coolingRate_nominal?: number; coolingRate_cov?: number; agingTemp_nominal?: number; agingTemp_stdDev?: number; agingTime_nominal?: number; agingTime_stdDev?: number; serviceStress_nominal?: number; serviceStress_cov?: number; initialFlawSize_um_mean?: number; initialFlawSize_um_std?: number; specMinYield_MPa?: number; specMinUTS_MPa?: number; specMinElongation_pct?: number; mcSamples?: number; samplingMethod?: "sobol_qmc" | "pseudo_mc"; scramble?: boolean; seed?: number; }): Promise<PythonStochasticUQResult>
-- solveLPBFThermalPhysics · method · L1354-L1377 — async solveLPBFThermalPhysics(payload: { material: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; layerThickness_um?: number; hatchSpacing_um?: number; laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm"; heatSource?: "rosenthal" | "eagar-tsai" | "goldak"; sulfur_ppm?: number; }): Promise<PythonLPBFResult>
-- solveSTLSlicerBuildTime · method · L1382-L1409 — async solveSTLSlicerBuildTime(payload: { preset?: string; material: string; laserPower_W: number; scanSpeed_mms: number; layerThickness_um: number; hatchSpacing_um: number; recoatTimePerLayer_s?: number; hatchStrategy?: string; customTriangles?: number[][][] | null; cadAssetName?: string; triangleCountNative?: number; }): Promise<PythonSTLSlicerResult>
-- solveLpbfBuildJob · method · L1414-L1467 — async solveLpbfBuildJob(payload: { alloyId: string; thermalMaterial?: string; slicerMaterial?: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; layerThickness_um: number; hatchSpacing_um: number; laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm"; preset?: string; customTriangles?: number[][][] | null; cadAssetName?: string; triangleCountNative?: number; processSeed?: number; scanStrategy?: string; stripeWidth_mm?: number; scanRotation_deg?: number; hatchDwell_ms?: number; inclineAngle_deg?: number; downskinOverhang_deg?: number; maxTriangles?: number; enableUq?: boolean; uqSamples?: number; includeAmbench?: boolean; defectSqrtAreas_um?: number[] | null; defectSqrtAreasPaste?: string; hardness_HV?: number; ctDetectionThreshold_um?: number; bypassCache?: boolean; gitSha?: string; }): Promise<PythonLpbfBuildJobResult>
-- identifyBisquertTLMCircuit · method · L1473-L1507 — async identifyBisquertTLMCircuit( payload: BisquertTLMIdentificationInput ): Promise<BisquertTLMIdentificationResult>
-- calculateTafelCorrosionRate · method · L1512-L1537 — async calculateTafelCorrosionRate( payload: TafelPythonCorrosionRateInput ): Promise<TafelPythonCorrosionRateResult>
-- uploadBatteryCorrosionData · method · L1542-L1552 — async uploadBatteryCorrosionData(payload: any): Promise<any>
-- executeBatteryCorrosionUserScript · method · L1557-L1567 — async executeBatteryCorrosionUserScript(scriptCode: string, data?: any, title?: string): Promise<any>
-- getRecentBatteryCorrosionUploads · method · L1572-L1578 — async getRecentBatteryCorrosionUploads(): Promise<any>
-- clearRecentBatteryCorrosionUpload · method · L1583-L1588 — async clearRecentBatteryCorrosionUpload(id?: string): Promise<any>
-- PythonSTLSlicerResult · interface · L1591-L1616 — interface PythonSTLSlicerResult
-- PythonLpbfGateStatus · type · L1618-L1618 — type PythonLpbfGateStatus = "pass" | "warn" | "fail";
-- PythonLpbfScreeningGate · interface · L1620-L1627 — interface PythonLpbfScreeningGate
-- PythonLpbfSuggestedPatch · interface · L1629-L1635 — interface PythonLpbfSuggestedPatch
-- PythonLpbfBuildJobVerdict · interface · L1637-L1662 — interface PythonLpbfBuildJobVerdict
-- PythonLpbfUqBlock · interface · L1664-L1678 — interface PythonLpbfUqBlock
-- PythonLpbfAmbenchBlock · interface · L1680-L1699 — interface PythonLpbfAmbenchBlock
-- PythonLpbfMurakamiBlock · interface · L1701-L1714 — interface PythonLpbfMurakamiBlock
-- PythonLpbfQualificationBlock · interface · L1716-L1724 — interface PythonLpbfQualificationBlock
-- PythonLpbfCacheMeta · interface · L1726-L1731 — interface PythonLpbfCacheMeta
-- PythonLpbfBuildJobResult · interface · L1733-L1755 — interface PythonLpbfBuildJobResult
-- PythonLPBFResult · interface · L1757-L1924 — interface PythonLPBFResult
-- StochasticPropertyStats · interface · L1926-L1961 — interface StochasticPropertyStats
-- PythonStochasticUQResult · interface · L1963-L2038 — interface PythonStochasticUQResult
-- PythonICMEMultiScaleResult · interface · L2040-L2161 — interface PythonICMEMultiScaleResult
-- BisquertTLMComponent · interface · L2169-L2178 — interface BisquertTLMComponent
-- BisquertTLMDiagnostics · interface · L2180-L2192 — interface BisquertTLMDiagnostics
-- BisquertTLMIdentificationInput · interface · L2194-L2202 — interface BisquertTLMIdentificationInput
-- BisquertTLMIdentificationResult · interface · L2204-L2237 — interface BisquertTLMIdentificationResult
-- fallbackClientBisquertTLM · function · L2243-L2455 — function fallbackClientBisquertTLM( payload: BisquertTLMIdentificationInput ): BisquertTLMIdentificationResult
-- identifyCircuitComponentsWithBisquertTLM · function · L2461-L2465 — async function identifyCircuitComponentsWithBisquertTLM( payload: BisquertTLMIdentificationInput ): Promise<BisquertTLMIdentificationResult>
-- identifyBisquertTLMCircuitComponents · function · L2470-L2474 — async function identifyBisquertTLMCircuitComponents( payload: BisquertTLMIdentificationInput ): Promise<BisquertTLMIdentificationResult>
-- fallbackClientTafelCorrosionRate · function · L2480-L2643 — function fallbackClientTafelCorrosionRate( payload: TafelPythonCorrosionRateInput ): TafelPythonCorrosionRateResult
-- calculatePythonTafelCorrosionRate · function · L2648-L2652 — async function calculatePythonTafelCorrosionRate( payload: TafelPythonCorrosionRateInput ): Promise<TafelPythonCorrosionRateResult>
+- PythonBayesianOptimizationResult · interface · L513-L537 — interface PythonBayesianOptimizationResult
+- PythonComputationService · class · L539-L1625 — class PythonComputationService
+- runLpbfBayesianOptimization · method · L543-L551 — async runLpbfBayesianOptimization(data: any): Promise<PythonBayesianOptimizationResult>
+- checkEngineStatus · method · L556-L595 — async checkEngineStatus(forceRefresh = false): Promise<PythonEngineStatus>
+- getIPCStatus · method · L600-L623 — async getIPCStatus(): Promise<PersistentIPCDiagnostics>
+- triggerIPCWarmup · method · L628-L638 — async triggerIPCWarmup(): Promise<{ success: boolean; durationMs?: number; message?: string }>
+- getCalphadDatabases · method · L643-L665 — async getCalphadDatabases(): Promise<{ success: boolean; engine: string; pycalphadAvailable: boolean; pycalphadVersion: string; databases: PythonCalphadDatabaseEntry[]; }>
+- solveCalphadEquilibrium · method · L670-L734 — async solveCalphadEquilibrium( alloy: MultiComponentAlloyComposition, tMin = 400, tMax = 1450, tStep = 20, usePython = true, databaseId?: string, customTdbText?: string, adaptiveGrid = true, boundaryRefinement = true, minRefineStep = 0.5 ): Promise<PythonCalphadSolveResult>
+- calculateDFTProperties · method · L739-L892 — async calculateDFTProperties( input: DFTStructureInput, usePython = true ): Promise<PythonDFTResult>
+- fitCNLSEIS · method · L897-L939 — async fitCNLSEIS(payload: { circuitModel?: string; measuredData?: Array<{ frequency: number; zReal: number; zImag: number }>; initialParams?: Record<string, number>; }): Promise<PythonCNLSResult>
+- runAutoFitCNLS · method · L944-L973 — async runAutoFitCNLS(payload: { topology: any; points: any[]; parameters?: any[]; weighting?: string; maxGenerations?: number; populationSize?: number; polishLM?: boolean; }): Promise<any>
+- deconvolveXRD · method · L978-L1032 — async deconvolveXRD(payload: { twoTheta?: number[]; intensity?: number[]; radiationWavelength?: number; radiationKa1?: number; radiationKa2?: number; instrumentBroadeningDeg?: number; peaks?: Array<{ twoTheta: number; hkl: string; intensity?: number }>; }): Promise<PythonXRDResult>
+- solveLPBFThermal · method · L1037-L1057 — async solveLPBFThermal(payload: { material: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; layerThickness_um?: number; hatchSpacing_um?: number; }): Promise<PythonLPBFThermalResult>
+- solveMarangoniPoreInstability · method · L1062-L1243 — async solveMarangoniPoreInstability(payload: { material: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; surfactant_sulfur_ppm?: number; shieldingGas?: string; processSeed?: number; meltPoolWidth_um?: number; meltPoolDepth_um?: number; meltPoolLength_um?: number; peakTemperature_C?: number; }): Promise<PythonMarangoniPoreResult>
+- runInverseAlloyOptimizer · method · L1248-L1269 — async runInverseAlloyOptimizer(payload: { targetYield_MPa?: number; maxDensity_g_cm3?: number; maxCost_USD_kg?: number; maxPHACOMP_Nv?: number; minPREN?: number; allowedElements?: string[]; populationSize?: number; generations?: number; }): Promise<PythonInverseAlloyResult>
+- solvePourbaixDiagram · method · L1274-L1292 — async solvePourbaixDiagram(payload: { element?: string; temperature_C?: number; ionActivity_log10?: number; chloride_ppm?: number; experimentalPoints?: ExperimentalEpHEntry[]; }): Promise<PythonPourbaixResult>
+- calculatePhaseKineticsTTTCCT · method · L1297-L1316 — async calculatePhaseKineticsTTTCCT(payload: { alloy?: string; coolingRate_C_s?: number; grainSize_um?: number; austTemp_C?: number; agingTemp_C?: number; agingTime_h?: number; }): Promise<PythonKineticsResult>
+- calculateICMEMultiScalePipeline · method · L1321-L1345 — async calculateICMEMultiScalePipeline(payload: { alloyName?: string; baseMetal?: "Ni" | "Fe" | "Ti" | "Al"; crystalSystem?: "FCC" | "BCC" | "HCP"; composition_wt?: { [key: string]: number }; coolingRate_C_s?: number; grainSize_um?: number | null; agingTemp_C?: number; agingTime_h?: number; strainRate_s_inv?: number; serviceTemp_C?: number; componentType?: string; }): Promise<PythonICMEMultiScaleResult>
+- calculateStochasticUQMMPDS · method · L1350-L1385 — async calculateStochasticUQMMPDS(payload: { alloyName?: string; baseMetal?: "Ni" | "Fe" | "Ti" | "Al"; standardSpec?: string; composition_wt?: { [key: string]: number }; composition_tolerances?: { [key: string]: number }; coolingRate_nominal?: number; coolingRate_cov?: number; agingTemp_nominal?: number; agingTemp_stdDev?: number; agingTime_nominal?: number; agingTime_stdDev?: number; serviceStress_nominal?: number; serviceStress_cov?: number; initialFlawSize_um_mean?: number; initialFlawSize_um_std?: number; specMinYield_MPa?: number; specMinUTS_MPa?: number; specMinElongation_pct?: number; mcSamples?: number; samplingMethod?: "sobol_qmc" | "pseudo_mc"; scramble?: boolean; seed?: number; }): Promise<PythonStochasticUQResult>
+- solveLPBFThermalPhysics · method · L1390-L1413 — async solveLPBFThermalPhysics(payload: { material: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; layerThickness_um?: number; hatchSpacing_um?: number; laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm"; heatSource?: "rosenthal" | "eagar-tsai" | "goldak"; sulfur_ppm?: number; }): Promise<PythonLPBFResult>
+- solveSTLSlicerBuildTime · method · L1418-L1445 — async solveSTLSlicerBuildTime(payload: { preset?: string; material: string; laserPower_W: number; scanSpeed_mms: number; layerThickness_um: number; hatchSpacing_um: number; recoatTimePerLayer_s?: number; hatchStrategy?: string; customTriangles?: number[][][] | null; cadAssetName?: string; triangleCountNative?: number; }): Promise<PythonSTLSlicerResult>
+- solveLpbfBuildJob · method · L1450-L1503 — async solveLpbfBuildJob(payload: { alloyId: string; thermalMaterial?: string; slicerMaterial?: string; laserPower_W: number; scanSpeed_mm_s: number; beamDiameter_um: number; preheatTemp_C?: number; layerThickness_um: number; hatchSpacing_um: number; laserWavelength?: "IR_1064nm" | "Green_515nm" | "Blue_450nm"; preset?: string; customTriangles?: number[][][] | null; cadAssetName?: string; triangleCountNative?: number; processSeed?: number; scanStrategy?: string; stripeWidth_mm?: number; scanRotation_deg?: number; hatchDwell_ms?: number; inclineAngle_deg?: number; downskinOverhang_deg?: number; maxTriangles?: number; enableUq?: boolean; uqSamples?: number; includeAmbench?: boolean; defectSqrtAreas_um?: number[] | null; defectSqrtAreasPaste?: string; hardness_HV?: number; ctDetectionThreshold_um?: number; bypassCache?: boolean; gitSha?: string; }): Promise<PythonLpbfBuildJobResult>
+- identifyBisquertTLMCircuit · method · L1509-L1543 — async identifyBisquertTLMCircuit( payload: BisquertTLMIdentificationInput ): Promise<BisquertTLMIdentificationResult>
+- calculateTafelCorrosionRate · method · L1548-L1573 — async calculateTafelCorrosionRate( payload: TafelPythonCorrosionRateInput ): Promise<TafelPythonCorrosionRateResult>
+- uploadBatteryCorrosionData · method · L1578-L1588 — async uploadBatteryCorrosionData(payload: any): Promise<any>
+- executeBatteryCorrosionUserScript · method · L1593-L1603 — async executeBatteryCorrosionUserScript(scriptCode: string, data?: any, title?: string): Promise<any>
+- getRecentBatteryCorrosionUploads · method · L1608-L1614 — async getRecentBatteryCorrosionUploads(): Promise<any>
+- clearRecentBatteryCorrosionUpload · method · L1619-L1624 — async clearRecentBatteryCorrosionUpload(id?: string): Promise<any>
+- PythonSTLSlicerResult · interface · L1627-L1652 — interface PythonSTLSlicerResult
+- PythonLpbfGateStatus · type · L1654-L1654 — type PythonLpbfGateStatus = "pass" | "warn" | "fail";
+- PythonLpbfScreeningGate · interface · L1656-L1663 — interface PythonLpbfScreeningGate
+- PythonLpbfSuggestedPatch · interface · L1665-L1671 — interface PythonLpbfSuggestedPatch
+- PythonLpbfBuildJobVerdict · interface · L1673-L1698 — interface PythonLpbfBuildJobVerdict
+- PythonLpbfUqBlock · interface · L1700-L1714 — interface PythonLpbfUqBlock
+- PythonLpbfAmbenchBlock · interface · L1716-L1735 — interface PythonLpbfAmbenchBlock
+- PythonLpbfMurakamiBlock · interface · L1737-L1750 — interface PythonLpbfMurakamiBlock
+- PythonLpbfQualificationBlock · interface · L1752-L1760 — interface PythonLpbfQualificationBlock
+- PythonLpbfCacheMeta · interface · L1762-L1767 — interface PythonLpbfCacheMeta
+- PythonLpbfBuildJobResult · interface · L1769-L1791 — interface PythonLpbfBuildJobResult
+- PythonLPBFResult · interface · L1793-L1960 — interface PythonLPBFResult
+- StochasticPropertyStats · interface · L1962-L1997 — interface StochasticPropertyStats
+- PythonStochasticUQResult · interface · L1999-L2074 — interface PythonStochasticUQResult
+- PythonICMEMultiScaleResult · interface · L2076-L2197 — interface PythonICMEMultiScaleResult
+- BisquertTLMComponent · interface · L2205-L2214 — interface BisquertTLMComponent
+- BisquertTLMDiagnostics · interface · L2216-L2228 — interface BisquertTLMDiagnostics
+- BisquertTLMIdentificationInput · interface · L2230-L2238 — interface BisquertTLMIdentificationInput
+- BisquertTLMIdentificationResult · interface · L2240-L2273 — interface BisquertTLMIdentificationResult
+- fallbackClientBisquertTLM · function · L2279-L2491 — function fallbackClientBisquertTLM( payload: BisquertTLMIdentificationInput ): BisquertTLMIdentificationResult
+- identifyCircuitComponentsWithBisquertTLM · function · L2497-L2501 — async function identifyCircuitComponentsWithBisquertTLM( payload: BisquertTLMIdentificationInput ): Promise<BisquertTLMIdentificationResult>
+- identifyBisquertTLMCircuitComponents · function · L2506-L2510 — async function identifyBisquertTLMCircuitComponents( payload: BisquertTLMIdentificationInput ): Promise<BisquertTLMIdentificationResult>
+- fallbackClientTafelCorrosionRate · function · L2516-L2679 — function fallbackClientTafelCorrosionRate( payload: TafelPythonCorrosionRateInput ): TafelPythonCorrosionRateResult
+- calculatePythonTafelCorrosionRate · function · L2684-L2688 — async function calculatePythonTafelCorrosionRate( payload: TafelPythonCorrosionRateInput ): Promise<TafelPythonCorrosionRateResult>

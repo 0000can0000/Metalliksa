@@ -1,15 +1,15 @@
 # src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx
 
-- ReadinessStatus · type · L26-L26 — type ReadinessStatus = "pass" | "warn" | "fail" | "pending";
-- ReadinessItem · type · L27-L27 — type ReadinessItem = { status: ReadinessStatus; label: string; details: string };
-- ParsedMeasurementState · type · L40-L47 — type ParsedMeasurementState = { status: "valid" | "invalid" | "empty"; measurements?: NonNullable<SimulationInput["measurements"]>; errors: string[]; mismatchedCount: number; missingProcessVectorCount: number; count: number; };
-- isFiniteNumber · function · L49-L49 — isFiniteNumber = (value: unknown): value is number
-- normalizeProcessVector · function · L50-L58 — normalizeProcessVector = (value: unknown)
-- currentProcessVectorFromInput · function · L59-L67 — currentProcessVectorFromInput = (nextInput: SimulationInput, strategy: string)
-- processVectorMatches · function · L68-L68 — processVectorMatches = (a: Record<string, unknown>, b: Record<string, unknown>)
-- parseMeasurementPayload · function · L69-L132 — parseMeasurementPayload = (raw: string, nextInput: SimulationInput, strategy: string): ParsedMeasurementState
-- LpbfEngineeringSimulation · function · L134-L320 — function LpbfEngineeringSimulation({input:providedInput}:{input:SimulationInput})
-- cancel · function · L163-L163 — cancel=async()
-- payload · function · L216-L218 — payload = (selectedMode:SimulationMode):SimulationInput
-- submit · function · L232-L251 — submit=async()
-- download · function · L252-L252 — download=()
+- ReadinessStatus · type · L27-L27 — type ReadinessStatus = "pass" | "warn" | "fail" | "pending";
+- ReadinessItem · type · L28-L28 — type ReadinessItem = { status: ReadinessStatus; label: string; details: string };
+- ParsedMeasurementState · type · L41-L48 — type ParsedMeasurementState = { status: "valid" | "invalid" | "empty"; measurements?: NonNullable<SimulationInput["measurements"]>; errors: string[]; mismatchedCount: number; missingProcessVectorCount: number; count: number; };
+- isFiniteNumber · function · L50-L50 — isFiniteNumber = (value: unknown): value is number
+- normalizeProcessVector · function · L51-L59 — normalizeProcessVector = (value: unknown)
+- currentProcessVectorFromInput · function · L60-L68 — currentProcessVectorFromInput = (nextInput: SimulationInput, strategy: string)
+- processVectorMatches · function · L69-L69 — processVectorMatches = (a: Record<string, unknown>, b: Record<string, unknown>)
+- parseMeasurementPayload · function · L70-L133 — parseMeasurementPayload = (raw: string, nextInput: SimulationInput, strategy: string): ParsedMeasurementState
+- LpbfEngineeringSimulation · function · L135-L322 — function LpbfEngineeringSimulation({input:providedInput}:{input:SimulationInput})
+- cancel · function · L164-L164 — cancel=async()
+- payload · function · L217-L219 — payload = (selectedMode:SimulationMode):SimulationInput
+- submit · function · L233-L252 — submit=async()
+- download · function · L253-L253 — download=()

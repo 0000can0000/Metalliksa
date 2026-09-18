@@ -164,6 +164,7 @@ $(WM_PROJECT_DIR)/applications/modules/incompressibleVoF/lnInclude/incompressibl
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/volFields.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/surfaceFields.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvcGrad.H \
+$(WM_PROJECT_DIR)/src/meshTools/lnInclude/meshSearch.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/one.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvmDdt.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/surfaceInterpolationScheme.H \
@@ -314,6 +315,10 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/volFieldsI.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchFields.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvsPatchFields.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvcGrad.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/indexedOctree.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointInCell.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeDataCell.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneI.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrix.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/ddtScheme.H \
@@ -467,6 +472,15 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvFieldSource.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchField.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvsPatchField.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gaussGrad.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MeshObjects.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBox.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointIndexHit.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/labelBits.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/volumeType.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/indexedOctree.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBoxList.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/lduMatrix.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrix.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvScalarMatrix.H \
@@ -523,7 +537,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/vector2D.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Zone.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DictionaryBase.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PtrListDictionary.C \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedBoolListI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/demandDrivenData.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatch.H \
@@ -540,7 +553,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SphericalTensorI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SymmTensorI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MatrixSpace.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/TensorI.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/solverPerformance.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Residuals.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/nonOrthogonalSolutionControlI.H \
@@ -575,6 +587,14 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchField.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvsPatchField.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gradScheme.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gaussGrad.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjects.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBoxI.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBoxTemplates.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PointIndexHit.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedListI.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/OFstream.H \
+$(WM_PROJECT_DIR)/src/OSspecific/POSIX/lnInclude/memInfo.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/lduMatrixTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/coupledFvPatchFields.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListList.H \
@@ -602,8 +622,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/wordList.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Vector2D.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DictionaryBase.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UPtrListDictionary.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedListI.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/objectHit.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatch.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/point2D.H \
@@ -611,8 +629,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/lineI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SubField.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MatrixSpaceI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DiagTensor.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MeshObjects.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SolverPerformance.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/solver.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/pressureReferenceI.H \
@@ -642,6 +658,10 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/fieldMapperTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModel.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchFieldNew.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gradScheme.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjectsTemplates.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/randomGenerator.H \
+$(WM_PROJECT_DIR)/src/OSspecific/POSIX/lnInclude/POSIX.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/IFstream.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListListI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListList.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/LduMatrix.H \
@@ -669,7 +689,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatchPointAddressing.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatchProjectPoints.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatchCheck.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DiagTensorI.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjects.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SolverPerformance.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModels.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvConstraints.H \
@@ -696,6 +715,7 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/sphericalTensorFieldField.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelM.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelI.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelTemplates.C \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/randomGeneratorI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListListIO.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/LduMatrixI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/LduMatrix.C \
@@ -705,7 +725,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/transformer.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ULPtrListIO.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/zoneSetI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/bandCompression.H \
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjectsTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelsTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvConstraint.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvConstraintsTemplates.C \
@@ -930,6 +949,7 @@ $(WM_PROJECT_DIR)/applications/modules/incompressibleVoF/lnInclude/incompressibl
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/volFields.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/surfaceFields.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvcGrad.H :
+$(WM_PROJECT_DIR)/src/meshTools/lnInclude/meshSearch.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/one.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvmDdt.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/surfaceInterpolationScheme.H :
@@ -1080,6 +1100,10 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/volFieldsI.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchFields.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvsPatchFields.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvcGrad.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/indexedOctree.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointInCell.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeDataCell.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneI.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrix.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/ddtScheme.H :
@@ -1233,6 +1257,15 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvFieldSource.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchField.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvsPatchField.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gaussGrad.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MeshObjects.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBox.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointIndexHit.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/labelBits.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/volumeType.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/indexedOctree.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBoxList.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/lduMatrix.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrix.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvScalarMatrix.H :
@@ -1289,7 +1322,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/vector2D.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Zone.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DictionaryBase.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PtrListDictionary.C :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedBoolListI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/demandDrivenData.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatch.H :
@@ -1306,7 +1338,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SphericalTensorI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SymmTensorI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MatrixSpace.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/TensorI.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/solverPerformance.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Residuals.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/nonOrthogonalSolutionControlI.H :
@@ -1341,6 +1372,14 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchField.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvsPatchField.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gradScheme.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gaussGrad.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjects.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBoxI.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/treeBoundBoxTemplates.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PointIndexHit.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedListI.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/OFstream.H :
+$(WM_PROJECT_DIR)/src/OSspecific/POSIX/lnInclude/memInfo.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/lduMatrixTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/coupledFvPatchFields.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListList.H :
@@ -1368,8 +1407,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/wordList.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Vector2D.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DictionaryBase.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UPtrListDictionary.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedListI.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PackedList.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/objectHit.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatch.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/point2D.H :
@@ -1377,8 +1414,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/lineI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SubField.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MatrixSpaceI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DiagTensor.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/MeshObjects.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DemandDrivenMeshObject.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SolverPerformance.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/solver.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/pressureReferenceI.H :
@@ -1408,6 +1443,10 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/fieldMapperTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModel.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvsPatchFieldNew.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/gradScheme.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjectsTemplates.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/randomGenerator.H :
+$(WM_PROJECT_DIR)/src/OSspecific/POSIX/lnInclude/POSIX.H :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/IFstream.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListListI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListList.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/LduMatrix.H :
@@ -1435,7 +1474,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatchPointAddressing.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatchProjectPoints.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PrimitivePatchCheck.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DiagTensorI.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjects.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SolverPerformance.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModels.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvConstraints.H :
@@ -1462,6 +1500,7 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/sphericalTensorFieldField.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelM.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelI.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelTemplates.C :
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/randomGeneratorI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/UCompactListListIO.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/LduMatrixI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/LduMatrix.C :
@@ -1471,7 +1510,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/transformer.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ULPtrListIO.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/zoneSetI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/bandCompression.H :
-$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/meshObjectsTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvModelsTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvConstraint.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvConstraintsTemplates.C :

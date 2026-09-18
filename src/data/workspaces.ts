@@ -8,7 +8,8 @@ export const WORKSPACES = [
 ] as const;
 
 export const MODULES = [
-  { id: '3d-distortion-lab', workspace: 'lpbf', label: 'LPBF workflow', scope: 'Research', description: 'One material and process vector; explicit simulation and screening scope.', next: 'research-hub' },
+  { id: '3d-distortion-lab', workspace: 'lpbf', label: 'LPBF workflow', scope: 'Research', description: 'One material and process vector; explicit simulation and screening scope.', next: 'lpbf-optimizer' },
+  { id: 'lpbf-optimizer', workspace: 'lpbf', label: 'Bayesian Optimization', scope: 'Preview', description: 'Autonomous closed-loop search for optimal parameters balancing productivity and defect risk.', next: 'research-hub' },
   { id: 'database', workspace: 'materials', label: 'Materials Database', scope: 'Research', description: 'Handbook values and reviewed research references; source applicability requires review.', next: '3d-distortion-lab' },
   { id: 'alloy-builder', workspace: 'materials', label: 'Alloy Builder', scope: 'Research', description: 'Composition exploration and inverse design with model-dependent estimates.', next: 'phase-diagram' },
   { id: 'phase-diagram', workspace: 'materials', label: 'CALPHAD', scope: 'Research', description: 'Phase equilibrium within the selected database and model coverage.', next: 'ttt-cct-kinetics' },

@@ -27,6 +27,7 @@ const AIEbsdGrainLab = lazy(() => import("./components/AIEbsdGrainLab").then(m =
 const HardnessToTensileLab = lazy(() => import("./components/HardnessToTensileLab").then(m => ({ default: m.HardnessToTensileLab })));
 const MechanicalPropertyAILab = lazy(() => import("./components/MechanicalPropertyAILab").then(m => ({ default: m.MechanicalPropertyAILab })));
 const LpbfEngineeringWorkspace = lazy(() => import("./components/LpbfEngineeringWorkspace").then(m => ({ default: m.LpbfEngineeringWorkspace })));
+const LpbfBayesianOptimizerLab = lazy(() => import("./components/LpbfBayesianOptimizerLab").then(m => ({ default: m.LpbfBayesianOptimizerLab })));
 const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
 const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
 const ThermalCycleScheduler = lazy(() => import("./components/ThermalCycleScheduler").then(m => ({ default: m.ThermalCycleScheduler })));
@@ -107,6 +108,7 @@ export default function App() {
   function renderModule(id: ModuleId) {
     switch (id) {
       case '3d-distortion-lab': return <LpbfEngineeringWorkspace />;
+      case 'lpbf-optimizer': return <LpbfBayesianOptimizerLab />;
       case 'research-hub': return <AdvancedResearchHub />;
       case 'experimental-data': return <EvidenceWorkspace mode="experimental" />;
       case 'traceability': return <EvidenceWorkspace mode="traceability" />;

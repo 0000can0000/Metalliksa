@@ -85,6 +85,11 @@ physicsRouter.post("/api/python/lpbf-build-job", (req: Request, res: Response) =
   return handlePythonDispatch("python/lpbf_build_job_solver.py", req.body, res, 40000);
 });
 
+// Phase 6: Bayesian Process Window Optimization
+physicsRouter.post("/api/python/lpbf-bayesian-optimize", (req: Request, res: Response) => {
+  return handlePythonDispatch("python/lpbf_bayesian_optimizer.py", req.body, res, 120000);
+});
+
 physicsRouter.post("/api/python/part-scale-inherent-strain", (req: Request, res: Response) => {
   return handlePythonDispatch("python/part_scale_inherent_strain_solver.py", req.body, res);
 });

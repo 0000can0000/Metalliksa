@@ -1,3 +1,3 @@
 # tests/lpbf-contract.test.ts
 
-_No extracted symbols in this file._
+- completed · function · L39-L39 — completed = (patch: Record<string, unknown>)

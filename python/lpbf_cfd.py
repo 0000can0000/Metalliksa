@@ -2482,10 +2482,12 @@ evapCoeff       0.82;
 P0              101325.0;
 
 laserActive     true;
-laserPower      {p["power_W"]*m["absorptivity"]};
+laserPower      {p.get("power_W", 200.0)};
 laserRadius     {radius};
-laserAbsorptivity 1.0;
+laserAbsorptivity {m.get("absorptivity", 0.4)};
 laserDirection  (0 0 -1);
+useRayTracing   {"true" if p.get("useRayTracing", True) else "false"};
+raysPerDim      {p.get("raysPerDim", 20)};
 
 laserTStart     {len(segments)} ( {" ".join(str(s["start_s"]) for s in segments)} );
 laserTEnd       {len(segments)} ( {" ".join(str(s["end_s"]) for s in segments)} );
@@ -2494,14 +2496,43 @@ laserPEnd       {len(segments)} ( {" ".join(f'({s["end"][0]} {s["end"][1]} {(s["
 '''
     (folder/"constant/thermalProperties").write_text(tp)
 
+    import sys
+    import json
+    sys.path.append(str(Path(__file__).parent))
+    from powder_packer import generate_powder_bed, compute_powder_bed_statistics
+
+    d10 = float(p.get("d10_um", 15)) * 1e-6
+    d50 = float(p.get("d50_um", 30)) * 1e-6
+    d90 = float(p.get("d90_um", 45)) * 1e-6
+    target_packing = float(p.get("packingFraction", 0.55))
+    seed = p.get("powderSeed", 42)
+    powder_layer_z = p["layers"] * p["layer_um"] * 1e-6
+
+    spheres = generate_powder_bed(span, span, powder_layer_z, d10=d10, d50=d50, d90=d90, target_packing=target_packing, seed=seed)
+    powder_stats = compute_powder_bed_statistics(spheres, span, span, powder_layer_z)
+    (folder/"powder_bed_info.json").write_text(json.dumps(powder_stats, indent=2))
+    
     n_cells = nxy * nxy * nz
-    alpha_vals = ["1" if z[k] < p["layer_um"]*1e-6 else "0" for k in range(nz) for j in range(nxy) for i in range(nxy)]
+    x_c = -span/2 + (np.arange(nxy) + 0.5) * dx
+    y_c = -span/2 + (np.arange(nxy) + 0.5) * dx
+    ZZ, YY, XX = np.meshgrid(z, y_c, x_c, indexing='ij')
+    
+    alpha_np = np.zeros_like(ZZ)
+    alpha_np[ZZ < 0] = 1.0
+    
+    for (sx, sy, sz, sr) in spheres:
+        # powder_packer returns sx, sy in [ -span/2 + r, span/2 - r ]
+        dist2 = (XX - sx)**2 + (YY - sy)**2 + (ZZ - sz)**2
+        alpha_np[dist2 <= sr**2] = 1.0
+        
+    alpha_vals = [("1" if v > 0.5 else "0") for v in alpha_np.flatten()]
+    joined_alpha = "\n".join(alpha_vals)
     am = foam_header("volScalarField", "alpha.metal", "0") + f'''
 dimensions [0 0 0 0 0 0 0];
 internalField nonuniform List<scalar>
 {n_cells}
 (
-{"\n".join(alpha_vals)}
+{joined_alpha}
 );
 boundaryField
 {{
@@ -2522,10 +2553,9 @@ internalField uniform (0 0 0);
 boundaryField { walls { type noSlip; } }
 ''')
 
-    t0 = p["preheat_C"]+273.15
     (folder/"0/T").write_text(foam_header("volScalarField", "T", "0") + f'''
 dimensions [0 0 0 1 0 0 0];
-internalField uniform {t0};
+internalField uniform {p.get("preheat_C", 20.0) + 273.15};
 boundaryField {{ walls {{ type zeroGradient; }} }}
 ''')
 
@@ -2569,9 +2599,14 @@ def cfd_multiphysics(p, m, report=lambda *args: None, artifact_dir=None):
         diag = json.loads((folder/"cfd-diagnostics.json").read_text())
     except:
         diag = {}
+
+    try:
+        powder_info = json.loads((folder/"powder_bed_info.json").read_text())
+        diag["powderBed"] = powder_info
+    except:
+        pass
         
     return dict(metrics=dict(), thermalHistory=[], fieldSeries=[],
                 fieldOverlapDiagnostics=dict(),
                 numericalDiagnostics=diag,
                 energyBalance=dict(), discretization=dict(mesh_m=dx), scanPath=segments)
-

@@ -21,6 +21,7 @@ Coverage metadata reported missing freshness for inherited evidence paths; App a
 | Module ID / label | Actual component | Principal implementation / API | Evidence and current maturity | Next gap |
 | --- | --- | --- | --- | --- |
 | `3d-distortion-lab` / LPBF workflow | `src/components/LpbfEngineeringWorkspace.tsx` | `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `src/components/3d-distortion-lab/ResolvedThermalViewer.tsx`; `routes/lpbfSimulation.ts` serves `POST /api/lpbf/jobs`, estimate, capabilities, job read/cancel and artifacts. Separate build screening: `POST /api/python/lpbf-build-job` in `routes/physics.ts` → `python/lpbf_build_job_solver.py`. | **Research. S:** `tests/lpbf-workflow.test.ts` covers shared process, stale/executed input and unresolved qualification; `python/test_lpbf_engineering.py` contains conservation, enthalpy, mesh, field and honest-fallback assertions. **L:** `tests/lpbf-contract.test.ts`, `tests/lpbf-fields.test.ts`, `tests/lpbf-build-session.test.ts`, `python/test_lpbf_api.py`, `python/test_lpbf_build_job.py`. Transient thermal fields are implemented; printability, defect risk and legacy distortion remain screening. | Qualify an explicitly bounded thermal use case against independent matched measurements; keep screening and resolved thermal outputs distinct. See detailed boundaries below. |
+| `lpbf-optimizer` / Bayesian Optimization | `src/components/LpbfBayesianOptimizerLab.tsx` | `src/services/pythonComputationService.ts` → `/api/python/lpbf-bayesian-optimize`, `routes/physics.ts` → `python/lpbf_bayesian_optimizer.py`. | **Preview. S:** `python/test_phase6.py` and service/route contract. Process parameter optimization using Gaussian Process / Bayesian surrogate. | Multi-objective Pareto frontier calibration with experimental validation data. |
 
 ### What is actually resolved, screened, or unresolved
 
@@ -82,7 +83,7 @@ Principal paths run in the browser using the components/parsers/stores above. Fi
 
 ### Host Python scientific requests
 
-Modules: `phase-diagram`, `ttt-cct-kinetics`, `xrd-lab`, `electrochem-suite`, `icme-motor`, `uq-lab`.
+Modules: `phase-diagram`, `ttt-cct-kinetics`, `xrd-lab`, `electrochem-suite`, `icme-motor`, `uq-lab`, `lpbf-optimizer`.
 
 The listed Node routes dispatch through `server/processOrchestrator.ts` and `server/pythonRuntime.ts` to the scripts identified in each row. Browser-only subviews can coexist with these requests. Interpreter choice and IPC ports are documented in `docs/ENVIRONMENT_READINESS.md`; broad numerical/CALPHAD/ML requirements are in `python/requirements.txt`. Actual optional library, thermodynamic database and model availability must be checked for the selected operation. A successful import or a warm module is not successful scientific execution. CALPHAD coverage and the full domain dependency environment remain open A02 work.
 

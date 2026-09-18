@@ -1,13 +1,13 @@
 # src/App.tsx
 
-- NavSubTab · type · L39-L39 — type NavSubTab = ModuleId;
-- DisciplineHubId · type · L40-L40 — type DisciplineHubId = typeof WORKSPACES[number]['id'];
-- initialTab · function · L42-L51 — function initialTab(): ModuleId
-- App · function · L53-L190 — function App()
-- activate · function · L68-L72 — function activate(id: ModuleId)
-- navigate · function · L73-L77 — function navigate(id: string)
-- refreshStatus · function · L78-L83 — async function refreshStatus(force = true)
-- onHash · function · L86-L86 — onHash = ()
-- onNavigate · function · L87-L90 — onNavigate = (event: Event)
-- close · function · L102-L102 — close = (event: KeyboardEvent)
-- renderModule · function · L107-L136 — function renderModule(id: ModuleId)
+- NavSubTab · type · L40-L40 — type NavSubTab = ModuleId;
+- DisciplineHubId · type · L41-L41 — type DisciplineHubId = typeof WORKSPACES[number]['id'];
+- initialTab · function · L43-L52 — function initialTab(): ModuleId
+- App · function · L54-L194 — function App()
+- activate · function · L69-L73 — function activate(id: ModuleId)
+- navigate · function · L74-L78 — function navigate(id: string)
+- refreshStatus · function · L79-L84 — async function refreshStatus(force = true)
+- onHash · function · L87-L87 — onHash = ()
+- onNavigate · function · L88-L91 — onNavigate = (event: Event)
+- close · function · L103-L103 — close = (event: KeyboardEvent)
+- renderModule · function · L108-L138 — function renderModule(id: ModuleId)

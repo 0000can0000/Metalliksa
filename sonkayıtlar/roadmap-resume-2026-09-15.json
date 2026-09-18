@@ -1,0 +1,276 @@
+[
+  {
+    "id": "A01",
+    "title": "Module and evidence inventory",
+    "weight": 5,
+    "dependencies": [],
+    "acceptance": "Map all user modules to code, solver, environment, evidence and unresolved limitations.",
+    "milestones": [
+      {
+        "id": "defined",
+        "evidence": "docs/MODULE_EVIDENCE_INVENTORY.md: bounded inventory of 26 navigation modules and evidence limitations.",
+        "date": "2026-09-15",
+        "reviewer": "Codex implementation record"
+      },
+      {
+        "id": "implemented",
+        "evidence": "docs/MODULE_EVIDENCE_INVENTORY.md: module-to-source, solver, environment and evidence mapping completed; graph coverage limitations disclosed.",
+        "date": "2026-09-15",
+        "reviewer": "Codex implementation record"
+      },
+      {
+        "id": "tested",
+        "evidence": "tests/workstation.test.ts: four workstation checks passed within the 97-test unit suite; 115 inventory source references checked in the startup checkpoint. Independent inventory review remains pending.",
+        "date": "2026-09-15",
+        "reviewer": "Codex verification record"
+      }
+    ],
+    "blocker": null,
+    "nextAction": "Review the active module inventory and its evidence gaps."
+  },
+  {
+    "id": "A02",
+    "title": "Reproducible engineering environment",
+    "weight": 5,
+    "dependencies": [
+      "A01"
+    ],
+    "acceptance": "Verify application Python, CUDA training, ParaView output reading, Docker engine and clean application setup with locked dependencies.",
+    "milestones": [
+      {
+        "id": "defined",
+        "evidence": "docs/ENVIRONMENT_READINESS.md defines interpreter selection, dependency diagnostics, CUDA smoke and separate Docker/ParaView checks. Full locked environment and tool verification remain incomplete.",
+        "date": "2026-09-15",
+        "reviewer": "Codex implementation record"
+      }
+    ],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "B01",
+    "title": "Customer discovery",
+    "weight": 5,
+    "dependencies": [],
+    "acceptance": "Record five founder-led discovery interviews and a real pilot need.",
+    "milestones": [],
+    "blocker": "Founder interviews and pilot access are not yet recorded.",
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "B02",
+    "title": "Pilot scope and acceptance",
+    "weight": 5,
+    "dependencies": [
+      "A01",
+      "B01"
+    ],
+    "acceptance": "Agree material, machine, process range, holdout split, error and runtime targets with the pilot customer.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "C01",
+    "title": "Material properties and units",
+    "weight": 5,
+    "dependencies": [
+      "A01",
+      "B02"
+    ],
+    "acceptance": "Trace temperature-dependent properties, units, ranges and uncertainty; reject invalid inputs.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "C02",
+    "title": "Benchmark data pipeline",
+    "weight": 5,
+    "dependencies": [
+      "A02",
+      "B02"
+    ],
+    "acceptance": "Verify checksums, calibration, signal conversion and leakage-free calibration/holdout datasets.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "D01",
+    "title": "Numerical verification",
+    "weight": 5,
+    "dependencies": [
+      "C01",
+      "C02"
+    ],
+    "acceptance": "Demonstrate analytic references, energy balance and three-level mesh/time convergence against declared tolerances.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "D02",
+    "title": "Independent experimental validation",
+    "weight": 5,
+    "dependencies": [
+      "D01"
+    ],
+    "acceptance": "Report held-out melt-pool errors, bias and uncertainty including failures against the agreed pilot thresholds.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "D03",
+    "title": "Physics scope and process window",
+    "weight": 5,
+    "dependencies": [
+      "D02"
+    ],
+    "acceptance": "Declare conduction/keyhole/powder limits and block unsupported recommendations.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "E01",
+    "title": "Materials Intelligence and Research Hub",
+    "weight": 5,
+    "dependencies": [
+      "C01",
+      "C02"
+    ],
+    "acceptance": "Version source-to-material links; test corrections, units, review withdrawal and durable recovery.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "E02",
+    "title": "Microstructure and solidification",
+    "weight": 5,
+    "dependencies": [
+      "D02"
+    ],
+    "acceptance": "Compare predictions with appropriate independent micrographs or EBSD measurements.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "E03",
+    "title": "Residual stress and distortion",
+    "weight": 5,
+    "dependencies": [
+      "D02"
+    ],
+    "acceptance": "Verify mechanical or calibrated inherent-strain results against independent measurements.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "E04",
+    "title": "Defects and mechanical performance",
+    "weight": 5,
+    "dependencies": [
+      "D03"
+    ],
+    "acceptance": "Validate against CT, porosity and mechanical tests; keep threshold screening distinct from physical pore simulation.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "E05",
+    "title": "Uncertainty and digital twin",
+    "weight": 5,
+    "dependencies": [
+      "D02",
+      "E01"
+    ],
+    "acceptance": "Separate measurement/model uncertainty, test holdout coverage and preserve build/data/solver lineage.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "F01",
+    "title": "PyTorch prediction and optimization",
+    "weight": 5,
+    "dependencies": [
+      "D02",
+      "E05"
+    ],
+    "acceptance": "Beat a simple baseline on independent grouped holdouts; test runtime and out-of-domain fallback.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "G01",
+    "title": "Durable engineering jobs",
+    "weight": 5,
+    "dependencies": [
+      "A02",
+      "B02"
+    ],
+    "acceptance": "Test cancellation, timeouts, restart recovery, concurrent jobs, cache identity and backup restoration.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "G02",
+    "title": "Access and customer data",
+    "weight": 5,
+    "dependencies": [
+      "G01"
+    ],
+    "acceptance": "Verify identity, roles, customer isolation, secret handling, licensing and deployment review.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "G03",
+    "title": "Engineering reports and release gate",
+    "weight": 5,
+    "dependencies": [
+      "D03",
+      "E01",
+      "E05",
+      "G02"
+    ],
+    "acceptance": "Test traceable reports, end-to-end flows, runtime budgets, installation and rollback.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "H01",
+    "title": "Industrial pilot",
+    "weight": 5,
+    "dependencies": [
+      "B02",
+      "G03"
+    ],
+    "acceptance": "Complete agreed customer tests, engineering review and comparison against the initial workflow.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  },
+  {
+    "id": "H02",
+    "title": "Commercial launch",
+    "weight": 5,
+    "dependencies": [
+      "H01"
+    ],
+    "acceptance": "Document pricing, delivery cost, data/IP responsibility, support and an evidenced go/no-go decision.",
+    "milestones": [],
+    "blocker": null,
+    "nextAction": "Complete prerequisites and record the next acceptance evidence."
+  }
+]

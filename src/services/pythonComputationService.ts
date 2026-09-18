@@ -510,9 +510,45 @@ export interface PythonKineticsResult {
   };
 }
 
+export interface PythonBayesianOptimizationResult {
+  success: boolean;
+  alloyId: string;
+  bestParams?: {
+    laserPower_W: number;
+    scanSpeed_mms: number;
+    hatch_um: number;
+    layer_um: number;
+  };
+  bestScore: number;
+  iterations: Array<{
+    iteration: number;
+    params: {
+      laserPower_W: number;
+      scanSpeed_mms: number;
+      hatch_um: number;
+      layer_um: number;
+    };
+    score: number;
+    verdict: string;
+  }>;
+  converged: boolean;
+  elapsedMs: number;
+  nIterations: number;
+}
+
 class PythonComputationService {
   private statusCache: PythonEngineStatus | null = null;
   private lastCheckTime = 0;
+
+  async runLpbfBayesianOptimization(data: any): Promise<PythonBayesianOptimizationResult> {
+    const res = await fetch("/api/python/lpbf-bayesian-optimize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
 
   /**
    * Check whether the configured Python runtime is reachable

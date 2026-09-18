@@ -13,6 +13,7 @@ Description
     - 2-phase metal-gas VOF with Continuum Surface Force (CSF)
     - Enthalpy-based phase change (solid-mushy-liquid)
     - Carman-Kozeny Darcy momentum sink in mushy/solid zones
+    - Marangoni tangential stress: (I-nn).grad(T) * dSigma/dT [Phase 2]
 \*---------------------------------------------------------------------------*/
 
 #ifndef metalliksaMeltPoolFoam_H
@@ -50,6 +51,7 @@ protected:
     volScalarField H_;
     volScalarField liquidFraction_;
     volScalarField SDarcy_;
+    volVectorField SMarangoni_;    // Marangoni body force [N/m^3]
 
     // Thermophysical properties
     dimensionedScalar kMetal_;
@@ -61,6 +63,12 @@ protected:
     dimensionedScalar latentHeat_;
     dimensionedScalar Cmush_;
 
+    // Surface tension parameters (Phase 2: Marangoni)
+    dimensionedScalar sigma0_;       // sigma at Tref [N/m]
+    dimensionedScalar dSigmaDT_;     // d(sigma)/dT [N/(m K)] — negative for metals
+    dimensionedScalar Tref_sigma_;   // Reference temperature for sigma0 [K]
+    scalar interfaceThreshold_;      // |grad(alpha)| threshold [1/m]
+
     // Sourced physical submodels
     LaserModel laser_;
     EvaporationModel evaporation_;
@@ -70,6 +78,7 @@ protected:
 
     void updateDarcySink();
     void updateEnthalpyAndPhaseFraction();
+    void updateMarangoniForce();    // Phase 2
 
 public:
     TypeName("metalliksaMeltPoolFoam");
@@ -85,6 +94,7 @@ public:
     const volScalarField& liquidFraction() const { return liquidFraction_; }
     const volScalarField& H() const { return H_; }
     const volScalarField& SDarcy() const { return SDarcy_; }
+    const volVectorField& SMarangoni() const { return SMarangoni_; }  // Phase 2
 };
 
 } // End namespace solvers

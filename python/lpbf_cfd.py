@@ -2,10 +2,12 @@
 
 Integrates the OpenFOAM 14 multiphysics CFD solver (metalliksaMeltPoolFoam)
 for two-phase metal-gas Volume of Fluid (VOF), Continuum Surface Force (CSF)
-Laplace capillarity, enthalpy-based phase change, and Carman-Kozeny mushy-zone
-Darcy velocity damping.
-Model ID: multiphase-vof-csf-v1.
-Solver ID: metalliksaMeltPoolFoam-OpenFOAM14-1.
+Laplace capillarity, enthalpy-based phase change, Carman-Kozeny mushy-zone
+Darcy velocity damping, and Marangoni tangential stress (Phase 2).
+
+Model ID:      multiphase-vof-csf-v1
+Solver ID:     metalliksaMeltPoolFoam-OpenFOAM14-2
+Marangoni ID:  tangential-dsigmadT-interface-v1
 """
 
 import json
@@ -14,8 +16,9 @@ import os
 import subprocess
 from pathlib import Path
 
-CFD_SOLVER_ID = "metalliksaMeltPoolFoam-OpenFOAM14-1"
+CFD_SOLVER_ID = "metalliksaMeltPoolFoam-OpenFOAM14-2"
 CFD_MODEL_ID = "multiphase-vof-csf-v1"
+MARANGONI_MODEL_ID = "tangential-dsigmadT-interface-v1"
 
 import platform
 
@@ -1396,6 +1399,330 @@ boundaryField
     hotWall { type zeroGradient; }
     coldWall { type zeroGradient; }
     sides { type zeroGradient; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "liquidFraction").write_text(lff, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Marangoni case setup
+# ---------------------------------------------------------------------------
+
+def setup_marangoni_case(
+    case_dir,
+    lx: float = 100e-6,
+    ly: float = 100e-6,
+    nx: int = 20,
+    ny: int = 20,
+    t_cold: float = 300.0,
+    t_hot: float = 2100.0,
+    dsigma_dt: float = -2.6e-4,
+    sigma0: float = 1.52,
+    end_time: float = 2e-7,
+    dt: float = 5e-8,
+):
+    """Set up a 2D Marangoni verification case.
+
+    Geometry:
+      - x in [0, lx], y in [0, ly], 1 cell deep in z.
+      - Lower half (y < ly/2): metal (alpha.metal = 1).
+      - Upper half (y >= ly/2): gas (alpha.metal = 0).
+      - Metal-gas interface at y = ly/2.
+
+    Temperature:
+      - Linear gradient: T(x) = t_cold + (t_hot - t_cold) * x / lx.
+      - Applied as initial + boundary condition (hotWall at x=lx, coldWall at x=0).
+
+    Physics:
+      - dSigma/dT < 0 (metals): Marangoni force pulls surface toward cold end (−x).
+      - Oracle: net x-velocity at interface cells must be negative.
+
+    thermalProperties (written to constant/):
+      - sigma0, dSigmaDT, Tref_sigma, interfaceThreshold written so the solver
+        reads them via IOdictionary (READ_IF_PRESENT).
+    """
+    c_dir = Path(case_dir)
+
+    # ------------------------------------------------------------------
+    # blockMeshDict — 2D bilayer mesh
+    # ------------------------------------------------------------------
+    bm = foam_header("dictionary", "blockMeshDict")
+    bm += f"""convertToMeters 1;
+
+vertices
+(
+    (0    0    0)         // 0
+    ({lx} 0    0)         // 1
+    ({lx} {ly} 0)         // 2
+    (0    {ly} 0)         // 3
+    (0    0    {lx/nx})   // 4
+    ({lx} 0    {lx/nx})   // 5
+    ({lx} {ly} {lx/nx})   // 6
+    (0    {ly} {lx/nx})   // 7
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ({nx} {ny} 1) simpleGrading (1 1 1)
+);
+
+boundary
+(
+    coldWall   {{ type wall; faces ((0 4 7 3)); }}
+    hotWall    {{ type wall; faces ((1 5 6 2)); }}
+    bottom     {{ type wall; faces ((0 1 5 4)); }}
+    top        {{ type wall; faces ((3 2 6 7)); }}
+    frontAndBack {{ type empty; faces ((0 3 2 1)(4 5 6 7)); }}
+);
+"""
+    (c_dir / "system").mkdir(parents=True, exist_ok=True)
+    (c_dir / "constant").mkdir(parents=True, exist_ok=True)
+    (c_dir / "0").mkdir(parents=True, exist_ok=True)
+    (c_dir / "system" / "blockMeshDict").write_text(bm, encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # controlDict
+    # ------------------------------------------------------------------
+    cd = foam_header("dictionary", "controlDict")
+    cd += f"""application     metalliksaMeltPoolFoam;
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         {end_time};
+deltaT          {dt};
+writeControl    timeStep;
+writeInterval   1;
+purgeWrite      1;
+writeFormat     ascii;
+writePrecision  10;
+runTimeModifiable yes;
+"""
+    (c_dir / "system" / "controlDict").write_text(cd, encoding="utf-8")
+
+    # fvSchemes / fvSolution — reuse reasonable defaults
+    fvsc = foam_header("dictionary", "fvSchemes", "system")
+    fvsc += """ddtSchemes { default Euler; }
+gradSchemes { default Gauss linear; }
+divSchemes
+{
+    div(phi,alpha)  Gauss interfaceCompression vanLeer 1;
+    div(rhoPhi,U)   Gauss linearUpwind grad(U);
+    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+    div(rhoCpPhi,T) Gauss upwind;
+    div(rhoLfPhi,liquidFraction) Gauss upwind;
+}
+laplacianSchemes { default Gauss linear uncorrected; }
+interpolationSchemes { default linear; }
+snGradSchemes { default uncorrected; }
+"""
+    (c_dir / "system" / "fvSchemes").write_text(fvsc, encoding="utf-8")
+
+    fvsol = foam_header("dictionary", "fvSolution", "system")
+    fvsol += """solvers
+{
+    "alpha.metal.*"
+    {
+        nCorrectors     2;
+        nSubCycles      1;
+        MULESCorr       yes;
+        MULES { nIter 10; tolerance 1e-3; }
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0;
+    }
+    pcorr  { solver PCG; preconditioner DIC; tolerance 1e-5; relTol 0; }
+    pcorrFinal { $pcorr; }
+    p_rgh  { solver PCG; preconditioner DIC; tolerance 1e-7; relTol 0.01; }
+    p_rghFinal { $p_rgh; relTol 0; }
+    "(U|T).*"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0;
+    }
+}
+PIMPLE
+{
+    momentumPredictor yes;
+    nOuterCorrectors  1;
+    nCorrectors       2;
+    nNonOrthogonalCorrectors 0;
+    pRefCell    0;
+    pRefValue   0;
+    p_rghRefCell  0;
+    p_rghRefValue 0;
+}
+relaxationFactors { equations { ".*" 1; } }
+"""
+    (c_dir / "system" / "fvSolution").write_text(fvsol, encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Physical constants (constant/)
+    # ------------------------------------------------------------------
+
+    # g — gravity disabled (horizontal Marangoni test; buoyancy would complicate)
+    gf = foam_header("uniformDimensionedVectorField", "g", "constant")
+    gf += "dimensions      [acceleration];\nvalue           (0 0 0);\n"
+    (c_dir / "constant" / "g").write_text(gf, encoding="utf-8")
+
+    # phaseProperties — OF14 format (replaces old transportProperties)
+    pp = foam_header("dictionary", "phaseProperties", "constant")
+    pp += f"""phases          (metal gas);
+sigma           {sigma0};
+"""
+    (c_dir / "constant" / "phaseProperties").write_text(pp, encoding="utf-8")
+
+    # physicalProperties.metal — viscosityModel constant (OF14 naming)
+    # Ti-6Al-4V liquid: rho~4000 kg/m³, nu~1e-6 m²/s
+    pm = foam_header("dictionary", "physicalProperties.metal", "constant")
+    pm += """viscosityModel  constant;
+nu              1e-6;
+rho             4000;
+"""
+    (c_dir / "constant" / "physicalProperties.metal").write_text(pm, encoding="utf-8")
+
+    # physicalProperties.gas — Ar: rho~1.6 kg/m³, nu~1.5e-5 m²/s
+    pg = foam_header("dictionary", "physicalProperties.gas", "constant")
+    pg += """viscosityModel  constant;
+nu              1.5e-5;
+rho             1.6;
+"""
+    (c_dir / "constant" / "physicalProperties.gas").write_text(pg, encoding="utf-8")
+
+    # momentumTransport
+    mt = foam_header("dictionary", "momentumTransport", "constant")
+    mt += "simulationType  laminar;\n"
+    (c_dir / "constant" / "momentumTransport").write_text(mt, encoding="utf-8")
+
+    # thermalProperties — Marangoni parameters written here
+    # interfaceThreshold: low value to accept any cell where |grad(alpha)| > 1e3 1/m.
+    # (bulk cells have |grad(alpha)| ~ 0; true interface cells have ~1/cell_size ~ 2e5).
+    # Using 1e3 ensures diagnostics work even after VOF interface broadening.
+    interface_threshold = 1e3
+    tp2 = foam_header("dictionary", "thermalProperties", "constant")
+    tp2 += f"""// Ti-6Al-4V thermal properties
+kMetal          30.0;
+kGas            0.026;
+cpMetal         500.0;
+cpGas           1000.0;
+solidus_T       1877.0;
+liquidus_T      1928.0;
+latentHeat      2.86e5;
+Cmush           1e6;
+
+// Phase 2: Marangoni surface tension parameters
+sigma0          {sigma0};
+dSigmaDT        {dsigma_dt};
+Tref_sigma      1928.0;
+interfaceThreshold {interface_threshold:.6g};
+"""
+    (c_dir / "constant" / "thermalProperties").write_text(tp2, encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Initial fields (0/)
+    # ------------------------------------------------------------------
+
+    # alpha.metal — lower half metal, upper half gas
+    # Use cellwise initialisation via setFields-style or write analytically.
+    # We write a uniform zero then rely on the cells being split by ny//2.
+    # For this simple case: write per-row field using foamFile nonuniform list.
+    n_cells = nx * ny
+    half_ny = ny // 2
+    alpha_vals = []
+    for j in range(ny):
+        for i in range(nx):
+            alpha_vals.append("1" if j < half_ny else "0")
+
+    af = foam_header("volScalarField", "alpha.metal", "0")
+    af += f"""dimensions [0 0 0 0 0 0 0];
+internalField nonuniform List<scalar>
+{n_cells}
+(
+{chr(10).join(alpha_vals)}
+)
+;
+boundaryField
+{{
+    coldWall   {{ type zeroGradient; }}
+    hotWall    {{ type zeroGradient; }}
+    bottom     {{ type zeroGradient; }}
+    top        {{ type zeroGradient; }}
+    frontAndBack {{ type empty; }}
+}}
+"""
+    (c_dir / "0" / "alpha.metal").write_text(af, encoding="utf-8")
+
+    # T — linear gradient in x: t_cold at x=0, t_hot at x=lx
+    dx = lx / nx
+    t_vals = []
+    for j in range(ny):
+        for i in range(nx):
+            x_c = (i + 0.5) * dx
+            t_c = t_cold + (t_hot - t_cold) * x_c / lx
+            t_vals.append(f"{t_c:.4f}")
+
+    tf = foam_header("volScalarField", "T", "0")
+    tf += f"""dimensions [0 0 0 1 0 0 0];
+internalField nonuniform List<scalar>
+{n_cells}
+(
+{chr(10).join(t_vals)}
+)
+;
+boundaryField
+{{
+    coldWall   {{ type fixedValue; value uniform {t_cold}; }}
+    hotWall    {{ type fixedValue; value uniform {t_hot}; }}
+    bottom     {{ type zeroGradient; }}
+    top        {{ type zeroGradient; }}
+    frontAndBack {{ type empty; }}
+}}
+"""
+    (c_dir / "0" / "T").write_text(tf, encoding="utf-8")
+
+    # U — zero everywhere initially
+    uf = foam_header("volVectorField", "U", "0")
+    uf += """dimensions [0 1 -1 0 0 0 0];
+internalField uniform (0 0 0);
+boundaryField
+{
+    coldWall   { type noSlip; }
+    hotWall    { type noSlip; }
+    bottom     { type slip; }
+    top        { type slip; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "U").write_text(uf, encoding="utf-8")
+
+    # p_rgh — zero reference
+    pf = foam_header("volScalarField", "p_rgh", "0")
+    pf += """dimensions [1 -1 -2 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    coldWall   { type fixedFluxPressure; value uniform 0; }
+    hotWall    { type fixedFluxPressure; value uniform 0; }
+    bottom     { type fixedFluxPressure; value uniform 0; }
+    top        { type fixedFluxPressure; value uniform 0; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "p_rgh").write_text(pf, encoding="utf-8")
+
+    # liquidFraction — zero everywhere (T above liquidus will be set by solver)
+    lff = foam_header("volScalarField", "liquidFraction", "0")
+    lff += """dimensions [];
+internalField uniform 1;
+boundaryField
+{
+    coldWall   { type zeroGradient; }
+    hotWall    { type zeroGradient; }
+    bottom     { type zeroGradient; }
+    top        { type zeroGradient; }
     frontAndBack { type empty; }
 }
 """

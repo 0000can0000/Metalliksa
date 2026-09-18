@@ -95,14 +95,35 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
         dimensionedScalar("zero", dimDensity/dimTime, 0.0)
     ),
 
+    SMarangoni_
+    (
+        IOobject
+        (
+            "fMarangoni",
+            mesh.time().name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedVector("zero", dimForce/dimVolume, vector::zero)
+    ),
+
     kMetal_("kMetal", dimPower/dimLength/dimTemperature, 30.0),
-    kGas_("kGas", dimPower/dimLength/dimTemperature, 0.026),
+    kGas_(  "kGas",   dimPower/dimLength/dimTemperature, 0.026),
     cpMetal_("cpMetal", dimEnergy/dimMass/dimTemperature, 500.0),
-    cpGas_("cpGas", dimEnergy/dimMass/dimTemperature, 1000.0),
-    solidus_T_("solidus_T", dimTemperature, 1650.0),
+    cpGas_(  "cpGas",   dimEnergy/dimMass/dimTemperature, 1000.0),
+    solidus_T_( "solidus_T",  dimTemperature, 1650.0),
     liquidus_T_("liquidus_T", dimTemperature, 1700.0),
     latentHeat_("latentHeat", dimEnergy/dimMass, 2.7e5),
     Cmush_("Cmush", dimDensity/dimTime, 1e6),
+
+    // Phase 2: Marangoni / surface-tension parameters
+    // Default: Ti-6Al-4V at 1700 K: sigma0~1.52 N/m, dSigma/dT~-2.6e-4 N/(m K)
+    sigma0_(    "sigma0",    dimForce/dimLength,             1.52),
+    dSigmaDT_(  "dSigmaDT",  dimForce/dimLength/dimTemperature, -2.6e-4),
+    Tref_sigma_("Tref_sigma", dimTemperature,                1700.0),
+    interfaceThreshold_(1e3),   // 1/m — tuned per mesh; read from dict if present
 
     laser_(mesh, dictionary::null),
     evaporation_(mesh, dictionary::null),
@@ -130,10 +151,17 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
         liquidus_T_.value() = thermalDict.lookupOrDefault<scalar>("liquidus_T", liquidus_T_.value());
         latentHeat_.value() = thermalDict.lookupOrDefault<scalar>("latentHeat", latentHeat_.value());
         Cmush_.value() = thermalDict.lookupOrDefault<scalar>("Cmush", Cmush_.value());
+
+        // Phase 2: Marangoni parameters
+        sigma0_.value()      = thermalDict.lookupOrDefault<scalar>("sigma0",      sigma0_.value());
+        dSigmaDT_.value()    = thermalDict.lookupOrDefault<scalar>("dSigmaDT",    dSigmaDT_.value());
+        Tref_sigma_.value()  = thermalDict.lookupOrDefault<scalar>("Tref_sigma",  Tref_sigma_.value());
+        interfaceThreshold_  = thermalDict.lookupOrDefault<scalar>("interfaceThreshold", interfaceThreshold_);
     }
 
     updateEnthalpyAndPhaseFraction();
     updateDarcySink();
+    updateMarangoniForce();   // Phase 2: compute initial Marangoni force field
 }
 
 Foam::solvers::metalliksaMeltPoolFoam::~metalliksaMeltPoolFoam()
@@ -190,9 +218,25 @@ void Foam::solvers::metalliksaMeltPoolFoam::updateDarcySink()
     }
 }
 
+// Phase 2: Marangoni tangential stress
+// Delegates to computeMarangoniForce() in interfaceForces.H.
+// Only active in liquid-metal cells at the metal-gas interface.
+void Foam::solvers::metalliksaMeltPoolFoam::updateMarangoniForce()
+{
+    tmp<volVectorField> tFma = computeMarangoniForce
+    (
+        alpha1,
+        T_,
+        dSigmaDT_.value(),
+        interfaceThreshold_
+    );
+    SMarangoni_ = tFma();
+}
+
 void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
 {
     updateDarcySink();
+    updateMarangoniForce();   // Phase 2
 
     volVectorField& U = U_;
 
@@ -224,6 +268,7 @@ void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
                   - fvc::snGrad(p_rgh)
                 ) * mesh.magSf()
             )
+          + SMarangoni_    // Phase 2: Marangoni body force [N/m^3]
         );
 
         fvConstraints().constrain(U);
@@ -309,6 +354,14 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
         diag.initialMetalVolume_m3 = initialMetalVolume_;
     }
 
+    // Phase 2: Marangoni diagnostics
+    MarangoniDiagnostics maDiag = evaluateMarangoniDiagnostics
+    (
+        SMarangoni_,
+        alpha1,
+        interfaceThreshold_
+    );
+
     scalar maxU = gMax(mag(U_)().primitiveField());
     scalar maxUSolid = 0.0;
     scalar maxT = gMax(T_().primitiveField());
@@ -325,8 +378,9 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
     std::ofstream diagFile((runTime.path()/"cfd-diagnostics.json").c_str());
     diagFile << std::setprecision(12)
         << "{\n"
-        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-1\",\n"
+        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-2\",\n"
         << "  \"vofModel\": \"multiphase-vof-csf-v1\",\n"
+        << "  \"marangoniModel\": \"tangential-dsigmadT-interface-v1\",\n"
         << "  \"time_s\": " << runTime.value() << ",\n"
         << "  \"deltaP_Pa\": " << diag.deltaP_Pa << ",\n"
         << "  \"dropletPressureInside_Pa\": " << diag.dropletPressureInside << ",\n"
@@ -337,7 +391,11 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
         << "  \"maxVelocity_mps\": " << maxU << ",\n"
         << "  \"maxSolidVelocity_mps\": " << maxUSolid << ",\n"
         << "  \"maxTemperature_K\": " << maxT << ",\n"
-        << "  \"minTemperature_K\": " << minT << "\n"
+        << "  \"minTemperature_K\": " << minT << ",\n"
+        << "  \"maxMarangoniForce_Npm3\": " << maDiag.maxMarangoniMagnitude_Npm2 << ",\n"
+        << "  \"rmsMarangoniForce_Npm3\": " << maDiag.rmsMarangoniMagnitude_Npm2 << ",\n"
+        << "  \"marangoniInterfaceCells\": " << maDiag.interfaceCellCount << ",\n"
+        << "  \"dSigmaDT_NpmK\": " << dSigmaDT_.value() << "\n"
         << "}\n";
     diagFile.close();
 }

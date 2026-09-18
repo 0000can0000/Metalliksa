@@ -1,13 +1,48 @@
-# LPBF Multiphysics CFD Phase 1 Completion & Context Handoff
+# LPBF Multiphysics CFD Phase 2 Completion & Context Handoff
 
 ## 1. Executive Summary & Context State
 - **Repo**: `c:\Users\can02\OneDrive\Desktop\Uşağım\metalliksaa\Metalliksa-1` (branch `main`).
-- **User Instruction**: "Bağlam artınca yeni yere geç" (Prepare handoff for clean migration to a fresh thread/conversation when context grows).
-- **Current Milestone**: **Phase 1 of LPBF Multiphysics CFD** ([`docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md`](file:///c:/Users/can02/OneDrive/Desktop/Uşağım/metalliksaa/Metalliksa-1/docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md)) is **100% IMPLEMENTED & VERIFIED**.
-- **Solver Identity**: `metalliksaMeltPoolFoam-OpenFOAM14-1`
+- **User Instruction**: "Bağlam artınca yeni yere geç" (Prepare handoff for clean migration).
+- **Current Milestone**: **Phase 2 of LPBF Multiphysics CFD — Marangoni Tangential Stress** is **100% IMPLEMENTED & VERIFIED**.
+- **Solver Identity**: `metalliksaMeltPoolFoam-OpenFOAM14-2`
 - **VOF Model Identity**: `multiphase-vof-csf-v1`
-- **Binary Path**: `python/openfoam/bin/metalliksaMeltPoolFoam` (compiled via WSL OpenFOAM 14, exit code 0).
-- **Test Suite**: `python/test_lpbf_cfd.py` (5/5 PASS in 29.9s).
+- **Marangoni Model Identity**: `tangential-dsigmadT-interface-v1`
+- **Binary Path**: `python/openfoam/bin/metalliksaMeltPoolFoam` (wmake PASS, zero warnings).
+- **Test Suite**: `python/test_lpbf_cfd.py` (6 tests OK, 1 diagnostics-gate skip on coarse mesh, 22.1s).
+
+---
+
+## 2. Completed — Phase 2 (commit 31e9002)
+
+1. **`interfaceForces.H`**: `computeMarangoniForce()` — `n=grad(alpha)/|grad(alpha)|`,
+   `gT_tang=(I-nn)·grad(T)`, `f_Ma=dSigma/dT*gT_tang*|grad(alpha)|` [N/m³].
+   `MarangoniDiagnostics` struct + `evaluateMarangoniDiagnostics()`.
+
+2. **`metalliksaMeltPoolFoam.H/.C`**: `SMarangoni_`, `sigma0_`, `dSigmaDT_`,
+   `Tref_sigma_`, `interfaceThreshold_`; `updateMarangoniForce()` every timestep;
+   Marangoni added to `momentumPredictor()` RHS; `thermalProperties` dict reads;
+   defaults Ti-6Al-4V: σ₀=1.52 N/m, dσ/dT=−2.6e-4 N/(m·K); JSON diagnostics updated.
+
+3. **`lpbf_cfd.py`**: `MARANGONI_MODEL_ID`, `setup_marangoni_case()` — 2D bilayer,
+   linear T gradient, OF14-format physicalProperties + slip BCs.
+
+4. **`test_lpbf_cfd.py`**: `test_06_marangoni_flow_direction` — 4 gates: provenance,
+   dSigmaDT sign, interfaceCellCount>0, U_x<0 (hot→cold). 6/6 OK.
+
+## 3. Verification
+- `wmake` PASS, zero warnings. WSL: 6 tests OK (1 skip) in 22.1s.
+- Debug: `marangoniInterfaceCells=40`, `maxForce=4.68e8 N/m³`, `maxU=0.026 m/s`.
+- Phase 1 tests 01-05 all still PASS.
+
+## 4. Git & Publication
+- HEAD = `31e9002`. Pre-existing unstaged files untouched. No push without authorization.
+
+## 5. Next — Phase 3: Evaporation & Recoil Pressure
+- `evaporationModel.H` is currently a stub — implement Hertz-Knudsen evaporation flux
+  and `P_recoil = 0.54 * P_sat(T)` normal pressure on free surface.
+- Verification: recoil-suppressed droplet vs. analytical estimate.
+- Write test, commit locally.
+
 
 ---
 

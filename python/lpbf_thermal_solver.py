@@ -245,7 +245,18 @@ def calculate_meltpool_physics(
     alpha_solid = k_s / (rho * cp_s)
 
     # Base optical absorptivity
-    eta_base = props["absorptivity_Green"] if "Green" in laser_wavelength else props["absorptivity_IR"]
+    eta_base_flat = props["absorptivity_Green"] if "Green" in laser_wavelength else props["absorptivity_IR"]
+
+    try:
+        from powder_bed_raytracer import calculate_powder_bed_absorptivity
+        powder_metrics = calculate_powder_bed_absorptivity(
+            beam_radius_um=r_beam * 1e6,
+            base_absorptivity=eta_base_flat
+        )
+        eta_base = powder_metrics["effective_absorptivity"]
+    except Exception as e:
+        print(f"Warning: GPU Powder Bed Ray Tracing failed, using flat plate absorptivity. {e}")
+        eta_base = eta_base_flat
 
     # 1. Volumetric and Linear Energy Densities
     ved_J_mm3 = P_laser / (max(1.0, float(scan_speed_mm_s)) * (float(hatch_spacing_um) * 1e-3) * (float(layer_thickness_um) * 1e-3))
@@ -546,6 +557,23 @@ def calculate_meltpool_physics(
     def T_yz(y_um, z_um):
         return T_field(0.0, y_um * 1e-6, z_um * 1e-6)
 
+    if source not in ("eagar-tsai", "goldak"):
+        try:
+            from warp_thermal_solver import compute_rosenthal_slice_warp
+            x_span_m = (x_span[0] * 1e-6, x_span[1] * 1e-6)
+            z_span_m = (z_span[0] * 1e-6, z_span[1] * 1e-6)
+            y_span_m = (y_span[0] * 1e-6, y_span[1] * 1e-6)
+            
+            slice_xz = compute_rosenthal_slice_warp(x_span_m, z_span_m, nx_s, nz_s, 1, 0.0, T_preheat, P_geom, k_th, v_scan, alpha_th, r_reg)
+            slice_yz = compute_rosenthal_slice_warp(y_span_m, z_span_m, ny_s, nz_s, 2, 0.0, T_preheat, P_geom, k_th, v_scan, alpha_th, r_reg)
+        except Exception as e:
+            print(f"Warp thermal slice failed: {e}")
+            slice_xz = sample_thermal_slice(T_xz, x_span, z_span, nx_s, nz_s)
+            slice_yz = sample_thermal_slice(T_yz, y_span, z_span, ny_s, nz_s)
+    else:
+        slice_xz = sample_thermal_slice(T_xz, x_span, z_span, nx_s, nz_s)
+        slice_yz = sample_thermal_slice(T_yz, y_span, z_span, ny_s, nz_s)
+
     thermal_slices = {
         "liquidus_C": T_liq,
         "solidus_C": T_sol,
@@ -557,7 +585,7 @@ def calculate_meltpool_physics(
             "xMax_um": round(x_span[1], 1),
             "zMin_um": 0.0,
             "zMax_um": round(z_span[1], 1),
-            "T_C": sample_thermal_slice(T_xz, x_span, z_span, nx_s, nz_s)
+            "T_C": slice_xz
         },
         "yz": {
             "ny": ny_s,
@@ -566,7 +594,7 @@ def calculate_meltpool_physics(
             "yMax_um": round(y_span[1], 1),
             "zMin_um": 0.0,
             "zMax_um": round(z_span[1], 1),
-            "T_C": sample_thermal_slice(T_yz, y_span, z_span, ny_s, nz_s)
+            "T_C": slice_yz
         }
     }
 

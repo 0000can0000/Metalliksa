@@ -578,6 +578,29 @@ export interface ThermomechanicalDistortionResult {
   };
 }
 
+// Phase 10: Experimental Validation & Traceability Pipeline result type
+export interface ExperimentalValidationResult {
+  status: string;
+  traceability: {
+    recordId: string;
+    timestamp: string;
+    materialId: string;
+    laserPower_W: number;
+    scanSpeed_mms: number;
+    evidenceSource: string;
+  };
+  metrics: Array<{
+    metric: string;
+    source: string;
+    experimental: number;
+    simulated: number;
+    unit: string;
+    error_pct: number;
+    status: "pass" | "review";
+  }>;
+  overallMatch: "high" | "moderate" | "unknown";
+}
+
 class PythonComputationService {
   private statusCache: PythonEngineStatus | null = null;
   private lastCheckTime = 0;
@@ -614,6 +637,22 @@ class PythonComputationService {
     cfdResult?: Record<string, unknown>;
   }): Promise<ThermomechanicalDistortionResult> {
     const res = await fetch("/api/python/lpbf-thermomechanical-distortion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
+  // Phase 10: Experimental Validation
+  async computeExperimentalValidation(data: {
+    params: Record<string, number | string>;
+    material: Record<string, number | string>;
+    simulationResult?: Record<string, unknown>;
+    experimentalData?: Record<string, unknown>;
+  }): Promise<ExperimentalValidationResult> {
+    const res = await fetch("/api/python/lpbf-experimental-validation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

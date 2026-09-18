@@ -297,6 +297,14 @@ def main():
                 m = payload.get("material", {})
                 cfd = payload.get("cfdResult", None)
                 data = analyze_distortion(p, m, cfd)
+            elif method == "experimental-validation":         # Phase 10
+                from lpbf_experimental_validation import validate_experiment
+                payload = request["payload"]
+                p = payload.get("params", {})
+                m = payload.get("material", {})
+                sim = payload.get("simulationResult", {})
+                exp = payload.get("experimentalData", {})
+                data = validate_experiment(p, m, sim, exp)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

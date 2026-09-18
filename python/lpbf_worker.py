@@ -35,7 +35,7 @@ def capabilities():
             pass
     return dict(openfoamVersion=version, openfoamThermal=bool(version and BINARY.is_file()),
                 binaryHash=hashlib.sha256(BINARY.read_bytes()).hexdigest() if BINARY.is_file() else None,
-                freeSurfaceSolver=False, platform=sys.platform,
+                freeSurfaceSolver=bool(version and (Path(__file__).parent/"openfoam/bin/metalliksaMeltPoolFoam").is_file()), platform=sys.platform,
                 thermalSolver=True, materials=catalog(),
                 limitation="No qualified LPBF free-surface CFD solver. High-Fidelity requests return explicitly labelled analytical screening.")
 

@@ -346,10 +346,17 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     analytical = screening(p, m)
     fallback = p["mode"] == "high-fidelity"
     use_foam = p["backend"] == "openfoam-thermal" or (p["backend"] == "auto" and (capabilities or {}).get("openfoamThermal"))
+    use_cfd = p["backend"] == "openfoam-cfd"
+    if use_cfd:
+        fallback = False
+        p["mode"] = "high-fidelity"
     thermal_solver = transient
     if use_foam:
         from lpbf_openfoam import thermal
         thermal_solver = thermal
+    elif use_cfd:
+        from lpbf_cfd import cfd_multiphysics
+        thermal_solver = cfd_multiphysics
     result = dict(schemaVersion=1, requestedMode=p["mode"], effectiveMode="screening" if fallback else p["mode"],
                   solver=dict(id="rosenthal+goldak" if p["mode"] == "screening" or fallback else VERSION,
                               version=VERSION, openfoam=(capabilities or {}).get("openfoamVersion")),

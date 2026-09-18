@@ -1,47 +1,56 @@
-# LPBF Multiphysics CFD Phase 2 Completion & Context Handoff
+# LPBF Multiphysics CFD Phase 3 Completion & Context Handoff
 
 ## 1. Executive Summary & Context State
 - **Repo**: `c:\Users\can02\OneDrive\Desktop\Uşağım\metalliksaa\Metalliksa-1` (branch `main`).
-- **User Instruction**: "Bağlam artınca yeni yere geç" (Prepare handoff for clean migration).
-- **Current Milestone**: **Phase 2 of LPBF Multiphysics CFD — Marangoni Tangential Stress** is **100% IMPLEMENTED & VERIFIED**.
-- **Solver Identity**: `metalliksaMeltPoolFoam-OpenFOAM14-2`
+- **User Instruction**: "phase 3 den başla" -> Phase 3 Evaporation & Recoil Pressure.
+- **Current Milestone**: **Phase 3 of LPBF Multiphysics CFD — Evaporation & Knight Recoil Pressure** is **100% IMPLEMENTED & VERIFIED**.
+- **Solver Identity**: `metalliksaMeltPoolFoam-OpenFOAM14-3`
 - **VOF Model Identity**: `multiphase-vof-csf-v1`
 - **Marangoni Model Identity**: `tangential-dsigmadT-interface-v1`
+- **Recoil Model Identity**: `recoil-knight-clausius-v1`
 - **Binary Path**: `python/openfoam/bin/metalliksaMeltPoolFoam` (wmake PASS, zero warnings).
-- **Test Suite**: `python/test_lpbf_cfd.py` (6 tests OK, 1 diagnostics-gate skip on coarse mesh, 22.1s).
+- **Test Suite**: `python/test_lpbf_cfd.py` (8 tests: 7 OK, 1 diagnostics-gate skip on coarse mesh, 30.9s).
+- **Regression Suite**: `test_lpbf_overlap` + `test_lpbf_engineering` (33/33 PASS, 36.8s).
 
 ---
 
-## 2. Completed — Phase 2 (commit 31e9002)
+## 2. Completed — Phase 3
 
-1. **`interfaceForces.H`**: `computeMarangoniForce()` — `n=grad(alpha)/|grad(alpha)|`,
-   `gT_tang=(I-nn)·grad(T)`, `f_Ma=dSigma/dT*gT_tang*|grad(alpha)|` [N/m³].
-   `MarangoniDiagnostics` struct + `evaluateMarangoniDiagnostics()`.
+1. **`evaporationModel.H`**: Complete `EvaporationModel` class:
+   - Sourced Clausius-Clapeyron saturation pressure: \(P_{\text{sat}}(T) = P_0 \exp\left( \frac{L_v M}{R_{\text{univ}}} \left( \frac{1}{T_b} - \frac{1}{T} \right) \right)\).
+   - Knight (1979) recoil pressure: \(P_{\text{recoil}} = 0.54 \cdot P_{\text{sat}}(T)\).
+   - Normal interface recoil body force: \(\mathbf{f}_{\text{recoil}} = P_{\text{recoil}}(T) \nabla \alpha_1\) [N/m³] (pushes into liquid metal).
+   - Hertz-Knudsen evaporative mass flux: \(j_{\text{evap}} = \beta \sqrt{\frac{M}{2\pi R_{\text{univ}} T}} P_{\text{sat}}(T)\) [kg/(m²·s)].
+   - Latent heat evaporative cooling sink: \(S_{h,\text{evap}} = -L_v j_{\text{evap}} |\nabla \alpha_1|\) [W/m³].
+   - `EvaporationDiagnostics` struct + `evaluateDiagnostics()`.
 
-2. **`metalliksaMeltPoolFoam.H/.C`**: `SMarangoni_`, `sigma0_`, `dSigmaDT_`,
-   `Tref_sigma_`, `interfaceThreshold_`; `updateMarangoniForce()` every timestep;
-   Marangoni added to `momentumPredictor()` RHS; `thermalProperties` dict reads;
-   defaults Ti-6Al-4V: σ₀=1.52 N/m, dσ/dT=−2.6e-4 N/(m·K); JSON diagnostics updated.
+2. **`metalliksaMeltPoolFoam.H/.C`**:
+   - `SRecoil_` (body force in `momentumPredictor()`) and `ShEvap_` (heat sink in `thermophysicalPredictor()`).
+   - `updateEvaporationAndRecoil()` called every timestep.
+   - `thermalProperties` dictionary reads `latentHeatVap`, `boiling_T`, `molarMass`, `evapCoeff`, `P0`.
+   - `cfd-diagnostics.json` exports `recoilModel`, `maxRecoilPressure_Pa`, `maxEvaporationFlux_kgpm2s`, `maxRecoilForce_Npm3`, `recoilActiveCells`.
+   - Bumped solver ID to `metalliksaMeltPoolFoam-OpenFOAM14-3`.
 
-3. **`lpbf_cfd.py`**: `MARANGONI_MODEL_ID`, `setup_marangoni_case()` — 2D bilayer,
-   linear T gradient, OF14-format physicalProperties + slip BCs.
+3. **`lpbf_cfd.py`**:
+   - Bumped `CFD_SOLVER_ID` to version 3, added `RECOIL_MODEL_ID = "recoil-knight-clausius-v1"`.
+   - Added `knight_analytical_recoil_pressure()` and `setup_recoil_case()`.
 
-4. **`test_lpbf_cfd.py`**: `test_06_marangoni_flow_direction` — 4 gates: provenance,
-   dSigmaDT sign, interfaceCellCount>0, U_x<0 (hot→cold). 6/6 OK.
+4. **`test_lpbf_cfd.py`**:
+   - `test_07_recoil_pressure_activation_and_magnitude`: verified solver & recoil provenance, positive cell count, recoil pressure matching Knight formula within grid offset tolerance.
+   - `test_08_recoil_depression_force_direction`: verified normal recoil force accelerates fluid downward (\(U_y < 0\)) into the melt pool.
 
 ## 3. Verification
-- `wmake` PASS, zero warnings. WSL: 6 tests OK (1 skip) in 22.1s.
-- Debug: `marangoniInterfaceCells=40`, `maxForce=4.68e8 N/m³`, `maxU=0.026 m/s`.
-- Phase 1 tests 01-05 all still PASS.
+- `wmake` PASS, zero warnings.
+- WSL: 8 tests in `test_lpbf_cfd.py` (7 OK, 1 skip) in 30.9s.
+- WSL: 33 regression tests in `test_lpbf_overlap` and `test_lpbf_engineering` PASS in 36.8s.
 
 ## 4. Git & Publication
-- HEAD = `31e9002`. Pre-existing unstaged files untouched. No push without authorization.
+- Ready for local commit. Pre-existing unstaged files untouched. No push without authorization.
 
-## 5. Next — Phase 3: Evaporation & Recoil Pressure
-- `evaporationModel.H` is currently a stub — implement Hertz-Knudsen evaporation flux
-  and `P_recoil = 0.54 * P_sat(T)` normal pressure on free surface.
-- Verification: recoil-suppressed droplet vs. analytical estimate.
-- Write test, commit locally.
+## 5. Next — Phase 4: Moving Interface Laser Heating
+- Implement `laserModel.H` with moving Gaussian surface flux applied directly to represented metal-gas interface cells (\(|\nabla \alpha_1| > \text{threshold}\)).
+- Include scan path coordinates, laser power, beam radius, and incidence angle.
+- Verification: moving spot surface heating vs analytical conduction / energy conservation.
 
 
 ---

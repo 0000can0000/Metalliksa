@@ -1,3 +1,13 @@
+## 2026-09-18 16:05 — LPBF Multiphysics CFD Phase 3: Knight Recoil Pressure & Hertz-Knudsen Evaporation
+- Task: Implement Phase 3 of LPBF Multiphysics CFD Roadmap (docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md).
+- Done / Last completed action: Implemented full EvaporationModel in python/openfoam/meltPoolFoam/evaporationModel.H with Knight (1979) recoil pressure P_recoil = 0.54 * P_sat(T) via Clausius-Clapeyron, Hertz-Knudsen evaporative mass flux, normal interface recoil body force f_recoil = P_recoil * grad(alpha1) directing downward into the liquid metal, and latent evaporative cooling sink Sh_evap = -Lv * j_evap * |grad(alpha1)|. Integrated SRecoil_ into momentumPredictor and ShEvap_ into thermophysicalPredictor of metalliksaMeltPoolFoam. Bumped solver to metalliksaMeltPoolFoam-OpenFOAM14-3 and recoil model to recoil-knight-clausius-v1. Added setup_recoil_case and automated unit tests 07 & 08 in python/test_lpbf_cfd.py.
+- Files touched: python/openfoam/meltPoolFoam/evaporationModel.H, metalliksaMeltPoolFoam.H, metalliksaMeltPoolFoam.C; python/lpbf_cfd.py; python/test_lpbf_cfd.py; PROOF.md; sonkayıtlar/CURRENT_HANDOFF.md; this log.
+- Tests: WSL wmake PASS (exit code 0); python/test_lpbf_cfd.py 8 tests (7 PASS, 1 skip on coarse mesh diagnostics-gate, 0 failures in 30.9s); regression tests test_lpbf_overlap and test_lpbf_engineering 33/33 PASS in 36.8s.
+- Review: Recoil pressure agrees with analytical Knight relation within expected grid offset tolerance; normal recoil body force verified to direct fluid downward into the liquid pool (Uy < 0).
+- Result: PASS for Phase 3 deliverable. Ready for local git commit. GitHub push blocked per instructions until explicit user authorization.
+- Where we left off / Next action: Phase 4 of Multiphysics CFD (Moving interface laser heating / surface flux) or transition per user preference.
+- Agent: Antigravity. English application/code, Turkish user updates.
+
 ## 2026-09-18 14:45 — LPBF Multiphysics CFD Phase 1: metalliksaMeltPoolFoam Solver and Verification Suite
 - Task: Implement Phase 1 of LPBF Multiphysics CFD Roadmap (docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md).
 - Done / Last completed action: Created standalone OpenFOAM 14 multiphysics CFD solver metalliksaMeltPoolFoam in python/openfoam/meltPoolFoam/ (inheriting from incompressibleVoF). Linked against OpenFOAM 14 VOF and two-phase libraries. Implemented coupled metal-gas VOF, Continuum Surface Force (CSF) capillarity, Apparent Heat Capacity (AHC) enthalpy formulation with conservative mass-flux convection, and Carman-Kozeny mushy-zone Darcy momentum sink. Created Python orchestration layer in python/lpbf_cfd.py and automated verification test suite in python/test_lpbf_cfd.py.

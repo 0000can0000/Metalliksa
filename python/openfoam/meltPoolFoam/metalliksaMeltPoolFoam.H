@@ -52,6 +52,8 @@ protected:
     volScalarField liquidFraction_;
     volScalarField SDarcy_;
     volVectorField SMarangoni_;    // Marangoni body force [N/m^3]
+    volVectorField SRecoil_;       // Recoil body force [N/m^3] (Phase 3)
+    volScalarField ShEvap_;        // Evaporative cooling sink [W/m^3] (Phase 3)
 
     // Thermophysical properties
     dimensionedScalar kMetal_;
@@ -78,7 +80,8 @@ protected:
 
     void updateDarcySink();
     void updateEnthalpyAndPhaseFraction();
-    void updateMarangoniForce();    // Phase 2
+    void updateMarangoniForce();         // Phase 2
+    void updateEvaporationAndRecoil();   // Phase 3
 
 public:
     TypeName("metalliksaMeltPoolFoam");
@@ -95,6 +98,8 @@ public:
     const volScalarField& H() const { return H_; }
     const volScalarField& SDarcy() const { return SDarcy_; }
     const volVectorField& SMarangoni() const { return SMarangoni_; }  // Phase 2
+    const volVectorField& SRecoil() const { return SRecoil_; }        // Phase 3
+    const volScalarField& ShEvap() const { return ShEvap_; }          // Phase 3
 };
 
 } // End namespace solvers

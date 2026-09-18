@@ -3,11 +3,13 @@
 Integrates the OpenFOAM 14 multiphysics CFD solver (metalliksaMeltPoolFoam)
 for two-phase metal-gas Volume of Fluid (VOF), Continuum Surface Force (CSF)
 Laplace capillarity, enthalpy-based phase change, Carman-Kozeny mushy-zone
-Darcy velocity damping, and Marangoni tangential stress (Phase 2).
+Darcy velocity damping, Marangoni tangential stress (Phase 2), and
+Knight recoil pressure & Hertz-Knudsen evaporation (Phase 3).
 
 Model ID:      multiphase-vof-csf-v1
-Solver ID:     metalliksaMeltPoolFoam-OpenFOAM14-2
+Solver ID:     metalliksaMeltPoolFoam-OpenFOAM14-3
 Marangoni ID:  tangential-dsigmadT-interface-v1
+Recoil ID:     recoil-knight-clausius-v1
 """
 
 import json
@@ -16,9 +18,10 @@ import os
 import subprocess
 from pathlib import Path
 
-CFD_SOLVER_ID = "metalliksaMeltPoolFoam-OpenFOAM14-2"
+CFD_SOLVER_ID = "metalliksaMeltPoolFoam-OpenFOAM14-3"
 CFD_MODEL_ID = "multiphase-vof-csf-v1"
 MARANGONI_MODEL_ID = "tangential-dsigmadT-interface-v1"
+RECOIL_MODEL_ID = "recoil-knight-clausius-v1"
 
 import platform
 
@@ -1721,6 +1724,353 @@ boundaryField
 {
     coldWall   { type zeroGradient; }
     hotWall    { type zeroGradient; }
+    bottom     { type zeroGradient; }
+    top        { type zeroGradient; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "liquidFraction").write_text(lff, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Recoil Pressure and Evaporation case setup
+# ---------------------------------------------------------------------------
+
+def knight_analytical_recoil_pressure(
+    T: float,
+    boiling_T: float = 3560.0,
+    latent_heat_vap: float = 8.9e6,
+    molar_mass: float = 0.0459,
+    P0: float = 101325.0,
+) -> float:
+    """Compute analytical Knight (1979) recoil pressure at temperature T."""
+    if T < 1000.0:
+        return 0.0
+    R_univ = 8.314462618
+    Rs = R_univ / molar_mass
+    exp_arg = (latent_heat_vap / Rs) * (1.0 / boiling_T - 1.0 / T)
+    exp_arg = max(-80.0, min(80.0, exp_arg))
+    p_sat = P0 * math.exp(exp_arg)
+    return 0.54 * p_sat
+
+
+def setup_recoil_case(
+    case_dir,
+    lx: float = 100e-6,
+    ly: float = 100e-6,
+    nx: int = 20,
+    ny: int = 20,
+    t_peak: float = 3560.0,
+    t_base: float = 2000.0,
+    boiling_T: float = 3560.0,
+    latent_heat_vap: float = 8.9e6,
+    molar_mass: float = 0.0459,
+    end_time: float = 2e-7,
+    dt: float = 5e-8,
+):
+    """Set up a 2D recoil pressure verification case.
+
+    Geometry:
+      - x in [0, lx], y in [0, ly], 1 cell deep in z.
+      - Lower half (y < ly/2): liquid metal (alpha.metal = 1).
+      - Upper half (y >= ly/2): gas (alpha.metal = 0).
+      - Free surface at y = ly/2.
+
+    Temperature:
+      - Surface hot spot centered at x = lx/2 with peak temperature t_peak (>= boiling_T).
+      - T(x) = t_base + (t_peak - t_base) * exp( -((x - lx/2)/(0.25*lx))^2 ).
+
+    Physics:
+      - Knight (1979) recoil pressure: P_recoil = 0.54 * P_sat(T).
+      - Body force: f_recoil = P_recoil * grad(alpha1).
+      - Since metal is below (y < ly/2) and gas is above (y >= ly/2),
+        grad(alpha1) has a negative y-component (points into metal).
+      - Therefore, recoil force f_recoil_y < 0, depressing the surface downward.
+    """
+    c_dir = Path(case_dir)
+    (c_dir / "system").mkdir(parents=True, exist_ok=True)
+    (c_dir / "constant").mkdir(parents=True, exist_ok=True)
+    (c_dir / "0").mkdir(parents=True, exist_ok=True)
+
+    # 1. blockMeshDict
+    bm = foam_header("dictionary", "blockMeshDict")
+    bm += f"""convertToMeters 1;
+
+vertices
+(
+    (0    0    0)         // 0
+    ({lx} 0    0)         // 1
+    ({lx} {ly} 0)         // 2
+    (0    {ly} 0)         // 3
+    (0    0    {lx/nx})   // 4
+    ({lx} 0    {lx/nx})   // 5
+    ({lx} {ly} {lx/nx})   // 6
+    (0    {ly} {lx/nx})   // 7
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ({nx} {ny} 1) simpleGrading (1 1 1)
+);
+
+boundary
+(
+    leftWall   {{ type wall; faces ((0 4 7 3)); }}
+    rightWall  {{ type wall; faces ((1 5 6 2)); }}
+    bottom     {{ type wall; faces ((0 1 5 4)); }}
+    top        {{ type wall; faces ((3 2 6 7)); }}
+    frontAndBack {{ type empty; faces ((0 3 2 1)(4 5 6 7)); }}
+);
+"""
+    (c_dir / "system" / "blockMeshDict").write_text(bm, encoding="utf-8")
+
+    # 2. controlDict
+    cd = foam_header("dictionary", "controlDict")
+    cd += f"""application     metalliksaMeltPoolFoam;
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         {end_time};
+deltaT          {dt};
+writeControl    timeStep;
+writeInterval   1;
+purgeWrite      1;
+writeFormat     ascii;
+writePrecision  10;
+runTimeModifiable yes;
+"""
+    (c_dir / "system" / "controlDict").write_text(cd, encoding="utf-8")
+
+    # 3. fvSchemes
+    fvsc = foam_header("dictionary", "fvSchemes", "system")
+    fvsc += """ddtSchemes { default Euler; }
+gradSchemes { default Gauss linear; }
+divSchemes
+{
+    div(phi,alpha)  Gauss interfaceCompression vanLeer 1;
+    div(rhoPhi,U)   Gauss linearUpwind grad(U);
+    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+    div(rhoCpPhi,T) Gauss upwind;
+    div(rhoLfPhi,liquidFraction) Gauss upwind;
+}
+laplacianSchemes { default Gauss linear uncorrected; }
+interpolationSchemes { default linear; }
+snGradSchemes { default uncorrected; }
+"""
+    (c_dir / "system" / "fvSchemes").write_text(fvsc, encoding="utf-8")
+
+    # 4. fvSolution
+    fvsol = foam_header("dictionary", "fvSolution", "system")
+    fvsol += """solvers
+{
+    "alpha.metal.*"
+    {
+        nCorrectors     2;
+        nSubCycles      1;
+        MULESCorr       yes;
+        MULES { nIter 10; tolerance 1e-3; }
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0;
+    }
+    pcorr  { solver PCG; preconditioner DIC; tolerance 1e-5; relTol 0; }
+    pcorrFinal { $pcorr; }
+    p_rgh  { solver PCG; preconditioner DIC; tolerance 1e-7; relTol 0.01; }
+    p_rghFinal { $p_rgh; relTol 0; }
+    "(U|T).*"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0;
+    }
+}
+PIMPLE
+{
+    momentumPredictor yes;
+    nOuterCorrectors  1;
+    nCorrectors       2;
+    nNonOrthogonalCorrectors 0;
+    pRefCell    0;
+    pRefValue   0;
+    p_rghRefCell  0;
+    p_rghRefValue 0;
+}
+relaxationFactors { equations { ".*" 1; } }
+"""
+    (c_dir / "system" / "fvSolution").write_text(fvsol, encoding="utf-8")
+
+    # 5. constant/g
+    gf = foam_header("uniformDimensionedVectorField", "g", "constant")
+    gf += "dimensions      [acceleration];\nvalue           (0 0 0);\n"
+    (c_dir / "constant" / "g").write_text(gf, encoding="utf-8")
+
+    # 6. constant/phaseProperties
+    pp = foam_header("dictionary", "phaseProperties", "constant")
+    pp += """phases          (metal gas);
+sigma           1.52;
+"""
+    (c_dir / "constant" / "phaseProperties").write_text(pp, encoding="utf-8")
+
+    # 7. constant/physicalProperties.metal
+    pm = foam_header("dictionary", "physicalProperties.metal", "constant")
+    pm += """viscosityModel  constant;
+nu              1e-6;
+rho             4000;
+"""
+    (c_dir / "constant" / "physicalProperties.metal").write_text(pm, encoding="utf-8")
+
+    # 8. constant/physicalProperties.gas
+    pg = foam_header("dictionary", "physicalProperties.gas", "constant")
+    pg += """viscosityModel  constant;
+nu              1.5e-5;
+rho             1.6;
+"""
+    (c_dir / "constant" / "physicalProperties.gas").write_text(pg, encoding="utf-8")
+
+    # 9. constant/momentumTransport
+    mt = foam_header("dictionary", "momentumTransport", "constant")
+    mt += "simulationType  laminar;\n"
+    (c_dir / "constant" / "momentumTransport").write_text(mt, encoding="utf-8")
+
+    # 10. constant/thermalProperties
+    tp3 = foam_header("dictionary", "thermalProperties", "constant")
+    tp3 += f"""// Ti-6Al-4V thermal properties with Phase 3 recoil & evaporation
+kMetal          30.0;
+kGas            0.026;
+cpMetal         500.0;
+cpGas           1000.0;
+solidus_T       1877.0;
+liquidus_T      1928.0;
+latentHeat      2.86e5;
+Cmush           1e6;
+
+// Phase 2: Marangoni parameters
+sigma0          1.52;
+dSigmaDT        -2.6e-4;
+Tref_sigma      1928.0;
+interfaceThreshold 1e3;
+
+// Phase 3: Evaporation and recoil parameters
+active          true;
+latentHeatVap   {latent_heat_vap:.6e};
+boiling_T       {boiling_T:.6g};
+molarMass       {molar_mass:.6g};
+evapCoeff       0.82;
+P0              101325.0;
+"""
+    (c_dir / "constant" / "thermalProperties").write_text(tp3, encoding="utf-8")
+
+    # 11. 0/alpha.metal — lower half metal, upper half gas
+    n_cells = nx * ny
+    half_ny = ny // 2
+    alpha_vals = []
+    for j in range(ny):
+        for i in range(nx):
+            alpha_vals.append("1" if j < half_ny else "0")
+
+    af = foam_header("volScalarField", "alpha.metal", "0")
+    af += f"""dimensions [0 0 0 0 0 0 0];
+internalField nonuniform List<scalar>
+{n_cells}
+(
+{chr(10).join(alpha_vals)}
+)
+;
+boundaryField
+{{
+    leftWall   {{ type zeroGradient; }}
+    rightWall  {{ type zeroGradient; }}
+    bottom     {{ type zeroGradient; }}
+    top        {{ type zeroGradient; }}
+    frontAndBack {{ type empty; }}
+}}
+"""
+    (c_dir / "0" / "alpha.metal").write_text(af, encoding="utf-8")
+
+    # 12. 0/T — hot spot at surface center x = lx/2
+    t_vals = []
+    sigma_spot = 0.25 * lx
+    for j in range(ny):
+        for i in range(nx):
+            x_center = (i + 0.5) * (lx / nx)
+            dist_sq = (x_center - 0.5 * lx) ** 2
+            t_cell = t_base + (t_peak - t_base) * math.exp(-dist_sq / (sigma_spot ** 2))
+            t_vals.append(f"{t_cell:.6g}")
+
+    tf = foam_header("volScalarField", "T", "0")
+    tf += f"""dimensions [0 0 0 1 0 0 0];
+internalField nonuniform List<scalar>
+{n_cells}
+(
+{chr(10).join(t_vals)}
+)
+;
+boundaryField
+{{
+    leftWall   {{ type zeroGradient; }}
+    rightWall  {{ type zeroGradient; }}
+    bottom     {{ type zeroGradient; }}
+    top        {{ type zeroGradient; }}
+    frontAndBack {{ type empty; }}
+}}
+"""
+    (c_dir / "0" / "T").write_text(tf, encoding="utf-8")
+
+    # 13. 0/U
+    uf = foam_header("volVectorField", "U", "0")
+    uf += """dimensions [0 1 -1 0 0 0 0];
+internalField uniform (0 0 0);
+boundaryField
+{
+    leftWall   { type slip; }
+    rightWall  { type slip; }
+    bottom     { type noSlip; }
+    top        { type slip; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "U").write_text(uf, encoding="utf-8")
+
+    # 14. 0/p
+    pf = foam_header("volScalarField", "p", "0")
+    pf += """dimensions [1 -1 -2 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    leftWall   { type zeroGradient; }
+    rightWall  { type zeroGradient; }
+    bottom     { type zeroGradient; }
+    top        { type fixedValue; value uniform 0; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "p").write_text(pf, encoding="utf-8")
+
+    # 15. 0/p_rgh
+    prgh = foam_header("volScalarField", "p_rgh", "0")
+    prgh += """dimensions [1 -1 -2 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    leftWall   { type fixedFluxPressure; value uniform 0; }
+    rightWall  { type fixedFluxPressure; value uniform 0; }
+    bottom     { type fixedFluxPressure; value uniform 0; }
+    top        { type fixedFluxPressure; value uniform 0; }
+    frontAndBack { type empty; }
+}
+"""
+    (c_dir / "0" / "p_rgh").write_text(prgh, encoding="utf-8")
+
+    # 16. 0/liquidFraction
+    lff = foam_header("volScalarField", "liquidFraction", "0")
+    lff += """dimensions [];
+internalField uniform 1;
+boundaryField
+{
+    leftWall   { type zeroGradient; }
+    rightWall  { type zeroGradient; }
     bottom     { type zeroGradient; }
     top        { type zeroGradient; }
     frontAndBack { type empty; }

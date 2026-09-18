@@ -109,6 +109,34 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
         dimensionedVector("zero", dimForce/dimVolume, vector::zero)
     ),
 
+    SRecoil_
+    (
+        IOobject
+        (
+            "fRecoil",
+            mesh.time().name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedVector("zero", dimForce/dimVolume, vector::zero)
+    ),
+
+    ShEvap_
+    (
+        IOobject
+        (
+            "ShEvap",
+            mesh.time().name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zero", dimPower/dimVolume, 0.0)
+    ),
+
     kMetal_("kMetal", dimPower/dimLength/dimTemperature, 30.0),
     kGas_(  "kGas",   dimPower/dimLength/dimTemperature, 0.026),
     cpMetal_("cpMetal", dimEnergy/dimMass/dimTemperature, 500.0),
@@ -157,11 +185,15 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
         dSigmaDT_.value()    = thermalDict.lookupOrDefault<scalar>("dSigmaDT",    dSigmaDT_.value());
         Tref_sigma_.value()  = thermalDict.lookupOrDefault<scalar>("Tref_sigma",  Tref_sigma_.value());
         interfaceThreshold_  = thermalDict.lookupOrDefault<scalar>("interfaceThreshold", interfaceThreshold_);
+
+        // Phase 3: Evaporation and recoil parameters
+        evaporation_.read(thermalDict);
     }
 
     updateEnthalpyAndPhaseFraction();
     updateDarcySink();
-    updateMarangoniForce();   // Phase 2: compute initial Marangoni force field
+    updateMarangoniForce();         // Phase 2: compute initial Marangoni force field
+    updateEvaporationAndRecoil();   // Phase 3: compute initial recoil and evaporation
 }
 
 Foam::solvers::metalliksaMeltPoolFoam::~metalliksaMeltPoolFoam()
@@ -233,10 +265,21 @@ void Foam::solvers::metalliksaMeltPoolFoam::updateMarangoniForce()
     SMarangoni_ = tFma();
 }
 
+// Phase 3: Recoil normal body force & evaporation cooling sink
+void Foam::solvers::metalliksaMeltPoolFoam::updateEvaporationAndRecoil()
+{
+    tmp<volVectorField> tFrec = evaporation_.computeRecoilForce(alpha1, T_);
+    SRecoil_ = tFrec();
+
+    tmp<volScalarField> tShEvap = evaporation_.computeEvaporativeCooling(alpha1, T_);
+    ShEvap_ = tShEvap();
+}
+
 void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
 {
     updateDarcySink();
-    updateMarangoniForce();   // Phase 2
+    updateMarangoniForce();         // Phase 2
+    updateEvaporationAndRecoil();   // Phase 3
 
     volVectorField& U = U_;
 
@@ -269,6 +312,7 @@ void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
                 ) * mesh.magSf()
             )
           + SMarangoni_    // Phase 2: Marangoni body force [N/m^3]
+          + SRecoil_       // Phase 3: Recoil normal body force [N/m^3]
         );
 
         fvConstraints().constrain(U);
@@ -329,6 +373,7 @@ void Foam::solvers::metalliksaMeltPoolFoam::thermophysicalPredictor()
       - fvm::laplacian(kEff, T_)
      ==
         laser_.heatSource()
+      + ShEvap_    // Phase 3: Evaporative cooling sink [W/m^3]
     );
 
     TEqn.relax();
@@ -362,6 +407,13 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
         interfaceThreshold_
     );
 
+    // Phase 3: Evaporation and recoil diagnostics
+    EvaporationDiagnostics evapDiag = evaporation_.evaluateDiagnostics
+    (
+        alpha1,
+        T_
+    );
+
     scalar maxU = gMax(mag(U_)().primitiveField());
     scalar maxUSolid = 0.0;
     scalar maxT = gMax(T_().primitiveField());
@@ -378,9 +430,10 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
     std::ofstream diagFile((runTime.path()/"cfd-diagnostics.json").c_str());
     diagFile << std::setprecision(12)
         << "{\n"
-        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-2\",\n"
+        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-3\",\n"
         << "  \"vofModel\": \"multiphase-vof-csf-v1\",\n"
         << "  \"marangoniModel\": \"tangential-dsigmadT-interface-v1\",\n"
+        << "  \"recoilModel\": \"recoil-knight-clausius-v1\",\n"
         << "  \"time_s\": " << runTime.value() << ",\n"
         << "  \"deltaP_Pa\": " << diag.deltaP_Pa << ",\n"
         << "  \"dropletPressureInside_Pa\": " << diag.dropletPressureInside << ",\n"
@@ -395,7 +448,11 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
         << "  \"maxMarangoniForce_Npm3\": " << maDiag.maxMarangoniMagnitude_Npm2 << ",\n"
         << "  \"rmsMarangoniForce_Npm3\": " << maDiag.rmsMarangoniMagnitude_Npm2 << ",\n"
         << "  \"marangoniInterfaceCells\": " << maDiag.interfaceCellCount << ",\n"
-        << "  \"dSigmaDT_NpmK\": " << dSigmaDT_.value() << "\n"
+        << "  \"dSigmaDT_NpmK\": " << dSigmaDT_.value() << ",\n"
+        << "  \"maxRecoilPressure_Pa\": " << evapDiag.maxRecoilPressure_Pa << ",\n"
+        << "  \"maxEvaporationFlux_kgpm2s\": " << evapDiag.maxEvaporationFlux_kgpm2s << ",\n"
+        << "  \"maxRecoilForce_Npm3\": " << evapDiag.maxRecoilForce_Npm3 << ",\n"
+        << "  \"recoilActiveCells\": " << evapDiag.activeCells << "\n"
         << "}\n";
     diagFile.close();
 }

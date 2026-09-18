@@ -1,3 +1,18 @@
+## 2026-09-18 16:05 — LPBF Multiphysics CFD Phase 3: Knight Recoil Pressure and Hertz-Knudsen Evaporation
+- Scope: `metalliksaMeltPoolFoam-OpenFOAM14-3` / `recoil-knight-clausius-v1`. Standalone OpenFOAM 14 multiphysics CFD solver in `python/openfoam/meltPoolFoam/` with Hertz-Knudsen evaporative mass flux and Knight (1979) recoil normal pressure. Python orchestration in `python/lpbf_cfd.py` and automated verification in `python/test_lpbf_cfd.py`.
+- Formulated physics:
+  - Clausius-Clapeyron saturation pressure: $P_{\text{sat}}(T) = P_0 \exp\left( \frac{L_v M}{R_{\text{univ}}} \left( \frac{1}{T_b} - \frac{1}{T} \right) \right)$.
+  - Knight (1979) recoil pressure: $P_{\text{recoil}} = 0.54 \cdot P_{\text{sat}}(T)$.
+  - Normal interface recoil body force: $\mathbf{f}_{\text{recoil}} = P_{\text{recoil}}(T) \nabla \alpha_1$ [$\text{N/m}^3$], where $\nabla \alpha_1$ naturally points into the liquid metal, compressing the surface downward to initiate keyhole depression.
+  - Hertz-Knudsen evaporation mass flux: $j_{\text{evap}} = \beta \sqrt{\frac{M}{2\pi R_{\text{univ}} T}} P_{\text{sat}}(T)$ [$\text{kg}/(\text{m}^2\cdot\text{s})$] and latent heat cooling sink $S_{h,\text{evap}} = -L_v j_{\text{evap}} |\nabla \alpha_1|$ [$\text{W/m}^3$].
+- Verification results:
+  - Analytical agreement: on Ti-6Al-4V at $T_{\text{peak}} = 3560 \text{ K} = T_b$, theoretical Knight recoil is $54.7 \text{ kPa}$; simulated max recoil pressure matches analytical Knight formula within expected discretization limits.
+  - Directional depression: recoil force directly accelerates liquid metal downward ($U_y < 0$) into the melt pool.
+  - Test suite: `python/test_lpbf_cfd.py` 8 tests (7 passed, 1 expected skip on coarse mesh diagnostics-gate, 0 failures, 30.9s).
+  - Regression: `test_lpbf_overlap` and `test_lpbf_engineering` 33/33 PASS (36.8s).
+- Limits & boundaries:
+  - Numerical verification on manufactured cases does not constitute experimental keyhole validation. Moving laser beam surface heating (Phase 4) and Fresnel ray tracing follow as separate roadmap gates.
+
 ## 2026-09-18 14:45 — LPBF Multiphysics CFD Phase 1: metalliksaMeltPoolFoam Solver and Verification Suite
 - Scope: `metalliksaMeltPoolFoam-OpenFOAM14-1` / `multiphase-vof-csf-v1`. Standalone OpenFOAM 14 solver package in `python/openfoam/meltPoolFoam/` inheriting from `incompressibleVoF` with Python orchestration layer in `python/lpbf_cfd.py` and automated verification test suite in `python/test_lpbf_cfd.py`.
 - Coupled equations:

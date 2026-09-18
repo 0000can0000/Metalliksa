@@ -1,0 +1,384 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) Metalliksa Multiphysics CFD
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Application
+    metalliksaMeltPoolFoam
+
+Description
+    Multiphysics CFD solver for LPBF melt pool simulation:
+    - 2-phase metal-gas VOF with Continuum Surface Force (CSF)
+    - Enthalpy-based phase change (solid-mushy-liquid)
+    - Carman-Kozeny Darcy momentum sink in mushy/solid zones
+\*---------------------------------------------------------------------------*/
+
+#include "argList.H"
+#include "Time.H"
+#include "fvMesh.H"
+#include "pimpleSingleRegionControl.H"
+#include "metalliksaMeltPoolFoam.H"
+#include <fstream>
+#include <iomanip>
+
+using namespace Foam;
+
+namespace Foam
+{
+namespace solvers
+{
+    defineTypeNameAndDebug(metalliksaMeltPoolFoam, 0);
+}
+}
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
+:
+    incompressibleVoF(mesh),
+
+    T_
+    (
+        IOobject
+        (
+            "T",
+            mesh.time().name(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("T0", dimTemperature, 300.0)
+    ),
+
+    H_
+    (
+        IOobject
+        (
+            "H",
+            mesh.time().name(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("H0", dimEnergy/dimVolume, 0.0)
+    ),
+
+    liquidFraction_
+    (
+        IOobject
+        (
+            "liquidFraction",
+            mesh.time().name(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("fl0", dimless, 0.0)
+    ),
+
+    SDarcy_
+    (
+        IOobject
+        (
+            "SDarcy",
+            mesh.time().name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zero", dimDensity/dimTime, 0.0)
+    ),
+
+    kMetal_("kMetal", dimPower/dimLength/dimTemperature, 30.0),
+    kGas_("kGas", dimPower/dimLength/dimTemperature, 0.026),
+    cpMetal_("cpMetal", dimEnergy/dimMass/dimTemperature, 500.0),
+    cpGas_("cpGas", dimEnergy/dimMass/dimTemperature, 1000.0),
+    solidus_T_("solidus_T", dimTemperature, 1650.0),
+    liquidus_T_("liquidus_T", dimTemperature, 1700.0),
+    latentHeat_("latentHeat", dimEnergy/dimMass, 2.7e5),
+    Cmush_("Cmush", dimDensity/dimTime, 1e6),
+
+    laser_(mesh, dictionary::null),
+    evaporation_(mesh, dictionary::null),
+    initialMetalVolume_(0.0)
+{
+    IOdictionary thermalDict
+    (
+        IOobject
+        (
+            "thermalProperties",
+            mesh.time().constant(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        )
+    );
+
+    if (thermalDict.headerOk())
+    {
+        kMetal_.value() = thermalDict.lookupOrDefault<scalar>("kMetal", kMetal_.value());
+        kGas_.value() = thermalDict.lookupOrDefault<scalar>("kGas", kGas_.value());
+        cpMetal_.value() = thermalDict.lookupOrDefault<scalar>("cpMetal", cpMetal_.value());
+        cpGas_.value() = thermalDict.lookupOrDefault<scalar>("cpGas", cpGas_.value());
+        solidus_T_.value() = thermalDict.lookupOrDefault<scalar>("solidus_T", solidus_T_.value());
+        liquidus_T_.value() = thermalDict.lookupOrDefault<scalar>("liquidus_T", liquidus_T_.value());
+        latentHeat_.value() = thermalDict.lookupOrDefault<scalar>("latentHeat", latentHeat_.value());
+        Cmush_.value() = thermalDict.lookupOrDefault<scalar>("Cmush", Cmush_.value());
+    }
+
+    updateEnthalpyAndPhaseFraction();
+    updateDarcySink();
+}
+
+Foam::solvers::metalliksaMeltPoolFoam::~metalliksaMeltPoolFoam()
+{}
+
+void Foam::solvers::metalliksaMeltPoolFoam::updateEnthalpyAndPhaseFraction()
+{
+    const scalar rho1 = mixture.rho1().value();
+    const scalar rho2 = mixture.rho2().value();
+    const scalar cp1 = cpMetal_.value();
+    const scalar cp2 = cpGas_.value();
+    const scalar Lf = latentHeat_.value();
+    const scalar Ts = solidus_T_.value();
+    const scalar Tl = liquidus_T_.value();
+
+    forAll(T_, cellI)
+    {
+        scalar temp = T_[cellI];
+        if (temp <= Ts)
+        {
+            liquidFraction_[cellI] = 0.0;
+        }
+        else if (temp >= Tl)
+        {
+            liquidFraction_[cellI] = 1.0;
+        }
+        else
+        {
+            liquidFraction_[cellI] = (temp - Ts) / max(Tl - Ts, scalar(1e-4));
+        }
+
+        scalar rhoCp = alpha1[cellI] * (rho1 * cp1) + alpha2[cellI] * (rho2 * cp2);
+        H_[cellI] = rhoCp * (temp - 273.15)
+                  + alpha1[cellI] * (rho1 * Lf) * liquidFraction_[cellI];
+    }
+}
+
+void Foam::solvers::metalliksaMeltPoolFoam::updateDarcySink()
+{
+    const scalar cm = Cmush_.value();
+    forAll(liquidFraction_, cellI)
+    {
+        scalar fl = liquidFraction_[cellI];
+        scalar aM = alpha1[cellI];
+        if (fl < 0.999 && aM > 0.01)
+        {
+            scalar flClamped = max(fl, scalar(1e-4));
+            SDarcy_[cellI] = aM * cm * sqr(1.0 - fl) / (pow3(flClamped) + 1e-3);
+        }
+        else
+        {
+            SDarcy_[cellI] = 0.0;
+        }
+    }
+}
+
+void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
+{
+    updateDarcySink();
+
+    volVectorField& U = U_;
+
+    tUEqn =
+    (
+        fvm::ddt(rho, U) + fvm::div(rhoPhi, U)
+      + MRF.DDt(rho, U)
+      + divDevTau(U)
+      + fvm::Sp(SDarcy_, U)
+     ==
+        fvModels().source(rho, U)
+    );
+    fvVectorMatrix& UEqn = tUEqn.ref();
+
+    UEqn.relax();
+    fvConstraints().constrain(UEqn);
+
+    if (pimple.momentumPredictor())
+    {
+        solve
+        (
+            UEqn
+         ==
+            fvc::reconstruct
+            (
+                (
+                    surfaceTensionForce()
+                  - buoyancy.ghf*fvc::snGrad(rho)
+                  - fvc::snGrad(p_rgh)
+                ) * mesh.magSf()
+            )
+        );
+
+        fvConstraints().constrain(U);
+    }
+}
+
+void Foam::solvers::metalliksaMeltPoolFoam::thermophysicalPredictor()
+{
+    const scalar Ts = solidus_T_.value();
+    const scalar Tl = liquidus_T_.value();
+    const scalar deltaTsl = max(Tl - Ts, scalar(1e-4));
+    const scalar Lf = latentHeat_.value();
+
+    volScalarField cpEffMetal
+    (
+        IOobject("cpEffMetal", runTime.name(), mesh),
+        mesh,
+        cpMetal_
+    );
+
+    forAll(T_, cellI)
+    {
+        scalar temp = T_[cellI];
+        if (temp >= Ts && temp <= Tl)
+        {
+            cpEffMetal[cellI] += Lf / deltaTsl;
+        }
+    }
+
+    volScalarField cpEff
+    (
+        IOobject("cpEff", runTime.name(), mesh),
+        alpha1 * cpEffMetal + alpha2 * cpGas_
+    );
+
+    volScalarField rhoCp
+    (
+        IOobject("rhoCp", runTime.name(), mesh),
+        alpha1 * (mixture.rho1() * cpEffMetal) + alpha2 * (mixture.rho2() * cpGas_)
+    );
+
+    volScalarField kEff
+    (
+        IOobject("kEff", runTime.name(), mesh),
+        alpha1 * kMetal_ + alpha2 * kGas_
+    );
+
+    surfaceScalarField rhoCpPhi
+    (
+        "rhoCpPhi",
+        fvc::interpolate(cpEff) * rhoPhi
+    );
+
+    fvScalarMatrix TEqn
+    (
+        fvm::ddt(rhoCp, T_)
+      + fvm::div(rhoCpPhi, T_)
+      - fvm::laplacian(kEff, T_)
+     ==
+        laser_.heatSource()
+    );
+
+    TEqn.relax();
+    TEqn.solve();
+
+    updateEnthalpyAndPhaseFraction();
+}
+
+void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
+{
+    incompressibleVoF::postSolve();
+
+    InterfaceDiagnostics diag = evaluateInterfaceDiagnostics
+    (
+        alpha1,
+        p,
+        initialMetalVolume_
+    );
+
+    if (initialMetalVolume_ <= 0.0)
+    {
+        initialMetalVolume_ = diag.totalMetalVolume_m3;
+        diag.initialMetalVolume_m3 = initialMetalVolume_;
+    }
+
+    scalar maxU = gMax(mag(U_)().primitiveField());
+    scalar maxUSolid = 0.0;
+    scalar maxT = gMax(T_().primitiveField());
+    scalar minT = gMin(T_().primitiveField());
+
+    forAll(liquidFraction_, cellI)
+    {
+        if (liquidFraction_[cellI] < 0.01 && alpha1[cellI] > 0.5)
+        {
+            maxUSolid = max(maxUSolid, mag(U_[cellI]));
+        }
+    }
+
+    std::ofstream diagFile((runTime.path()/"cfd-diagnostics.json").c_str());
+    diagFile << std::setprecision(12)
+        << "{\n"
+        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-1\",\n"
+        << "  \"vofModel\": \"multiphase-vof-csf-v1\",\n"
+        << "  \"time_s\": " << runTime.value() << ",\n"
+        << "  \"deltaP_Pa\": " << diag.deltaP_Pa << ",\n"
+        << "  \"dropletPressureInside_Pa\": " << diag.dropletPressureInside << ",\n"
+        << "  \"dropletPressureOutside_Pa\": " << diag.dropletPressureOutside << ",\n"
+        << "  \"totalMetalVolume_m3\": " << diag.totalMetalVolume_m3 << ",\n"
+        << "  \"initialMetalVolume_m3\": " << diag.initialMetalVolume_m3 << ",\n"
+        << "  \"volumeConservationError\": " << diag.volumeConservationError << ",\n"
+        << "  \"maxVelocity_mps\": " << maxU << ",\n"
+        << "  \"maxSolidVelocity_mps\": " << maxUSolid << ",\n"
+        << "  \"maxTemperature_K\": " << maxT << ",\n"
+        << "  \"minTemperature_K\": " << minT << "\n"
+        << "}\n";
+    diagFile.close();
+}
+
+// * * * * * * * * * * * * * * * * Main Driver * * * * * * * * * * * * * * * //
+
+int main(int argc, char *argv[])
+{
+    #include "setRootCase.H"
+    #include "createTime.H"
+    #include "createMesh.H"
+
+    Foam::solvers::metalliksaMeltPoolFoam solver(mesh);
+    Foam::pimpleSingleRegionControl pimple(solver.pimple);
+
+    Info<< nl << "Starting time loop: metalliksaMeltPoolFoam (VOF + Enthalpy + Darcy)" << endl;
+
+    while (pimple.run(runTime))
+    {
+        solver.preSolve();
+
+        runTime++;
+        Info<< "Time = " << runTime.userTimeName() << nl << endl;
+
+        while (pimple.loop())
+        {
+            solver.prePredictor();
+            solver.momentumPredictor();
+            solver.thermophysicalPredictor();
+            solver.pressureCorrector();
+            solver.momentumTransportCorrector();
+        }
+
+        solver.postSolve();
+        runTime.write();
+
+        Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+            << nl << endl;
+    }
+
+    Info<< "End\n" << endl;
+    return 0;
+}

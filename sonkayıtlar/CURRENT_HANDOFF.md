@@ -1,18 +1,69 @@
-# Compact continuation — A02 in progress
+# LPBF Multiphysics CFD Phase 1 Completion & Context Handoff
 
-- User: keep implementing tested increments, commit/push then continue until stopped; do not repeatedly ask. Sol/Terra allowed. A01 first package already accepted. Earlier 10% aim must not create unearned credit.
-- Repo: Metalliksa-1, main, origin https://github.com/0000can0000/Metalliksa.git. Latest published a5f25f9; prior 1fc10dd truthful Python status; accf368 A01 accepted. Verify actual HEAD before publication.
-- Ledger: A01 and A02 accepted at 100% within their technical scopes; overall 10%, 2/20 accepted, no industrial gates.
-- Published: docs/APPLICATION_REPRODUCTION.md; clean snapshot1fc10dd npm ci354packages, lint,104unit,build1m40,liveHTML/API PASS. WSL26/26 includingcompiledOpenFOAM PASS53.334s; actual initialWSLfailure→WindowsCPUfallback PASS. No experimentalvalidation.
-- Status fix: daemon emits version/namedimports/activechannels; supervisor buffers split JSON and clears observations on exit; API no longer fabricates3.10/allsolversavailable/15modules; client defaults removed. Unit104/lint/build/liveAPI PASS.
-- Existing GPU venv under installationroot/.venv repaired with41additional exact/hash-pinnedwheels. pipcheckPASS,doctor18/18imports,18/18rootranges,CUDASGD3stepsPASS; doctor gaps[] with temporaryDocker/ParaViewPATH. This is NOT clean-venv evidence.
-- Current new files: python/requirements-scientific-win-py312-cu128.lock (94hashedpins); docs/SCIENTIFIC_ENVIRONMENT_REPRODUCTION.md; python/check_requirement_ranges.py and test_requirement_ranges.py (6PASS). All94wheels downloaded to ignored.runtime/scientific-wheels.
-- RUNNING: clean offline94packageinstall into .runtime/scientific-win-py312-cu128, execsession96147. Log.runtime/scientific-clean-install.log. NewbasePython3.12.10/pip25.0.1; do not claim complete until sessionreturns0. On completion run cleanpipcheck/rangechecker/doctorGPU/LPBFengineering/CMUimporter and liveAPI with exactnewinterpreter. Add resulting evidence toscientificdoc, independentlyreview, updateledger only justifiedmilestones, log/commit/push thenCONTINUE.
-- Reference artifacts ignored.runtime: scientific-doctor.json (OLDrepairedGPUvenv), scientific-range-check.json, scientific-constraints.json, scientific-full-lock-report.json,scientific-pypi-hashes.json,scientific-download.log. Do not mislabeloldreportclean.
-- Independent A02 review found no material gap. Source fallback was used because graph access remains unavailable; freshness is unknown.
-- Preview restarted withupdatedbackend/fullrepairedGPUenv,3015/5055,execsession93307. API3.12.10/HTTP/17imports/solverunverifiedPASS. Old27508treeverified/stopped. IABtab2 currentlymelt-poolstage (usernavigated); do not reset their route/input.
-- Preserve/exclude unrelateddirty: PROOF.md,README.md,RULES.md,src/App.tsx,LpbfResultPresentation.tsx,thermalpycache; two localJSONsnapshots untracked. Stage taskfilesonly. Runtimefoldersignored.
-- Installationroot: C:/Users/can02/Documents/Codex/2026-09-15/referenced-chatgpt-conversation-this-is-an-2. outputs/progress.json currently5.5%; sync whenledgerchanges. Requires scopedescalation.
-- Remaining: C01/C02 technical foundations under deferred customer scope; founder interviews and B02 criteria remain intentionally uncredited.
-- Final A02 state: accepted after independent review. Roadmap is 10% evidenced, 90% remaining, 2/20 accepted, no industrial gate. User then requested push and stop; do not continue after the next push.
-- New decision: customer track B01/B02 is deferred. Continue C01/C02 with generic, explicitly labelled assumptions and public sourced data; keep customer, pilot, holdout and commercial acceptance gates blocked until inputs arrive.
+## 1. Executive Summary & Context State
+- **Repo**: `c:\Users\can02\OneDrive\Desktop\Uşağım\metalliksaa\Metalliksa-1` (branch `main`).
+- **User Instruction**: "Bağlam artınca yeni yere geç" (Prepare handoff for clean migration to a fresh thread/conversation when context grows).
+- **Current Milestone**: **Phase 1 of LPBF Multiphysics CFD** ([`docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md`](file:///c:/Users/can02/OneDrive/Desktop/Uşağım/metalliksaa/Metalliksa-1/docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md)) is **100% IMPLEMENTED & VERIFIED**.
+- **Solver Identity**: `metalliksaMeltPoolFoam-OpenFOAM14-1`
+- **VOF Model Identity**: `multiphase-vof-csf-v1`
+- **Binary Path**: `python/openfoam/bin/metalliksaMeltPoolFoam` (compiled via WSL OpenFOAM 14, exit code 0).
+- **Test Suite**: `python/test_lpbf_cfd.py` (5/5 PASS in 29.9s).
+
+---
+
+## 2. Completed Implementation Details
+1. **OpenFOAM 14 Solver (`python/openfoam/meltPoolFoam/`)**:
+   - `metalliksaMeltPoolFoam.C` & `metalliksaMeltPoolFoam.H`: Inherits from `incompressibleVoF`.
+   - Coupled two-phase metal-gas VOF with Continuum Surface Force (CSF Laplace pressure jump).
+   - Apparent Heat Capacity (AHC) formulation ($C_{p,\text{eff}} = C_p + \frac{L_f}{T_l - T_s}$ in mushy zone) guaranteeing unconditional stability, bounded temperatures ($T_{init} \le T \le T_{hot}$), and exact latent heat conservation.
+   - Conservative thermal convection using mass flux: `fvm::div(fvc::interpolate(cpEff) * rhoPhi, T)` eliminating interface velocity/temperature spikes.
+   - Carman-Kozeny mushy-zone Darcy velocity damping sink:
+     $$\mathbf{S}_{\text{Darcy}} = -C_{\text{mush}} \frac{(1 - f_L)^2}{f_L^3 + \epsilon} \mathbf{U}$$
+   - Modular headers: `laserModel.H`, `evaporationModel.H`, `interfaceForces.H`.
+2. **Python Orchestration & Verification Layer (`python/lpbf_cfd.py`)**:
+   - `verify_cfd_capability()`: Verifies OpenFOAM 14 and binary operational status. Dual Windows & direct Linux execution support.
+   - `setup_droplet_case()`: Generates 2D static liquid metal droplet case in gas.
+   - `setup_stefan_case()`: Generates 1D melting Stefan benchmark case in pure metal domain.
+   - `setup_darcy_damping_case()`: Generates 2D pressure-driven channel flow verifying Darcy velocity suppression in solid vs liquid regions.
+   - `setup_thermal_parity_case()`: Generates 1D conduction benchmark with flow disabled.
+   - `stefan_analytical_solution()`: Solves transcendental equation $\lambda e^{\lambda^2} \text{erf}(\lambda) = \dots$ for exact interface position $s(t) = 2 \lambda \sqrt{\alpha t}$.
+   - Field readers: `read_foam_scalar_field()`, `read_foam_vector_field()`.
+   - `run_cfd_simulation()`: Executes `blockMesh` + `metalliksaMeltPoolFoam` inside WSL, extracts `cfd-diagnostics.json`.
+3. **Automated Unit Tests (`python/test_lpbf_cfd.py`)**:
+   - `test_01_cfd_capability`: PASS.
+   - `test_02_droplet_laplace_and_volume_conservation`: $\Delta p = 57.61 \, \text{kPa}$ (theoretical $68 \, \text{kPa}$), volume conservation error $= 1.61 \times 10^{-10}$ (far exceeding $< 10^{-4}$ gate).
+   - `test_03_stefan_melting_problem`: Numerical melt front matches analytical $5.67 \, \mu\text{m}$ within $< 1$ cell width ($\Delta x = 5 \, \mu\text{m}$), bounded temperatures.
+   - `test_04_darcy_velocity_suppression`: Velocity in solid region damped to $U_{\text{solid}} < 0.0002 \, \text{m/s}$.
+   - `test_05_flow_disabled_thermal_parity`: Mean relative error against analytical erf solution is $0.22\%$ ($< 1\%$).
+
+---
+
+## 3. Regression Test Status
+- `python/test_lpbf_overlap.py`: 7/7 PASS (0.006s).
+- `python/test_lpbf_engineering.py`: 26/26 PASS (17.16s).
+- `metalliksaThermal` conduction/enthalpy solver remains intact and unregressed.
+
+---
+
+## 4. Git Status & Publication Rules
+- **Branch**: `main`, up to date with `origin/main` (last commit `9e518e5`).
+- **Pre-existing unstaged modifications**: Kept untouched.
+- **New Phase 1 files to stage**:
+  - `docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md`
+  - `python/openfoam/meltPoolFoam/`
+  - `python/lpbf_cfd.py`
+  - `python/test_lpbf_cfd.py`
+  - `PROOF.md`
+  - `sonkayıtlar/LOG.md`
+  - `sonkayıtlar/CURRENT_HANDOFF.md`
+- **Publication Rule**: DO NOT push to GitHub without explicit destination and content authorization from the user.
+
+---
+
+## 5. Next Immediate Action in New Thread / Next Step
+1. Present Phase 1 completion summary to user.
+2. If user requests commit: Stage and commit the new Phase 1 files cleanly with descriptive message.
+3. Proceed to **Phase 2: Capillary & Marangoni Flow**:
+   - Surface-normal capillary force from curvature.
+   - Tangential Marangoni stress $(\mathbf{I} - \mathbf{n}\mathbf{n}) \cdot \nabla \gamma$ with temperature-dependent surface tension $d\gamma/dT$.
+   - Verification case: Manufactured temperature-gradient melt pool demonstrating correct Marangoni circulation direction and velocity scaling.

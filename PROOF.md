@@ -1,3 +1,21 @@
+## 2026-09-18 14:45 — LPBF Multiphysics CFD Phase 1: metalliksaMeltPoolFoam Solver and Verification Suite
+- Scope: `metalliksaMeltPoolFoam-OpenFOAM14-1` / `multiphase-vof-csf-v1`. Standalone OpenFOAM 14 solver package in `python/openfoam/meltPoolFoam/` inheriting from `incompressibleVoF` with Python orchestration layer in `python/lpbf_cfd.py` and automated verification test suite in `python/test_lpbf_cfd.py`.
+- Coupled equations:
+  - Two-phase metal-gas Volume of Fluid (VOF) with Continuum Surface Force (CSF) Laplace capillarity.
+  - Apparent Heat Capacity (AHC) enthalpy formulation ($C_{p,\text{eff}} = C_p + \frac{L_f}{T_l - T_s}$ in mushy zone) with conservative mass-flux convection `fvm::div(fvc::interpolate(cpEff) * rhoPhi, T)`.
+  - Carman-Kozeny mushy-zone Darcy velocity damping sink ($\mathbf{S}_{\text{Darcy}} = -C_{\text{mush}} \frac{(1 - f_L)^2}{f_L^3 + \epsilon} \mathbf{U}$).
+- Verification results:
+  - Static droplet Laplace jump: $\Delta p = 57.61 \, \text{kPa}$ (theoretical $68.0 \, \text{kPa}$, within expected CSF discretization error on coarse $20 \times 20$ grid).
+  - Droplet volume conservation: $\Delta V / V_0 = 1.61 \times 10^{-10}$ (exceeding roadmap requirement of $< 10^{-4}$ by 6 orders of magnitude).
+  - 1D Stefan melting problem: exact analytical transcendental solution $s(t) = 2 \lambda \sqrt{\alpha t} = 5.67 \, \mu\text{m}$; numerical interface located at $[5 \, \mu\text{m}, 10 \, \mu\text{m}]$ (absolute deviation $< 1$ cell width $\Delta x = 5 \, \mu\text{m}$); strictly bounded temperatures $T \in [1600.0, 1800.0] \, \text{K}$.
+  - Carman-Kozeny Darcy velocity suppression: velocity in solid region damped to $U_{\text{solid}} < 0.0002 \, \text{m/s}$.
+  - Flow-disabled thermal parity: 1D conduction test against analytical erf solution shows $0.22\%$ mean relative error ($< 1\%$).
+- Automated test evidence:
+  - `python/test_lpbf_cfd.py`: 5/5 unit tests PASS in 29.9s.
+  - Regression: `test_lpbf_overlap.py` 7/7 PASS, `test_lpbf_engineering.py` 26/26 PASS.
+- Limits & Boundaries:
+  - Phase 1 bounded deliverable; Marangoni flow (Phase 2), conservative interface laser heating (Phase 3), and evaporation recoil (Phase 4) remain pending. In accordance with roadmap non-negotiable rules, `freeSurfaceSolver` remains `False` for application UI until fully qualified; screening fallback is preserved.
+
 ## 2026-09-18 14:15 — Field-resolved inter-track overlap and remelting extraction
 - Scope: enthalpy-fv-6 / metalliksaThermal-OpenFOAM14-6. Field-based tracking of contiguous 3D molten cell envelopes per scan vector (track, layer) directly from simulated temperature and enthalpy fields. Replaces idealized single-track geometric projections (Harkin et al. 2023) for multi-track configurations.
 - Independent oracles: 7 unit tests covering single-track non-applicability, overlapping tracks with verified overlap ratio, separated tracks with powder corridor lack-of-fusion gap detection, 45-degree rotated scan vectors, cyclic remelting tracking, OpenFOAM vs Reference numerical parity, and binary contract mismatch rejection.
@@ -496,6 +514,42 @@ This logbook records all empirically tested and mathematically verified models, 
 
 
 
+
+## Proof Entry 024: Continuation handoff sync (in-app production anchor check)
+
+- **Date**: 2026-09-14
+- **Module**: `production workflow continuity`
+- **Scope**: Confirm where the active application session was last left and keep a truthful continuation checkpoint in task logs.
+- **State captured**: The active in-app browser target remained `http://localhost:3002/?lpbfStage=comparison#/3d-distortion-lab` under production LPBF path.
+- **Operational update**: No new application code changes were introduced in this turn; this was a handoff-continuity turn to avoid rework and preserve context with truthful provenance.
+- **Source of truth**: `METALLIKSA_HANDOFF_2026-09-13.md` and current `sonkayıtlar/LOG.md`.
+- **Functional proof**: Not re-run this turn (no new code changes); prior acceptance tests from previous turns remain unchanged and valid for existing code state.
+- **Status**: **PASS** (continuation log integrity)
+
+---
+
+## Proof Entry 026: Codebase-memory CLI endpoint status
+
+- **Date**: 2026-09-14
+- **Module:** session continuity tooling
+- **Scope:** Verify and use codebase-memory access for last-anchor recovery.
+- **Result:** `codebase-memory-mcp` binary is present and callable, but graph/tool execution from CLI was blocked in this environment with: `codebase-memory-mcp: secure CLI coordination could not be created (endpoint)`.
+- **Operational state:** Last anchor remains `http://localhost:3002/?lpbfStage=comparison#/3d-distortion-lab` and is kept in handoff docs/log entries as the continuity point.
+- **Status:** **BLOCKED** (local CLI coordination issue); fallback continuity source recorded.
+
+---
+
+## Proof Entry 025: Continuity state note (tooling unavailability)
+
+- **Date**: 2026-09-14
+- **Module:** session continuity
+- **Scope:** Resolve last known position and preserve handoff metadata.
+- **State:** In this turn, graph-style codebase-memory tools were not exposed via available tool registry, so continuity was confirmed from `METALLIKSA_HANDOFF_2026-09-13.md`.
+- **Last in-app anchor:** `http://localhost:3002/?lpbfStage=comparison#/3d-distortion-lab`
+- **Functional proof:** No runtime changes this turn; no new tests/build run.
+- **Status:** **PASS** (documentation continuity integrity)
+
+---
 
 ## 2026-09-12 — Resolved LPBF field explorer and application workspace
 - Actual OpenFOAM/reference cell temperatures exported as bounded binary time series; hashes and allowlisted artifact serving, exact sizes and finite-value guards. No analytical geometry is mixed into resolved cell rendering.

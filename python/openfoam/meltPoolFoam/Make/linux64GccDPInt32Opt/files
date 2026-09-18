@@ -1,0 +1,3 @@
+SOURCE += metalliksaMeltPoolFoam.C
+
+EXE = $(PWD)/../bin/metalliksaMeltPoolFoam

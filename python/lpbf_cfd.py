@@ -2401,7 +2401,14 @@ def setup_cfd_multiphysics_case(p, m, folder):
 vertices ({vertices});
 blocks (hex (0 1 2 3 4 5 6 7) ({nxy} {nxy} {nz}) simpleGrading (1 1 1));
 edges ();
-boundary ( walls {{ type wall; faces ((0 3 2 1) (4 5 6 7) (0 1 5 4) (1 2 6 5) (2 3 7 6) (3 0 4 7)); }} );
+boundary (
+    xMin {{ type patch; faces ((3 0 4 7)); }}
+    xMax {{ type patch; faces ((1 2 6 5)); }}
+    yMin {{ type wall; faces ((0 1 5 4)); }}
+    yMax {{ type wall; faces ((2 3 7 6)); }}
+    zMin {{ type wall; faces ((0 3 2 1)); }}
+    zMax {{ type patch; faces ((4 5 6 7)); }}
+);
 mergePatchPairs ();
 '''
     (folder/"system/blockMeshDict").write_text(mesh)
@@ -2413,7 +2420,7 @@ startTime       0;
 stopAt          endTime;
 endTime         {end};
 deltaT          1e-8;
-writeControl    adjustable;
+writeControl    adjustableRunTime;
 writeInterval   {end/60};
 purgeWrite      0;
 writeFormat     ascii;
@@ -2434,9 +2441,10 @@ ddtSchemes { default Euler; }
 gradSchemes { default Gauss linear; }
 divSchemes { default none; 
     div(rhoPhi,U) Gauss linearUpwind grad(U);
-    div(phi,alpha) Gauss vanLeer;
+    div(phi,alpha) Gauss interfaceCompression vanLeer 1;
     div(phirb,alpha) Gauss linear;
-    div(rhoPhi,T) Gauss upwind;
+    div(rhoCpPhi,T) Gauss upwind;
+    div(rhoLfPhi,liquidFraction) Gauss upwind;
 }
 laplacianSchemes { default Gauss linear orthogonal; }
 interpolationSchemes { default linear; }
@@ -2444,7 +2452,15 @@ snGradSchemes { default orthogonal; }
 ''')
     (folder/"system/fvSolution").write_text(foam_header("dictionary", "fvSolution", "system") + '''
 solvers {
-    "alpha.metal" { solver smoothSolver; smoother symGaussSeidel; tolerance 1e-8; relTol 0; }
+    "alpha.metal.*" { 
+        nCorrectors 2; 
+        nSubCycles 1; 
+        MULESCorr yes; 
+        MULES { nIter 10; tolerance 1e-3; }
+        solver smoothSolver; smoother symGaussSeidel; tolerance 1e-8; relTol 0; 
+    }
+    pcorr { solver PCG; preconditioner DIC; tolerance 1e-5; relTol 0; }
+    pcorrFinal { $pcorr; }
     "p_rgh.*" { solver PCG; preconditioner DIC; tolerance 1e-8; relTol 0; }
     "U.*" { solver smoothSolver; smoother symGaussSeidel; tolerance 1e-6; relTol 0; }
     "T.*" { solver smoothSolver; smoother symGaussSeidel; tolerance 1e-6; relTol 0; }
@@ -2480,6 +2496,7 @@ boiling_T       {m["boiling_K"]};
 molarMass       0.046;
 evapCoeff       0.82;
 P0              101325.0;
+plumeMomentumScale {p.get("plumeMomentumScale", 1.0)};
 
 laserActive     true;
 laserPower      {p.get("power_W", 200.0)};
@@ -2536,7 +2553,12 @@ internalField nonuniform List<scalar>
 );
 boundaryField
 {{
-    walls {{ type zeroGradient; }}
+    xMin {{ type zeroGradient; }}
+    xMax {{ type zeroGradient; }}
+    yMin {{ type zeroGradient; }}
+    yMax {{ type zeroGradient; }}
+    zMin {{ type zeroGradient; }}
+    zMax {{ type zeroGradient; }}
 }}
 '''
     (folder/"0/alpha.metal").write_text(am)
@@ -2544,25 +2566,63 @@ boundaryField
     (folder/"0/p_rgh").write_text(foam_header("volScalarField", "p_rgh", "0") + '''
 dimensions [1 -1 -2 0 0 0 0];
 internalField uniform 0;
-boundaryField { walls { type fixedFluxPressure; value uniform 0; } }
+boundaryField {
+    xMin { type fixedFluxPressure; value uniform 0; }
+    xMax { type fixedValue; value uniform 0; }
+    yMin { type fixedFluxPressure; value uniform 0; }
+    yMax { type fixedFluxPressure; value uniform 0; }
+    zMin { type fixedFluxPressure; value uniform 0; }
+    zMax { type fixedValue; value uniform 0; }
+}
 ''')
 
-    (folder/"0/U").write_text(foam_header("volVectorField", "U", "0") + '''
+    u_gas = float(p.get("shielding_gas_velocity_mps", 0.0))
+    u_bcs = f'''
+    xMin {{ type fixedValue; value uniform ({u_gas} 0 0); }}
+    xMax {{ type inletOutlet; inletValue uniform (0 0 0); value uniform ({u_gas} 0 0); }}
+    yMin {{ type noSlip; }}
+    yMax {{ type noSlip; }}
+    zMin {{ type noSlip; }}
+    zMax {{ type inletOutlet; inletValue uniform ({u_gas} 0 0); value uniform ({u_gas} 0 0); }}
+    ''' if u_gas > 0.0 else '''
+    xMin { type noSlip; }
+    xMax { type noSlip; }
+    yMin { type noSlip; }
+    yMax { type noSlip; }
+    zMin { type noSlip; }
+    zMax { type noSlip; }
+    '''
+
+    (folder/"0/U").write_text(foam_header("volVectorField", "U", "0") + f'''
 dimensions [0 1 -1 0 0 0 0];
-internalField uniform (0 0 0);
-boundaryField { walls { type noSlip; } }
+internalField uniform ({u_gas} 0 0);
+boundaryField {{ {u_bcs} }}
 ''')
 
     (folder/"0/T").write_text(foam_header("volScalarField", "T", "0") + f'''
 dimensions [0 0 0 1 0 0 0];
 internalField uniform {p.get("preheat_C", 20.0) + 273.15};
-boundaryField {{ walls {{ type zeroGradient; }} }}
+boundaryField {{
+    xMin {{ type fixedValue; value uniform {p.get("preheat_C", 20.0) + 273.15}; }}
+    xMax {{ type zeroGradient; }}
+    yMin {{ type zeroGradient; }}
+    yMax {{ type zeroGradient; }}
+    zMin {{ type zeroGradient; }}
+    zMax {{ type inletOutlet; inletValue uniform {p.get("preheat_C", 20.0) + 273.15}; value uniform {p.get("preheat_C", 20.0) + 273.15}; }}
+}}
 ''')
 
     (folder/"0/liquidFraction").write_text(foam_header("volScalarField", "liquidFraction", "0") + '''
 dimensions [0 0 0 0 0 0 0];
 internalField uniform 0;
-boundaryField { walls { type zeroGradient; } }
+boundaryField {
+    xMin { type zeroGradient; }
+    xMax { type zeroGradient; }
+    yMin { type zeroGradient; }
+    yMax { type zeroGradient; }
+    zMin { type zeroGradient; }
+    zMax { type zeroGradient; }
+}
 ''')
 
     return dx, segments
@@ -2578,8 +2638,13 @@ def cfd_multiphysics(p, m, report=lambda *args: None, artifact_dir=None):
     script = 'source /opt/openfoam14/etc/bashrc; blockMesh -case "$1" && checkMesh -case "$1" && "$2" -case "$1"'
     import subprocess
     BINARY_CFD = Path(__file__).parent/'openfoam/bin/metalliksaMeltPoolFoam'
-    child = subprocess.Popen(["bash", "-lc", script, "metalliksa", str(folder.resolve()), str(BINARY_CFD.resolve())],
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    wsl_folder = to_wsl_path(folder)
+    wsl_bin = to_wsl_path(BINARY_CFD)
+    
+    cmd_str = f'source /opt/openfoam14/etc/bashrc; blockMesh -case "{wsl_folder}" && checkMesh -case "{wsl_folder}" && "{wsl_bin}" -case "{wsl_folder}"'
+    runner = ["bash", "-c", cmd_str] if is_linux() else ["wsl", "-d", WSL_DISTRO, "--", "bash", "-c", cmd_str]
+    
+    child = subprocess.Popen(runner, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     with (folder/"solver.log").open("w") as log:
         for line in child.stdout:
             log.write(line)
@@ -2605,8 +2670,16 @@ def cfd_multiphysics(p, m, report=lambda *args: None, artifact_dir=None):
         diag["powderBed"] = powder_info
     except:
         pass
+
+    # Phase 8: read solidification microstructure JSON
+    solidification_data = {}
+    try:
+        solidification_data = json.loads((folder/"solidification-microstructure.json").read_text())
+    except:
+        pass
         
     return dict(metrics=dict(), thermalHistory=[], fieldSeries=[],
                 fieldOverlapDiagnostics=dict(),
                 numericalDiagnostics=diag,
+                solidificationMicrostructure=solidification_data,
                 energyBalance=dict(), discretization=dict(mesh_m=dx), scanPath=segments)

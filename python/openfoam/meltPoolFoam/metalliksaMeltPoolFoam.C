@@ -123,6 +123,20 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
         dimensionedVector("zero", dimForce/dimVolume, vector::zero)
     ),
 
+    SPlume_
+    (
+        IOobject
+        (
+            "fPlume",
+            mesh.time().name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedVector("zero", dimForce/dimVolume, vector::zero)
+    ),
+
     ShEvap_
     (
         IOobject
@@ -197,6 +211,9 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
     updateDarcySink();
     updateMarangoniForce();         // Phase 2: compute initial Marangoni force field
     updateEvaporationAndRecoil();   // Phase 3: compute initial recoil and evaporation
+
+    // Phase 8: zero-init solidification diagnostics
+    solidificationDiag_ = SolidificationDiagnostics{0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 }
 
 Foam::solvers::metalliksaMeltPoolFoam::~metalliksaMeltPoolFoam()
@@ -268,11 +285,16 @@ void Foam::solvers::metalliksaMeltPoolFoam::updateMarangoniForce()
     SMarangoni_ = tFma();
 }
 
-// Phase 3: Recoil normal body force & evaporation cooling sink
+// Phase 3 & 7: Recoil normal body force, evaporation cooling, and gas plume
 void Foam::solvers::metalliksaMeltPoolFoam::updateEvaporationAndRecoil()
 {
     tmp<volVectorField> tFrec = evaporation_.computeRecoilForce(alpha1, T_);
     SRecoil_ = tFrec();
+
+    // Phase 7 Plume expansion force
+    const dimensionedScalar rhoGas("rhoGas", dimDensity, mixture.rho2().value());
+    tmp<volVectorField> tFplume = evaporation_.computePlumeMomentumSource(alpha1, T_, rhoGas);
+    SPlume_ = tFplume();
 
     tmp<volScalarField> tShEvap = evaporation_.computeEvaporativeCooling(alpha1, T_);
     ShEvap_ = tShEvap();
@@ -282,7 +304,7 @@ void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
 {
     updateDarcySink();
     updateMarangoniForce();         // Phase 2
-    updateEvaporationAndRecoil();   // Phase 3
+    updateEvaporationAndRecoil();   // Phase 3 & 7
 
     volVectorField& U = U_;
 
@@ -316,6 +338,7 @@ void Foam::solvers::metalliksaMeltPoolFoam::momentumPredictor()
             )
           + SMarangoni_    // Phase 2: Marangoni body force [N/m^3]
           + SRecoil_       // Phase 3: Recoil normal body force [N/m^3]
+          + SPlume_        // Phase 7: Plume gas expansion force [N/m^3]
         );
 
         fvConstraints().constrain(U);
@@ -383,6 +406,15 @@ void Foam::solvers::metalliksaMeltPoolFoam::thermophysicalPredictor()
     TEqn.solve();
 
     updateEnthalpyAndPhaseFraction();
+
+    // Phase 8: update in-situ solidification microstructure tracking
+    updateSolidificationMetrics();
+}
+
+// Phase 8: In-situ solidification front microstructure tracker
+void Foam::solvers::metalliksaMeltPoolFoam::updateSolidificationMetrics()
+{
+    solidificationDiag_ = solidification_.compute(T_, liquidFraction_, U());
 }
 
 void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
@@ -422,13 +454,27 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
     scalar maxT = gMax(T_().primitiveField());
     scalar minT = gMin(T_().primitiveField());
 
+    scalar spatterVolume = 0.0;
+    scalar maxSpatterVel = 0.0;
+    const volVectorField& C = mesh.C();
+
     forAll(liquidFraction_, cellI)
     {
         if (liquidFraction_[cellI] < 0.01 && alpha1[cellI] > 0.5)
         {
             maxUSolid = max(maxUSolid, mag(U_[cellI]));
         }
+        
+        // Phase 7: Spatter Diagnostics (liquid droplets ejected high into the gas)
+        if (alpha1[cellI] > 0.5 && C[cellI].z() > 150e-6)
+        {
+            spatterVolume += alpha1[cellI] * mesh.V()[cellI];
+            maxSpatterVel = max(maxSpatterVel, mag(U_[cellI]));
+        }
     }
+    
+    reduce(spatterVolume, sumOp<scalar>());
+    reduce(maxSpatterVel, maxOp<scalar>());
 
     std::ofstream diagFile((runTime.path()/"cfd-diagnostics.json").c_str());
     diagFile << std::setprecision(12)
@@ -456,9 +502,39 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
         << "  \"maxRecoilPressure_Pa\": " << evapDiag.maxRecoilPressure_Pa << ",\n"
         << "  \"maxEvaporationFlux_kgpm2s\": " << evapDiag.maxEvaporationFlux_kgpm2s << ",\n"
         << "  \"maxRecoilForce_Npm3\": " << evapDiag.maxRecoilForce_Npm3 << ",\n"
-        << "  \"recoilActiveCells\": " << evapDiag.activeCells << "\n"
+        << "  \"recoilActiveCells\": " << evapDiag.activeCells << ",\n"
+        << "  \"spatterVolume_m3\": " << spatterVolume << ",\n"
+        << "  \"maxSpatterVelocity_mps\": " << maxSpatterVel << ",\n"
+        << "  \"solidification_meanG_K_m\": " << solidificationDiag_.meanG_K_m << ",\n"
+        << "  \"solidification_meanR_m_s\": " << solidificationDiag_.meanR_m_s << ",\n"
+        << "  \"solidification_meanPDAS_um\": " << solidificationDiag_.meanPDAS_um << ",\n"
+        << "  \"solidification_meanSDAS_um\": " << solidificationDiag_.meanSDAS_um << ",\n"
+        << "  \"solidification_frontCellCount\": " << solidificationDiag_.frontCellCount << "\n"
         << "}\n";
     diagFile.close();
+
+    // Phase 8: write solidification-microstructure.json
+    std::ofstream solidFile("solidification-microstructure.json");
+    if (solidFile.is_open())
+    {
+        solidFile << std::setprecision(12)
+            << "{\n"
+            << "  \"model\": \"hunt-lu-pdas-kirkwood-sdas-v1\",\n"
+            << "  \"time_s\": " << runTime.value() << ",\n"
+            << "  \"frontCellCount\": " << solidificationDiag_.frontCellCount << ",\n"
+            << "  \"meanG_K_m\": " << solidificationDiag_.meanG_K_m << ",\n"
+            << "  \"maxG_K_m\": " << solidificationDiag_.maxG_K_m << ",\n"
+            << "  \"meanR_m_s\": " << solidificationDiag_.meanR_m_s << ",\n"
+            << "  \"maxR_m_s\": " << solidificationDiag_.maxR_m_s << ",\n"
+            << "  \"meanCoolingRate_K_s\": " << solidificationDiag_.meanCoolingRate_K_s << ",\n"
+            << "  \"meanPDAS_um\": " << solidificationDiag_.meanPDAS_um << ",\n"
+            << "  \"meanSDAS_um\": " << solidificationDiag_.meanSDAS_um << ",\n"
+            << "  \"morphologyFraction_columnar\": " << solidificationDiag_.fracColumnar << ",\n"
+            << "  \"morphologyFraction_equiaxed\": " << solidificationDiag_.fracEquiaxed << ",\n"
+            << "  \"morphologyFraction_mixed\": " << (1.0 - solidificationDiag_.fracColumnar - solidificationDiag_.fracEquiaxed) << "\n"
+            << "}\n";
+        solidFile.close();
+    }
 }
 
 // * * * * * * * * * * * * * * * * Main Driver * * * * * * * * * * * * * * * //

@@ -19,6 +19,7 @@ from lpbf_material_registry import catalog
 from lpbf_simulation import run, validate, fingerprint
 from lpbf_openfoam import BINARY
 from lpbf_evidence import resource_estimate, enforce_thermal_balances
+from lpbf_solidification_microstructure import compute_solidification_microstructure  # Phase 8
 
 ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().parents[1]/".lpbf-jobs")))
 
@@ -283,6 +284,19 @@ def main():
             elif method == "artifact": data = queue.artifact(request["payload"])
             elif method == "get": data = queue.get(request["payload"])
             elif method == "cancel": data = queue.cancel(request["payload"])
+            elif method == "solidification-microstructure":   # Phase 8
+                payload = request["payload"]
+                p = payload.get("params", {})
+                m = payload.get("material", {})
+                cfd = payload.get("cfdResult", None)
+                data = compute_solidification_microstructure(p, m, cfd)
+            elif method == "thermomechanical-distortion":     # Phase 9
+                from lpbf_thermomechanical import analyze_distortion
+                payload = request["payload"]
+                p = payload.get("params", {})
+                m = payload.get("material", {})
+                cfd = payload.get("cfdResult", None)
+                data = analyze_distortion(p, m, cfd)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

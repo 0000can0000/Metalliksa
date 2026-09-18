@@ -1,28 +1,32 @@
-# LPBF Multiphysics CFD Phase 6 Completion & Context Handoff
+# LPBF Multiphysics CFD Phase 7 & 8 Completion & Context Handoff
 
 ## 1. Executive Summary & Context State
 - **Repo**: `Metalliksa-1` (branch main).
-- **Current Milestone**: Phase 6 of LPBF Multiphysics CFD (Optics & Powder Physics) and Bayesian Process Optimizer are 100% IMPLEMENTED & VERIFIED.
-- **Optics / Ray Tracing**: Fresnel angle-dependent reflection and multi-bounce keyhole cavity absorption implemented in `python/openfoam/meltPoolFoam/laserModel.H` and compiled into `metalliksaMeltPoolFoam`.
-- **Powder Physics**: DEM raindrop packing algorithm with particle size distribution ($D_{10}, D_{50}, D_{90}$), packing statistics, non-overlap validation, and OpenFOAM `0/alpha.metal` nonuniform initialization implemented in `python/powder_packer.py` and `python/lpbf_cfd.py`.
-- **Bayesian Optimization**: Process window optimizer with Gaussian Process surrogate and Expected Improvement acquisition implemented in `python/lpbf_bayesian_optimizer.py`, exposed via `/api/python/lpbf-bayesian-optimize` and `LpbfBayesianOptimizerLab.tsx`.
+- **Current Milestone**: Phase 7 (Plume, Shielding Gas & Spatter) and Phase 8 (Solidification Microstructure Coupling) are 100% IMPLEMENTED.
+- **Phase 7 (Plume, Shielding Gas & Spatter)**:
+  - Recoil vapor momentum jet scaling (`plumeMomentumScale`) and shielding gas inflow velocity coupling into OpenFOAM `0/U` boundary conditions.
+  - Spatter tracking diagnostics (`spatterVolume_m3`, `maxSpatterVelocity_mps`) implemented in `python/lpbf_cfd.py` and verified via `python/test_phase7.py`.
+- **Phase 8 (Solidification Microstructure Coupling)**:
+  - In-situ solidification tracking: thermal gradient $G$ and growth velocity $R = \dot{T} / G$ evaluated at liquidus front.
+  - Hunt-Lu Primary Dendrite Arm Spacing (PDAS) $\lambda_1 = a (G^2 R)^{-b}$ and Kirkwood Secondary Dendrite Arm Spacing (SDAS) $\lambda_2 = c (G \cdot R)^{-d}$ correlations.
+  - Hunt CET (Columnar-to-Equiaxed Transition) morphology criterion ($G^n / R$).
+  - Full frontend integration via `SolidificationMicrostructureLab.tsx`, routed through `App.tsx` and `pythonComputationService.ts`.
+  - Comprehensive unit test suite in `python/test_phase8.py`.
 
-## 2. Completed — Phase 6
-1. **Fresnel Multi-Bounce Ray Tracing**:
-   - `python/openfoam/meltPoolFoam/laserModel.H`: Implemented angle-dependent Fresnel reflectivity ($R_s, R_p$) calibrated to material base absorptivity ($A(0) \equiv A_0$), multi-bounce ray energy conservation, specular reflection vectors, and cavity trapping.
-   - WSL OpenFOAM 14 build: Clean compilation via `wmake`.
-2. **Powder Bed Generation**:
-   - `python/powder_packer.py`: Raindrop packing, $D_{10}/D_{50}/D_{90}$ percentiles, packing density calculation, and non-overlap verification.
-   - `python/lpbf_cfd.py`: Setup generates nonuniform `0/alpha.metal` powder bed on top of solid substrate ($z < 0$) with full boundary conditions and exports `powder_bed_info.json`.
-3. **Verification Suite**:
-   - `python/test_phase6.py`: 4 dedicated tests covering powder packing statistics, Fresnel reflection physics, nonuniform OpenFOAM field initialization, and Bayesian optimizer contracts (PASS).
-   - `python/test_powder.py`: Powder packing density and boundary bounds (PASS).
-   - `python/test_lpbf_cfd.py`: 9 multiphysics CFD verification tests (PASS).
-   - Frontend: `npm run lint` (0 errors), `npm run test:unit` (109/109 PASS).
-   - Envanter: `docs/MODULE_EVIDENCE_INVENTORY.md` updated with `lpbf-optimizer` registration.
-   - Graph: `graft build` refreshed (2,608 nodes, 5,454 edges).
+## 2. Completed Modules & Files
+1. **Phase 7 Files**:
+   - `python/openfoam/meltPoolFoam/metalliksaMeltPoolFoam.C`, `evaporationModel.H`
+   - `python/test_phase7.py`
+2. **Phase 8 Files**:
+   - `python/lpbf_solidification_microstructure.py`
+   - `python/openfoam/meltPoolFoam/solidificationModel.H`
+   - `python/test_phase8.py`
+   - `src/components/SolidificationMicrostructureLab.tsx`
+   - `src/App.tsx`, `src/data/workspaces.ts`, `src/services/pythonComputationService.ts`
+3. **Integration & IPC**:
+   - `python/lpbf_worker.py`: Dispatches `solidification-microstructure` action to Python engine.
 
-## 3. Next Bounded Increment — Phase 7: Plume, Shielding Gas & Spatter Coupling
-- Compressible gas plume dynamics driven by intense recoil vapor jetting.
-- Shielding gas flow interaction with powder bed (denudation zone formation).
-- Spatter ejection tracking and deposit formation.
+## 3. Next Bounded Increment
+- Commit Phase 7 & 8 code changes cleanly to `Metalliksa-1`.
+- Regenerate Graft context graph (`graft build`).
+- Proceed to next milestone: Macro-scale residual stress/distortion coupling or experimental validation data ingestion.

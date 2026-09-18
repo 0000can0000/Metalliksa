@@ -4,7 +4,7 @@ Snapshot: 2026-09-15. Task A01. This is a bounded software evidence inventory, n
 
 ## Scope and reading rules
 
-The complete navigation set is the 26 entries in `src/data/workspaces.ts`; their render mapping is in `src/App.tsx`. There are 20 Research and 6 Preview modules, and none currently marked Production. These labels describe product maturity, not the evidence status of a calculation. Module IDs below are exact registry IDs; component paths are repository-relative.
+The complete navigation set is the 27 entries in `src/data/workspaces.ts`; their render mapping is in `src/App.tsx`. There are 21 Research and 6 Preview modules, and none currently marked Production. These labels describe product maturity, not the evidence status of a calculation. Module IDs below are exact registry IDs; component paths are repository-relative.
 
 This review inspected registry/render wiring, targeted component imports and calculation/request sections, route dispatch, LPBF model contracts, and selected test assertions. It did not execute physical experiments, audit every descendant component, reproduce literature results, verify external source documents, or run all solvers. An endpoint listed below is implementation evidence, not a claim that its dependencies are installed or that its results are accurate. A test location is an available check, not a report that it passed in this task.
 
@@ -22,6 +22,7 @@ Coverage metadata reported missing freshness for inherited evidence paths; App a
 | --- | --- | --- | --- | --- |
 | `3d-distortion-lab` / LPBF workflow | `src/components/LpbfEngineeringWorkspace.tsx` | `src/components/3d-distortion-lab/LpbfEngineeringSimulation.tsx`, `src/components/3d-distortion-lab/ResolvedThermalViewer.tsx`; `routes/lpbfSimulation.ts` serves `POST /api/lpbf/jobs`, estimate, capabilities, job read/cancel and artifacts. Separate build screening: `POST /api/python/lpbf-build-job` in `routes/physics.ts` → `python/lpbf_build_job_solver.py`. | **Research. S:** `tests/lpbf-workflow.test.ts` covers shared process, stale/executed input and unresolved qualification; `python/test_lpbf_engineering.py` contains conservation, enthalpy, mesh, field and honest-fallback assertions. **L:** `tests/lpbf-contract.test.ts`, `tests/lpbf-fields.test.ts`, `tests/lpbf-build-session.test.ts`, `python/test_lpbf_api.py`, `python/test_lpbf_build_job.py`. Transient thermal fields are implemented; printability, defect risk and legacy distortion remain screening. | Qualify an explicitly bounded thermal use case against independent matched measurements; keep screening and resolved thermal outputs distinct. See detailed boundaries below. |
 | `lpbf-optimizer` / Bayesian Optimization | `src/components/LpbfBayesianOptimizerLab.tsx` | `src/services/pythonComputationService.ts` → `/api/python/lpbf-bayesian-optimize`, `routes/physics.ts` → `python/lpbf_bayesian_optimizer.py`. | **Preview. S:** `python/test_phase6.py` and service/route contract. Process parameter optimization using Gaussian Process / Bayesian surrogate. | Multi-objective Pareto frontier calibration with experimental validation data. |
+| `solidification-microstructure` / Microstructure Lab | `src/components/SolidificationMicrostructureLab.tsx` | `src/services/pythonComputationService.ts` → `/api/python/lpbf-solidification-microstructure`, `python/lpbf_worker.py` → `python/lpbf_solidification_microstructure.py`. | **Research. S:** `python/test_phase8.py` and service/component contract. In-situ G/R tracking, Hunt-Lu PDAS, Kirkwood SDAS, and Hunt CET morphology criterion. | Calibrate kinetic constants against experimental EBSD/micrograph dendrite spacing measurements. |
 
 ### What is actually resolved, screened, or unresolved
 
@@ -83,7 +84,7 @@ Principal paths run in the browser using the components/parsers/stores above. Fi
 
 ### Host Python scientific requests
 
-Modules: `phase-diagram`, `ttt-cct-kinetics`, `xrd-lab`, `electrochem-suite`, `icme-motor`, `uq-lab`, `lpbf-optimizer`.
+Modules: `phase-diagram`, `ttt-cct-kinetics`, `xrd-lab`, `electrochem-suite`, `icme-motor`, `uq-lab`, `lpbf-optimizer`, `solidification-microstructure`.
 
 The listed Node routes dispatch through `server/processOrchestrator.ts` and `server/pythonRuntime.ts` to the scripts identified in each row. Browser-only subviews can coexist with these requests. Interpreter choice and IPC ports are documented in `docs/ENVIRONMENT_READINESS.md`; broad numerical/CALPHAD/ML requirements are in `python/requirements.txt`. Actual optional library, thermodynamic database and model availability must be checked for the selected operation. A successful import or a warm module is not successful scientific execution. CALPHAD coverage and the full domain dependency environment remain open A02 work.
 

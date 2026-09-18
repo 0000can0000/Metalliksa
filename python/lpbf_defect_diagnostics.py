@@ -88,6 +88,30 @@ def defect_diagnostics(width_um, depth_um, length_um, hatch_um, layer_um, *, agg
 
     result["keyhole"]["depthToWidth"] = _finite_ratio(depth, width)
     result["balling"]["lengthToWidth"] = _finite_ratio(length, width)
+    
+    # King & Cunningham Keyhole Criterion
+    # High-speed X-ray vapor depression stability based on aspect ratio D/W > 1.5
+    # (or normalized enthalpy, but we only have D and W in this purely geometric screen).
+    aspect_ratio = _finite_ratio(depth, width)
+    if aspect_ratio is not None:
+        keyhole_threshold = 1.5
+        if aspect_ratio >= keyhole_threshold:
+            result["keyhole"]["risk"] = "high"
+            result["keyhole"]["reason"] = "Aspect ratio D/W >= 1.5 indicates deep vapor depression prone to collapse and porosity trapping (King/Cunningham)."
+        elif aspect_ratio >= 1.0:
+            result["keyhole"]["risk"] = "moderate"
+            result["keyhole"]["reason"] = "Aspect ratio D/W >= 1.0 indicates unstable transition regime."
+        else:
+            result["keyhole"]["risk"] = "low"
+            result["keyhole"]["reason"] = "Aspect ratio D/W < 1.0 indicates stable conduction/transition mode."
+            
+        # Update provenance for keyhole
+        result["provenance"].append({
+            "title": "King et al. (2014) & Cunningham et al. (2019)",
+            "url": "https://doi.org/10.1126/science.aav4687",
+            "use": "Aspect ratio D/W > 1.5 for keyhole instability and vapor depression collapse porosity.",
+        })
+
     if width == 0 or depth == 0:
         lof.update({
             "status": "no-melt" if width == 0 else "inadequate-penetration",

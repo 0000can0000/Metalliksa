@@ -9,7 +9,8 @@ export const WORKSPACES = [
 
 export const MODULES = [
   { id: '3d-distortion-lab', workspace: 'lpbf', label: 'LPBF workflow', scope: 'Research', description: 'One material and process vector; explicit simulation and screening scope.', next: 'lpbf-optimizer' },
-  { id: 'lpbf-optimizer', workspace: 'lpbf', label: 'Bayesian Optimization', scope: 'Preview', description: 'Autonomous closed-loop search for optimal parameters balancing productivity and defect risk.', next: 'research-hub' },
+  { id: 'lpbf-optimizer', workspace: 'lpbf', label: 'Bayesian Optimization', scope: 'Preview', description: 'Autonomous closed-loop search for optimal parameters balancing productivity and defect risk.', next: 'solidification-microstructure' },
+  { id: 'solidification-microstructure', workspace: 'lpbf', label: 'Microstructure Lab', scope: 'Research', description: 'In-situ G/R solidification front tracking with Hunt-Lu PDAS, Kirkwood SDAS and dendrite morphology prediction.', next: 'research-hub' },
   { id: 'database', workspace: 'materials', label: 'Materials Database', scope: 'Research', description: 'Handbook values and reviewed research references; source applicability requires review.', next: '3d-distortion-lab' },
   { id: 'alloy-builder', workspace: 'materials', label: 'Alloy Builder', scope: 'Research', description: 'Composition exploration and inverse design with model-dependent estimates.', next: 'phase-diagram' },
   { id: 'phase-diagram', workspace: 'materials', label: 'CALPHAD', scope: 'Research', description: 'Phase equilibrium within the selected database and model coverage.', next: 'ttt-cct-kinetics' },

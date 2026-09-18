@@ -536,6 +536,27 @@ export interface PythonBayesianOptimizationResult {
   nIterations: number;
 }
 
+// Phase 8: Solidification Microstructure Lab result type
+export interface SolidificationMicrostructureResult {
+  source: string;
+  G_K_m: number;
+  maxG_K_m: number;
+  R_m_s: number;
+  maxR_m_s: number;
+  coolingRate_K_s: number;
+  PDAS_um: number;
+  SDAS_um: number;
+  morphology: 'columnar' | 'equiaxed' | 'mixed';
+  morphologyFractions: {
+    columnar: number;
+    equiaxed: number;
+    mixed: number;
+  };
+  frontCellCount: number;
+  doi: Record<string, string>;
+  disclaimer: string;
+}
+
 class PythonComputationService {
   private statusCache: PythonEngineStatus | null = null;
   private lastCheckTime = 0;
@@ -547,6 +568,21 @@ class PythonComputationService {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  // Phase 8: Solidification Microstructure Lab
+  async computeSolidificationMicrostructure(data: {
+    params: Record<string, number | string>;
+    material: Record<string, number | string>;
+    cfdResult?: Record<string, unknown>;
+  }): Promise<SolidificationMicrostructureResult> {
+    const res = await fetch("/api/python/lpbf-solidification-microstructure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     return res.json();
   }
 

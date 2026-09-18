@@ -14,6 +14,7 @@ Description
     - Enthalpy-based phase change (solid-mushy-liquid)
     - Carman-Kozeny Darcy momentum sink in mushy/solid zones
     - Marangoni tangential stress: (I-nn).grad(T) * dSigma/dT [Phase 2]
+    - Solidification microstructure tracking: G, R, PDAS, SDAS [Phase 8]
 \*---------------------------------------------------------------------------*/
 
 #ifndef metalliksaMeltPoolFoam_H
@@ -23,6 +24,7 @@ Description
 #include "laserModel.H"
 #include "evaporationModel.H"
 #include "interfaceForces.H"
+#include "solidificationModel.H"      // Phase 8: G/R microstructure tracker
 #include "IOdictionary.H"
 #include "fvmDdt.H"
 #include "fvmDiv.H"
@@ -53,6 +55,7 @@ protected:
     volScalarField SDarcy_;
     volVectorField SMarangoni_;    // Marangoni body force [N/m^3]
     volVectorField SRecoil_;       // Recoil body force [N/m^3] (Phase 3)
+    volVectorField SPlume_;        // Plume gas expansion force [N/m^3] (Phase 7)
     volScalarField ShEvap_;        // Evaporative cooling sink [W/m^3] (Phase 3)
 
     // Thermophysical properties
@@ -74,14 +77,17 @@ protected:
     // Sourced physical submodels
     LaserModel laser_;
     EvaporationModel evaporation_;
+    SolidificationModel solidification_;   // Phase 8
 
     // Diagnostics tracking
     scalar initialMetalVolume_;
+    SolidificationDiagnostics solidificationDiag_;  // Phase 8: cached per time step
 
     void updateDarcySink();
     void updateEnthalpyAndPhaseFraction();
     void updateMarangoniForce();         // Phase 2
     void updateEvaporationAndRecoil();   // Phase 3
+    void updateSolidificationMetrics();  // Phase 8
 
 public:
     TypeName("metalliksaMeltPoolFoam");
@@ -99,7 +105,9 @@ public:
     const volScalarField& SDarcy() const { return SDarcy_; }
     const volVectorField& SMarangoni() const { return SMarangoni_; }  // Phase 2
     const volVectorField& SRecoil() const { return SRecoil_; }        // Phase 3
+    const volVectorField& SPlume() const { return SPlume_; }          // Phase 7
     const volScalarField& ShEvap() const { return ShEvap_; }          // Phase 3
+    const SolidificationDiagnostics& solidificationDiag() const { return solidificationDiag_; }  // Phase 8
 };
 
 } // End namespace solvers

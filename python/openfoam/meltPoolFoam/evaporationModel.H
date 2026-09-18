@@ -29,6 +29,7 @@ class EvaporationModel
     scalar P0_;                 // ambient reference pressure [Pa] (101325.0)
     scalar R_univ_;             // universal gas constant [J/(mol K)] (8.314462618)
     scalar interfaceThreshold_; // |grad(alpha)| threshold [1/m]
+    scalar plumeMomentumScale_; // Tuning factor for plume momentum force
 
 public:
     EvaporationModel(const fvMesh& mesh, const dictionary& dict)
@@ -41,7 +42,8 @@ public:
         evapCoeff_(dict.lookupOrDefault<scalar>("evapCoeff", 0.82)),
         P0_(dict.lookupOrDefault<scalar>("P0", 101325.0)),
         R_univ_(8.314462618),
-        interfaceThreshold_(dict.lookupOrDefault<scalar>("interfaceThreshold", 1e3))
+        interfaceThreshold_(dict.lookupOrDefault<scalar>("interfaceThreshold", 1e3)),
+        plumeMomentumScale_(dict.lookupOrDefault<scalar>("plumeMomentumScale", 1.0))
     {}
 
     bool active() const { return active_; }
@@ -55,6 +57,7 @@ public:
         evapCoeff_ = dict.lookupOrDefault<scalar>("evapCoeff", evapCoeff_);
         P0_ = dict.lookupOrDefault<scalar>("P0", P0_);
         interfaceThreshold_ = dict.lookupOrDefault<scalar>("interfaceThreshold", interfaceThreshold_);
+        plumeMomentumScale_ = dict.lookupOrDefault<scalar>("plumeMomentumScale", plumeMomentumScale_);
     }
 
     // Saturation vapor pressure via Clausius-Clapeyron:
@@ -132,6 +135,57 @@ public:
         }
 
         return tFrecoil;
+    }
+
+    // Phase 7: Plume Momentum Force
+    // S_plume = -(j_evap^2 / rho_gas) * grad(alpha1) * scale
+    // This pushes the gas phase away from the evaporating surface.
+    tmp<volVectorField> computePlumeMomentumSource
+    (
+        const volScalarField& alpha1,
+        const volScalarField& T,
+        const dimensionedScalar& rhoGas
+    ) const
+    {
+        tmp<volVectorField> tFplume
+        (
+            new volVectorField
+            (
+                IOobject
+                (
+                    "fPlume",
+                    mesh_.time().name(),
+                    mesh_,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh_,
+                dimensionedVector("zero", dimForce/dimVolume, vector::zero)
+            )
+        );
+        volVectorField& Fplume = tFplume.ref();
+
+        if (!active_ || plumeMomentumScale_ <= 0.0) return tFplume;
+
+        volVectorField gradAlpha(fvc::grad(alpha1));
+
+        forAll(alpha1, cellI)
+        {
+            scalar magGa = mag(gradAlpha[cellI]);
+            if (magGa < interfaceThreshold_)
+            {
+                Fplume[cellI] = vector::zero;
+                continue;
+            }
+
+            scalar jEvap = computeEvapFlux(T[cellI]);
+            // F_plume = - (j^2 / rho_gas) * grad(alpha1) * scale
+            // grad(alpha1) points into liquid, so -grad points into gas.
+            scalar plumeP = plumeMomentumScale_ * (jEvap * jEvap) / rhoGas.value();
+            Fplume[cellI] = -plumeP * gradAlpha[cellI];
+        }
+
+        return tFplume;
     }
 
     // Evaporation cooling heat sink: S_h,evap = - Lv * j_evap * |grad(alpha1)| [W/m^3]

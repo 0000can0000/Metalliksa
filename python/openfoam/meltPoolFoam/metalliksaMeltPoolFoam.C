@@ -188,6 +188,9 @@ Foam::solvers::metalliksaMeltPoolFoam::metalliksaMeltPoolFoam(fvMesh& mesh)
 
         // Phase 3: Evaporation and recoil parameters
         evaporation_.read(thermalDict);
+        
+        // Phase 4: Laser model parameters
+        laser_.read(thermalDict);
     }
 
     updateEnthalpyAndPhaseFraction();
@@ -372,7 +375,7 @@ void Foam::solvers::metalliksaMeltPoolFoam::thermophysicalPredictor()
       + fvm::div(rhoCpPhi, T_)
       - fvm::laplacian(kEff, T_)
      ==
-        laser_.heatSource()
+        laser_.heatSource(alpha1)
       + ShEvap_    // Phase 3: Evaporative cooling sink [W/m^3]
     );
 
@@ -430,10 +433,11 @@ void Foam::solvers::metalliksaMeltPoolFoam::postSolve()
     std::ofstream diagFile((runTime.path()/"cfd-diagnostics.json").c_str());
     diagFile << std::setprecision(12)
         << "{\n"
-        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-3\",\n"
+        << "  \"solver\": \"metalliksaMeltPoolFoam-OpenFOAM14-4\",\n"
         << "  \"vofModel\": \"multiphase-vof-csf-v1\",\n"
         << "  \"marangoniModel\": \"tangential-dsigmadT-interface-v1\",\n"
         << "  \"recoilModel\": \"recoil-knight-clausius-v1\",\n"
+        << "  \"laserModel\": \"moving-gaussian-surface-flux-v1\",\n"
         << "  \"time_s\": " << runTime.value() << ",\n"
         << "  \"deltaP_Pa\": " << diag.deltaP_Pa << ",\n"
         << "  \"dropletPressureInside_Pa\": " << diag.dropletPressureInside << ",\n"

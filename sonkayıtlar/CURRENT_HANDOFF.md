@@ -47,10 +47,10 @@
 ## 4. Git & Publication
 - Ready for local commit. Pre-existing unstaged files untouched. No push without authorization.
 
-## 5. Next — Phase 4: Moving Interface Laser Heating
-- Implement `laserModel.H` with moving Gaussian surface flux applied directly to represented metal-gas interface cells (\(|\nabla \alpha_1| > \text{threshold}\)).
-- Include scan path coordinates, laser power, beam radius, and incidence angle.
-- Verification: moving spot surface heating vs analytical conduction / energy conservation.
+## 5. Next — Phase 5: Python Pipeline & Pre-Processing
+- Consolidate thermal inputs (scan paths, laser parameters) from CLI.
+- Connect the moving laser CFD solver to the final user inputs.
+- Verification: E2E runs of the simulation via CLI interface.
 
 
 ---
@@ -64,16 +64,17 @@
    - Carman-Kozeny mushy-zone Darcy velocity damping sink:
      $$\mathbf{S}_{\text{Darcy}} = -C_{\text{mush}} \frac{(1 - f_L)^2}{f_L^3 + \epsilon} \mathbf{U}$$
    - Modular headers: `laserModel.H`, `evaporationModel.H`, `interfaceForces.H`.
+   - Phase 4 Moving Laser Heating: Applies moving Gaussian heat flux directly to VOF interface cells ($\max(\nabla \alpha_1 \cdot \mathbf{d}, 0) |\nabla \alpha_1|$), reading scan paths dynamically from thermalProperties.
 2. **Python Orchestration & Verification Layer (`python/lpbf_cfd.py`)**:
    - `verify_cfd_capability()`: Verifies OpenFOAM 14 and binary operational status. Dual Windows & direct Linux execution support.
    - `setup_droplet_case()`: Generates 2D static liquid metal droplet case in gas.
    - `setup_stefan_case()`: Generates 1D melting Stefan benchmark case in pure metal domain.
+   - `setup_laser_case()`: Generates Phase 4 moving laser domain.
    - `setup_darcy_damping_case()`: Generates 2D pressure-driven channel flow verifying Darcy velocity suppression in solid vs liquid regions.
    - `setup_thermal_parity_case()`: Generates 1D conduction benchmark with flow disabled.
    - `stefan_analytical_solution()`: Solves transcendental equation $\lambda e^{\lambda^2} \text{erf}(\lambda) = \dots$ for exact interface position $s(t) = 2 \lambda \sqrt{\alpha t}$.
    - Field readers: `read_foam_scalar_field()`, `read_foam_vector_field()`.
    - `run_cfd_simulation()`: Executes `blockMesh` + `metalliksaMeltPoolFoam` inside WSL, extracts `cfd-diagnostics.json`.
-3. **Automated Unit Tests (`python/test_lpbf_cfd.py`)**:
    - `test_01_cfd_capability`: PASS.
    - `test_02_droplet_laplace_and_volume_conservation`: $\Delta p = 57.61 \, \text{kPa}$ (theoretical $68 \, \text{kPa}$), volume conservation error $= 1.61 \times 10^{-10}$ (far exceeding $< 10^{-4}$ gate).
    - `test_03_stefan_melting_problem`: Numerical melt front matches analytical $5.67 \, \mu\text{m}$ within $< 1$ cell width ($\Delta x = 5 \, \mu\text{m}$), bounded temperatures.

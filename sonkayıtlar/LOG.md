@@ -1,3 +1,12 @@
+## 2026-09-18 16:15 — Roadmap: North Star 3-Tier Toolpath & Defect Digital Twin Integration
+- Task: Formalize and integrate the North Star vision and the 3-tier toolpath kinematics architecture into the official product roadmap (ROADMAP.md).
+- Done / Last completed action: Updated North-Star Product Target and Phase 5 in ROADMAP.md to establish the hybrid toolpath ingestion strategy: (1) Core high-precision direct toolpath parsing (CLI / G-Code), (2) Agile R&D parametric benchmark patterns (Single track, 90° Turnaround, Island/Checkerboard), and (3) Rapid in-app STL slicing via BasicSTLSlicer. Formalized physical defect criteria: Harkin et al. (2023) elliptical overlap for Lack of Fusion (LoF), King & Cunningham normalized enthalpy and vapor depression collapse for Keyhole, and Rayleigh-Plateau / Yadroitsev capillary breakup (L/W > pi) for Balling. Integrated scanner mirror dynamics (acceleration profiles, skywriting toggle, mark/jump delays) and 3D spatial defect mapping with UQ-driven relative density (%99.X) output.
+- Files touched: ROADMAP.md, sonkayıtlar/LOG.md.
+- Tests: Document validation and lint check PASS. No source code broken.
+- Result: PASS for roadmap formalization milestone.
+- Where we left off / Next action: Implement Tier 1/2 toolpath ingestion (CLI parser / Parametric test patterns) and King/Rayleigh-Plateau defect thresholds in lpbf_defect_diagnostics.py.
+- Agent: Antigravity. English application/code, Turkish user updates.
+
 ## 2026-09-18 16:05 — LPBF Multiphysics CFD Phase 3: Knight Recoil Pressure & Hertz-Knudsen Evaporation
 - Task: Implement Phase 3 of LPBF Multiphysics CFD Roadmap (docs/LPBF_MULTIPHYSICS_CFD_ROADMAP.md).
 - Done / Last completed action: Implemented full EvaporationModel in python/openfoam/meltPoolFoam/evaporationModel.H with Knight (1979) recoil pressure P_recoil = 0.54 * P_sat(T) via Clausius-Clapeyron, Hertz-Knudsen evaporative mass flux, normal interface recoil body force f_recoil = P_recoil * grad(alpha1) directing downward into the liquid metal, and latent evaporative cooling sink Sh_evap = -Lv * j_evap * |grad(alpha1)|. Integrated SRecoil_ into momentumPredictor and ShEvap_ into thermophysicalPredictor of metalliksaMeltPoolFoam. Bumped solver to metalliksaMeltPoolFoam-OpenFOAM14-3 and recoil model to recoil-knight-clausius-v1. Added setup_recoil_case and automated unit tests 07 & 08 in python/test_lpbf_cfd.py.
@@ -983,3 +992,9 @@ px tsc --noEmit PASS
 - Files: src/data/engineeringRoadmap.ts; docs/STARTUP_EXECUTION.md; docs/SCIENTIFIC_ENVIRONMENT_REPRODUCTION.md; sonkayıtlar/CURRENT_HANDOFF.md; sonkayıtlar/LOG.md.
 - Scope: B01/B02 remain uncredited and pilot, holdout and commercial gates stay blocked. C01/C02 may proceed with explicitly labelled generic assumptions and public sourced data; no customer evidence or scientific approval is inferred.
 - Result: PASS — decision recorded without falsifying customer evidence. Next: begin C01/C02 material identity, units and provenance work under deferred-customer scope.
+
+## 2026-09-18 — Phase 4: Moving Interface Laser Heating Complete
+- Decision: Implemented Moving Gaussian Surface Flux directly on the VOF interface.
+- Files: laserModel.H, metalliksaMeltPoolFoam.C, lpbf_cfd.py, 	est_lpbf_cfd.py, CURRENT_HANDOFF.md.
+- Scope: Formulated volumetric heat source as S_h = I(x) max(grad(alpha1) dot d, 0) |grad(alpha1)|, ensuring projection onto the gas-metal free surface dynamically. Updated the solver to read scan path vectors and timing from 	hermalProperties. Unit test verified moving domain heating locally.
+- Result: PASS — Test 	est_09_moving_laser_surface_heating executes successfully under WSL and reports expected elevated temperatures and laser model activation. Next: Phase 5 Python Pipeline & Pre-Processing.

@@ -354,7 +354,7 @@ export const ONNXSegmentationStudio: React.FC = () => {
               <div className="flex items-center gap-3 text-[11px] text-slate-400">
                 <span>Latency: <strong className="text-purple-300 font-mono">{inferenceResult?.inferenceTimeMs || 18} ms</strong></span>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold">
-                  {customModelName ? "Custom ONNX Engine" : "Wasm SIMD 60fps"}
+                  {customModelName ? "Custom ONNX Engine" : "Heuristic CV Engine"}
                 </span>
               </div>
             </div>
@@ -376,7 +376,7 @@ export const ONNXSegmentationStudio: React.FC = () => {
               {isInferencing && (
                 <div className="absolute inset-0 bg-[#050810]/70 backdrop-blur-sm flex flex-col items-center justify-center text-purple-300 text-xs space-y-2 font-mono">
                   <RefreshCw className="w-6 h-6 animate-spin text-purple-400" />
-                  <span>Executing Wasm U-Net Feature Maps...</span>
+                  <span>Executing Computer Vision Segmentation Kernel...</span>
                 </div>
               )}
             </div>
@@ -484,12 +484,14 @@ export const ONNXSegmentationStudio: React.FC = () => {
                 <strong className="text-white font-mono">{inferenceResult?.grainBoundaryLength_mm_per_mm2 || 142} mm/mm²</strong>
               </div>
               <div className="flex items-center justify-between">
-                <span>Confidence Score:</span>
-                <strong className="text-emerald-400 font-mono">{inferenceResult?.overallConfidenceScore || 94.2}%</strong>
+                <span>Contrast Metric:</span>
+                <strong className="text-emerald-400 font-mono">
+                  {inferenceResult ? `${inferenceResult.overallConfidenceScore}% (SNR Quality)` : "Awaiting Analysis"}
+                </strong>
               </div>
               <div className="flex items-center justify-between">
                 <span>Standard Conformance:</span>
-                <strong className="text-emerald-400 font-mono">ASTM E562 / ASTM E1245 Certified</strong>
+                <strong className="text-emerald-400 font-mono">ASTM E562 / ASTM E1245 Protocol</strong>
               </div>
             </div>
           </div>
@@ -558,7 +560,7 @@ export const ONNXSegmentationStudio: React.FC = () => {
               <div className="p-3 rounded-xl bg-[#050810] border border-[#162032] space-y-1 text-slate-300">
                 <div className="font-bold text-emerald-400">Step 3: Load Output ONNX in Web App</div>
                 <p className="text-[11px] text-slate-400">
-                  The script will generate <code className="text-cyan-300">metallix_micrograph_unet.onnx</code>. Click <strong>"Load Custom .ONNX"</strong> in the top header to run inference on your newly trained neural network with 60 FPS Wasm SIMD acceleration!
+                  The script will generate <code className="text-cyan-300">metallix_micrograph_unet.onnx</code>. Click <strong>"Load Custom .ONNX"</strong> in the top header to run inference on your newly trained neural network with direct in-browser acceleration.
                 </p>
               </div>
             </div>

@@ -341,6 +341,28 @@ def main():
                 )
                 engine = GalvanometerKinematicsEngine(prof)
                 data = engine.simulate_toolpath(vectors)
+            elif method == "fatigue-fracture":                # Phase 13
+                from lpbf_fatigue_fracture import MurakamiFatigueEngine
+                payload = request["payload"]
+                alloy = payload.get("alloyName", "Ti-6Al-4V")
+                engine = MurakamiFatigueEngine(alloy)
+                sqrt_area = float(payload.get("sqrtArea_um", 45.0))
+                location = payload.get("location", "internal")
+                r_ratio = float(payload.get("stressRatio_R", -1.0))
+                calc_type = payload.get("type", "full")
+
+                fatigue_res = engine.calculate_fatigue_limit(sqrt_area, location, r_ratio)
+                kt_curve = engine.generate_kitagawa_takahashi_curve(location, r_ratio, n_points=30)
+                paris_res = engine.simulate_paris_crack_growth(
+                    initial_defect_sqrt_area_um=sqrt_area,
+                    cyclic_stress_amplitude_MPa=float(payload.get("stressAmplitude_MPa", 220.0)),
+                    stress_ratio_R=r_ratio
+                )
+                data = {
+                    "fatigue_limit": fatigue_res,
+                    "kitagawa_takahashi_curve": kt_curve,
+                    "paris_crack_growth": paris_res
+                }
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

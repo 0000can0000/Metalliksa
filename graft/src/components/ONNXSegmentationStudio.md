@@ -1,6 +1,6 @@
 # src/components/ONNXSegmentationStudio.tsx
 
-- ONNXSegmentationStudio · function · L74-L584 — ONNXSegmentationStudio: React.FC = ()
+- ONNXSegmentationStudio · function · L74-L586 — ONNXSegmentationStudio: React.FC = ()
 - generateSyntheticMicrograph · function · L90-L138 — generateSyntheticMicrograph = (type: string, width: number, height: number): ImageData
 - runSegmentation · function · L141-L177 — runSegmentation = async ()
 - handleCustomUpload · function · L185-L193 — handleCustomUpload = (e: React.ChangeEvent<HTMLInputElement>)

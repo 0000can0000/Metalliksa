@@ -95,23 +95,15 @@ export interface SegmentationOutput {
 }
 
 export class MetallurgicalSegmentationEngine {
-  private isWasmInitialized = false;
+  private isInitialized = false;
 
   public async initialize(): Promise<boolean> {
-    try {
-      // Check WebAssembly support
-      if (typeof WebAssembly === "object") {
-        this.isWasmInitialized = true;
-      }
-      return true;
-    } catch {
-      this.isWasmInitialized = false;
-      return false;
-    }
+    this.isInitialized = true;
+    return true;
   }
 
   /**
-   * Performs U-Net / SegFormer inference on an HTMLImageElement or ImageBitmap.
+   * Performs morphological and gradient-based segmentation on an HTMLImageElement or Canvas.
    */
   public async segmentMicrograph(
     img: HTMLImageElement | HTMLCanvasElement,
@@ -120,7 +112,7 @@ export class MetallurgicalSegmentationEngine {
   ): Promise<SegmentationOutput> {
     const startTime = performance.now();
 
-    // 1. Prepare offscreen canvas for tensor extraction
+    // 1. Prepare offscreen canvas for pixel extraction
     const targetW = Math.min(512, img.width || 512);
     const targetH = Math.min(512, img.height || 512);
 
@@ -136,7 +128,7 @@ export class MetallurgicalSegmentationEngine {
     const imgData = ctx.getImageData(0, 0, targetW, targetH);
     const pixels = imgData.data;
 
-    // 2. High-speed multi-scale convolutional segmentation kernel (Wasm/SIMD speed)
+    // 2. High-speed multi-scale convolutional segmentation kernel
     const maskData = ctx.createImageData(targetW, targetH);
     const maskPixels = maskData.data;
 
@@ -249,8 +241,9 @@ export class MetallurgicalSegmentationEngine {
       const areaPct = +(frac * 100).toFixed(2);
       const ci = +(1.96 * Math.sqrt(Math.max(1e-5, frac * (1 - frac)) / effectiveGridPoints) * 100).toFixed(2);
 
-      // Estimated particle count from morphological clustering
-      const estParticles = Math.max(0, Math.round(count / (25 + Math.random() * 15)));
+      // Estimated particle count from morphological clustering (nominal 32px cluster)
+      const nominalClusterPixels = 32;
+      const estParticles = Math.max(0, Math.round(count / nominalClusterPixels));
       const meanDia_um = +(Math.sqrt((count / Math.max(1, estParticles)) * pixelScale_umPerPixel * pixelScale_umPerPixel * 4 / Math.PI)).toFixed(2);
 
       return {

@@ -12,9 +12,9 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
     standardDesignation: "AMS 5662 / UNS N07718",
     creationDate: "2026-08-15",
     lastUpdated: "2026-08-31",
-    leadMetallurgist: "Dr. Caner Arganis",
-    organization: "MetalliX Aerospace Propulsion Lab",
-    currentStatus: "Production Ready",
+    leadMetallurgist: "Materials Specialist (Unassigned)",
+    organization: "Open Research Benchmark",
+    currentStatus: "Benchmark Specimen",
 
     chemistry: {
       baseElement: "Ni",
@@ -211,15 +211,14 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
 
     certification: {
       applicableStandards: ["AMS 5662", "ASTM F3055 (LPBF Inconel 718)", "MIL-STD-810H", "AS9100 Rev D"],
-      aerospaceFlightReadinessScorePct: 96.8,
-      qualificationAuditStatus: "Fully Certified (Flight-Grade)",
-      complianceRiskLevel: "Negligible",
+      aerospaceFlightReadinessScorePct: undefined,
+      qualificationAuditStatus: "Not Assessed (Reference Benchmark)",
+      complianceRiskLevel: "Unresolved",
       nonDestructiveTestResults: {
-        ultrasonicInspection: "Accept (Level A)",
-        xrayRadiography: "ASTM E1742 Class I",
-        surfaceDyePenetrant: "No Indications",
+        ultrasonicInspection: "Pending",
+        xrayRadiography: "Pending",
+        surfaceDyePenetrant: "Pending",
       },
-      blockchainHashCertificate: "0x7F9A83C1D24E6B8019F4AC38B72149E086C78921",
     },
   },
   {
@@ -230,9 +229,9 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
     standardDesignation: "ASTM F136 / AMS 4928 / UNS R56401",
     creationDate: "2026-08-18",
     lastUpdated: "2026-08-30",
-    leadMetallurgist: "Dr. Caner Arganis",
-    organization: "MetalliX Defense & Hypersonic Division",
-    currentStatus: "Under Test / In-Flight Testing",
+    leadMetallurgist: "Materials Specialist (Unassigned)",
+    organization: "Open Research Benchmark",
+    currentStatus: "Benchmark Specimen",
 
     chemistry: {
       baseElement: "Ti",
@@ -390,15 +389,14 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
 
     certification: {
       applicableStandards: ["AMS 4928", "ASTM F136", "MIL-STD-810H", "STANAG 4370"],
-      aerospaceFlightReadinessScorePct: 98.2,
-      qualificationAuditStatus: "Fully Certified (Flight-Grade)",
-      complianceRiskLevel: "Negligible",
+      aerospaceFlightReadinessScorePct: undefined,
+      qualificationAuditStatus: "Not Assessed (Reference Benchmark)",
+      complianceRiskLevel: "Unresolved",
       nonDestructiveTestResults: {
-        ultrasonicInspection: "Accept (Level A)",
-        xrayRadiography: "ASTM E1742 Class I",
-        surfaceDyePenetrant: "No Indications",
+        ultrasonicInspection: "Pending",
+        xrayRadiography: "Pending",
+        surfaceDyePenetrant: "Pending",
       },
-      blockchainHashCertificate: "0x4A1E927C3F8B50419DCE2094B18471FA9C340812",
     },
   },
   {
@@ -409,9 +407,9 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
     standardDesignation: "AISI 4140 / 42CrMo4 / UNS G41400",
     creationDate: "2026-08-20",
     lastUpdated: "2026-08-29",
-    leadMetallurgist: "Dr. Caner Arganis",
-    organization: "MetalliX Heavy Defense & Armaments",
-    currentStatus: "Production Ready",
+    leadMetallurgist: "Materials Specialist (Unassigned)",
+    organization: "Open Research Benchmark",
+    currentStatus: "Benchmark Specimen",
 
     chemistry: {
       baseElement: "Fe",
@@ -566,15 +564,14 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
 
     certification: {
       applicableStandards: ["MIL-S-5000", "ASTM A29", "AS9100 Rev D", "ISO 9001"],
-      aerospaceFlightReadinessScorePct: 94.5,
-      qualificationAuditStatus: "Fully Certified (Flight-Grade)",
-      complianceRiskLevel: "Low",
+      aerospaceFlightReadinessScorePct: undefined,
+      qualificationAuditStatus: "Not Assessed (Reference Benchmark)",
+      complianceRiskLevel: "Unresolved",
       nonDestructiveTestResults: {
-        ultrasonicInspection: "Accept (Level A)",
-        xrayRadiography: "ASTM E1742 Class I",
-        surfaceDyePenetrant: "No Indications",
+        ultrasonicInspection: "Pending",
+        xrayRadiography: "Pending",
+        surfaceDyePenetrant: "Pending",
       },
-      blockchainHashCertificate: "0x89C1340D8FE4B1279A81E09427498C7B194E3411",
     },
   },
 ];

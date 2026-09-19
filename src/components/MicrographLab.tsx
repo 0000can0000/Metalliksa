@@ -341,7 +341,7 @@ ${diagnosisResult || ""}`
               }`}
             >
               <Cpu className="w-3.5 h-3.5 text-purple-400" />
-              <span>ONNX Wasm AI Segmenter</span>
+              <span>Phase Segmentation Studio</span>
             </button>
             <button
               type="button"

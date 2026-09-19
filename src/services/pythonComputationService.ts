@@ -697,6 +697,23 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 13: Murakami Fatigue & Fracture Mechanics
+  async computeMurakamiFatigue(data: {
+    alloyName: string;
+    sqrtArea_um: number;
+    location: "surface" | "sub-surface" | "internal";
+    stressRatio_R: number;
+    stressAmplitude_MPa?: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-fatigue-fracture", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */
@@ -873,7 +890,7 @@ class PythonComputationService {
 
     return {
       ...clientResult,
-      engine: "MetalliX-Client-WASM/TS",
+      engine: "MetalliX-Client-TS-Solver",
       computeTimeMs: elapsed,
       isPythonEngine: false,
       iterations: (tMax - tMin) / tStep,
@@ -1336,7 +1353,7 @@ class PythonComputationService {
 
     return {
       success: true,
-      engine: "Client Embedded WASM / Fast Hydrodynamic Kernel",
+      engine: "Client Hydrodynamic Approximation (Python Offline)",
       durationMs: Math.round(performance.now() - t0),
       inputSummary: {
         material: payload.material,

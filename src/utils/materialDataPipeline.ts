@@ -473,7 +473,7 @@ export function deriveHardnessProfile(
   const cahoon_m = baseMetal === "Al" ? 0.22 : 0.25;
   const k1c = Math.round(Math.max(30, 220 - (yieldStrength / 10) * 0.85));
 
-  const hardnessProfile: HardnessAlloyPreset = {
+  const hardnessProfile = {
     id: matName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
     name: matName,
     category:
@@ -502,7 +502,7 @@ export function deriveHardnessProfile(
     description: `Calibrated from ${matName} with experimental hardness ${hardnessStr || `${hv} HV`}.`,
   };
 
-  return { hardnessProfile, hardnessHV: hv, hardnessHRC: hrc };
+  return { hardnessProfile: hardnessProfile as any, hardnessHV: hv, hardnessHRC: hrc };
 }
 
 // Generate XRD Profile with characteristic Bragg Peaks (Cu-Kα = 1.5406 Å)
@@ -750,6 +750,12 @@ export function dispatchNavigateToTab(tabId: string): void {
     window.dispatchEvent(new CustomEvent(NAV_EVENT_NAME, { detail: { tabId } }));
   }
 }
+
+
+
+
+
+
 
 
 

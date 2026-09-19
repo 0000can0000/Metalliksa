@@ -834,6 +834,28 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 20: Thermomechanical Support Optimization
+  async computeSupportOptimization(data: {
+    E_modulus_Pa: number;
+    cte_1_K: number;
+    yield_strength_Pa: number;
+    thermal_k_W_mK: number;
+    T_melt_K: number;
+    T_preheat_K: number;
+    heat_input_W: number;
+    support_length_m: number;
+    layer_area_m2: number;
+    strut_diameter_m: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-support-optimization", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

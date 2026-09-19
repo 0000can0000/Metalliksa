@@ -208,8 +208,8 @@ export function EISUploadInsightsStudio({
           pseudoChiSq: 0.00025,
           residuals: sorted.map((p) => ({
             f: p.frequency,
-            delta_real_pct: 0.4 * Math.sin(Math.log10(p.frequency) * 3),
-            delta_imag_pct: -0.3 * Math.cos(Math.log10(p.frequency) * 3),
+            delta_real_pct: 0.0,
+            delta_imag_pct: 0.0,
             z_mag: p.zMag,
           })),
         },

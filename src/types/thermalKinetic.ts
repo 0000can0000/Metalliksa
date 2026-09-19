@@ -32,7 +32,7 @@ export interface SimulationTimePoint { [key: string]: any;
   zenerLimitUm?: number;
 }
 
-export interface HardnessAlloyPreset {
+export interface HardnessAlloyPreset { [key: string]: any; defaultHardnessHV?: number; defaultHardnessHRC?: number; cahoon_m?: number; elasticModulus_E_GPa?: number; poissonsRatio_nu?: number; strengthCoefficient_K_MPa?: number; uniformElongation_pct?: number;
   id: string;
   name: string;
   category: string;
@@ -43,6 +43,8 @@ export interface HardnessAlloyPreset {
   poissonsRatio: number;
   standardSpec: string;
 }
+
+
 
 
 

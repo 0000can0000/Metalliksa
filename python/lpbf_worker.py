@@ -433,6 +433,47 @@ def main():
                     data = engine.optimize_deconfliction_schedule(l1_vecs, l2_vecs)
                 else:
                     data = engine.simulate_multitrack_scenarios(l1_vecs, l2_vecs)
+            elif method == "thermal-accumulation":           # Phase 17
+                from lpbf_thermal_accumulation import AlloyThermalProperties, HatchProcessConfig, MultiTrackThermalEngine
+                payload = request["payload"]
+                mat_cfg = payload.get("material", {})
+                alloy_name = mat_cfg.get("name", "Ti-6Al-4V")
+
+                # Empirical thermophysical parameters
+                material_presets = {
+                    "Ti-6Al-4V": dict(density_kg_m3=4420.0, specific_heat_J_kgK=670.0, thermal_conductivity_W_mK=15.0, absorptivity=0.35, melting_temp_K=1928.0, boiling_temp_K=3533.0),
+                    "IN718": dict(density_kg_m3=8190.0, specific_heat_J_kgK=435.0, thermal_conductivity_W_mK=11.4, absorptivity=0.38, melting_temp_K=1609.0, boiling_temp_K=3190.0),
+                    "316L": dict(density_kg_m3=7950.0, specific_heat_J_kgK=500.0, thermal_conductivity_W_mK=16.3, absorptivity=0.36, melting_temp_K=1673.0, boiling_temp_K=3086.0),
+                    "AlSi10Mg": dict(density_kg_m3=2680.0, specific_heat_J_kgK=900.0, thermal_conductivity_W_mK=113.0, absorptivity=0.20, melting_temp_K=870.0, boiling_temp_K=2743.0),
+                }
+                props = material_presets.get(alloy_name, material_presets["Ti-6Al-4V"])
+                mat = AlloyThermalProperties(
+                    name=alloy_name,
+                    density_kg_m3=props["density_kg_m3"],
+                    specific_heat_J_kgK=props["specific_heat_J_kgK"],
+                    thermal_conductivity_W_mK=props["thermal_conductivity_W_mK"],
+                    absorptivity=props["absorptivity"],
+                    melting_temp_K=props["melting_temp_K"],
+                    boiling_temp_K=props["boiling_temp_K"]
+                )
+                hatch_cfg = payload.get("config", {})
+                cfg = HatchProcessConfig(
+                    laser_power_W=float(hatch_cfg.get("laserPower_W", 280.0)),
+                    scan_velocity_mm_s=float(hatch_cfg.get("scanVelocity_mms", 1000.0)),
+                    beam_diameter_um=float(hatch_cfg.get("beamDiameter_um", 80.0)),
+                    hatch_spacing_um=float(hatch_cfg.get("hatchSpacing_um", 100.0)),
+                    track_length_mm=float(hatch_cfg.get("trackLength_mm", 10.0)),
+                    num_tracks=int(hatch_cfg.get("numTracks", 10)),
+                    bed_temperature_K=float(hatch_cfg.get("bedTemperature_K", 353.15)),
+                    turnaround_delay_ms=float(hatch_cfg.get("turnaroundDelay_ms", 0.5))
+                )
+                engine = MultiTrackThermalEngine(mat)
+                mode = payload.get("mode", "simulate")
+                if mode == "optimize":
+                    allowable_drift = float(payload.get("maxAllowableDrift_K", 120.0))
+                    data = engine.optimize_dwell_delays(cfg, max_allowable_drift_K=allowable_drift)
+                else:
+                    data = engine.simulate_hatch_sequence(cfg)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

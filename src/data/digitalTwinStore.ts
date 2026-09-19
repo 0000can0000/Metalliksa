@@ -211,7 +211,7 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
 
     certification: {
       applicableStandards: ["AMS 5662", "ASTM F3055 (LPBF Inconel 718)", "MIL-STD-810H", "AS9100 Rev D"],
-      aerospaceFlightReadinessScorePct: undefined,
+      aerospaceFlightReadinessScorePct: null,
       qualificationAuditStatus: "Not Assessed (Reference Benchmark)",
       complianceRiskLevel: "Unresolved",
       nonDestructiveTestResults: {
@@ -389,7 +389,7 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
 
     certification: {
       applicableStandards: ["AMS 4928", "ASTM F136", "MIL-STD-810H", "STANAG 4370"],
-      aerospaceFlightReadinessScorePct: undefined,
+      aerospaceFlightReadinessScorePct: null,
       qualificationAuditStatus: "Not Assessed (Reference Benchmark)",
       complianceRiskLevel: "Unresolved",
       nonDestructiveTestResults: {
@@ -564,7 +564,7 @@ export const DEFAULT_DIGITAL_TWINS: SampleDigitalTwin[] = [
 
     certification: {
       applicableStandards: ["MIL-S-5000", "ASTM A29", "AS9100 Rev D", "ISO 9001"],
-      aerospaceFlightReadinessScorePct: undefined,
+      aerospaceFlightReadinessScorePct: null,
       qualificationAuditStatus: "Not Assessed (Reference Benchmark)",
       complianceRiskLevel: "Unresolved",
       nonDestructiveTestResults: {

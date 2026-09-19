@@ -150,7 +150,7 @@ export interface DigitalTwinExtremeService {
 export interface DigitalTwinQualityAndCert {
   applicableStandards: string[]; // e.g. ["AMS 5662", "ASTM B348", "MIL-STD-810H", "AS9100D"]
   aerospaceFlightReadinessScorePct: number | null; // 0 - 100
-  qualificationAuditStatus: "Fully Certified (Flight-Grade)" | "Conditional Pass (Requires HIP)" | "Non-Conformance Flagged" | "Not assessed";
+  qualificationAuditStatus: string;
   complianceRiskLevel: "Negligible" | "Low" | "Moderate" | "High" | "Unresolved";
   nonDestructiveTestResults: {
     ultrasonicInspection: "Accept (Level A)" | "Reject" | "Pending";
@@ -190,7 +190,7 @@ export interface SampleDigitalTwin {
   lastUpdated: string;
   leadMetallurgist: string;
   organization: string;
-  currentStatus: "Production Ready" | "Under Test / In-Flight Testing" | "R&D Prototype" | "Quarantine / Review";
+  currentStatus: string;
   
   // Optional large binary attachments (e.g. 50k+ facet binary STL, 1M point EBSD Euler angle maps)
   // Persisted seamlessly in IndexedDB without 5 MB localStorage ceiling
@@ -206,3 +206,7 @@ export interface SampleDigitalTwin {
   extremeService: DigitalTwinExtremeService;
   certification: DigitalTwinQualityAndCert;
 }
+
+
+
+

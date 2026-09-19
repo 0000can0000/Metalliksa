@@ -78,7 +78,6 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
 
   const [isAiAuditing, setIsAiAuditing] = useState<boolean>(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
-  const [isGeneratingMockBinary, setIsGeneratingMockBinary] = useState<boolean>(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const isDemo = activeTwin.evidence?.kind === "demo";
   const canShareComposition = !isDemo && Object.keys(activeTwin.chemistry.nominalComposition).length > 0;
@@ -163,73 +162,6 @@ export const DigitalTwinHub: React.FC<{ onNavigateToModule?: (tab: string) => vo
     };
     reader.readAsDataURL(file);
     e.target.value = "";
-  };
-
-  // Generate a large synthetic binary dataset (e.g. 10 MB STL or 8 MB EBSD) to prove uncapped IndexedDB capacity
-  const handleCreateMockBinary = async (datasetKind: "stl_50k" | "ebsd_1m" | "eis_sweep") => {
-    setIsGeneratingMockBinary(true);
-    try {
-      if (datasetKind === "stl_50k") {
-        // 50,000 facets tensile coupon binary simulation (approx 10 MB)
-        const facetCount = 50000;
-        const approxSize = facetCount * 200; // ~10 MB
-        // Generate simulated binary payload
-        const dummyBuffer = "DATA_STL_BINARY_FACETS_" + "X".repeat(Math.min(approxSize, 8 * 1024 * 1024));
-        const att: DigitalTwinAttachment = {
-          id: `att-stl-${Date.now()}`,
-          name: `${activeTwin.serialNumber ?? "Unresolved"}_Coupon_50k_Facets.stl`,
-          type: "stl_geometry",
-          sizeBytes: 10485760, // 10.0 MB
-          data: dummyBuffer,
-          uploadedAt: new Date().toISOString(),
-          metadata: {
-            facets: 50000,
-            gaugeLengthMm: 32.0,
-            crossSectionMm2: 24.5,
-            format: "Binary Little-Endian STL",
-          },
-        };
-        await attachBinaryDataset(activeTwin.id, att);
-      } else if (datasetKind === "ebsd_1m") {
-        // 1,000,000 spatial points EBSD Euler angle map (approx 8.4 MB)
-        const dummyBuffer = "EBSD_EULER_GRID_1M_" + "E".repeat(7 * 1024 * 1024);
-        const att: DigitalTwinAttachment = {
-          id: `att-ebsd-${Date.now()}`,
-          name: `${activeTwin.serialNumber ?? "Unresolved"}_EBSD_Map_1M_Grid.ctf`,
-          type: "ebsd_map",
-          sizeBytes: 8808038, // 8.4 MB
-          data: dummyBuffer,
-          uploadedAt: new Date().toISOString(),
-          metadata: {
-            gridX: 1000,
-            gridY: 1000,
-            stepSizeUm: 0.25,
-            eulerConvention: "Bunge (phi1, Phi, phi2)",
-            indexedPointsPct: 98.6,
-          },
-        };
-        await attachBinaryDataset(activeTwin.id, att);
-      } else {
-        // High-density EIS Nyquist sweep with raw complex impedance points
-        const dummyBuffer = "EIS_HIGH_RES_SPECTRA_" + "Z".repeat(1 * 1024 * 1024);
-        const att: DigitalTwinAttachment = {
-          id: `att-eis-${Date.now()}`,
-          name: `${activeTwin.serialNumber ?? "Unresolved"}_EIS_FullDecade_Sweep.dta`,
-          type: "raw_eis",
-          sizeBytes: 1572864, // 1.5 MB
-          data: dummyBuffer,
-          uploadedAt: new Date().toISOString(),
-          metadata: {
-            freqRange: "100 kHz - 1 mHz",
-            pointsTotal: 10000,
-            acAmplitudeMv: 10.0,
-          },
-        };
-        await attachBinaryDataset(activeTwin.id, att);
-      }
-    } finally {
-      setIsGeneratingMockBinary(false);
-    }
   };
 
   // File import handler
@@ -1093,7 +1025,7 @@ Provide an evidence-gap review:
               </div>
             </div>
 
-            {/* Action Bar: Upload Real File or Run Synthetic High-Load Benchmarks */}
+            {/* Action Bar: upload a real characterization file */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <label className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-md shadow-emerald-600/20 cursor-pointer">
@@ -1107,38 +1039,6 @@ Provide an evidence-gap review:
                 </label>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] text-slate-400 font-mono">Simulate High-Volume Runs:</span>
-                <button
-                  onClick={() => handleCreateMockBinary("stl_50k")}
-                  disabled={isGeneratingMockBinary}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 rounded-xl text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                  title="Simulates 50,000 facets tensile coupon binary STL (10 MB) directly in IndexedDB"
-                >
-                  <Box className="w-3.5 h-3.5 text-sky-400" />
-                  <span>+ 50k Facet STL (10 MB)</span>
-                </button>
-
-                <button
-                  onClick={() => handleCreateMockBinary("ebsd_1m")}
-                  disabled={isGeneratingMockBinary}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                  title="Simulates 1,000,000-point EBSD Euler angle grid (8.4 MB) directly in IndexedDB"
-                >
-                  <Microscope className="w-3.5 h-3.5 text-purple-400" />
-                  <span>+ 1M Point EBSD (8.4 MB)</span>
-                </button>
-
-                <button
-                  onClick={() => handleCreateMockBinary("eis_sweep")}
-                  disabled={isGeneratingMockBinary}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                  title="Simulates high-resolution EIS spectrum sweep (1.5 MB)"
-                >
-                  <Activity className="w-3.5 h-3.5 text-amber-400" />
-                  <span>+ EIS Sweep (1.5 MB)</span>
-                </button>
-              </div>
             </div>
           </div>
 

@@ -31,10 +31,8 @@ import {
 } from "lucide-react";
 import { MICROGRAPH_SAMPLES } from "../data/micrographSamples";
 import { MicrographSample } from "../types";
-import { MicrostructureSimulator } from "./MicrostructureSimulator";
 import { SEMAutoAnalyzerStudio } from "./SEMAutoAnalyzerStudio";
 import { EDSSpectrumLab } from "./EDSSpectrumLab";
-import { ONNXSegmentationStudio } from "./ONNXSegmentationStudio";
 import {
   MicrographFindingsTable,
   MetallurgicalSummaryData,
@@ -42,8 +40,8 @@ import {
 
 export const MicrographLab: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<
-    "onnx_seg" | "sem_studio" | "eds_studio" | "ai_diagnostic" | "simulator"
-  >("onnx_seg");
+    "sem_studio" | "eds_studio" | "ai_diagnostic"
+  >("sem_studio");
   const [selectedSample, setSelectedSample] = useState<MicrographSample>(
     MICROGRAPH_SAMPLES[0]
   );
@@ -333,18 +331,6 @@ ${diagnosisResult || ""}`
           <div className="flex p-1 bg-[#050810] rounded-xl border border-[#162032] flex-wrap gap-1">
             <button
               type="button"
-              onClick={() => setActiveSubTab("onnx_seg")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
-                activeSubTab === "onnx_seg"
-                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.25)]"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5 text-purple-400" />
-              <span>ONNX Wasm AI Segmenter</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setActiveSubTab("sem_studio")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
                 activeSubTab === "sem_studio"
@@ -379,31 +365,15 @@ ${diagnosisResult || ""}`
               <Columns className="w-3.5 h-3.5" />
               <span>Side-by-Side Comparator</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab("simulator")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
-                activeSubTab === "simulator"
-                  ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-[0_0_12px_rgba(56,189,248,0.25)]"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5" />
-              <span>Solidification Simulator</span>
-            </button>
           </div>
         </div>
       </div>
 
       {/* RENDER ACTIVE SUBTAB VIEW */}
-      {activeSubTab === "onnx_seg" ? (
-        <ONNXSegmentationStudio />
-      ) : activeSubTab === "sem_studio" ? (
+      {activeSubTab === "sem_studio" ? (
         <SEMAutoAnalyzerStudio />
       ) : activeSubTab === "eds_studio" ? (
         <EDSSpectrumLab />
-      ) : activeSubTab === "simulator" ? (
-        <MicrostructureSimulator />
       ) : (
         <>
           {/* DRAG-AND-DROP FILE UPLOAD ZONE & PRESETS */}

@@ -60,7 +60,7 @@ import {
 } from "../utils/eisFileParser";
 import { CircuitTopology, STANDARD_CIRCUIT_PRESETS } from "./EquivalentCircuitBuilder";
 import { fallbackClientBisquertTLM } from "../services/pythonComputationService";
-import { BatchEISDegradationTracker } from "./BatchEISDegradationTracker";
+
 
 interface EISUploadInsightsStudioProps {
   onNavigateToCNLS?: (dataset: ExperimentalEISDataset, suggestedTopology?: CircuitTopology) => void;
@@ -1779,3 +1779,4 @@ ${(analysisResult.engineeringInsights || [])
     </div>
   );
 }
+

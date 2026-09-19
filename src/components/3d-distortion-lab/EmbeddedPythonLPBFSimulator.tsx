@@ -19,7 +19,7 @@ import {
   Box,
   TrendingUp,
 } from "lucide-react";
-import { AlloySolidificationData } from "./SolidificationFrontCETLab";
+
 import { pythonComputationService } from "../../services/pythonComputationService";
 
 export interface EmbeddedPythonLPBFSimulatorProps {
@@ -539,3 +539,4 @@ print("Multi-track simulation complete. Residual peak baseline computed.")
     </div>
   );
 };
+

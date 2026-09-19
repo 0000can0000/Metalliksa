@@ -1005,6 +1005,15 @@ px tsc --noEmit PASS
 - Result: PASS — decision recorded without falsifying customer evidence. Next: begin C01/C02 material identity, units and provenance work under deferred-customer scope.
 
 ## 2026-09-18 — Phase 4: Moving Interface Laser Heating Complete
+
+## 2026-09-20 — HANGAR BİGG başvuru taslağı hazırlandı
+
+- Task: Metalliksa için TUSAŞ HANGAR BİGG başvuru anlatısını hazırlamak.
+- Files: `docs/HANGAR_BIGG_BASVURU_TASLAGI.md`, `sonkayıtlar/LOG.md`.
+- Done: Problem, çözüm, çift kullanım, hedef müşteri, PoC, ticarileştirme, yatırım kullanım planı ve 90 saniyelik sunum taslağı oluşturuldu. Teknik doğrulama ile deneysel/ürün kalifikasyonu arasındaki sınır açıkça korundu.
+- Result: PASS — Taslak, ekip bilgileri, müşteri görüşmeleri, PoC verisi ve fikrî hak durumu eklenerek başvuru formuna aktarılmaya hazır ilk sürümdedir.
+- Next: Kurucu/ekip bilgilerini ve ilk müşteri/PoC varsayımını doldurmak; ardından başvuru PDF eklerini üretmek.
+
 - Decision: Implemented Moving Gaussian Surface Flux directly on the VOF interface.
 - Files: laserModel.H, metalliksaMeltPoolFoam.C, lpbf_cfd.py, 	est_lpbf_cfd.py, CURRENT_HANDOFF.md.
 - Scope: Formulated volumetric heat source as S_h = I(x) max(grad(alpha1) dot d, 0) |grad(alpha1)|, ensuring projection onto the gas-metal free surface dynamically. Updated the solver to read scan path vectors and timing from 	hermalProperties. Unit test verified moving domain heating locally.

@@ -26,7 +26,7 @@ export function buildScientificContext(moduleId: ModuleId, specimen: ActiveSpeci
     limitation: 'This panel explains process physics only; it does not by itself prove density, strength, or certification readiness.',
   };
 
-  if (moduleId === 'phase-diagram' || moduleId === 'ttt-cct-kinetics' || moduleId === 'thermal-scheduler') return {
+  if (moduleId === 'phase-diagram' || moduleId === 'ttt-cct-kinetics' || moduleId) return {
     title: 'How thermal history changes microstructure',
     observation: `${shared} This module checks temperature-time path, phase equilibrium, or kinetic transformation behavior.`,
     mechanism: 'Phase stability follows Gibbs free-energy balance; transformation rates follow diffusion and nucleation kinetics. Fast cooling can shift behavior away from equilibrium; soak steps increase diffusion-controlled growth.',
@@ -35,7 +35,7 @@ export function buildScientificContext(moduleId: ModuleId, specimen: ActiveSpeci
     limitation: 'Results depend on database quality, initial microstructure assumptions, and cooling-rate accuracy. This is not a substitute for experiment.',
   };
 
-  if (moduleId === 'xrd-lab' || moduleId === 'ebsd-lab' || moduleId === 'eds-lab' || moduleId === 'micrograph') return {
+  if (moduleId === 'eds-lab' || moduleId === 'micrograph') return {
     title: 'From signal to microstructural claim',
     observation: `${shared} This module infers phases, orientation, composition, or grain information from measured signal or imaging proxies.`,
     mechanism: 'A measured signature is an indirect projection of microstructure: diffraction peaks, characteristic X-rays, EBSD orientation maps, or image contrast each map physics through calibration and sampling assumptions.',
@@ -62,3 +62,4 @@ export function buildScientificContext(moduleId: ModuleId, specimen: ActiveSpeci
     limitation: 'Model output is not a measurement. Uncertainty, coverage, and validation status must always be carried with the result.',
   };
 }
+

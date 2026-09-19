@@ -7,7 +7,6 @@ import {
   MASTER_LPBF_REFERENCE_DATASETS,
   loadUserLPBFRecords,
 } from "../data/lpbfReferenceDatasets";
-import type { AlloyAnisotropyData } from "../components/3d-distortion-lab/AnisotropicMechanicalFatigueLab";
 
 /** Published P–v boxes (machine-class typical), intersected with dense coupons in the library. */
 export const LITERATURE_PV_WINDOWS: Record<
@@ -285,4 +284,7 @@ export function overlayAnisotropyFromGroundTruth(
 ) {
   return anisotropyOverlayFromGroundTruth(fallback, alloyId);
 }
+
+
+
 

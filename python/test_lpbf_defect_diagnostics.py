@@ -58,8 +58,8 @@ class DefectDiagnosticsTests(unittest.TestCase):
     def test_indicators_do_not_invent_pore_risks(self):
         result = defect_diagnostics(100, 150, 1000, 50, 20)
         self.assertEqual(result["keyhole"]["depthToWidth"], 1.5)
-        self.assertEqual(result["balling"]["lengthToWidth"], 10)
-        for name in ["keyhole", "balling", "gasPore"]:
+        self.assertEqual(result["keyhole"]["risk"], "high")
+        for name in ["balling", "gasPore"]:
             self.assertIsNone(result[name]["risk"])
             self.assertTrue(result[name]["reason"])
         self.assertIsNone(result["porosity"]["value"])

@@ -83,95 +83,12 @@ def get_alloy_properties(name):
     return inherent_strain_props("Inconel 718")
 
 
-def generate_synthetic_cad_mesh(geom_type):
-    """
-    Generates high-precision node representations for industrial AM benchmarks.
-    """
-    nodes = []
-    
-    if geom_type == "turbine":
-        # Turbine Airfoil Blade with Cantilever & Serpentine Channels
-        nx, ny, nz = 14, 8, 30
-        for k in range(nz):
-            z = (k / (nz - 1)) * 90.0  # 0 to 90 mm
-            twist = (k / (nz - 1)) * 0.45  # 25 deg aerodynamic twist
-            chord_scale = 1.0 - 0.28 * (k / (nz - 1))
-            for j in range(ny):
-                y_norm = (j / (ny - 1)) - 0.5
-                for i in range(nx):
-                    x_norm = (i / (nx - 1)) - 0.5
-                    # NACA 4-digit style camber
-                    camber = 0.12 * (1.0 - 4.0 * (x_norm ** 2))
-                    y_prof = (y_norm * 0.28 + camber) * 35.0 * chord_scale
-                    x_prof = x_norm * 50.0 * chord_scale
-                    # Apply rotation
-                    xr = x_prof * math.cos(twist) - y_prof * math.sin(twist)
-                    yr = x_prof * math.sin(twist) + y_prof * math.cos(twist)
-                    nodes.append([round(xr, 2), round(yr, 2), round(z, 2)])
-                    
-    elif geom_type == "nozzle":
-        # Conformal Cooled Bell Rocket Nozzle
-        n_rings, n_radial, n_circ = 28, 4, 20
-        for k in range(n_rings):
-            z = (k / (n_rings - 1)) * 80.0  # 0 to 80 mm
-            # Bell expansion curve: throat at z=20mm
-            if z < 20.0:
-                radius = 32.0 - 14.0 * (z / 20.0)
-            else:
-                radius = 18.0 + 26.0 * math.sqrt((z - 20.0) / 60.0)
-            for r_idx in range(n_radial):
-                r_wall = radius + (r_idx * 1.5)  # thin 4.5mm wall
-                for c_idx in range(n_circ):
-                    theta = (c_idx / n_circ) * 2.0 * math.pi
-                    x = r_wall * math.cos(theta)
-                    y = r_wall * math.sin(theta)
-                    nodes.append([round(x, 2), round(y, 2), round(z, 2)])
-
-    elif geom_type == "gyroid":
-        # Gyroid Lattice Heat Exchanger Manifold
-        nx, ny, nz = 16, 16, 22
-        L = 40.0
-        for k in range(nz):
-            z = (k / (nz - 1)) * L
-            for j in range(ny):
-                y = ((j / (ny - 1)) - 0.5) * L
-                for i in range(nx):
-                    x = ((i / (nx - 1)) - 0.5) * L
-                    # Gyroid level set: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0
-                    kx, ky, kz = (x / L) * 4 * math.pi, (y / L) * 4 * math.pi, (z / L) * 4 * math.pi
-                    f_gyroid = math.sin(kx) * math.cos(ky) + math.sin(ky) * math.cos(kz) + math.sin(kz) * math.cos(kx)
-                    if abs(f_gyroid) < 0.95 or k == 0 or k == nz - 1:
-                        nodes.append([round(x, 2), round(y, 2), round(z, 2)])
-
-    else:
-        # Aerospace Topology Optimized Cantilever Bracket (Default)
-        nx, ny, nz = 18, 10, 24
-        for k in range(nz):
-            z = (k / (nz - 1)) * 65.0  # 0 to 65 mm
-            for j in range(ny):
-                y = ((j / (ny - 1)) - 0.5) * 32.0
-                for i in range(nx):
-                    x = (i / (nx - 1)) * 75.0 - 15.0  # -15 to 60 mm
-                    # Topology optimized organic voids & overhangs
-                    in_solid = True
-                    # Center lightening hole
-                    if 15.0 < x < 45.0 and -10.0 < y < 10.0 and 15.0 < z < 45.0:
-                        in_solid = False
-                    # Overhang cantilever taper
-                    if x > 30.0 and z > 35.0 and abs(y) > 12.0:
-                        in_solid = False
-                    if in_solid:
-                        nodes.append([round(x, 2), round(y, 2), round(z, 2)])
-                        
-    return nodes
-
-
 def solve_part_scale_inherent_strain(params):
     """
     Core Inherent Strain (ISM) Finite Element Formulation & AM Defect Solver
     """
     material_name = params.get("material", "Inconel 718")
-    geom_type = params.get("geometryType", "bracket")
+    geom_type = params.get("geometryType", "custom_uploaded_mesh")
     laser_power = float(params.get("laserPower_W", 285.0))
     scan_speed = float(params.get("scanSpeed_mm_s", 960.0))
     beam_diameter = float(params.get("beamDiameter_um", 80.0))
@@ -218,12 +135,12 @@ def solve_part_scale_inherent_strain(params):
         
     eps_zz_inh = base_inh_strain * 0.18  # Z-axis build shrinkage
     
-    # 2. Generate or Load 3D Mesh Nodes
-    if "customMeshVertices" in params and len(params["customMeshVertices"]) > 20:
-        raw_v = params["customMeshVertices"]
-        nodes = [[float(p[0]), float(p[1]), float(p[2])] for p in raw_v]
-    else:
-        nodes = generate_synthetic_cad_mesh(geom_type)
+    # 2. Extract Real 3D Mesh Nodes
+    if "customMeshVertices" not in params or len(params["customMeshVertices"]) < 20:
+        raise ValueError("Real mesh vertices (customMeshVertices) are required. Synthetic mesh generation is prohibited.")
+        
+    raw_v = params["customMeshVertices"]
+    nodes = [[float(p[0]), float(p[1]), float(p[2])] for p in raw_v]
         
     n_nodes = len(nodes)
     all_x = [n[0] for n in nodes]

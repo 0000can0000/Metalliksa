@@ -161,7 +161,7 @@ def deconvolve_peak_roi(points, center_guess, intensity_guess, fwhm_guess=0.25,
         area_ka1 = fitted_i1 * fitted_w1 * math.sqrt(math.pi) / max(0.1, fitted_shape)
 
     # Deconvoluted curve profile for charts
-    synthetic_curve = []
+    fitted_curve_profile = []
     for pt in points:
         tt = pt["twoTheta"]
         y_exp = pt["sampleIntensity"]
@@ -175,7 +175,7 @@ def deconvolve_peak_roi(points, center_guess, intensity_guess, fwhm_guess=0.25,
             y_ka2 = pearson_vii_profile(tt, fitted_c2, fitted_i2, fitted_w2, fitted_shape) if enable_ka2 else 0.0
             
         y_tot = bg + y_ka1 + y_ka2
-        synthetic_curve.append({
+        fitted_curve_profile.append({
             "twoTheta": round(tt, 4),
             "rawIntensity": y_exp,
             "fittedTotal": round(y_tot, 2),
@@ -213,7 +213,7 @@ def deconvolve_peak_roi(points, center_guess, intensity_guess, fwhm_guess=0.25,
             "residualSumSquares": round(current_loss, 2),
             "r_wp_pct": round(min(15.0, math.sqrt(current_loss / max(1.0, sum(p['sampleIntensity']**2 for p in points))) * 100.0), 2)
         },
-        "deconvolutionProfile": synthetic_curve
+        "deconvolutionProfile": fitted_curve_profile
     }
 
 def solve_williamson_hall(peaks, wavelength_A=1.540598, shape_factor_K=0.94, burgers_vector_nm=0.25):
@@ -364,3 +364,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(json.dumps({"error": str(e)}))
         sys.exit(1)
+

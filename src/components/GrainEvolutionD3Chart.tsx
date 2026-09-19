@@ -19,7 +19,7 @@ import { SimulationTimePoint, ThermalStage, MaterialThermalProfile } from "../ty
 
 export type ChartDisplayMode = "grain-zener" | "dual-temp" | "growth-rate" | "hall-petch";
 
-export interface EnrichedSimulationTimePoint extends SimulationTimePoint {
+export interface EnrichedSimulationTimePoint extends SimulationTimePoint { [key: string]: any;
   growthRate_um_per_min: number;
 }
 
@@ -958,3 +958,4 @@ export const GrainEvolutionD3Chart: React.FC<GrainEvolutionD3ChartProps> = ({
     </div>
   );
 };
+

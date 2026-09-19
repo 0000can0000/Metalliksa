@@ -14,7 +14,7 @@ import { LpbfEngineeringSimulation } from "./3d-distortion-lab/LpbfEngineeringSi
 import { MeasurementPanel, ThermalHistory, ConvergencePanel, number as formatNumber } from "./3d-distortion-lab/LpbfResultPresentation";
 import { ResolvedThermalViewer } from "./3d-distortion-lab/ResolvedThermalViewer";
 
-const SpecialistLabs = lazy(() => import("./Additive3DDistortionLab").then(module => ({default:module.Additive3DDistortionLab})));
+
 const BuildSlicer = lazy(() => import("./3d-distortion-lab/BasicSTLSlicerLab").then(module => ({default:module.BasicSTLSlicerLab})));
 const DefectScreening = lazy(() => import("./3d-distortion-lab/IndustrialLPBFDecisionLab").then(module => ({default:module.IndustrialLPBFDecisionLab})));
 const panel = "rounded-2xl border border-slate-700/70 bg-slate-900/40 p-5 md:p-6";
@@ -102,3 +102,4 @@ export function LpbfEngineeringWorkspace() {
 
 function EmptyResult({status,onRun}:{status?:string;onRun:()=>void}) {return <div><h3 className="font-medium">No completed result</h3><p className="my-3 text-sm text-slate-400">{status?`Current job: ${status}. Only a completed job can supply melt pool results.`:"Start a thermal or screening run with the shared process vector."}</p><button className={buttonStyle} onClick={onRun}>Open Thermal Simulation</button></div>;}
 function LoadingLab(){return <p role="status" className="p-6 text-sm text-slate-400">Loading engineering module…</p>;}
+

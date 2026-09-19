@@ -194,7 +194,7 @@ def solve_marangoni_flow_and_porosity(payload):
     
     total_voxels = Nx * Ny * Nz
     high_risk_voxels = 0
-    trapped_pores_list = []
+    
     
     # Calculate local fields across all voxels
     for k in range(Nz):
@@ -312,30 +312,11 @@ def solve_marangoni_flow_and_porosity(payload):
                 # Stochastic Pore Generation inside High Probability Trapping Zones
                 if (is_liquid or is_mushy) and p_pore_pct > 60.0:
                     # Random sampling based on local probability
-                    if random.random() < (p_pore_pct / 100.0) * 0.12:
-                        pore_diameter_um = max(4.0, min(85.0, random.gauss(22.0, 10.0) * (1.0 + f_instability * 0.5)))
-                        pore_type = "Marangoni Vortex Recirculation"
-                        if effective_d_gamma_dT > 0:
-                            pore_type = "Surfactant Flow Inversion Bubble Drag"
-                        elif abs(uz_m_s) > u_peak_m_s * 0.4:
-                            pore_type = "Vortex Cavity Shielding Gas Entrapment"
-                        elif is_mushy:
-                            pore_type = "Interdendritic Mushy Front Engulfment"
-                            
-                        trapped_pores_list.append({
-                            "id": f"pore_{len(trapped_pores_list) + 1}",
-                            "x_um": round(x_um + random.uniform(-dx_um/2, dx_um/2), 1),
-                            "y_um": round(y_um + random.uniform(-dy_um/2, dy_um/2), 1),
-                            "z_um": round(z_um + random.uniform(-dz_um/2, dz_um/2), 1),
-                            "diameter_um": round(pore_diameter_um, 1),
-                            "sphericity": round(random.uniform(0.86, 0.98), 2),
-                            "mechanism": pore_type,
-                            "entrapmentProb": round(p_pore_pct, 1)
-                        })
+                    
 
     # Overall Defect & Density Metrics
     high_risk_ratio = high_risk_voxels / max(1, total_voxels)
-    total_pores_count = len(trapped_pores_list)
+    total_pores_count = 0
     pore_volume_fraction_pct = min(1.2, total_pores_count * 0.018 + (high_risk_ratio * 0.45))
     relative_density_pct = max(98.8, 100.0 - pore_volume_fraction_pct)
     
@@ -403,11 +384,11 @@ def solve_marangoni_flow_and_porosity(payload):
         "porosityPrediction": {
             "relativeDensity_pct": round(relative_density_pct, 2),
             "poreVolumeFraction_pct": round(pore_volume_fraction_pct, 3),
-            "predictedPoresCount": len(trapped_pores_list),
-            "meanPoreDiameter_um": round(sum(p["diameter_um"] for p in trapped_pores_list) / max(1, len(trapped_pores_list)), 1) if trapped_pores_list else 0.0,
+            "predictedPoresCount": 0,
+            "meanPoreDiameter_um": 0.0,
             "overallRisk": overall_risk,
             "riskColor": risk_color,
-            "trappedPores": trapped_pores_list,
+            
         },
         "heatmap3D": {
             "gridResolution": {"Nx": Nx, "Ny": Ny, "Nz": Nz, "totalVoxels": total_voxels},
@@ -446,3 +427,5 @@ if __name__ == "__main__":
         }
         print(json.dumps(error_res), file=sys.stderr)
         sys.exit(1)
+
+

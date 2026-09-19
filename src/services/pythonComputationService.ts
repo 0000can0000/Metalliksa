@@ -16,6 +16,7 @@ import {
   TafelPythonCorrosionRateInput,
   TafelPythonCorrosionRateResult,
 } from "../types/tafel";
+import { createSeededRandom } from "../utils/seededRandom";
 
 export interface PersistentIPCDiagnostics {
   success: boolean;
@@ -797,6 +798,42 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 18: Powder Bed DEM Roller Compaction
+  async simulatePowderDEMCompaction(data: {
+    d10_um: number;
+    d50_um: number;
+    d90_um: number;
+    recoater_gap_um: number;
+    box_width_um?: number;
+    num_particles?: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-powder-dem-compaction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
+  // Phase 19: Optical Tomography
+  async simulateOpticalTomography(data: {
+    laser_power_W: number;
+    scan_speed_mm_s: number;
+    material_k: number;
+    material_alpha: number;
+    sensor_resolution?: [number, number];
+    fov_um?: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-optical-tomography", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */
@@ -1367,6 +1404,7 @@ class PythonComputationService {
     const Nx = 22;
     const Ny = 14;
     const Nz = 10;
+    const random = createSeededRandom(payload.processSeed ?? 0);
     const voxels: VoxelHeatmapDatum[] = [];
     const pores: TrappedPoreDatum[] = [];
 
@@ -1415,14 +1453,14 @@ class PythonComputationService {
             phase: isLiq ? "liquid" : isMush ? "mushy" : "solid",
           });
 
-          if ((isLiq || isMush) && prob > 65 && Math.random() < (prob / 100) * 0.1) {
+          if ((isLiq || isMush) && prob > 65 && random() < (prob / 100) * 0.1) {
             pores.push({
               id: `pore_${pores.length + 1}`,
-              x_um: Math.round(x + (Math.random() - 0.5) * (poolL / Nx)),
-              y_um: Math.round(y + (Math.random() - 0.5) * (poolW / Ny)),
-              z_um: Math.round(z + (Math.random() - 0.5) * (poolD / Nz)),
-              diameter_um: Math.round(10 + Math.random() * 35),
-              sphericity: +(0.88 + Math.random() * 0.1).toFixed(2),
+              x_um: Math.round(x + (random() - 0.5) * (poolL / Nx)),
+              y_um: Math.round(y + (random() - 0.5) * (poolW / Ny)),
+              z_um: Math.round(z + (random() - 0.5) * (poolD / Nz)),
+              diameter_um: Math.round(10 + random() * 35),
+              sphericity: +(0.88 + random() * 0.1).toFixed(2),
               mechanism: effective_d_gamma > 0 ? "Surfactant Flow Inversion Bubble Drag" : "Marangoni Vortex Recirculation",
               entrapmentProb: prob,
             });

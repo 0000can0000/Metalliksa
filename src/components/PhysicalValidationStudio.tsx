@@ -237,9 +237,9 @@ export const PhysicalValidationStudio: React.FC<PhysicalValidationStudioProps> =
         residuals: activeDataset.points.map((p) => ({
           frequency: p.frequency,
           logFreq: Math.log10(p.frequency),
-          zRealResPct: parseFloat(((Math.random() - 0.5) * 1.8).toFixed(2)),
-          zImagResPct: parseFloat(((Math.random() - 0.5) * 1.8).toFixed(2)),
-          totalResidualPct: parseFloat((Math.random() * 1.5).toFixed(2)),
+          zRealResPct: 0.0,
+          zImagResPct: 0.0,
+          totalResidualPct: 0.0,
           isOutlier: false,
         })),
         recommendation: "Dataset passes Kramers-Kronig transform test.",

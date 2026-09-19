@@ -43,7 +43,7 @@ export interface LabMultiTestData {
   };
 }
 
-export interface AerospaceAuditReportData {
+export interface AerospaceAuditReportData { sampleLotNumber?: string;
   certificateId: string;
   lotHeatNumber?: string;
   partNumber?: string;
@@ -592,3 +592,4 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
 
   return doc;
 }
+

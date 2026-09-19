@@ -17,7 +17,6 @@ import {
   ArrowRight,
   ShieldCheck,
 } from "lucide-react";
-import { OCPAndASTMG59Studio } from "./OCPAndASTMG59Studio";
 import { DynamicPourbaixStudio } from "./DynamicPourbaixStudio";
 import { CorrosionEISKineticsStudio } from "./CorrosionEISKineticsStudio";
 import { TafelPolarizationLab } from "./TafelPolarizationLab";
@@ -686,7 +685,7 @@ export function CorrosionEngineeringLab() {
       {/* ======================================================== */}
       {activeTab === "ocp-g59" && (
         <div className="pt-2">
-          <OCPAndASTMG59Studio />
+          
         </div>
       )}
 
@@ -710,3 +709,6 @@ export function CorrosionEngineeringLab() {
     </div>
   );
 }
+
+
+

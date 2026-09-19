@@ -441,17 +441,7 @@ def fit_tafel_curve(data: dict) -> dict:
             raw_points = parsed_pts
 
     if not raw_points or len(raw_points) < 5:
-        # Generate synthetic benchmark baseline if insufficient points
-        raw_points = []
-        for i in range(71):
-            ev = -0.65 + 0.01 * i
-            overpot = ev - (-0.35)
-            i_val = 1.25 * abs(10**(overpot / 0.12) - 10**(-overpot / 0.10)) + 0.02
-            raw_points.append({
-                "potential": ev,
-                "currentDensity_uA_cm2": i_val,
-                "logCurrentDensity": math.log10(max(1e-6, i_val))
-            })
+        raise ValueError("Insufficient data points for Tafel extrapolation. A minimum of 5 experimental points is required.")
 
     norm_points = []
     for pt in raw_points:
@@ -585,8 +575,8 @@ def fit_tafel_curve(data: dict) -> dict:
             "logI_cathodic": round(log_ic, 4) if show_c else None,
         })
 
-    # Synthetic Butler-Volmer
-    synthetic_bv = []
+    # Fitted Butler-Volmer Profile
+    fitted_bv = []
     for i in range(70):
         e = e_min_plot + (e_max_plot - e_min_plot) * (i / 69)
         overpot = e - extrapolated_ecorr
@@ -595,7 +585,7 @@ def fit_tafel_curve(data: dict) -> dict:
         net_i = abs(ia - ic)
         total_curr = extrapolated_icorr_uA * net_i
         log_val = math.log10(max(1e-6, total_curr))
-        synthetic_bv.append({
+        fitted_bv.append({
             "potential": round(e, 4),
             "logI_model": round(log_val, 4)
         })
@@ -632,7 +622,7 @@ def fit_tafel_curve(data: dict) -> dict:
         "corrosionRateUmYr": round(cr_um_yr, 2),
         "massLoss_g_m2_day": round(mass_loss_g_m2_day, 4),
         "tangentLines": tangent_lines,
-        "syntheticButlerVolmer": synthetic_bv,
+        "fittedButlerVolmer": fitted_bv,
         "severity": severity,
         "alloyId": alloy_id,
         "alloyName": alloy_name,
@@ -671,3 +661,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

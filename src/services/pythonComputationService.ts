@@ -856,6 +856,30 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 21: Transient Enthalpy Phase Change (FDM)
+  async simulateTransientEnthalpyFDM(data: {
+    power_W: number;
+    speed_m_s: number;
+    T_preheat_K: number;
+    rho: number;
+    cp: number;
+    k_solid: number;
+    k_liquid: number;
+    latent_heat_J_kg: number;
+    T_solidus: number;
+    T_liquidus: number;
+    sim_time_s?: number;
+    dt?: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-transient-enthalpy-fdm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

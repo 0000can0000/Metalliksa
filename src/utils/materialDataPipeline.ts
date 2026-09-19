@@ -751,3 +751,4 @@ export function dispatchNavigateToTab(tabId: string): void {
     window.dispatchEvent(new CustomEvent(NAV_EVENT_NAME, { detail: { tabId } }));
   }
 }
+

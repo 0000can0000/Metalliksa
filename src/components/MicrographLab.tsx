@@ -397,13 +397,13 @@ ${diagnosisResult || ""}`
 
       {/* RENDER ACTIVE SUBTAB VIEW */}
       {activeSubTab === "onnx_seg" ? (
-        <ONNXSegmentationStudio />
+        <div className="p-4 bg-yellow-50 text-yellow-800">ONNX Segmentation is migrating to backend physical solver.</div>
       ) : activeSubTab === "sem_studio" ? (
         <SEMAutoAnalyzerStudio />
       ) : activeSubTab === "eds_studio" ? (
         <EDSSpectrumLab />
       ) : activeSubTab === "simulator" ? (
-        <MicrostructureSimulator />
+        <div className="p-4 bg-yellow-50 text-yellow-800">Microstructure Simulator is migrating to backend physical solver.</div>
       ) : (
         <>
           {/* DRAG-AND-DROP FILE UPLOAD ZONE & PRESETS */}
@@ -1125,3 +1125,5 @@ ${diagnosisResult || ""}`
     </div>
   );
 };
+
+

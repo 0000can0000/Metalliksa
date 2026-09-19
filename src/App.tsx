@@ -31,6 +31,7 @@ const MurakamiFatigueLab = lazy(() => import("./components/MurakamiFatigueLab").
 const LpbfDefectTwinLab = lazy(() => import("./components/LpbfDefectTwinLab").then(m => ({ default: m.LpbfDefectTwinLab }))); // Phase 14
 const LpbfAdaptiveMitigationLab = lazy(() => import("./components/LpbfAdaptiveMitigationLab").then(m => ({ default: m.LpbfAdaptiveMitigationLab }))); // Phase 15
 const MultiLaserPlumeLab = lazy(() => import("./components/MultiLaserPlumeLab").then(m => ({ default: m.MultiLaserPlumeLab }))); // Phase 16
+const MultiTrackThermalLab = lazy(() => import("./components/MultiTrackThermalLab").then(m => ({ default: m.MultiTrackThermalLab }))); // Phase 17
 const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
 const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
 const PhaseDiagramViewer = lazy(() => import("./components/PhaseDiagramViewer").then(m => ({ default: m.PhaseDiagramViewer })));
@@ -120,6 +121,7 @@ export default function App() {
       case 'defect-twin': return <LpbfDefectTwinLab />; // Phase 14
       case 'adaptive-mitigation': return <LpbfAdaptiveMitigationLab />; // Phase 15
       case 'multilaser-plume': return <MultiLaserPlumeLab />; // Phase 16
+      case 'thermal-accumulation': return <MultiTrackThermalLab />; // Phase 17
       case 'research-hub': return <AdvancedResearchHub />;
       case 'experimental-data': return <EvidenceWorkspace mode="experimental" />;
       case 'traceability': return <EvidenceWorkspace mode="traceability" />;

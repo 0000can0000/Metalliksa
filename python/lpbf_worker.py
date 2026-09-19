@@ -403,6 +403,36 @@ def main():
                 )
                 mitigator = AdaptiveFeedforwardMitigator(prof)
                 data = mitigator.process_toolpath(vectors, apply_67_deg_rotation=apply_rot, layer_index=layer_idx)
+            elif method == "multilaser-plume":               # Phase 16
+                from lpbf_multilaser_plume import ShieldGasFlow, PlumeParameters, MultiLaserPlumeEngine
+                payload = request["payload"]
+                gas_cfg = payload.get("gasFlow", {})
+                flow = ShieldGasFlow(
+                    gas_type=gas_cfg.get("gasType", "Argon"),
+                    velocity_m_s=float(gas_cfg.get("velocity_m_s", 2.0)),
+                    angle_deg=float(gas_cfg.get("angle_deg", 0.0))
+                )
+                plume_cfg = payload.get("plumeParams", {})
+                plume_params = PlumeParameters(
+                    sigma_plume_mm=float(plume_cfg.get("sigma_plume_mm", 2.5)),
+                    decay_length_mm=float(plume_cfg.get("decay_length_mm", 25.0)),
+                    base_extinction_coeff=float(plume_cfg.get("base_extinction_coeff", 0.35)),
+                    min_collision_dist_mm=float(plume_cfg.get("min_collision_dist_mm", 1.0)),
+                    attenuation_hazard_threshold=float(plume_cfg.get("attenuation_hazard_threshold", 0.10))
+                )
+                engine = MultiLaserPlumeEngine(flow, plume_params)
+                l1_vecs = [tuple(v) for v in payload.get("laser1_vectors", [])]
+                l2_vecs = [tuple(v) for v in payload.get("laser2_vectors", [])]
+                if not l1_vecs:
+                    l1_vecs = [(0.0, 0.0, 40.0, 0.0, 300.0, 1000.0)]
+                if not l2_vecs:
+                    l2_vecs = [(10.0, 1.0, 50.0, 1.0, 300.0, 1000.0)]
+
+                mode = payload.get("mode", "simulate")
+                if mode == "optimize":
+                    data = engine.optimize_deconfliction_schedule(l1_vecs, l2_vecs)
+                else:
+                    data = engine.simulate_multitrack_scenarios(l1_vecs, l2_vecs)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

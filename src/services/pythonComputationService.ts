@@ -749,6 +749,29 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 16: Multi-Laser Synchronization & Plume Attenuation
+  async simulateMultiLaserPlume(data: {
+    gasFlow?: { gasType?: string; velocity_m_s?: number; angle_deg?: number };
+    plumeParams?: {
+      sigma_plume_mm?: number;
+      decay_length_mm?: number;
+      base_extinction_coeff?: number;
+      min_collision_dist_mm?: number;
+      attenuation_hazard_threshold?: number;
+    };
+    laser1_vectors?: number[][];
+    laser2_vectors?: number[][];
+    mode?: "simulate" | "optimize";
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-multilaser-plume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

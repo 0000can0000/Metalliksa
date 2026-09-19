@@ -1,6 +1,5 @@
 import { MaterialSpec } from "../types";
-import { MaterialThermalProfile, ThermalStage } from "../components/ThermalCycleScheduler";
-import { HardnessAlloyPreset } from "../components/HardnessToTensileLab";
+import { MaterialThermalProfile, ThermalStage, HardnessAlloyPreset } from "../types/thermalKinetic";
 
 export type ModuleTargetId =
   | "thermal-scheduler"

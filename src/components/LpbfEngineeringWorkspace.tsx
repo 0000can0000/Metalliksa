@@ -102,5 +102,3 @@ export function LpbfEngineeringWorkspace() {
 
 function EmptyResult({status,onRun}:{status?:string;onRun:()=>void}) {return <div><h3 className="font-medium">No completed result</h3><p className="my-3 text-sm text-slate-400">{status?`Current job: ${status}. Only a completed job can supply melt pool results.`:"Start a thermal or screening run with the shared process vector."}</p><button className={buttonStyle} onClick={onRun}>Open Thermal Simulation</button></div>;}
 function LoadingLab(){return <p role="status" className="p-6 text-sm text-slate-400">Loading engineering module…</p>;}
-
-

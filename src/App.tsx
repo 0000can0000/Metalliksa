@@ -35,6 +35,7 @@ const ModulusFNOLab = lazy(() => import("./components/ModulusFNOLab").then(m => 
 const LpbfToolpathStudioLab = lazy(() => import("./components/LpbfToolpathStudioLab").then(m => ({ default: m.LpbfToolpathStudioLab }))); // Phase 12
 const MurakamiFatigueLab = lazy(() => import("./components/MurakamiFatigueLab").then(m => ({ default: m.MurakamiFatigueLab }))); // Phase 13
 const LpbfDefectTwinLab = lazy(() => import("./components/LpbfDefectTwinLab").then(m => ({ default: m.LpbfDefectTwinLab }))); // Phase 14
+const LpbfAdaptiveMitigationLab = lazy(() => import("./components/LpbfAdaptiveMitigationLab").then(m => ({ default: m.LpbfAdaptiveMitigationLab }))); // Phase 15
 const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
 const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
 const ThermalCycleScheduler = lazy(() => import("./components/ThermalCycleScheduler").then(m => ({ default: m.ThermalCycleScheduler })));
@@ -123,6 +124,7 @@ export default function App() {
       case 'toolpath-studio': return <LpbfToolpathStudioLab />; // Phase 12
       case 'murakami-fatigue': return <MurakamiFatigueLab />; // Phase 13
       case 'defect-twin': return <LpbfDefectTwinLab />; // Phase 14
+      case 'adaptive-mitigation': return <LpbfAdaptiveMitigationLab />; // Phase 15
       case 'research-hub': return <AdvancedResearchHub />;
       case 'experimental-data': return <EvidenceWorkspace mode="experimental" />;
       case 'traceability': return <EvidenceWorkspace mode="traceability" />;
@@ -141,7 +143,6 @@ export default function App() {
       case 'qualification': return <StandardQualificationEngine />;
       case 'materials-project': return <MaterialsProjectExplorer onSelectToCrystal={() => navigate('crystal')} />;
       case 'calculators': return <PocketCalculators />;
-      case 'crystal': return <CrystalVisualizer />;
       case 'eds-lab': return <EDSSpectrumLab />;
       case 'micrograph': return <MicrographLab />;
       case 'alloy-builder': return <AlloyBuilder onNavigate={navigate} />;

@@ -1779,5 +1779,3 @@ ${(analysisResult.engineeringInsights || [])
     </div>
   );
 }
-
-

@@ -384,9 +384,9 @@ export function AerospaceAuditReportGenerator() {
   const [customerPoNumber, setCustomerPoNumber] = useState<string>("N/A");
   const [cageCode, setCageCode] = useState<string>(GENERIC_SCREENING_PRESET.cageCode);
   const [revision, setRevision] = useState<string>("Rev A (screening)");
-  const [engineerName, setEngineerName] = useState<string>("Materials & Process Lead");
-  const [qaDirectorName, setQaDirectorName] = useState<string>("Quality Assurance Authority");
-  const [facility, setFacility] = useState<string>("Materials Qualification Facility");
+  const [engineerName, setEngineerName] = useState<string>("Materials engineer (placeholder)");
+  const [qaDirectorName, setQaDirectorName] = useState<string>("QA reviewer (placeholder)");
+  const [facility, setFacility] = useState<string>("Engineering screening workbench");
   const [programName, setProgramName] = useState<string>(GENERIC_SCREENING_PRESET.programTitle);
   const [criticalityLevel, setCriticalityLevel] = useState<
     "Class 1 (Flight Critical)" | "Class 2 (Primary Structural)" | "Class 3 (Secondary System)"
@@ -904,7 +904,7 @@ export function AerospaceAuditReportGenerator() {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">QA Authority / Sign-off</label>
+                <label className="text-[10px] text-slate-400 block mb-0.5">QA reviewer (placeholder)</label>
                 <input
                   type="text"
                   value={qaDirectorName}

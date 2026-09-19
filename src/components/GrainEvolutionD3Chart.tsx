@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import { SimulationTimePoint, ThermalStage, MaterialThermalProfile } from "./ThermalCycleScheduler";
+import { SimulationTimePoint, ThermalStage, MaterialThermalProfile } from "../types/thermalKinetic";
 
 export type ChartDisplayMode = "grain-zener" | "dual-temp" | "growth-rate" | "hall-petch";
 

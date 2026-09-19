@@ -17,8 +17,12 @@ import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_squared_error
-import onnx
-import onnxruntime as ort
+try:
+    import onnx
+    import onnxruntime as ort
+    HAS_ONNX = True
+except ImportError:
+    HAS_ONNX = False
 
 try:
     import xgboost as xgb
@@ -46,145 +50,7 @@ VEC = {
     "Al": 3, "Ti": 4, "Nb": 5, "V": 5, "Ta": 5, "C": 4, "B": 3
 }
 
-def compute_metallurgical_features(comp_dict):
-    """
-    Computes solid solution strengthening parameters, VEC and gamma-prime volume fraction estimate.
-    """
-    total_wt = sum(comp_dict.get(el, 0) for el in ELEMENT_LIST)
-    if total_wt == 0:
-        total_wt = 100.0
 
-    # Mole fraction approximation
-    c_moles = {el: comp_dict.get(el, 0) / (58.69 if el == 'Ni' else 55.85) for el in ELEMENT_LIST}
-    sum_moles = sum(c_moles.values())
-    x_i = {el: c_moles[el] / sum_moles for el in ELEMENT_LIST}
-
-    # Mean atomic radius
-    r_mean = sum(x_i[el] * ATOMIC_RADII.get(el, 1.25) for el in ELEMENT_LIST)
-    
-    # Atomic size misfit: delta = sqrt( sum( x_i * (1 - r_i / r_mean)^2 ) )
-    delta = np.sqrt(sum(x_i[el] * ((1.0 - ATOMIC_RADII.get(el, 1.25) / r_mean) ** 2) for el in ELEMENT_LIST)) * 100.0
-
-    # Mean VEC
-    vec_mean = sum(x_i[el] * VEC.get(el, 8) for el in ELEMENT_LIST)
-
-    # Gamma prime forming elements (Al + Ti + Nb + Ta)
-    gamma_prime_formers = comp_dict.get("Al", 0) + comp_dict.get("Ti", 0) + comp_dict.get("Nb", 0) + comp_dict.get("Ta", 0)
-
-    return delta, vec_mean, gamma_prime_formers
-
-
-# ---------------------------------------------------------
-# 2. SYNTHETIC METALLURGY DATASET GENERATOR (Based on NIMS & Superalloy Physics)
-# ---------------------------------------------------------
-def generate_synthetic_alloy_dataset(num_samples=1500):
-    """
-    Generates a realistic multi-component alloy dataset covering Superalloys, Steels, and Titanium alloys.
-    """
-    records = []
-    
-    for _ in range(num_samples):
-        alloy_type = np.random.choice(["ni_superalloy", "duplex_steel", "maraging_steel", "co_superalloy"])
-        
-        comp = {el: 0.0 for el in ELEMENT_LIST}
-        
-        if alloy_type == "ni_superalloy":
-            comp["Ni"] = np.random.uniform(50.0, 75.0)
-            comp["Cr"] = np.random.uniform(12.0, 22.0)
-            comp["Co"] = np.random.uniform(0.0, 15.0)
-            comp["Mo"] = np.random.uniform(2.0, 6.0)
-            comp["W"] = np.random.uniform(0.0, 5.0)
-            comp["Al"] = np.random.uniform(0.5, 5.5)
-            comp["Ti"] = np.random.uniform(0.5, 4.0)
-            comp["Nb"] = np.random.uniform(0.0, 5.5)
-            comp["C"] = np.random.uniform(0.02, 0.08)
-            comp["B"] = np.random.uniform(0.002, 0.015)
-            
-            sol_temp = np.random.uniform(980, 1180)
-            sol_time = np.random.uniform(1, 4)
-            age1_temp = np.random.uniform(720, 850)
-            age1_time = np.random.uniform(4, 16)
-            age2_temp = np.random.uniform(620, 700) if np.random.rand() > 0.3 else 0
-            age2_time = np.random.uniform(4, 12) if age2_temp > 0 else 0
-
-        elif alloy_type == "duplex_steel":
-            comp["Fe"] = np.random.uniform(55.0, 70.0)
-            comp["Cr"] = np.random.uniform(21.0, 26.0)
-            comp["Ni"] = np.random.uniform(4.0, 8.0)
-            comp["Mo"] = np.random.uniform(2.5, 4.5)
-            comp["C"] = np.random.uniform(0.01, 0.03)
-            
-            sol_temp = np.random.uniform(1050, 1120)
-            sol_time = np.random.uniform(0.5, 2)
-            age1_temp = 0; age1_time = 0; age2_temp = 0; age2_time = 0
-
-        else: # Maraging / High Strength Steel
-            comp["Fe"] = np.random.uniform(65.0, 75.0)
-            comp["Ni"] = np.random.uniform(15.0, 19.0)
-            comp["Co"] = np.random.uniform(7.0, 12.0)
-            comp["Mo"] = np.random.uniform(3.0, 5.5)
-            comp["Ti"] = np.random.uniform(0.2, 1.8)
-            comp["Al"] = np.random.uniform(0.1, 0.5)
-            
-            sol_temp = np.random.uniform(820, 860)
-            sol_time = 1.0
-            age1_temp = np.random.uniform(480, 520)
-            age1_time = np.random.uniform(3, 8)
-            age2_temp = 0; age2_time = 0
-
-        # Metallurgical Strengthening Calculations
-        delta, vec_mean, gp_formers = compute_metallurgical_features(comp)
-
-        # 1. Yield Strength (MPa) physics model:
-        # sigma_y = sigma_0 + sigma_ss(delta) + sigma_precipitate(gp_formers, aging) + noise
-        aging_factor = 0.0
-        if age1_temp > 400:
-            # Overaging vs Peak aging peak around 720-760C for Ni, 480-500C for Maraging
-            aging_factor = np.exp(-((age1_temp - 740) ** 2) / (2 * (80 ** 2))) * np.log1p(age1_time) * 220.0
-
-        sigma_y = (
-            250.0
-            + 8.5 * comp["Cr"]
-            + 18.0 * comp["Mo"]
-            + 22.0 * comp["W"]
-            + 45.0 * gp_formers
-            + 15.0 * delta
-            + aging_factor
-            + np.random.normal(0, 18.0)
-        )
-        
-        # 2. UTS (MPa)
-        work_hardening_ratio = np.random.uniform(1.20, 1.45)
-        uts = sigma_y * work_hardening_ratio + np.random.normal(0, 20.0)
-
-        # 3. Elongation (%) - Tradeoff with strength
-        elongation = max(4.0, min(45.0, 48.0 - (sigma_y / 38.0) + np.random.normal(0, 2.5)))
-
-        # 4. Vickers Hardness (HV)
-        hardness_hv = (sigma_y / 3.1) + np.random.normal(0, 10.0)
-
-        # 5. Creep Rupture Life at 650°C / 620 MPa (Hours)
-        log_creep_life = (
-            0.05 * comp["Ni"]
-            + 0.12 * comp["Mo"]
-            + 0.18 * comp["W"]
-            + 0.25 * comp["Al"]
-            + 0.20 * comp["Ti"]
-            + (aging_factor / 100.0)
-            - 1.5
-            + np.random.normal(0, 0.3)
-        )
-        creep_life_hrs = np.exp(np.clip(log_creep_life, 0.5, 8.5))
-
-        row = [comp[el] for el in ELEMENT_LIST] + [sol_temp, sol_time, age1_temp, age1_time, age2_temp, age2_time]
-        targets = [sigma_y, uts, elongation, hardness_hv, creep_life_hrs]
-        records.append(row + targets)
-
-    columns = FEATURE_NAMES + ["Yield_Strength_MPa", "UTS_MPa", "Elongation_pct", "Hardness_HV", "Creep_Life_hrs"]
-    return pd.DataFrame(records, columns=columns)
-
-
-# ---------------------------------------------------------
 # 3. PYTORCH PINN REGRESSOR MODEL (For ONNX Web Export)
 # ---------------------------------------------------------
 class MetallurgicalPropertyPINN(nn.Module):
@@ -209,12 +75,35 @@ class MetallurgicalPropertyPINN(nn.Module):
 # ---------------------------------------------------------
 # 4. TRAINING & ONNX EXPORT PIPELINE
 # ---------------------------------------------------------
-def train_and_export(epochs=80, batch_size=32, lr=1e-3):
-    print("[*] Generating Metallurgical Dataset (Composition + Heat Treatment -> Properties)...")
-    df = generate_synthetic_alloy_dataset(num_samples=2500)
+def train_and_export(epochs=80, batch_size=32, lr=1e-3, data_csv_path=None):
+    print("[*] Initializing Metallurgical Mechanical Property AI Training...")
+    
+    if not data_csv_path or not os.path.exists(data_csv_path):
+        raise RuntimeError(
+            "ERROR: A real empirical CSV dataset path must be provided. "
+            "Generating dummy/synthetic material property data is strictly prohibited "
+            "to ensure scientific validity. Please provide a path to actual experimental data."
+        )
+
+    print(f"[+] Loading REAL experimental alloy data from: {data_csv_path}")
+    df = pd.read_csv(data_csv_path)
+    
+    # Ensure required columns exist
+    missing_feats = [f for f in FEATURE_NAMES if f not in df.columns]
+    if missing_feats:
+        raise ValueError(f"CSV is missing required feature columns: {missing_feats}")
+
+    target_cols = ["Yield_Strength_MPa", "UTS_MPa", "Elongation_pct", "Hardness_HV", "Creep_Life_hrs"]
+    missing_targets = [t for t in target_cols if t not in df.columns]
+    if missing_targets:
+        raise ValueError(f"CSV is missing required target columns: {missing_targets}")
+
+    # Drop NaNs
+    df = df.dropna(subset=FEATURE_NAMES + target_cols)
+    print(f"[*] Read {len(df)} empirical records.")
 
     X = df[FEATURE_NAMES].values
-    y = df[["Yield_Strength_MPa", "UTS_MPa", "Elongation_pct", "Hardness_HV", "Creep_Life_hrs"]].values
+    y = df[target_cols].values
 
     scaler_X = StandardScaler()
     scaler_y = StandardScaler()
@@ -288,18 +177,34 @@ def train_and_export(epochs=80, batch_size=32, lr=1e-3):
         }
     )
 
-    # Validate ONNX
-    onnx_model = onnx.load(output_onnx)
-    onnx.checker.check_model(onnx_model)
-    print(f"[✓] ONNX Model verified successfully!")
+    # Validate ONNX if available
+    if HAS_ONNX:
+        onnx_model = onnx.load(output_onnx)
+        onnx.checker.check_model(onnx_model)
+        print(f"[OK] ONNX Model verified successfully!")
 
-    # Verify with ONNXRuntime
-    ort_session = ort.InferenceSession(output_onnx)
-    ort_inputs = {ort_session.get_inputs()[0].name: dummy_input.numpy()}
-    ort_outs = ort_session.run(None, ort_inputs)
-    print(f"[✓] ONNX Runtime Test Output Shape: {ort_outs[0].shape}")
-    print(f"[★] Outputs: [Yield Strength, UTS, Elongation, Hardness, Creep Life]")
-    print(f"[★] Model ready for client-side execution!")
+        # Verify with ONNXRuntime
+        ort_session = ort.InferenceSession(output_onnx)
+        ort_inputs = {ort_session.get_inputs()[0].name: dummy_input.numpy()}
+        ort_outs = ort_session.run(None, ort_inputs)
+        print(f"[OK] ONNX Runtime Test Output Shape: {ort_outs[0].shape}")
+        print(f"[*] Outputs: [Yield Strength, UTS, Elongation, Hardness, Creep Life]")
+        print(f"[*] Model ready for client-side execution!")
+    else:
+        print("[!] ONNX/ONNXRuntime not installed. Skipping model verification.")
 
 if __name__ == "__main__":
-    train_and_export()
+    import argparse
+    parser = argparse.ArgumentParser(description="Train Metallurgical Mechanical Property Predictor")
+    parser.add_argument("--data-file", type=str, required=True, help="Path to empirical alloy dataset (CSV)")
+    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    args = parser.parse_args()
+
+    train_and_export(
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        lr=args.lr,
+        data_csv_path=args.data_file
+    )

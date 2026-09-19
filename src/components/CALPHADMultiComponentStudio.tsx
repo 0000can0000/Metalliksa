@@ -208,7 +208,7 @@ export const CALPHADMultiComponentStudio: React.FC = () => {
   // Effective solve result (Python result preferred, client result as fallback)
   const solveResult: PythonCalphadSolveResult = asyncSolveResult || {
     ...clientSolveResult,
-    engine: "MetalliX-Client-TS-Solver",
+    engine: "MetalliX-Client-WASM/TS",
     computeTimeMs: 4,
     isPythonEngine: false,
     databaseUsed: "Built-in Standard TDB Model",

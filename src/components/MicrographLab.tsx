@@ -341,7 +341,7 @@ ${diagnosisResult || ""}`
               }`}
             >
               <Cpu className="w-3.5 h-3.5 text-purple-400" />
-              <span>Phase Segmentation Studio</span>
+              <span>ONNX Wasm AI Segmenter</span>
             </button>
             <button
               type="button"
@@ -397,13 +397,13 @@ ${diagnosisResult || ""}`
 
       {/* RENDER ACTIVE SUBTAB VIEW */}
       {activeSubTab === "onnx_seg" ? (
-        <div className="p-4 bg-yellow-50 text-yellow-800">ONNX Segmentation is migrating to backend physical solver.</div>
+        <ONNXSegmentationStudio />
       ) : activeSubTab === "sem_studio" ? (
         <SEMAutoAnalyzerStudio />
       ) : activeSubTab === "eds_studio" ? (
         <EDSSpectrumLab />
       ) : activeSubTab === "simulator" ? (
-        <div className="p-4 bg-yellow-50 text-yellow-800">Microstructure Simulator is migrating to backend physical solver.</div>
+        <MicrostructureSimulator />
       ) : (
         <>
           {/* DRAG-AND-DROP FILE UPLOAD ZONE & PRESETS */}
@@ -1125,5 +1125,3 @@ ${diagnosisResult || ""}`
     </div>
   );
 };
-
-

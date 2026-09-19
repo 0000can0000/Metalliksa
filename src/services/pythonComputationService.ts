@@ -729,6 +729,26 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 15: Closed-Loop Feed-Forward Mitigation
+  async processAdaptiveFeedforward(data: {
+    content: string;
+    format?: "gcode" | "cli";
+    defaultPower_W?: number;
+    defaultSpeed_mms?: number;
+    apply67DegRotation?: boolean;
+    layerIndex?: number;
+    accelMax_mms2?: number;
+    jumpSpeed_mms?: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-adaptive-feedforward", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

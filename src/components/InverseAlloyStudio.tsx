@@ -1279,5 +1279,3 @@ export const InverseAlloyStudio: React.FC<InverseAlloyStudioProps> = ({ onNaviga
     </div>
   );
 };
-
-

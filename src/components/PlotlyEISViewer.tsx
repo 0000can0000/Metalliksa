@@ -424,6 +424,15 @@ export function PlotlyEISViewer({
           marker: { size: 5, color: "#f43f5e" },
           hovertemplate: "f: %{x:.2e} Hz<br>ΔZ'' residual: %{y:.2f}%<extra></extra>",
         });
+      } else {
+        // Mock placeholder if no fit performed yet
+        traces.push({
+          x: [1e-2, 1e0, 1e2, 1e4, 1e5],
+          y: [0.12, -0.05, 0.08, -0.02, 0.04],
+          mode: "lines+markers",
+          name: "Fit residuals (Run Python CNLS Fit to populate)",
+          line: { color: "#64748b", dash: "dash" },
+        });
       }
 
       layout = {
@@ -445,17 +454,6 @@ export function PlotlyEISViewer({
           zerolinecolor: "#f59e0b",
           tickfont: { color: "#94a3b8" },
         },
-        annotations: traces.length === 0 ? [
-          {
-            text: "No CNLS fit performed yet.<br>Execute equivalent circuit fit to display relative residuals.",
-            xref: "paper",
-            yref: "paper",
-            x: 0.5,
-            y: 0.5,
-            showarrow: false,
-            font: { color: "#94a3b8", size: 12 },
-          },
-        ] : [],
       };
     }
 

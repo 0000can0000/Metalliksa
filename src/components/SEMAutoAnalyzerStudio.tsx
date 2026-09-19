@@ -1225,10 +1225,10 @@ export const SEMAutoAnalyzerStudio: React.FC = () => {
     const signY = verdictY + 28;
     doc.setDrawColor(148, 163, 184);
     doc.line(14, signY, 80, signY);
-    doc.text("Metallographer / Analyst Signature", 14, signY + 5);
+    doc.text("Certified Metallographer / QC Engineer", 14, signY + 5);
 
     doc.line(120, signY, 190, signY);
-    doc.text("Review / Verification Sign-off", 120, signY + 5);
+    doc.text("Laboratory Stamp & Verification Seal", 120, signY + 5);
 
     doc.save(`SEM_Phase_Report_${sampleName.replace(/\s+/g, "_")}.pdf`);
   };

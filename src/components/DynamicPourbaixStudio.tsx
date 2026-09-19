@@ -1368,5 +1368,3 @@ export function DynamicPourbaixStudio() {
     </div>
   );
 }
-
-

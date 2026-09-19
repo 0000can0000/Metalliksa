@@ -686,7 +686,7 @@ export function CorrosionEngineeringLab() {
       {/* ======================================================== */}
       {activeTab === "ocp-g59" && (
         <div className="pt-2">
-          <div className="p-4 bg-yellow-50 text-yellow-800">OCP Studio is migrating to backend physical solver.</div>
+          <OCPAndASTMG59Studio />
         </div>
       )}
 
@@ -710,5 +710,3 @@ export function CorrosionEngineeringLab() {
     </div>
   );
 }
-
-

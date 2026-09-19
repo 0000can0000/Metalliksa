@@ -363,6 +363,24 @@ def main():
                     "kitagawa_takahashi_curve": kt_curve,
                     "paris_crack_growth": paris_res
                 }
+            elif method == "stl-voxelize":                    # Phase 14
+                from stl_voxelizer import STLVoxelizer
+                import base64
+                payload = request["payload"]
+                stl_text = payload.get("stlContent", "")
+                resolution = int(payload.get("resolution", 32))
+                defects = payload.get("defects", [])
+
+                if stl_text.strip().startswith("solid"):
+                    triangles = STLVoxelizer.parse_ascii_stl(stl_text)
+                else:
+                    try:
+                        raw_bytes = base64.b64decode(stl_text)
+                        triangles = STLVoxelizer.parse_binary_stl(raw_bytes)
+                    except Exception:
+                        triangles = STLVoxelizer.parse_ascii_stl(stl_text)
+
+                data = STLVoxelizer.voxelize(triangles, resolution=resolution, detected_defects=defects)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

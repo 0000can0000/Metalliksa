@@ -34,6 +34,7 @@ const ExperimentalValidationLab = lazy(() => import("./components/ExperimentalVa
 const ModulusFNOLab = lazy(() => import("./components/ModulusFNOLab").then(m => ({ default: m.ModulusFNOLab }))); // Phase 11
 const LpbfToolpathStudioLab = lazy(() => import("./components/LpbfToolpathStudioLab").then(m => ({ default: m.LpbfToolpathStudioLab }))); // Phase 12
 const MurakamiFatigueLab = lazy(() => import("./components/MurakamiFatigueLab").then(m => ({ default: m.MurakamiFatigueLab }))); // Phase 13
+const LpbfDefectTwinLab = lazy(() => import("./components/LpbfDefectTwinLab").then(m => ({ default: m.LpbfDefectTwinLab }))); // Phase 14
 const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
 const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
 const ThermalCycleScheduler = lazy(() => import("./components/ThermalCycleScheduler").then(m => ({ default: m.ThermalCycleScheduler })));
@@ -121,6 +122,7 @@ export default function App() {
       case 'modulus-fno-lab': return <ModulusFNOLab />; // Phase 11
       case 'toolpath-studio': return <LpbfToolpathStudioLab />; // Phase 12
       case 'murakami-fatigue': return <MurakamiFatigueLab />; // Phase 13
+      case 'defect-twin': return <LpbfDefectTwinLab />; // Phase 14
       case 'research-hub': return <AdvancedResearchHub />;
       case 'experimental-data': return <EvidenceWorkspace mode="experimental" />;
       case 'traceability': return <EvidenceWorkspace mode="traceability" />;

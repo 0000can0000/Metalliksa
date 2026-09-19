@@ -483,9 +483,9 @@ export const StandardQualificationEngine: React.FC = () => {
 
   // Certificate of Conformance (CoC) Export Modal State
   const [showCocModal, setShowCocModal] = useState<boolean>(false);
-  const [cocEngineerName, setCocEngineerName] = useState<string>("Materials engineer (placeholder)");
-  const [cocFacility, setCocFacility] = useState<string>("Engineering screening workbench");
-  const [cocProgramName, setCocProgramName] = useState<string>("Generic structural coupon screening");
+  const [cocEngineerName, setCocEngineerName] = useState<string>("Materials & Process Lead");
+  const [cocFacility, setCocFacility] = useState<string>("Materials Testing Facility");
+  const [cocProgramName, setCocProgramName] = useState<string>("Structural Coupon Screening");
   const [cocRevision, setCocRevision] = useState<string>("REV-D2");
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [exportSuccessMsg, setExportSuccessMsg] = useState<string | null>(null);
@@ -730,7 +730,7 @@ export const StandardQualificationEngine: React.FC = () => {
       revision: cocRevision,
       issueDate: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
       engineerName: cocEngineerName,
-      qaDirectorName: "QA reviewer (placeholder)",
+      qaDirectorName: "Quality Assurance Authority",
       facility: cocFacility,
       programName: cocProgramName,
       alloyName,

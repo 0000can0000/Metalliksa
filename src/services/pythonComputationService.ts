@@ -714,6 +714,21 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 14: STL Voxelization & Spatial Defect Mapping
+  async voxelizeSTLDefects(data: {
+    stlContent: string;
+    resolution?: number;
+    defects?: Array<{ x?: number; y?: number; z?: number; type: string; diameter_um: number }>;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-stl-voxelize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

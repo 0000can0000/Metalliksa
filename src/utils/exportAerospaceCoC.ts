@@ -548,17 +548,17 @@ export function generateAerospaceCoCPDF(data: AerospaceAuditReportData): jsPDF {
   doc.setFontSize(6.8);
   doc.setTextColor(51, 65, 85);
   doc.text(data.engineerName, margin + 4, signY + 4.5);
-  doc.text(`Digital ID: MET-${Math.random().toString(36).substring(2, 8).toUpperCase()}`, margin + 4, signY + 9);
+  doc.text(`Doc Ref: COC-${(data.sampleLotNumber || "REF").toUpperCase()}`, margin + 4, signY + 9);
 
-  // 2. QA Director
+  // 2. QA Director / Authority
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.2);
   doc.setTextColor(15, 23, 42);
-  doc.text("QA reviewer (placeholder):", margin + 65, signY);
+  doc.text("Quality Assurance Authority:", margin + 65, signY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.8);
   doc.setTextColor(51, 65, 85);
-  doc.text(data.qaDirectorName || "QA reviewer (placeholder)", margin + 65, signY + 4.5);
+  doc.text(data.qaDirectorName || "Pending Formal QA Sign-off", margin + 65, signY + 4.5);
   doc.text("SCREENING SIGN-OFF ONLY", margin + 65, signY + 9);
 
   // 3. Airworthiness Stamp Box (Circular / Hex Badge in PDF)

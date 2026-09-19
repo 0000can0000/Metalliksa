@@ -381,6 +381,28 @@ def main():
                         triangles = STLVoxelizer.parse_ascii_stl(stl_text)
 
                 data = STLVoxelizer.voxelize(triangles, resolution=resolution, detected_defects=defects)
+            elif method == "adaptive-feedforward":            # Phase 15
+                from lpbf_toolpath_kinematics import LPBFToolpathParser, ScannerProfile
+                from lpbf_adaptive_feedforward import AdaptiveFeedforwardMitigator
+                payload = request["payload"]
+                raw_text = payload.get("content", "")
+                fmt = payload.get("format", "gcode").lower()
+                power = float(payload.get("defaultPower_W", 280.0))
+                speed = float(payload.get("defaultSpeed_mms", 1000.0))
+                apply_rot = bool(payload.get("apply67DegRotation", False))
+                layer_idx = int(payload.get("layerIndex", 1))
+
+                if fmt == "cli":
+                    vectors = LPBFToolpathParser.parse_cli(raw_text, default_power_W=power, default_speed_mms=speed)
+                else:
+                    vectors = LPBFToolpathParser.parse_gcode(raw_text, default_power_W=power, default_speed_mms=speed)
+
+                prof = ScannerProfile(
+                    accel_max_mms2=float(payload.get("accelMax_mms2", 40000.0)),
+                    jump_speed_mms=float(payload.get("jumpSpeed_mms", 3000.0))
+                )
+                mitigator = AdaptiveFeedforwardMitigator(prof)
+                data = mitigator.process_toolpath(vectors, apply_67_deg_rotation=apply_rot, layer_index=layer_idx)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

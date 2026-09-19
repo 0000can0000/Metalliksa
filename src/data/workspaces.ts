@@ -20,7 +20,9 @@ export const MODULES = [
   { id: 'defect-twin', workspace: 'lpbf', label: 'Spatial Defect Twin', scope: 'Research', description: 'Phase 14: CAD/STL 3D voxelization, spatial defect mapping and relative density (%99.X).', next: 'adaptive-mitigation' },
   { id: 'adaptive-mitigation', workspace: 'lpbf', label: 'Defect Mitigation', scope: 'Research', description: 'Phase 15: Inverse kinematic power compensation and 67° scan rotation for defect suppression.', next: 'multilaser-plume' },
   { id: 'multilaser-plume', workspace: 'lpbf', label: 'Multi-Laser Plume', scope: 'Research', description: 'Phase 16: Fluid-optic cross-flow, Beer-Lambert plume attenuation and downwind de-confliction.', next: 'thermal-accumulation' },
-  { id: 'thermal-accumulation', workspace: 'lpbf', label: 'Thermal Accumulation', scope: 'Research', description: 'Phase 17: 3D moving Green function superposition, inter-pass temperature drift and keyhole thresholding.', next: 'database' },
+  { id: 'thermal-accumulation', workspace: 'lpbf', label: 'Thermal Accumulation', scope: 'Research', description: 'Phase 17: Multi-Track heat buildup, inter-pass temperature drift, and optimal dwell delay routing.', next: 'powder-compaction' },
+  { id: 'powder-compaction', workspace: 'lpbf', label: 'Powder DEM Compaction', scope: 'Research', description: 'Phase 18: Quasi-Monte Carlo particle packing simulation and recoater geometry.', next: 'optical-tomography' },
+  { id: 'optical-tomography', workspace: 'lpbf', label: 'Optical Tomography', scope: 'Research', description: 'Phase 19: In-Situ sensor thermal flux expected value and analytical noise bounds.', next: 'database' },
 
   // Materials Intelligence Workspace
   { id: 'database', workspace: 'materials', label: 'Materials Database', scope: 'Research', description: 'Handbook values and reviewed research references; source applicability requires review.', next: 'alloy-builder' },

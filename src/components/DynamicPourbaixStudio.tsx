@@ -1132,26 +1132,7 @@ export function DynamicPourbaixStudio() {
       {/* =========================================================================
           VIEW 2: DEDICATED EXPERIMENTAL E-pH OVERLAY & CORROSION MECHANISMS
          ========================================================================= */}
-      {activeTab === "experimental-overlay" && (
-        <ExperimentalPourbaixOverlayView
-          experimentalPoints={experimentalPoints}
-          onUpdatePoints={setExperimentalPoints}
-          selectedPointId={selectedPointId}
-          onSelectPoint={setSelectedPointId}
-          pythonResult={pythonPourbaixData}
-          isPythonSolving={isPythonSolving}
-          selectedElement={primaryElement}
-          onElementChange={(elem) => {
-            const matchedAlloy = ALLOY_PRESETS.find((a) => a.composition[elem] && a.composition[elem] > 40);
-            if (matchedAlloy) {
-              setSelectedAlloyId(matchedAlloy.id);
-            }
-          }}
-          activeRefElectrode={refElectrode}
-          temperature_C={temperature_C}
-          chlorideActivity={chlorideActivity}
-        />
-      )}
+      
 
       {/* =========================================================================
           VIEW 3: EQUILIBRIUM REACTIONS & THERMODYNAMIC ΔG°(T) BREAKDOWN
@@ -1368,4 +1349,5 @@ export function DynamicPourbaixStudio() {
     </div>
   );
 }
+
 

@@ -1692,24 +1692,6 @@ ${(analysisResult.engineeringInsights || [])
               </div>
             </div>
           )}
-
-          {/* TAB 7: BATCH EIS & 3D DEGRADATION TRACKER */}
-          {(activeTab === "batch_degradation" || activeTab === "deck_overlay") && (
-            <div className="space-y-4">
-              <BatchEISDegradationTracker
-                onSendToCNLS={(ds) => {
-                  if (onNavigateToCNLS) onNavigateToCNLS(ds);
-                }}
-                onSendToSingleEIS={(ds, dom) => {
-                  if (dom === "battery" && onNavigateToBatteryLab) {
-                    onNavigateToBatteryLab(ds);
-                  } else if (dom === "corrosion" && onNavigateToCorrosionLab) {
-                    onNavigateToCorrosionLab(ds);
-                  }
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -1779,4 +1761,5 @@ ${(analysisResult.engineeringInsights || [])
     </div>
   );
 }
+
 

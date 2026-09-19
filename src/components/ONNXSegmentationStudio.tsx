@@ -235,17 +235,17 @@ export const ONNXSegmentationStudio: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                ONNX / Wasm Metallurgical Micrograph AI Segmentation
+                Micrograph Quantitative Phase Segmentation Studio
               </h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold">
-                U-Net / SegFormer Wasm
+                {customModelName ? "Custom ONNX Active" : "Heuristic CV Engine"}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold hidden sm:inline-block">
-                ASTM E562 STATS
+                ASTM E562
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Browser-native SIMD WebAssembly neural inference for constituent phase segmentation, carbide fractioning, and ASTM E562 volume quantification.
+              Texture & contrast stereological phase quantification, carbide fractioning, and ASTM E562 volume fraction analysis. Supports custom trained .onnx models.
             </p>
           </div>
         </div>

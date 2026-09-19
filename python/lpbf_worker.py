@@ -316,6 +316,31 @@ def main():
                 data = predict_part_scale_thermal_history(
                     power_W=power_W, speed_mms=speed_mms, preheat_C=preheat_C, hatch_um=hatch_um, layer_um=layer_um
                 )
+            elif method == "toolpath-kinematics":             # Phase 12
+                from lpbf_toolpath_kinematics import LPBFToolpathParser, GalvanometerKinematicsEngine, ScannerProfile
+                payload = request["payload"]
+                raw_text = payload.get("content", "")
+                fmt = payload.get("format", "gcode").lower()
+                power = payload.get("defaultPower_W", 250.0)
+                speed = payload.get("defaultSpeed_mms", 1000.0)
+                skywriting = payload.get("skywritingEnabled", False)
+
+                if fmt == "cli":
+                    vectors = LPBFToolpathParser.parse_cli(raw_text, default_power_W=power, default_speed_mms=speed)
+                else:
+                    vectors = LPBFToolpathParser.parse_gcode(raw_text, default_power_W=power, default_speed_mms=speed)
+
+                prof = ScannerProfile(
+                    accel_max_mms2=payload.get("accelMax_mms2", 40000.0),
+                    jump_speed_mms=payload.get("jumpSpeed_mms", 3000.0),
+                    laser_on_delay_us=payload.get("laserOnDelay_us", 100.0),
+                    laser_off_delay_us=payload.get("laserOffDelay_us", 120.0),
+                    mark_delay_us=payload.get("markDelay_us", 200.0),
+                    jump_delay_us=payload.get("jumpDelay_us", 350.0),
+                    skywriting_enabled=skywriting
+                )
+                engine = GalvanometerKinematicsEngine(prof)
+                data = engine.simulate_toolpath(vectors)
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

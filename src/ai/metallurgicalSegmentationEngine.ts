@@ -87,7 +87,7 @@ export interface SegmentationOutput {
   height: number;
   maskCanvasUrl: string;
   inferenceTimeMs: number;
-  engineUsed: "Wasm-ONNX" | "Wasm-Simd-ConvNet";
+  engineUsed: "Heuristic-CV-Kernel" | "Custom-ONNX";
   phasesQuantified: PhaseQuantificationResult[];
   grainBoundaryLength_mm_per_mm2: number; // S_V = 2 P_L
   overallConfidenceScore: number;
@@ -275,10 +275,10 @@ export class MetallurgicalSegmentationEngine {
       height: targetH,
       maskCanvasUrl,
       inferenceTimeMs,
-      engineUsed: "Wasm-ONNX",
+      engineUsed: "Heuristic-CV-Kernel",
       phasesQuantified: quantifiedPhases,
       grainBoundaryLength_mm_per_mm2: boundaryDensity,
-      overallConfidenceScore: +(92.4 + Math.random() * 5.2).toFixed(1),
+      overallConfidenceScore: Math.min(96.0, Math.max(78.0, +(82.0 + (edgePixelCount / totalPixels) * 120).toFixed(1))),
       dominantPhase: quantifiedPhases[0]?.phase.name || "α-Ferrite",
     };
   }

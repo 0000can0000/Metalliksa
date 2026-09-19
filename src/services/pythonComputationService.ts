@@ -678,6 +678,25 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 12: Toolpath & Scanner Kinematics
+  async simulateToolpathKinematics(data: {
+    content: string;
+    format: "gcode" | "cli";
+    defaultPower_W?: number;
+    defaultSpeed_mms?: number;
+    accelMax_mms2?: number;
+    jumpSpeed_mms?: number;
+    skywritingEnabled?: boolean;
+  }): Promise<any> {
+    const res = await fetch("/api/python/lpbf-toolpath-kinematics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

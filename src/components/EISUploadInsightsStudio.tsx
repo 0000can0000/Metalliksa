@@ -58,8 +58,8 @@ import {
   EXPERIMENTAL_BENCHMARKS,
   exportDatasetToCSV,
 } from "../utils/eisFileParser";
-import { CircuitTopology, STANDARD_CIRCUIT_PRESETS } from "./EquivalentCircuitBuilder";
-import { fallbackClientBisquertTLM } from "../services/pythonComputationService";
+import type { CircuitTopology } from "./EquivalentCircuitBuilder";
+import { usePythonAnalysis } from "../hooks/usePythonAnalysis";
 
 
 interface EISUploadInsightsStudioProps {
@@ -75,7 +75,13 @@ interface UploadedFileRecord {
   name: string;
   dataset: ExperimentalEISDataset;
   timestamp: string;
-  analysisResult?: any;
+}
+
+function decodeUploadedAnalysis(data: Record<string, unknown>): Record<string, any> {
+  if (!data.datasetSummary || !data.extractedParameters || !data.kramersKronigValidation) {
+    throw new Error("Python EIS analysis returned an incomplete report.");
+  }
+  return data;
 }
 
 export function EISUploadInsightsStudio({
@@ -96,7 +102,7 @@ export function EISUploadInsightsStudio({
       id: EXPERIMENTAL_BENCHMARKS[0].id,
       name: EXPERIMENTAL_BENCHMARKS[0].name,
       dataset: EXPERIMENTAL_BENCHMARKS[0],
-      timestamp: "Pre-loaded Benchmark",
+      timestamp: "Synthetic example",
     },
   ]);
   const [activeDatasetId, setActiveDatasetId] = useState<string>(EXPERIMENTAL_BENCHMARKS[0].id);
@@ -109,10 +115,16 @@ export function EISUploadInsightsStudio({
   const activeDataset = activeRecord.dataset;
 
   // Analysis State
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [isPythonEngine, setIsPythonEngine] = useState<boolean>(true);
+  const analysis = usePythonAnalysis("/api/python/battery-corrosion-eis", {
+    action: "analyze_uploaded_eis",
+    frequencies: activeDataset.points.map(p => p.frequency),
+    zReal: activeDataset.points.map(p => p.zReal),
+    zImag: activeDataset.points.map(p => p.zImag),
+    applicationDomain: domain, cellTemperatureC: cellTempC, nominalCapacityAh: cellCapacityAh,
+  }, decodeUploadedAnalysis);
+  const analysisResult = analysis.result;
+  const isAnalyzing = analysis.pending;
 
   // Active View Tab
   const [activeTab, setActiveTab] = useState<
@@ -126,198 +138,6 @@ export function EISUploadInsightsStudio({
   const [pastedText, setPastedText] = useState<string>("");
   const [pastedFilename, setPastedFilename] = useState<string>("clipboard_eis.csv");
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
-
-  // Trigger Python or Client-side Analysis
-  const runDeepEISAnalysis = async (datasetToAnalyze: ExperimentalEISDataset) => {
-    if (!datasetToAnalyze || datasetToAnalyze.points.length < 4) return;
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-
-    const freqs = datasetToAnalyze.points.map((p) => p.frequency);
-    const zRe = datasetToAnalyze.points.map((p) => p.zReal);
-    const zIm = datasetToAnalyze.points.map((p) => p.zImag);
-
-    try {
-      const response = await fetch("/api/python/battery-corrosion-eis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "analyze_uploaded_eis",
-          frequencies: freqs,
-          zReal: zRe,
-          zImag: zIm,
-          applicationDomain: domain,
-          cellTemperatureC: cellTempC,
-          nominalCapacityAh: cellCapacityAh,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Python solver HTTP error ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      setIsPythonEngine(true);
-      setAnalysisResult(data);
-
-      // Cache result in dataset record
-      setDatasets((prev) =>
-        prev.map((rec) => (rec.id === datasetToAnalyze.id ? { ...rec, analysisResult: data } : rec))
-      );
-    } catch (err: any) {
-      console.warn("Python EIS analysis failed, generating robust client-side deconvolution fallback:", err);
-      setIsPythonEngine(false);
-
-      // Client-side fallback calculation
-      const pts = datasetToAnalyze.points;
-      const sorted = [...pts].sort((a, b) => b.frequency - a.frequency);
-      const minZr = Math.min(...sorted.slice(0, 5).map((p) => p.zReal));
-      const maxMinusZi = Math.max(...sorted.map((p) => p.minusZImag));
-
-      const fallbackResult = {
-        datasetSummary: {
-          numPoints: sorted.length,
-          fMin_Hz: sorted[sorted.length - 1].frequency,
-          fMax_Hz: sorted[0].frequency,
-          frequencyDecades: Math.log10(sorted[0].frequency / sorted[sorted.length - 1].frequency),
-          maxImpedance_Ohm: Math.max(...sorted.map((p) => p.zMag)),
-          minImpedance_Ohm: Math.min(...sorted.map((p) => p.zMag)),
-        },
-        extractedParameters: {
-          r0_ohm: minZr,
-          inductance_nH: sorted[0].zImag > 0 ? (sorted[0].zImag / (2 * Math.PI * sorted[0].frequency)) * 1e9 : 0,
-          rSei_ohm: maxMinusZi * 0.4,
-          cSei_uF: 20.0,
-          fApexSei_Hz: 2500,
-          rCt_ohm: maxMinusZi * 1.5,
-          cDl_uF: 45.0,
-          fApexCt_Hz: 45,
-          totalPolarization_ohm: maxMinusZi * 1.9,
-          exchangeCurrent_mA: ((8.314 * (cellTempC + 273.15)) / (96485 * Math.max(0.001, maxMinusZi * 1.5))) * 1000,
-          warburgSigma: 0.035,
-          warburgR2: 0.94,
-          hasWarburg: true,
-        },
-        kramersKronigValidation: {
-          status: "PASSED (Client Voigt Transform Fallback)",
-          grade: "PASSED",
-          pseudoChiSq: 0.00025,
-          residuals: sorted.map((p) => ({
-            f: p.frequency,
-            delta_real_pct: 0.0,
-            delta_imag_pct: 0.0,
-            z_mag: p.zMag,
-          })),
-        },
-        apexPeaks: [
-          {
-            frequency_Hz: 2500,
-            minus_z_imag_Ohm: maxMinusZi * 0.4,
-            tau_seconds: "6.366e-5",
-            estimated_r_Ohm: maxMinusZi * 0.8,
-            estimated_c_uF: 15.0,
-            process: "SEI / Surface Passive Film Interphase",
-            kind: "film",
-          },
-          {
-            frequency_Hz: 45,
-            minus_z_imag_Ohm: maxMinusZi,
-            tau_seconds: "3.537e-3",
-            estimated_r_Ohm: maxMinusZi * 2.0,
-            estimated_c_uF: 45.0,
-            process: "Electrode Charge-Transfer Kinetics & Double Layer",
-            kind: "charge_transfer",
-          },
-        ],
-        recommendedCircuit: {
-          name: "Dual-Interphase Randles with Warburg (ASTM / Battery Standard)",
-          topologyCode: "R_s + (R_sei || C_sei) + (R_ct + W) || C_dl",
-          elements: [
-            { element: "R_s", value: minZr, unit: "Ω", meaning: "Solution / Ohmic Resistance" },
-            { element: "R_sei", value: maxMinusZi * 0.4, unit: "Ω", meaning: "SEI Film Resistance" },
-            { element: "C_sei", value: 20.0, unit: "μF", meaning: "SEI Capacitance" },
-            { element: "R_ct", value: maxMinusZi * 1.5, unit: "Ω", meaning: "Charge Transfer Resistance" },
-            { element: "C_dl", value: 45.0, unit: "μF", meaning: "Double Layer Capacitance" },
-            { element: "W_sigma", value: 0.035, unit: "Ω·s^-0.5", meaning: "Warburg Coefficient" },
-          ],
-        },
-        drtAnalysis: {
-          drtCurve: sorted.map((p) => {
-            const tau = 1 / (2 * Math.PI * p.frequency);
-            return {
-              logTau: Math.log10(tau),
-              tau_s: tau,
-              charFreq_Hz: p.frequency,
-              gamma_Ohm: Math.max(0, p.minusZImag * 1.2 * Math.exp(-0.5 * Math.pow(Math.log10(tau) + 2.5, 2))),
-            };
-          }),
-          identifiedPeaks: [
-            {
-              tau_s: 6.366e-5,
-              logTau: -4.196,
-              charFreq_Hz: 2500,
-              gammaHeight_Ohm: maxMinusZi * 0.6,
-              process: "High-Freq Interphase / SEI Migration",
-              domain: "Interphase Transport",
-            },
-            {
-              tau_s: 3.537e-3,
-              logTau: -2.451,
-              charFreq_Hz: 45,
-              gammaHeight_Ohm: maxMinusZi * 1.4,
-              process: "Mid-Freq Charge Transfer & Double Layer",
-              domain: "Charge Transfer",
-            },
-          ],
-        },
-        engineeringInsights: [
-          {
-            title: "Estimated State of Health (SOH)",
-            value: "92.4%",
-            status: "OPTIMAL",
-            description: "Composite metric combining low Ohmic bulk rise and rapid interfacial charge transfer kinetics.",
-          },
-          {
-            title: "SEI Passivation Layer Condition",
-            value: "Nominal Passivation",
-            status: "Healthy Passivation",
-            description: "SEI relaxation apex at 2.5 kHz shows dense, low-impedance passivation without solvent co-intercalation.",
-          },
-          {
-            title: "Lithium Plating Vulnerability",
-            value: "Low (18/100)",
-            status: "LOW",
-            description: `At ${cellTempC}°C, moderate charge-transfer resistance maintains adequate negative overpotential safety margin.`,
-          },
-        ],
-        bisquertTLM: fallbackClientBisquertTLM({
-          frequencies: sorted.map((p) => p.frequency),
-          zReal: sorted.map((p) => p.zReal),
-          zImag: sorted.map((p) => p.zImag),
-          applicationDomain: domain,
-          cellTemperatureC: cellTempC,
-          nominalCapacityAh: cellCapacityAh,
-        }),
-        cleanedPoints: sorted,
-        pythonDurationMs: 0,
-      };
-
-      setAnalysisResult(fallbackResult);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Re-run analysis whenever active dataset, domain, temperature, or capacity changes
-  useEffect(() => {
-    if (activeDataset) {
-      runDeepEISAnalysis(activeDataset);
-    }
-  }, [activeDatasetId, domain, cellTempC, cellCapacityAh]);
 
   // Handle File Upload from Input or Drop (Single or Batch)
   const handleProcessRawFiles = async (files: FileList | File[]) => {
@@ -383,7 +203,7 @@ export function EISUploadInsightsStudio({
         id: bench.id,
         name: bench.name,
         dataset: bench,
-        timestamp: "Pre-loaded Benchmark",
+        timestamp: "Synthetic example",
       };
       setDatasets((prev) => [newRecord, ...prev]);
       setActiveDatasetId(bench.id);
@@ -416,6 +236,7 @@ export function EISUploadInsightsStudio({
     if (!analysisResult) return;
     const payload = {
       dataset: activeDataset.name,
+      dataOrigin: activeDataset.source === "benchmark" ? "synthetic circuit example" : "user upload; provenance unverified",
       domain,
       cellTempC,
       cellCapacityAh,
@@ -439,6 +260,7 @@ export function EISUploadInsightsStudio({
 
     const md = `### Electrochemical Impedance Spectroscopy (EIS) Automated Insight Dossier
 **Sample:** ${activeDataset.name}
+**Data origin:** ${activeDataset.source === "benchmark" ? "Synthetic circuit example, not an experiment" : "User upload; provenance unverified"}
 **Application Domain:** ${domain.toUpperCase()} | **Cell Temperature:** ${cellTempC}°C
 **Date Analyzed:** ${new Date().toLocaleString()}
 
@@ -469,8 +291,9 @@ ${(analysisResult.engineeringInsights || [])
     setTimeout(() => setCopiedNotification(false), 2500);
   };
 
-  const handleSendToCNLSStudio = () => {
+  const handleSendToCNLSStudio = async () => {
     if (!onNavigateToCNLS || !analysisResult) return;
+    const { STANDARD_CIRCUIT_PRESETS } = await import("./EquivalentCircuitBuilder");
     // Map recommended circuit to standard preset
     const preset =
       STANDARD_CIRCUIT_PRESETS.find((p) => p.name.includes("Warburg")) || STANDARD_CIRCUIT_PRESETS[0];
@@ -576,7 +399,7 @@ ${(analysisResult.engineeringInsights || [])
               <span className="text-slate-400">Temp:</span>
               <input
                 type="number"
-                value={cellTempC}
+                aria-label="Cell temperature" value={cellTempC}
                 onChange={(e) => setCellTempC(parseFloat(e.target.value) || 25)}
                 className="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right text-white font-mono"
               />
@@ -590,7 +413,7 @@ ${(analysisResult.engineeringInsights || [])
                 <input
                   type="number"
                   step="0.5"
-                  value={cellCapacityAh}
+                  aria-label="Nominal capacity" value={cellCapacityAh}
                   onChange={(e) => setCellCapacityAh(parseFloat(e.target.value) || 5.0)}
                   className="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right text-white font-mono"
                 />
@@ -624,7 +447,7 @@ ${(analysisResult.engineeringInsights || [])
 
             <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400 pl-2">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{isPythonEngine ? "Python HPC Engine (CPython 3.10+)" : "Client Voigt Engine"}</span>
+              <span>{isAnalyzing ? "Python analysis pending" : analysisResult ? "Python analysis received" : "Python analysis unavailable"}</span>
             </div>
           </div>
         </div>
@@ -718,12 +541,12 @@ ${(analysisResult.engineeringInsights || [])
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-sky-400" />
-                Benchmark Laboratory Library
+                Synthetic Example Library
               </span>
-              <span className="text-[10px] font-mono text-slate-500">6 Real Spectra</span>
+              <span className="text-[10px] font-mono text-slate-500">{EXPERIMENTAL_BENCHMARKS.length} Synthetic Spectra</span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono mb-3">
-              Test the deep insights pipeline immediately using calibrated real-world laboratory datasets:
+              These generated circuit examples are not measured laboratory data or independent validation evidence.
             </p>
 
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
@@ -756,26 +579,29 @@ ${(analysisResult.engineeringInsights || [])
 
           <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span>Current: <strong className="text-white">{activeDataset.points.length}</strong> points</span>
-            <span className="text-sky-400 font-bold">{activeDataset.source.toUpperCase()}</span>
+            <span className="text-sky-400 font-bold">{activeDataset.source === "benchmark" ? "SYNTHETIC EXAMPLE" : activeDataset.source.toUpperCase()}</span>
           </div>
         </div>
       </div>
 
       {/* Error Banner */}
-      {analysisError && (
+      {(analysisError || analysis.error) && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-xs font-mono text-red-300">
           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-          <div className="flex-1">{analysisError}</div>
+          <div className="flex-1" role="alert">{analysisError || analysis.error}</div>
           <button
             type="button"
-            onClick={() => setAnalysisError(null)}
+            onClick={() => { setAnalysisError(null); analysis.retry(); }}
             className="text-slate-400 hover:text-white"
           >
-            Dismiss
+            Retry analysis
           </button>
         </div>
       )}
 
+      <p role="status" className="text-xs text-slate-400 font-mono">
+        {isAnalyzing ? "Calculating current inputs…" : analysisResult ? "Screening only; this report does not establish experimental validity or standards compliance." : "Unavailable: no computed analysis for the current inputs."}
+      </p>
       {/* 3. Deep Extraction Summary KPI Cards */}
       {analysisResult && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -870,7 +696,7 @@ ${(analysisResult.engineeringInsights || [])
                 analysisResult.kramersKronigValidation?.grade === "PASSED" ? "text-emerald-300" : "text-amber-300"
               }`}
             >
-              {analysisResult.kramersKronigValidation?.grade === "PASSED" ? "PASSED (Linear)" : "DRIFT DETECTED"}
+              {analysisResult.kramersKronigValidation?.grade ?? "NOT_EVALUATED"}
             </div>
             <div className="text-[10px] font-mono text-slate-400 truncate">
               χ²: {analysisResult.kramersKronigValidation?.pseudoChiSq?.toExponential(2)}
@@ -994,6 +820,7 @@ ${(analysisResult.engineeringInsights || [])
             <button
               type="button"
               onClick={handleExportJSONReport}
+              disabled={!analysisResult}
               className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-slate-300 flex items-center gap-1.5 transition-all"
               title="Download JSON Report"
             >
@@ -1004,6 +831,7 @@ ${(analysisResult.engineeringInsights || [])
             <button
               type="button"
               onClick={handleCopyMarkdownSummary}
+              disabled={!analysisResult}
               className="px-2.5 py-1 rounded bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-[11px] font-mono text-sky-300 flex items-center gap-1.5 transition-all"
             >
               {copiedNotification ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -1031,7 +859,7 @@ ${(analysisResult.engineeringInsights || [])
                 <div className="flex items-center gap-3 text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block" />
-                    <span>Experimental Data</span>
+                    <span>{activeDataset.source === "benchmark" ? "Synthetic circuit data" : "Uploaded observations"}</span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />
@@ -1624,6 +1452,7 @@ ${(analysisResult.engineeringInsights || [])
                 <button
                   type="button"
                   onClick={handleCopyMarkdownSummary}
+              disabled={!analysisResult}
                   className="px-3.5 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/40 text-xs font-bold flex items-center gap-2 transition-all"
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -1652,44 +1481,10 @@ ${(analysisResult.engineeringInsights || [])
                 ))}
               </div>
 
-              {/* Actionable Engineering Recommendations */}
-              <div className="bg-[#050912] border border-slate-800 rounded-xl p-5 space-y-3">
-                <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Actionable Operational Guidelines:
-                </div>
-                <div className="text-xs text-slate-300 space-y-2">
-                  {domain === "battery" ? (
-                    <>
-                      <p>
-                        1. <strong>Fast-Charging Current Limit:</strong> With charge-transfer polarization of{" "}
-                        <span className="text-white font-bold">
-                          {(analysisResult?.extractedParameters?.rCt_ohm * 1000).toFixed(1)} mΩ
-                        </span>{" "}
-                        at {cellTempC}°C, maintain maximum continuous charging current below{" "}
-                        <span className="text-amber-300 font-bold">1.5C</span> to avoid anode overpotential exceeding 0 V vs Li/Li⁺.
-                      </p>
-                      <p>
-                        2. <strong>Thermal Management:</strong> Pre-heat cell to at least 15°C prior to fast charging to reduce charge transfer barrier and suppress lithium dendrite formation.
-                      </p>
-                      <p>
-                        3. <strong>SEI Layer Maintenance:</strong> Avoid high state-of-charge storage (&gt;80% SoC) at elevated temperatures (&gt;40°C) to prevent irreversible parasitic electrolyte decomposition and transition metal leaching.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p>
-                        1. <strong>Polarization Resistance &amp; Penetration:</strong> Measured R_p of{" "}
-                        <span className="text-white font-bold">{analysisResult?.extractedParameters?.rCt_ohm} Ω·cm²</span>{" "}
-                        translates to a steady-state corrosion rate under ASTM G102 guidelines.
-                      </p>
-                      <p>
-                        2. <strong>Barrier Coating Life:</strong> High-frequency film capacitance indicates minimal water absorption in the polymer matrix. Continue cathodic protection monitoring.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
+              <p className="text-xs text-slate-400">
+                Charging limits, corrosion rates and coating lifetime are unavailable from this screening alone.
+                They require independently sourced chemistry, geometry, acquisition conditions and a validated model.
+              </p>
             </div>
           )}
         </div>

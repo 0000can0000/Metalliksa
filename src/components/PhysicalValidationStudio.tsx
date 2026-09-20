@@ -1,5 +1,5 @@
 import { ResponsiveContainer } from './VisibleResponsiveContainer';
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ShieldCheck,
   Activity,
@@ -37,17 +37,32 @@ import {
 } from "recharts";
 import {
   ExperimentalEISDataset,
-  RawEISPoint,
-  CPEEffectiveCapacitance,
-  LinKKStationarityReport,
-  InductanceDeembeddingReport,
+  PhysicalValidationSuite,
 } from "../types/eisData";
+import { usePythonAnalysis } from "../hooks/usePythonAnalysis";
 import { EXPERIMENTAL_BENCHMARKS } from "../utils/eisFileParser";
 
 interface PhysicalValidationStudioProps {
   initialDataset?: ExperimentalEISDataset | null;
   onApplyDeembeddedDataset?: (correctedDataset: ExperimentalEISDataset) => void;
   className?: string;
+}
+
+function decodeValidation(data: Record<string, unknown>): Partial<PhysicalValidationSuite> {
+  if (!data.linKK && !data.inductance && !Array.isArray(data.cpeCapacitances)) {
+    throw new Error("Python validation returned no usable reports.");
+  }
+  const report = data as Partial<PhysicalValidationSuite>;
+  if (report.linKK && (!Array.isArray(report.linKK.residuals) || !report.linKK.residuals.length)) {
+    throw new Error("Lin-KK screening unavailable: at least five valid impedance points are required.");
+  }
+  if (report.inductance && !Array.isArray(report.inductance.correctedPoints)) {
+    throw new Error("Python validation returned an invalid de-embedding report.");
+  }
+  if (report.cpeCapacitances && !Array.isArray(report.cpeCapacitances)) {
+    throw new Error("Python validation returned an invalid capacitance report.");
+  }
+  return report;
 }
 
 export const PhysicalValidationStudio: React.FC<PhysicalValidationStudioProps> = ({
@@ -71,6 +86,13 @@ export const PhysicalValidationStudio: React.FC<PhysicalValidationStudioProps> =
     return found || EXPERIMENTAL_BENCHMARKS[0];
   }, [selectedDatasetId, customDataset]);
 
+  const [previousInitialDataset, setPreviousInitialDataset] = useState(initialDataset);
+  if (previousInitialDataset !== initialDataset) {
+    setPreviousInitialDataset(initialDataset);
+    setCustomDataset(initialDataset ?? null);
+    setSelectedDatasetId(initialDataset?.id ?? EXPERIMENTAL_BENCHMARKS[0].id);
+  }
+
   // Active validation sub-tab
   const [activeTab, setActiveTab] = useState<"cpe-converter" | "lin-kk" | "inductance-deembed" | "astm-report">(
     "cpe-converter"
@@ -86,23 +108,7 @@ export const PhysicalValidationStudio: React.FC<PhysicalValidationStudioProps> =
   const [resRct, setResRct] = useState<number>(340.0); // Ohm
   const [cpeModelType, setCpeModelType] = useState<"brug" | "hirschorn" | "hsu">("brug");
 
-  // Python Engine State
-  const [isComputing, setIsComputing] = useState<boolean>(false);
-  const [pythonLatencyMs, setPythonLatencyMs] = useState<number | null>(null);
-  const [linKKReport, setLinKKReport] = useState<LinKKStationarityReport | null>(null);
-  const [inductanceReport, setInductanceReport] = useState<InductanceDeembeddingReport | null>(null);
-  const [cpeList, setCpeList] = useState<CPEEffectiveCapacitance[]>([]);
-  const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
-
-  // Run full physical validation suite via Python backend
-  const executePythonValidation = async () => {
-    if (!activeDataset || !activeDataset.points || activeDataset.points.length === 0) return;
-
-    setIsComputing(true);
-    const startT = performance.now();
-
-    try {
-      const payload = {
+  const payload = {
         action: "validate_dataset",
         points: activeDataset.points.map((p) => ({
           frequency: p.frequency,
@@ -131,126 +137,14 @@ export const PhysicalValidationStudio: React.FC<PhysicalValidationStudioProps> =
           ],
         },
       };
-
-      const res = await fetch("/api/python/cnls-fit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Python server responded with HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      const elapsed = Math.round(performance.now() - startT);
-      setPythonLatencyMs(elapsed);
-
-      if (data.linKK) setLinKKReport(data.linKK);
-      if (data.inductance) setInductanceReport(data.inductance);
-      if (data.cpeCapacitances) setCpeList(data.cpeCapacitances);
-    } catch (err) {
-      console.warn("Python validation fallback to client computation:", err);
-      // Client fallback computation
-      computeClientFallbackValidation();
-    } finally {
-      setIsComputing(false);
-    }
-  };
-
-  // Client fallback calculation in case backend is offline
-  const computeClientFallbackValidation = () => {
-    const q = Math.max(1e-15, cpeQ);
-    const n = Math.max(0.1, Math.min(1.0, cpeN));
-    const rs = Math.max(1e-6, resRs);
-    const rct = Math.max(1e-6, resRct);
-    const area = Math.max(1e-6, electrodeAreaCm2);
-
-    // Brug formula: C_eff = Q^(1/n) * ( (Rs * Rct)/(Rs + Rct) )^((1-n)/n)
-    const rComb = (rs * rct) / (rs + rct);
-    const cBrug = Math.pow(q, 1 / n) * Math.pow(rComb, (1 - n) / n);
-    const cHirschorn = Math.pow(q, 1 / n) * Math.pow(rct, (1 - n) / n);
-    const cHsu = Math.pow(q * Math.pow(rct, 1 - n), 1 / n);
-
-    const cBrug_uF = cBrug * 1e6;
-    const cBrug_uFcm2 = cBrug_uF / area;
-
-    setCpeList([
-      {
-        cpeElementId: "CPE1",
-        cpeName: "Q_dl (Double-Layer CPE)",
-        qValue: q,
-        nExponent: n,
-        cBrug_F: cBrug,
-        cBrug_uF: parseFloat(cBrug_uF.toFixed(4)),
-        cEffectiveArea_uFcm2: parseFloat(cBrug_uFcm2.toFixed(3)),
-        cHirschorn_F: cHirschorn,
-        cHirschorn_uF: parseFloat((cHirschorn * 1e6).toFixed(4)),
-        cHsuMansfeld_F: cHsu,
-        cHsuMansfeld_uF: parseFloat((cHsu * 1e6).toFixed(4)),
-        tauEffectiveMs: parseFloat((rct * cBrug * 1000).toFixed(3)),
-        associatedRs: rs,
-        associatedRct: rct,
-        modelApplied: "Brug (2D Surface Distribution)",
-        physicsNote:
-          cBrug_uFcm2 <= 60
-            ? "Ideal double-layer range (10-40 µF/cm²)."
-            : "Elevated double-layer or surface roughness.",
-      },
-    ]);
-
-    // Simple inductance check on dataset points
-    if (activeDataset && activeDataset.points) {
-      const highFPts = activeDataset.points.filter((p) => p.frequency >= 1000 && p.minusZImag < 0);
-      const hasInd = highFPts.length > 0;
-      let lEst = 0;
-      if (hasInd) {
-        lEst = highFPts.reduce((acc, p) => acc + -p.minusZImag / (2 * Math.PI * p.frequency), 0) / highFPts.length;
-      }
-      setInductanceReport({
-        hasHighFreqInduction: hasInd,
-        detectedInductance_H: lEst,
-        detectedInductance_uH: parseFloat((lEst * 1e6).toFixed(4)),
-        zeroCrossingFreq_Hz: hasInd ? 45000 : null,
-        cableArtifactMagnitude_Ohm: parseFloat((lEst * 2 * Math.PI * 100000).toFixed(4)),
-        originalPointsCount: activeDataset.points.length,
-        correctedPointsCount: activeDataset.points.length,
-        correctedPoints: activeDataset.points.map((p) => ({
-          ...p,
-          minusZImag: Math.max(0, p.minusZImag + 2 * Math.PI * p.frequency * lEst),
-        })),
-        recommendedAction: hasInd
-          ? "High-frequency inductive distortion detected. Apply de-embedding."
-          : "Clean high-frequency response.",
-      });
-
-      // Lin-KK report mock fallback
-      setLinKKReport({
-        isStationary: true,
-        driftScore: 92,
-        stationarityStatus: "Stationary & Causal (ASTM G106 Lin-KK Compliant)",
-        muDriftMetric: 0.042,
-        kkChiSquare: 0.00012,
-        pseudoChiSquare: 0.00012,
-        meanResidualPct: 1.15,
-        flaggedFrequencies: [],
-        residuals: activeDataset.points.map((p) => ({
-          frequency: p.frequency,
-          logFreq: Math.log10(p.frequency),
-          zRealResPct: 0.0,
-          zImagResPct: 0.0,
-          totalResidualPct: 0.0,
-          isOutlier: false,
-        })),
-        recommendation: "Dataset passes Kramers-Kronig transform test.",
-      });
-    }
-  };
-
-  // Trigger calculation whenever dataset, area, or CPE params change
-  useEffect(() => {
-    executePythonValidation();
-  }, [activeDataset, electrodeAreaCm2, cpeQ, cpeN, resRs, resRct]);
+  const validation = usePythonAnalysis("/api/python/cnls-fit", payload, decodeValidation);
+  const isComputing = validation.pending;
+  const pythonLatencyMs = validation.elapsedMs;
+  const linKKReport = validation.result?.linKK ?? null;
+  const inductanceReport = validation.result?.inductance ?? null;
+  const cpeList = validation.result?.cpeCapacitances ?? [];
+  const executePythonValidation = validation.retry;
+  const [copiedNotification, setCopiedNotification] = useState(false);
 
   // Dynamic calculated sandbox values
   const currentCpe = useMemo(() => {
@@ -274,34 +168,36 @@ export const PhysicalValidationStudio: React.FC<PhysicalValidationStudioProps> =
 
   // Copy ASTM report to clipboard
   const handleCopyReport = () => {
+    if (!validation.result) return;
     const text = `METALLIX ADVANCED EIS PHYSICAL VALIDATION & QUALITY REPORT
-ASTM G106 / ISO 16773 COMPLIANCE
+SCREENING ONLY — standards compliance not evaluated
 Dataset: ${activeDataset.name}
+Data origin: ${activeDataset.source === "benchmark" ? "Synthetic circuit example, not an experiment" : "User upload; provenance unverified"}
 Electrode Geometric Area: ${electrodeAreaCm2} cm²
 Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
 
 1. CONSTANT PHASE ELEMENT (CPE) TO EFFECTIVE CAPACITANCE CONVERSION
 - Parameter Q: ${cpeQ.toExponential(3)} S·s^n
 - Exponent n: ${cpeN}
-- Brug Effective Capacitance C_eff (2D Surface Roughness): ${currentCpe?.cBrug_uF || 0} µF
-- Specific Double-Layer Capacitance: ${currentCpe?.cEffectiveArea_uFcm2 || 0} µF/cm²
-- Hirschorn Effective Capacitance (3D Porous/Film): ${currentCpe?.cHirschorn_uF || 0} µF
-- Hsu-Mansfeld Effective Capacitance (Apex f0): ${currentCpe?.cHsuMansfeld_uF || 0} µF
-- Effective Time Constant (tau = Rct * C_eff): ${currentCpe?.tauEffectiveMs || 0} ms
+- Brug Effective Capacitance C_eff (2D Surface Roughness): ${currentCpe?.cBrug_uF ?? "Unavailable"} µF
+- Specific Double-Layer Capacitance: ${currentCpe?.cEffectiveArea_uFcm2 ?? "Unavailable"} µF/cm²
+- Hirschorn Effective Capacitance (3D Porous/Film): ${currentCpe?.cHirschorn_uF ?? "Unavailable"} µF
+- Hsu-Mansfeld Effective Capacitance (Apex f0): ${currentCpe?.cHsuMansfeld_uF ?? "Unavailable"} µF
+- Effective Time Constant (tau = Rct * C_eff): ${currentCpe?.tauEffectiveMs ?? "Unavailable"} ms
 
 2. LINEAR KRAMERS-KRONIG (LIN-KK) STATIONARITY & DRIFT TEST
-- Stationarity Status: ${linKKReport?.stationarityStatus || "Compliant"}
-- Drift Score: ${linKKReport?.driftScore || 95} / 100
-- Mean Lin-KK Residual: ${linKKReport?.meanResidualPct || 1.1}%
-- Pseudo-Chi-Square (χ²_KK): ${linKKReport?.pseudoChiSquare || 1.2e-4}
-- Low-Frequency Drift Metric (mu_drift): ${linKKReport?.muDriftMetric || 0.04}
-- Diagnosis: ${linKKReport?.recommendation || "Compliant"}
+- Stationarity Status: ${linKKReport?.stationarityStatus ?? "Unavailable"}
+- Drift Score: ${linKKReport?.driftScore ?? "Unavailable"} / 100
+- Mean Lin-KK Residual: ${linKKReport?.meanResidualPct ?? "Unavailable"}%
+- Pseudo-Chi-Square (χ²_KK): ${linKKReport?.pseudoChiSquare ?? "Unavailable"}
+- Low-Frequency Drift Metric (mu_drift): ${linKKReport?.muDriftMetric ?? "Unavailable"}
+- Diagnosis: ${linKKReport?.recommendation ?? "Unavailable"}
 
 3. HIGH-FREQUENCY LEAD INDUCTANCE DE-EMBEDDING
-- Parasitic Inductance Detected: ${inductanceReport?.hasHighFreqInduction ? "YES" : "NO"}
-- Extracted L_cable: ${inductanceReport?.detectedInductance_uH || 0} µH
-- Zero-Crossing Frequency: ${inductanceReport?.zeroCrossingFreq_Hz || "None (f > 100 kHz)"} Hz
-- Cable Artifact at 100 kHz: ${inductanceReport?.cableArtifactMagnitude_Ohm || 0} Ω
+- Parasitic Inductance Detected: ${!inductanceReport ? "Unavailable" : inductanceReport.hasHighFreqInduction ? "YES" : "NO"}
+- Extracted L_cable: ${inductanceReport?.detectedInductance_uH ?? "Unavailable"} µH
+- Zero-Crossing Frequency: ${inductanceReport?.zeroCrossingFreq_Hz ?? "Unavailable"} Hz
+- Cable Artifact at 100 kHz: ${inductanceReport?.cableArtifactMagnitude_Ohm ?? "Unavailable"} Ω
 `;
     navigator.clipboard.writeText(text);
     setCopiedNotification(true);
@@ -337,7 +233,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="text-[11px] font-bold text-slate-300 font-mono">Python Lin-KK Engine</span>
+              <span className="text-[11px] font-bold text-slate-300 font-mono">{isComputing ? "Python analysis pending" : validation.result ? "Python analysis received" : "Python analysis unavailable"}</span>
             </div>
             {pythonLatencyMs !== null && (
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
@@ -360,8 +256,9 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
         <div className="mt-4 pt-4 border-t border-[#162032] flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-mono">Benchmark Dataset:</span>
+              <span className="text-xs text-slate-400 font-mono">Example / Uploaded Dataset:</span>
               <select
+                aria-label="Validation dataset"
                 value={selectedDatasetId}
                 onChange={(e) => setSelectedDatasetId(e.target.value)}
                 className="bg-[#050810] border border-[#1e2d46] text-white text-xs font-mono rounded-lg px-2.5 py-1.5 focus:border-sky-400 focus:outline-none"
@@ -382,7 +279,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   min="0.01"
                   max="100"
                   step="0.1"
-                  value={electrodeAreaCm2}
+                  aria-label="Electrode area" value={electrodeAreaCm2}
                   onChange={(e) => setElectrodeAreaCm2(parseFloat(e.target.value) || 1.0)}
                   className="w-14 bg-transparent text-white text-xs font-mono text-center focus:outline-none"
                 />
@@ -396,19 +293,24 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
             <div className="px-2.5 py-1 rounded-lg bg-[#050810] border border-[#1e2d46] text-[11px] font-mono flex items-center gap-1.5">
               <span className="text-slate-400">Lin-KK Score:</span>
               <span className="font-bold text-emerald-400">
-                {linKKReport?.driftScore || 95}%
+                {linKKReport?.driftScore ?? "Unavailable"}%
               </span>
             </div>
             <div className="px-2.5 py-1 rounded-lg bg-[#050810] border border-[#1e2d46] text-[11px] font-mono flex items-center gap-1.5">
               <span className="text-slate-400">Lead Inductance $L_0$:</span>
               <span className="font-bold text-sky-400">
-                {inductanceReport?.detectedInductance_uH || 0} µH
+                {inductanceReport?.detectedInductance_uH ?? "Unavailable"} µH
               </span>
             </div>
           </div>
         </div>
       </div>
 
+      <p role="status" className="text-xs text-slate-400 font-mono">
+        {isComputing ? "Calculating current inputs…" : validation.result ? "Screening only; numerical residuals do not establish stationarity, causality or ASTM/ISO compliance." : "Unavailable: no validation report for the current inputs."}
+      </p>
+      {validation.error && <div role="alert" className="p-4 border border-rose-500 text-rose-300 rounded-xl">{validation.error}</div>}
+      <p className="text-xs text-amber-300">{activeDataset.source === "benchmark" ? "Synthetic circuit example — not measured laboratory data." : "User upload — measurement provenance has not been verified."}</p>
       {/* 2. Navigation Sub-Tabs */}
       <div className="flex items-center gap-2 border-b border-[#162032] pb-2 overflow-x-auto">
         {[
@@ -432,7 +334,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
           },
           {
             id: "astm-report",
-            label: "4. Physical Compliance Report",
+            label: "4. Physical Screening Report",
             icon: FileText,
             badge: "Audit Export",
           },
@@ -489,7 +391,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   min="1e-7"
                   max="1e-3"
                   step="1e-7"
-                  value={cpeQ}
+                  aria-label="CPE constant Q" value={cpeQ}
                   onChange={(e) => setCpeQ(parseFloat(e.target.value))}
                   className="w-full h-1.5 bg-[#050810] rounded-lg appearance-none cursor-pointer accent-sky-400"
                 />
@@ -511,7 +413,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   min="0.5"
                   max="1.0"
                   step="0.005"
-                  value={cpeN}
+                  aria-label="CPE exponent n" value={cpeN}
                   onChange={(e) => setCpeN(parseFloat(e.target.value))}
                   className="w-full h-1.5 bg-[#050810] rounded-lg appearance-none cursor-pointer accent-purple-400"
                 />
@@ -533,7 +435,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   min="0.1"
                   max="200"
                   step="0.5"
-                  value={resRs}
+                  aria-label="Solution resistance Rs" value={resRs}
                   onChange={(e) => setResRs(parseFloat(e.target.value))}
                   className="w-full h-1.5 bg-[#050810] rounded-lg appearance-none cursor-pointer accent-emerald-400"
                 />
@@ -550,7 +452,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   min="5"
                   max="5000"
                   step="5"
-                  value={resRct}
+                  aria-label="Charge transfer resistance Rct" value={resRct}
                   onChange={(e) => setResRct(parseFloat(e.target.value))}
                   className="w-full h-1.5 bg-[#050810] rounded-lg appearance-none cursor-pointer accent-amber-400"
                 />
@@ -623,10 +525,10 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 >
                   <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Brug Model (2D)</div>
                   <div className="text-lg font-bold text-sky-300 font-mono mt-1">
-                    {currentCpe?.cBrug_uF || 0} <span className="text-xs">µF</span>
+                    {currentCpe?.cBrug_uF ?? "Unavailable"} <span className="text-xs">µF</span>
                   </div>
                   <div className="text-xs text-sky-400 font-mono mt-0.5">
-                    {currentCpe?.cEffectiveArea_uFcm2 || 0} µF/cm²
+                    {currentCpe?.cEffectiveArea_uFcm2 ?? "Unavailable"} µF/cm²
                   </div>
                   <div className="text-[9px] text-slate-500 font-mono mt-2 pt-2 border-t border-[#162032]">
                     C_eff = Q^(1/n) · [Rs·Rct / (Rs + Rct)]^((1-n)/n)
@@ -643,10 +545,10 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 >
                   <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Hirschorn (3D)</div>
                   <div className="text-lg font-bold text-purple-300 font-mono mt-1">
-                    {currentCpe?.cHirschorn_uF || 0} <span className="text-xs">µF</span>
+                    {currentCpe?.cHirschorn_uF ?? "Unavailable"} <span className="text-xs">µF</span>
                   </div>
                   <div className="text-xs text-purple-400 font-mono mt-0.5">
-                    {((currentCpe?.cHirschorn_uF || 0) / electrodeAreaCm2).toFixed(3)} µF/cm²
+                    {currentCpe?.cHirschorn_uF != null ? (currentCpe.cHirschorn_uF / electrodeAreaCm2).toFixed(3) : "Unavailable"} µF/cm²
                   </div>
                   <div className="text-[9px] text-slate-500 font-mono mt-2 pt-2 border-t border-[#162032]">
                     C_eff = Q^(1/n) · Rf^((1-n)/n)
@@ -663,10 +565,10 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 >
                   <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Hsu-Mansfeld (Apex)</div>
                   <div className="text-lg font-bold text-amber-300 font-mono mt-1">
-                    {currentCpe?.cHsuMansfeld_uF || 0} <span className="text-xs">µF</span>
+                    {currentCpe?.cHsuMansfeld_uF ?? "Unavailable"} <span className="text-xs">µF</span>
                   </div>
                   <div className="text-xs text-amber-400 font-mono mt-0.5">
-                    {((currentCpe?.cHsuMansfeld_uF || 0) / electrodeAreaCm2).toFixed(3)} µF/cm²
+                    {currentCpe?.cHsuMansfeld_uF != null ? (currentCpe.cHsuMansfeld_uF / electrodeAreaCm2).toFixed(3) : "Unavailable"} µF/cm²
                   </div>
                   <div className="text-[9px] text-slate-500 font-mono mt-2 pt-2 border-t border-[#162032]">
                     C_eff = Q · (ω_max)^(n-1)
@@ -679,11 +581,11 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-300 font-mono">Physical Material Classification:</span>
                   <span className="text-xs font-bold text-sky-400 font-mono">
-                    τ_eff = {currentCpe?.tauEffectiveMs || 0} ms
+                    τ_eff = {currentCpe?.tauEffectiveMs ?? "Unavailable"} ms
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 font-mono leading-relaxed">
-                  {currentCpe?.physicsNote || "Normal electrochemical response."}
+                  {currentCpe?.physicsNote ?? "Unavailable"}
                 </p>
               </div>
 
@@ -733,20 +635,20 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
 
                 {/* Score Gauge */}
                 <div className="text-center p-4 rounded-xl bg-[#050810] border border-[#162032]">
-                  <div className="text-[11px] text-slate-400 font-mono">Kramers-Kronig Compliance Score</div>
+                  <div className="text-[11px] text-slate-400 font-mono">Lin-KK Screening Score</div>
                   <div
                     className={`text-3xl font-bold font-mono mt-1 ${
-                      (linKKReport?.driftScore || 90) >= 85
+                      (linKKReport?.driftScore ?? -1) >= 85
                         ? "text-emerald-400"
-                        : (linKKReport?.driftScore || 90) >= 70
+                        : (linKKReport?.driftScore ?? -1) >= 70
                         ? "text-amber-400"
                         : "text-rose-400"
                     }`}
                   >
-                    {linKKReport?.driftScore || 95}%
+                    {linKKReport?.driftScore ?? "Unavailable"}%
                   </div>
                   <div className="text-xs text-slate-300 font-mono mt-1 font-semibold">
-                    {linKKReport?.stationarityStatus || "Stationary & Causal"}
+                    {linKKReport?.stationarityStatus ?? "Unavailable"}
                   </div>
                 </div>
 
@@ -754,19 +656,19 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="p-2.5 rounded-lg bg-[#050810] border border-[#162032]">
                     <div className="text-[10px] text-slate-500">Pseudo-χ² (Lin-KK)</div>
-                    <div className="text-sky-400 font-bold">{linKKReport?.pseudoChiSquare || 1.2e-4}</div>
+                    <div className="text-sky-400 font-bold">{linKKReport?.pseudoChiSquare ?? "Unavailable"}</div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-[#050810] border border-[#162032]">
                     <div className="text-[10px] text-slate-500">Mean Residual</div>
-                    <div className="text-emerald-400 font-bold">{linKKReport?.meanResidualPct || 1.1}%</div>
+                    <div className="text-emerald-400 font-bold">{linKKReport?.meanResidualPct ?? "Unavailable"}%</div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-[#050810] border border-[#162032]">
                     <div className="text-[10px] text-slate-500">Low-f Drift (μ_drift)</div>
-                    <div className="text-purple-400 font-bold">{linKKReport?.muDriftMetric || 0.04}</div>
+                    <div className="text-purple-400 font-bold">{linKKReport?.muDriftMetric ?? "Unavailable"}</div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-[#050810] border border-[#162032]">
                     <div className="text-[10px] text-slate-500">Voigt Elements M</div>
-                    <div className="text-amber-400 font-bold">24 R_k - C_k chains</div>
+                    <div className="text-amber-400 font-bold">Unavailable (not reported)</div>
                   </div>
                 </div>
 
@@ -774,11 +676,10 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 <div className="p-3.5 rounded-xl bg-[#050810] border border-[#162032] space-y-1 text-xs font-mono">
                   <div className="flex items-center gap-1.5 text-sky-400 font-bold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>ASTM G106 Diagnosis:</span>
+                    <span>Solver Screening Assessment:</span>
                   </div>
                   <p className="text-slate-400 text-[11px] leading-relaxed">
-                    {linKKReport?.recommendation ||
-                      "Residuals are randomly distributed with no low-frequency trend, confirming sample stationarity throughout the entire frequency sweep."}
+                    {linKKReport?.recommendation ?? "Unavailable: no current screening result."}
                   </p>
                 </div>
               </div>
@@ -900,7 +801,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                         : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
                     }`}
                   >
-                    {inductanceReport?.hasHighFreqInduction ? "Inductive Loop Present" : "Clean High-f"}
+                    {!inductanceReport ? "Unavailable" : inductanceReport.hasHighFreqInduction ? "Inductive Loop Present" : "No inductive loop detected"}
                   </span>
                 </div>
 
@@ -909,7 +810,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   <div className="p-3 rounded-xl bg-[#050810] border border-[#1e2d46]">
                     <div className="text-[10px] text-slate-500">Extracted L_cable</div>
                     <div className="text-xl font-bold text-sky-400 mt-0.5">
-                      {inductanceReport?.detectedInductance_uH || 0} µH
+                      {inductanceReport?.detectedInductance_uH ?? "Unavailable"} µH
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-[#050810] border border-[#1e2d46]">
@@ -917,7 +818,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                     <div className="text-xl font-bold text-amber-400 mt-0.5">
                       {inductanceReport?.zeroCrossingFreq_Hz
                         ? `${inductanceReport.zeroCrossingFreq_Hz} Hz`
-                        : "> 100 kHz"}
+                        : "Not reported"}
                     </div>
                   </div>
                 </div>
@@ -926,7 +827,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                   <div className="text-slate-300 font-bold">Cable Artifact Impact:</div>
                   <p className="text-slate-400 text-[11px] leading-relaxed">
                     At 100 kHz, lead inductance creates an imaginary impedance distortion of{" "}
-                    <strong className="text-sky-300">{inductanceReport?.cableArtifactMagnitude_Ohm || 0} Ω</strong>.
+                    <strong className="text-sky-300">{inductanceReport?.cableArtifactMagnitude_Ohm ?? "Unavailable"} Ω</strong>.
                     De-embedding subtracts +jωL₀ to prevent artificial electrolyte resistance (Rs) overestimation in CNLS fits.
                   </p>
                 </div>
@@ -935,6 +836,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                 <button
                   type="button"
                   onClick={handleApplyDeembedding}
+                  disabled={!inductanceReport?.correctedPoints?.length}
                   className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-500/20 to-blue-600/20 hover:from-sky-500/30 hover:to-blue-600/30 border border-sky-400/50 text-sky-200 text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-[0_0_12px_rgba(56,189,248,0.2)] transition-all"
                 >
                   <Sparkles className="w-4 h-4 text-sky-400" />
@@ -963,7 +865,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                       data={activeDataset.points.map((p, idx) => ({
                         rawZReal: p.zReal,
                         rawMinusZImag: p.minusZImag,
-                        corrMinusZImag: inductanceReport?.correctedPoints?.[idx]?.minusZImag ?? p.minusZImag,
+                        corrMinusZImag: inductanceReport?.correctedPoints?.[idx]?.minusZImag ?? null,
                         freq: p.frequency,
                       }))}
                       margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
@@ -1007,7 +909,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
                       <Legend wrapperStyle={{ fontSize: 11, fontFamily: "monospace", paddingTop: 8 }} />
                       <Scatter
                         dataKey="rawMinusZImag"
-                        name="Raw Measured Data (with Cable L0)"
+                        name="Input Spectrum (with Cable L0)"
                         fill="#f43f5e"
                         shape="circle"
                       />
@@ -1029,7 +931,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
       )}
 
       {/* =========================================================================
-          TAB 4: ASTM G106 / ISO 16773 COMPLIANCE REPORT GENERATOR
+          TAB 4: SCREENING ONLY — standards compliance not evaluated REPORT GENERATOR
          ========================================================================= */}
       {activeTab === "astm-report" && (
         <div className="bg-[#090e18] border border-[#1e2d46] rounded-2xl p-6 space-y-6">
@@ -1040,10 +942,10 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white font-mono">
-                  ASTM G106 &amp; ISO 16773 Standard Compliance Certificate
+                  EIS Physical Screening Report
                 </h3>
                 <p className="text-xs text-slate-400 font-mono">
-                  Audit-ready data quality certificate &amp; physical de-embedding summary
+                  Computed metrics and de-embedding summary; no certification claim
                 </p>
               </div>
             </div>
@@ -1051,6 +953,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
             <button
               type="button"
               onClick={handleCopyReport}
+              disabled={!validation.result}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050810] border border-[#1e2d46] text-xs font-mono font-bold text-sky-300 hover:border-sky-400 transition-all"
             >
               {copiedNotification ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -1062,7 +965,7 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
           <div className="p-4 bg-[#050810] border border-[#162032] rounded-xl font-mono text-xs text-slate-300 space-y-4 overflow-x-auto leading-relaxed">
             <div>
               <div className="text-sky-400 font-bold border-b border-[#162032] pb-1">
-                ASTM G106 EIS PHYSICAL VALIDATION CERTIFICATE
+                EIS PHYSICAL SCREENING REPORT
               </div>
               <div className="text-[11px] text-slate-400 mt-1">
                 Generated: {new Date().toISOString()} | Target Dataset: {activeDataset.name}
@@ -1072,26 +975,26 @@ Python Engine: CPython 3.10+ (Lin-KK Generalized Voigt Model)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div className="space-y-1">
                 <div className="text-slate-200 font-bold">1. CPE Effective Capacitance (C_eff)</div>
-                <div>• Brug 2D Surface Model: <span className="text-sky-300">{currentCpe?.cBrug_uF || 0} µF</span></div>
-                <div>• Specific Double-Layer Capacitance: <span className="text-emerald-300">{currentCpe?.cEffectiveArea_uFcm2 || 0} µF/cm²</span></div>
-                <div>• Hirschorn 3D Porous/Film Model: <span className="text-purple-300">{currentCpe?.cHirschorn_uF || 0} µF</span></div>
-                <div>• Characteristic Time Constant (τ): <span className="text-amber-300">{currentCpe?.tauEffectiveMs || 0} ms</span></div>
+                <div>• Brug 2D Surface Model: <span className="text-sky-300">{currentCpe?.cBrug_uF ?? "Unavailable"} µF</span></div>
+                <div>• Specific Double-Layer Capacitance: <span className="text-emerald-300">{currentCpe?.cEffectiveArea_uFcm2 ?? "Unavailable"} µF/cm²</span></div>
+                <div>• Hirschorn 3D Porous/Film Model: <span className="text-purple-300">{currentCpe?.cHirschorn_uF ?? "Unavailable"} µF</span></div>
+                <div>• Characteristic Time Constant (τ): <span className="text-amber-300">{currentCpe?.tauEffectiveMs ?? "Unavailable"} ms</span></div>
               </div>
 
               <div className="space-y-1">
                 <div className="text-slate-200 font-bold">2. Kramers-Kronig (Lin-KK) Stationarity</div>
-                <div>• Overall Score: <span className="text-emerald-300 font-bold">{linKKReport?.driftScore || 95} / 100</span></div>
-                <div>• Status: <span className="text-sky-300">{linKKReport?.stationarityStatus || "Stationary & Causal"}</span></div>
-                <div>• Mean Residual: <span className="text-slate-300">{linKKReport?.meanResidualPct || 1.1}%</span></div>
-                <div>• Low-Frequency Drift Metric (μ_drift): <span className="text-slate-300">{linKKReport?.muDriftMetric || 0.04}</span></div>
+                <div>• Overall Score: <span className="text-emerald-300 font-bold">{linKKReport?.driftScore ?? "Unavailable"} / 100</span></div>
+                <div>• Status: <span className="text-sky-300">{linKKReport?.stationarityStatus ?? "Unavailable"}</span></div>
+                <div>• Mean Residual: <span className="text-slate-300">{linKKReport?.meanResidualPct ?? "Unavailable"}%</span></div>
+                <div>• Low-Frequency Drift Metric (μ_drift): <span className="text-slate-300">{linKKReport?.muDriftMetric ?? "Unavailable"}</span></div>
               </div>
             </div>
 
             <div className="pt-2 border-t border-[#162032] space-y-1">
               <div className="text-slate-200 font-bold">3. Parasitic Lead Inductance &amp; High-Frequency Phase Shift</div>
-              <div>• Extracted Cell/Lead Inductance (L₀): <span className="text-sky-300">{inductanceReport?.detectedInductance_uH || 0} µH</span></div>
-              <div>• Zero-Crossing Frequency (f₀): <span className="text-amber-300">{inductanceReport?.zeroCrossingFreq_Hz || "None (Clean high-f)"} Hz</span></div>
-              <div>• Compliance Status: <span className="text-emerald-400 font-bold">PASSED ASTM G106 / ISO 16773</span></div>
+              <div>• Extracted Cell/Lead Inductance (L₀): <span className="text-sky-300">{inductanceReport?.detectedInductance_uH ?? "Unavailable"} µH</span></div>
+              <div>• Zero-Crossing Frequency (f₀): <span className="text-amber-300">{inductanceReport?.zeroCrossingFreq_Hz ?? "Unavailable"} Hz</span></div>
+              <div>• Compliance Status: <span className="text-emerald-400 font-bold">NOT EVALUATED — screening only</span></div>
             </div>
           </div>
         </div>

@@ -162,3 +162,33 @@ Phase 0 remains open. No experimental qualification or all-engine audit is claim
 
 Final full unit rerun after inventory corrections: **111 PASS / 0 FAIL**, 2.564 s.
 This does not clear the separate TypeScript lint or Phase 0 scientific gates.
+
+## EIS frontend repair — continuation 01a0c11f
+
+- Removed fabricated upload-analysis and physical-validation fallback reports,
+  default compliance scores and the unconditional ASTM/ISO certificate. Missing
+  metrics stay unavailable, actual zero stays zero. Export requires a current
+  result; absent partial-report sections cannot retain previous metrics.
+- Shared request hook binds results to serialized inputs, clears on retry/change,
+  aborts HTTP and rejects late replies even when transport ignores abort. It does
+  not claim cancellation of Python computation. Upload record result cache removed.
+- Found `eisFileParser.ts` examples are generated circuit spectra, despite names
+  and instrument metadata. These two studios and reports now label them synthetic;
+  fabricated fixed charging/corrosion guidance removed. Other consumers and the
+  underlying example metadata still need a source/provenance audit.
+- Fresh unit **117 PASS / 0 FAIL**; build PASS (25.35 s, chunk warning). Lint still
+  FAILS with previous component diagnostics; none in the two studios/shared hook.
+  Logs `.runtime/phase0-audit/{unit,build,lint}-eis-final.txt`.
+- Browser: actual components mounted in `tests/eis-browser.html` using real Node
+  API → Python at isolated ports 3190/5190. Physical CPE 8.2761 uF, Lin-KK score 0
+  displayed as returned; uploaded EIS displayed SCREENING, not invented DRIFT/PASS.
+  Test-only transport controls verified HTTP503 removes prior results, missing
+  report sections stay unavailable, exports disable on failure/pending, and an
+  old delayed success cannot replace a newer error after temperature/area change.
+  Keyboard Tab moves temperature → nominal capacity; screenshot inspected.
+  This is UI/software evidence on synthetic input, not experimental validation.
+- Underlying CNLS clipped normal-equation fit, small-input fabricated score in
+  its direct API, broad backend stationarity/compliance strings, heuristic SOH/
+  DRT interpretations and examples elsewhere remain scientific/audit gaps.
+  The physical studio rejects reports with no residuals rather than showing the
+  backend's insufficient-points score. No Phase 0 gate is accepted by this repair.

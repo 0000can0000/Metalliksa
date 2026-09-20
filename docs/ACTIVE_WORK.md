@@ -1,5 +1,19 @@
 # Active Work
 
+Continuation task 01a0c11f-9971-7130-b007-bfc77b3a474a takes ownership on
+2026-09-21 from source 01a0c10a after verifying clean HEAD a1348ff and empty index.
+Same LOCAL checkout; no worktree, push or Gemini assignment. Current package owns
+the two EIS studios, shared latest-request hook/service and regression tests.
+Acceptance: backend errors/missing reports remain unavailable, old responses and
+cached results cannot masquerade as current input, and no compliance defaults.
+Micrograph export remains the next claimed package. Phase 0 remains open.
+
+EIS package complete: unit117/117, build PASS, live component/API browser checks
+PASS (real results, controlled failures/partial/late responses, keyboard). General
+lint remains FAIL, no changed-EIS diagnostics. See Phase0 audit for exact limits.
+Next work: train_micrograph_segmentation.py import side effects and untrained
+export guards; new Python regression tests belong to this same owner.
+
 Successor Codex task 01a0c10a-46a8-76f0-8ab9-a58e32966009 took ownership on
 2026-09-21 after checking HEAD 95b6222, the empty index, and every inherited dirty
 path against the handoff. Source task has stopped editing. Same checkout and

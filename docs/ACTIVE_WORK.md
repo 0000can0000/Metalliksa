@@ -14,6 +14,11 @@ lint remains FAIL, no changed-EIS diagnostics. See Phase0 audit for exact limits
 Next work: train_micrograph_segmentation.py import side effects and untrained
 export guards; new Python regression tests belong to this same owner.
 
+Micrograph export package complete: seven guard regressions PASS; existing
+nonfabrication backend ten PASS. Training/export availability is explicit, no
+artifact generated. Next planned scope is the existing TypeScript lint failures;
+claim exact files after inspecting real type contracts. Test servers3190/5190 stopped.
+
 Successor Codex task 01a0c10a-46a8-76f0-8ab9-a58e32966009 took ownership on
 2026-09-21 after checking HEAD 95b6222, the empty index, and every inherited dirty
 path against the handoff. Source task has stopped editing. Same checkout and

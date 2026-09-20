@@ -3,31 +3,29 @@
 METALLIX LABS: Vision AI Metallurgical Micrograph Segmentation Model
 Architecture: U-Net / SegFormer with ResNet34 or MiT Backbone
 Target Standard: ASTM E562 (Phase Volume Fractioning) & ASTM E112 (Grain Boundaries)
-Outputs: Optimized ONNX model (FP32 / INT8) ready for browser Wasm/WebGPU execution.
+Research training only. Browser export is unavailable until a trained checkpoint,
+dataset provenance, preprocessing contract and independent evaluation are supported.
 ===================================================================================
 """
 
-import os
-import sys
 import argparse
-import numpy as np
+import math
+from pathlib import Path
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
-try:
-    import onnx
-    import onnxruntime as ort
-    HAS_ONNX = True
-except ImportError:
-    HAS_ONNX = False
 
 try:
     import segmentation_models_pytorch as smp
 except ImportError:
-    print("Installing segmentation-models-pytorch...")
-    os.system("pip install segmentation-models-pytorch")
-    import segmentation_models_pytorch as smp
+    smp = None
+
+EXPORT_UNAVAILABLE = (
+    "Micrograph ONNX export unavailable: no supported trained checkpoint with "
+    "dataset provenance, class/preprocessing contract and independent evaluation. "
+    "Random architecture initialization or an ImageNet encoder is not a trained "
+    "metallurgical segmentation model."
+)
 
 # ---------------------------------------------------------
 # 1. METALLURGICAL PHASES CONFIGURATION
@@ -43,26 +41,38 @@ METALLURGICAL_CLASSES = [
 NUM_CLASSES = len(METALLURGICAL_CLASSES)
 
 # ---------------------------------------------------------
-# 2. SYNTHETIC METALLOGRAPHY GENERATOR (For Training Without Big Real Data)
-# ---------------------------------------------------------
-# ---------------------------------------------------------
-# 3. PYTORCH DATASET WITH METALLURGICAL AUGMENTATIONS
-# ---------------------------------------------------------
-# ---------------------------------------------------------
 # 4. TRAINING FUNCTION WITH DICE + CROSS-ENTROPY LOSS
 # ---------------------------------------------------------
 def train_model(epochs=10, batch_size=4, lr=1e-3, data_dir=None, device="cuda" if torch.cuda.is_available() else "cpu"):
-    print(f"[*] Initializing Metallurgical AI Segmentation Training on device: {device}")
-    
-    if not data_dir or not os.path.exists(data_dir):
+    if isinstance(epochs, bool) or not isinstance(epochs, int) or epochs <= 0:
+        raise ValueError("epochs must be a positive integer; zero epochs cannot produce a trained model")
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+    if not math.isfinite(lr) or lr <= 0:
+        raise ValueError("lr must be finite and positive")
+    if not data_dir or not Path(data_dir).is_dir():
         raise RuntimeError(
-            "ERROR: A valid directory containing real experimental micrograph datasets is required. "
-            "Dummy synthetic image generation is strictly prohibited. "
+            "A directory containing traceable labeled micrograph datasets is required. "
             "Please provide --data-dir pointing to real SEM/Optical phase-labeled images."
         )
+    if smp is None:
+        raise RuntimeError("Training unavailable: segmentation-models-pytorch is not installed in this interpreter. No automatic installation was attempted.")
+
+    # Check data availability before allocating a model or requesting any weights.
+    try:
+        from lpbf_real_dataset_pipeline import RealDataIngestionPipeline
+    except ImportError as exc:
+        raise RuntimeError("Micrograph training data pipeline unavailable; no model was trained.") from exc
+    pipeline = RealDataIngestionPipeline(Path(data_dir))
+    pipeline.scan_and_ingest_all()
+    pipeline.split_and_save_manifest()
+    train_loader, val_loader, _ = pipeline.get_segmentation_dataloaders(batch_size=batch_size)
+    if len(train_loader) == 0 or len(val_loader) == 0:
+        raise RuntimeError("Nonempty training and validation splits are required; no model was trained.")
+
+    print(f"[*] Initializing research segmentation training on device: {device}")
 
     # U-Net with ResNet34 backbone
-    import torchvision.models as tvm
     model = smp.Unet(
         encoder_name="resnet34",
         encoder_weights=None,   # prevents HuggingFace download
@@ -70,19 +80,7 @@ def train_model(epochs=10, batch_size=4, lr=1e-3, data_dir=None, device="cuda" i
         classes=NUM_CLASSES,
         activation=None
     )
-    tv_resnet = tvm.resnet34(weights=tvm.ResNet34_Weights.IMAGENET1K_V1)
-    encoder_state = {k: v for k, v in tv_resnet.state_dict().items() if not k.startswith("fc.")}
-    model.encoder.load_state_dict(encoder_state, strict=False)
     model.to(device)
-
-    # Connect real data pipeline
-    from lpbf_real_dataset_pipeline import RealDataIngestionPipeline
-    from pathlib import Path
-    
-    pipeline = RealDataIngestionPipeline(Path(data_dir))
-    pipeline.scan_and_ingest_all()
-    pipeline.split_and_save_manifest()
-    train_loader, val_loader, _ = pipeline.get_segmentation_dataloaders(batch_size=batch_size)
 
     # Combined Dice Loss + Cross Entropy for imbalanced phase boundaries
     dice_loss_fn = smp.losses.DiceLoss(mode="multiclass")
@@ -105,6 +103,8 @@ def train_model(epochs=10, batch_size=4, lr=1e-3, data_dir=None, device="cuda" i
             logits = model(images)
             
             loss = 0.5 * ce_loss_fn(logits, masks) + 0.5 * dice_loss_fn(logits, masks)
+            if not torch.isfinite(loss):
+                raise RuntimeError("Non-finite training loss; model is unavailable.")
             loss.backward()
             optimizer.step()
 
@@ -125,7 +125,9 @@ def train_model(epochs=10, batch_size=4, lr=1e-3, data_dir=None, device="cuda" i
                 loss = 0.5 * ce_loss_fn(logits, masks) + 0.5 * dice_loss_fn(logits, masks)
                 val_loss += loss.item()
         
-        val_loss /= max(1, len(val_loader))
+        val_loss /= len(val_loader)
+        if not math.isfinite(val_loss):
+            raise RuntimeError("Non-finite validation loss; model is unavailable.")
         print(f"--> Epoch {epoch}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
 
         if val_loss < best_val_loss:
@@ -139,39 +141,9 @@ def train_model(epochs=10, batch_size=4, lr=1e-3, data_dir=None, device="cuda" i
 # 5. EXPORT TO ONNX FORMAT FOR BROWSER RUNTIME
 # ---------------------------------------------------------
 def export_to_onnx(model, output_path="metallix_micrograph_unet.onnx", img_size=(512, 512)):
-    print(f"[*] Exporting PyTorch model to ONNX: {output_path}...")
-    model.eval()
-    model.cpu()
-
-    dummy_input = torch.randn(1, 3, img_size[0], img_size[1], dtype=torch.float32)
-
-    torch.onnx.export(
-        model,
-        dummy_input,
-        output_path,
-        export_params=True,
-        opset_version=14,
-        do_constant_folding=True,
-        input_names=["micrograph_input"],
-        output_names=["phase_logits"],
-        dynamic_axes={
-            "micrograph_input": {0: "batch_size"},
-            "phase_logits": {0: "batch_size"}
-        }
-    )
-
-    if HAS_ONNX:
-        onnx_model = onnx.load(output_path)
-        onnx.checker.check_model(onnx_model)
-        print(f"[OK] ONNX model successfully verified!")
-
-        ort_session = ort.InferenceSession(output_path)
-        ort_inputs = {ort_session.get_inputs()[0].name: dummy_input.numpy()}
-        ort_outs = ort_session.run(None, ort_inputs)
-        print(f"[OK] ONNX Runtime Test Inference Output Shape: {ort_outs[0].shape}")
-        print(f"[*] Model ready for web app deployment!")
-    else:
-        print("[!] ONNX/ONNXRuntime not installed. Skipping model verification.")
+    # A shape smoke test cannot establish trained weights or scientific validity.
+    # Keep the public entry point fail-closed until an artifact contract exists.
+    raise RuntimeError(EXPORT_UNAVAILABLE)
 
 
 # ---------------------------------------------------------
@@ -182,15 +154,16 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
-    parser.add_argument("--data-dir", type=str, required=True, help="Path to real experimental micrograph dataset")
-    parser.add_argument("--export-only", action="store_true", help="Skip training and export dummy model directly")
+    parser.add_argument("--data-dir", type=str, help="Path to traceable labeled micrograph dataset (required for training)")
+    parser.add_argument("--export-only", action="store_true", help="Unavailable until trained artifact provenance and evaluation are supported")
     args = parser.parse_args()
 
     if args.export_only:
-        print("[*] Creating pre-configured U-Net for direct export...")
-        model = smp.Unet(encoder_name="resnet34", encoder_weights=None, in_channels=3, classes=NUM_CLASSES)
-        export_to_onnx(model)
+        parser.error(EXPORT_UNAVAILABLE)
     else:
-        trained_model = train_model(epochs=args.epochs, batch_size=args.batch_size, lr=args.lr, data_dir=args.data_dir)
-        export_to_onnx(trained_model)
+        try:
+            train_model(epochs=args.epochs, batch_size=args.batch_size, lr=args.lr, data_dir=args.data_dir)
+        except (ValueError, RuntimeError) as exc:
+            parser.error(str(exc))
+        print("Research checkpoint saved. " + EXPORT_UNAVAILABLE)
 

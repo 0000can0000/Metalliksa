@@ -192,3 +192,25 @@ This does not clear the separate TypeScript lint or Phase 0 scientific gates.
   DRT interpretations and examples elsewhere remain scientific/audit gaps.
   The physical studio rejects reports with no residuals rather than showing the
   backend's insufficient-points score. No Phase 0 gate is accepted by this repair.
+
+## Micrograph training/export guard repair — continuation 01a0c11f
+
+- Import no longer runs pip when segmentation-models-pytorch is missing; training
+  reports the missing dependency. No packages installed and no pretrained weights
+  downloaded. ImageNet download removed from the research training path.
+- `--export-only` and direct `export_to_onnx` explicitly refuse export until a
+  supported trained checkpoint, provenance, preprocessing/class contract and
+  independent evaluation exist. Tensor shape verification is not validation.
+  Existing outputs are neither overwritten nor removed. No ONNX was generated.
+- Nonpositive/noninteger epochs, invalid batch size or learning rate, missing
+  data pipeline and empty training/validation splits fail before model allocation.
+  Non-finite losses abort. The expected local module
+  `python/lpbf_real_dataset_pipeline.py` is absent (coverage missing + filesystem
+  checked), so research training is currently unavailable too. No training run or
+  segmentation accuracy is claimed; retained training code is not qualified.
+- Scientific Python3.12 venv `test_micrograph_export_guards.py`: seven PASS.
+  Initial controlled red reproduced installer attempt, random model creation,
+  zero-epoch initialization and unguarded export. Backend nonfabrication regression
+  suite remains ten PASS on CPU venv. Logs in `.runtime/phase0-audit/`.
+- EIS test server PID41348 and captured children stopped; no listeners remain
+  on 3190/5190. Unknown-owner HMR24678 was left untouched. Phase0 stays open.

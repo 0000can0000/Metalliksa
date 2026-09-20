@@ -20,6 +20,21 @@ from lpbf_simulation import run, validate, fingerprint
 from lpbf_openfoam import BINARY
 from lpbf_evidence import resource_estimate, enforce_thermal_balances
 from lpbf_solidification_microstructure import compute_solidification_microstructure  # Phase 8
+from lpbf_adaptive_feedforward import AdaptiveFeedforwardMitigator
+from lpbf_experimental_validation import validate_experiment
+from lpbf_fatigue_fracture import MurakamiFatigueEngine
+from lpbf_keyhole_raytracing import compute_keyhole_raytracing
+from lpbf_modulus_fno import predict_part_scale_thermal_history
+from lpbf_multilaser_plume import ShieldGasFlow, PlumeParameters, MultiLaserPlumeEngine
+from lpbf_optical_tomography import OpticalTomographySimulator
+from lpbf_powder_dem_compaction import PowderCompactionEngine
+from lpbf_support_optimization import SupportStructureOptimizer
+from lpbf_thermal_accumulation import AlloyThermalProperties, HatchProcessConfig, MultiTrackThermalEngine
+from lpbf_thermomechanical import analyze_distortion
+from lpbf_toolpath_kinematics import LPBFToolpathParser, GalvanometerKinematicsEngine, ScannerProfile
+from lpbf_transient_3d_gpu import TransientEnthalpy3DGPU
+from lpbf_transient_enthalpy_fdm import TransientEnthalpyFDMSolver
+from stl_voxelizer import STLVoxelizer
 
 ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().parents[1]/".lpbf-jobs")))
 
@@ -291,14 +306,12 @@ def main():
                 cfd = payload.get("cfdResult", None)
                 data = compute_solidification_microstructure(p, m, cfd)
             elif method == "thermomechanical-distortion":     # Phase 9
-                from lpbf_thermomechanical import analyze_distortion
                 payload = request["payload"]
                 p = payload.get("params", {})
                 m = payload.get("material", {})
                 cfd = payload.get("cfdResult", None)
                 data = analyze_distortion(p, m, cfd)
             elif method == "experimental-validation":         # Phase 10
-                from lpbf_experimental_validation import validate_experiment
                 payload = request["payload"]
                 p = payload.get("params", {})
                 m = payload.get("material", {})
@@ -306,7 +319,6 @@ def main():
                 exp = payload.get("experimentalData", {})
                 data = validate_experiment(p, m, sim, exp)
             elif method == "modulus-fno":                     # Phase 11
-                from lpbf_modulus_fno import predict_part_scale_thermal_history
                 payload = request["payload"]
                 power_W = payload.get("laserPower_W", 250.0)
                 speed_mms = payload.get("scanSpeed_mms", 1000.0)
@@ -317,7 +329,6 @@ def main():
                     power_W=power_W, speed_mms=speed_mms, preheat_C=preheat_C, hatch_um=hatch_um, layer_um=layer_um
                 )
             elif method == "toolpath-kinematics":             # Phase 12
-                from lpbf_toolpath_kinematics import LPBFToolpathParser, GalvanometerKinematicsEngine, ScannerProfile
                 payload = request["payload"]
                 raw_text = payload.get("content", "")
                 fmt = payload.get("format", "gcode").lower()
@@ -342,7 +353,6 @@ def main():
                 engine = GalvanometerKinematicsEngine(prof)
                 data = engine.simulate_toolpath(vectors)
             elif method == "fatigue-fracture":                # Phase 13
-                from lpbf_fatigue_fracture import MurakamiFatigueEngine
                 payload = request["payload"]
                 alloy = payload.get("alloyName", "Ti-6Al-4V")
                 engine = MurakamiFatigueEngine(alloy)
@@ -364,8 +374,6 @@ def main():
                     "paris_crack_growth": paris_res
                 }
             elif method == "stl-voxelize":                    # Phase 14
-                from stl_voxelizer import STLVoxelizer
-                import base64
                 payload = request["payload"]
                 stl_text = payload.get("stlContent", "")
                 resolution = int(payload.get("resolution", 32))
@@ -382,8 +390,6 @@ def main():
 
                 data = STLVoxelizer.voxelize(triangles, resolution=resolution, detected_defects=defects)
             elif method == "adaptive-feedforward":            # Phase 15
-                from lpbf_toolpath_kinematics import LPBFToolpathParser, ScannerProfile
-                from lpbf_adaptive_feedforward import AdaptiveFeedforwardMitigator
                 payload = request["payload"]
                 raw_text = payload.get("content", "")
                 fmt = payload.get("format", "gcode").lower()
@@ -404,7 +410,6 @@ def main():
                 mitigator = AdaptiveFeedforwardMitigator(prof)
                 data = mitigator.process_toolpath(vectors, apply_67_deg_rotation=apply_rot, layer_index=layer_idx)
             elif method == "multilaser-plume":               # Phase 16
-                from lpbf_multilaser_plume import ShieldGasFlow, PlumeParameters, MultiLaserPlumeEngine
                 payload = request["payload"]
                 gas_cfg = payload.get("gasFlow", {})
                 flow = ShieldGasFlow(
@@ -434,7 +439,6 @@ def main():
                 else:
                     data = engine.simulate_multitrack_scenarios(l1_vecs, l2_vecs)
             elif method == "thermal-accumulation":           # Phase 17
-                from lpbf_thermal_accumulation import AlloyThermalProperties, HatchProcessConfig, MultiTrackThermalEngine
                 payload = request["payload"]
                 mat_cfg = payload.get("material", {})
                 alloy_name = mat_cfg.get("name", "Ti-6Al-4V")
@@ -475,7 +479,6 @@ def main():
                 else:
                     data = engine.simulate_hatch_sequence(cfg)
             elif method == "powder-dem-compaction":          # Phase 18
-                from lpbf_powder_dem_compaction import PowderCompactionEngine
                 payload = request["payload"]
                 engine = PowderCompactionEngine(
                     d10_um=float(payload.get("d10_um", 20.0)),
@@ -487,7 +490,6 @@ def main():
                 data = engine.generate_psd_deterministic(int(payload.get("num_particles", 500)))
 
             elif method == "optical-tomography":             # Phase 19
-                from lpbf_optical_tomography import OpticalTomographySimulator
                 payload = request["payload"]
                 sim = OpticalTomographySimulator(
                     sensor_resolution=(int(payload.get("res_x", 64)), int(payload.get("res_y", 64))),
@@ -503,7 +505,6 @@ def main():
                 )
 
             elif method == "support-optimization":           # Phase 20
-                from lpbf_support_optimization import SupportStructureOptimizer
                 payload = request["payload"]
                 opt = SupportStructureOptimizer(
                     E_modulus_Pa=float(payload.get("E_modulus_Pa", 110e9)),
@@ -523,7 +524,6 @@ def main():
                 }
 
             elif method == "transient-enthalpy-fdm":         # Phase 21
-                from lpbf_transient_enthalpy_fdm import TransientEnthalpyFDMSolver
                 payload = request["payload"]
                 solver = TransientEnthalpyFDMSolver(
                     nx=int(payload.get("nx", 100)),
@@ -553,7 +553,6 @@ def main():
                             data[k] = v.tolist()
 
             elif method == "transient-3d-gpu":              # Phase 22
-                from lpbf_transient_3d_gpu import TransientEnthalpy3DGPU
                 payload = request["payload"]
                 
                 # Safety clamping to prevent GPU OOM
@@ -586,8 +585,15 @@ def main():
                     rho=float(payload.get("rho", 4420.0)),
                     L_f=float(payload.get("L_f", 2.9e5)),
                     T_solidus=float(payload.get("T_solidus", 1878.0)),
-                    T_liquidus=float(payload.get("T_liquidus", 1928.0))
+                    T_liquidus=float(payload.get("T_liquidus", 1928.0)),
+                    cp_solid=float(payload.get("cp_solid", 670.0)),
+                    cp_liquid=float(payload.get("cp_liquid", 730.0)),
+                    k_solid=float(payload.get("k_solid", 15.0)),
+                    k_liquid=float(payload.get("k_liquid", 25.0))
                 )
+
+            elif method == "keyhole-raytracing":            # Phase 26
+                data = compute_keyhole_raytracing(request.get("payload", {}))
 
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)

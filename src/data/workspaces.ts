@@ -1,10 +1,11 @@
 /** Product navigation and maturity are separate from the evidence of any result. */
 export type ModuleScope = 'Production' | 'Research' | 'Preview' | 'Unresolved';
-export type WorkspaceId = 'lpbf' | 'materials' | 'evidence';
+export type WorkspaceId = 'lpbf' | 'materials' | 'evidence' | 'orchestration';
 export const WORKSPACES = [
   { id: 'lpbf', label: 'LPBF Engineering', description: 'Process setup through thermal research, build screening and qualification evidence.', defaultModule: '3d-distortion-lab' },
   { id: 'materials', label: 'Materials Intelligence', description: 'Characterization, thermodynamics and material models supporting engineering decisions.', defaultModule: 'database' },
   { id: 'evidence', label: 'Evidence & Qualification', description: 'Sources, experimental records, uncertainty and traceable engineering reports.', defaultModule: 'research-hub' },
+  { id: 'orchestration', label: 'AI Orchestration', description: 'Human-gated multi-agent planning for datasets and engineering workflows.', defaultModule: 'ai-orchestrator' },
 ] as const;
 
 export const MODULES = [
@@ -22,7 +23,10 @@ export const MODULES = [
   { id: 'multilaser-plume', workspace: 'lpbf', label: 'Multi-Laser Plume', scope: 'Research', description: 'Phase 16: Fluid-optic cross-flow, Beer-Lambert plume attenuation and downwind de-confliction.', next: 'thermal-accumulation' },
   { id: 'thermal-accumulation', workspace: 'lpbf', label: 'Thermal Accumulation', scope: 'Research', description: 'Phase 17: Multi-Track heat buildup, inter-pass temperature drift, and optimal dwell delay routing.', next: 'powder-compaction' },
   { id: 'powder-compaction', workspace: 'lpbf', label: 'Powder DEM Compaction', scope: 'Research', description: 'Phase 18: Quasi-Monte Carlo particle packing simulation and recoater geometry.', next: 'optical-tomography' },
-  { id: 'optical-tomography', workspace: 'lpbf', label: 'Optical Tomography', scope: 'Research', description: 'Phase 19: In-Situ sensor thermal flux expected value and analytical noise bounds.', next: 'database' },
+  { id: 'optical-tomography', workspace: 'lpbf', label: 'Optical Tomography', scope: 'Research', description: 'Phase 19: In-Situ sensor thermal flux expected value and analytical noise bounds.', next: 'transient-3d-gpu' },
+  { id: 'transient-3d-gpu', workspace: 'lpbf', label: 'Transient 3D GPU Solver', scope: 'Research', description: 'Phase 22: GPU-accelerated high-fidelity melt pool simulation using NVIDIA Warp.', next: 'keyhole-raytracing' },
+  { id: 'keyhole-raytracing', workspace: 'lpbf', label: 'Keyhole Ray Tracing', scope: 'Research', description: 'Phase 26: GPU-accelerated multiple light scattering inside keyhole via NVIDIA Warp BVH.', next: 'database' },
+
 
   // Materials Intelligence Workspace
   { id: 'database', workspace: 'materials', label: 'Materials Database', scope: 'Research', description: 'Handbook values and reviewed research references; source applicability requires review.', next: 'alloy-builder' },
@@ -45,6 +49,7 @@ export const MODULES = [
   { id: 'aerospace-pdf-audit', workspace: 'evidence', label: 'Audit Templates', scope: 'Preview', description: 'Demonstration report templates; no airworthiness or NADCAP approval.', next: 'traceability' },
   { id: 'traceability', workspace: 'evidence', label: 'Export / Traceability', scope: 'Research', description: 'Export active specimen, source provenance and linked evidence as a review package.', next: 'copilot' },
   { id: 'copilot', workspace: 'evidence', label: 'Research Assistant', scope: 'Preview', description: 'AI suggestions require source verification before use in engineering decisions.', next: '3d-distortion-lab' },
+  { id: 'ai-orchestrator', workspace: 'orchestration', label: 'AI Orchestrator', scope: 'Preview', description: 'Plan and review multi-agent dataset decisions before any data is uploaded or changed.', next: 'research-hub' },
 ] as const satisfies ReadonlyArray<{ id: string; workspace: WorkspaceId; label: string; scope: ModuleScope; description: string; next: string }>;
 
 export type ModuleId = typeof MODULES[number]['id'];

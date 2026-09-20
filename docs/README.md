@@ -8,6 +8,7 @@ This directory contains the maintained product and engineering documentation. Th
 - [Research workstation](RESEARCH_WORKSTATION.md) — workspace structure, shared state, research registry, and evidence boundaries.
 - [LPBF engineering](LPBF_ENGINEERING.md) — thermal model contract, execution modes, verification, and known limitations.
 - [UQ evidence](UQ_EVIDENCE.md) — uncertainty-quantification scope and what the worksheets do not establish.
+- [Module evidence inventory](MODULE_EVIDENCE_INVENTORY.md) — current workspace registry and evidence limits.
 
 ## Governing project documents
 
@@ -15,7 +16,7 @@ These files live at the repository root because they apply across the whole appl
 
 - [AGENTS.md](../AGENTS.md) — instructions for agents and contributors.
 - [RULES.md](../RULES.md) — project governance and validation gates.
-- [ROADMAP.md](../ROADMAP.md) — planned capability phases.
+- [ROADMAP.md](../ROADMAP.md) — current implementation position and remaining product gaps.
 - [SCHEMA.md](../SCHEMA.md) — data and API contracts.
 - [STANDARDS.md](../STANDARDS.md) — standards and qualification reference.
 - [PROCESS_PROTOCOLS.md](../PROCESS_PROTOCOLS.md) — laboratory and production procedures.
@@ -27,7 +28,7 @@ These files live at the repository root because they apply across the whole appl
 - [PROOF.md](../PROOF.md) — dated verification and proof entries. It records what was tested; it is not a release certificate.
 - [Session log](../sonkayıtlar/LOG.md) — operational work history, newest entry first.
 - [Architecture audit](LPBF_ARCHITECTURE_AUDIT.md) — bounded architecture review.
-- [UQ evidence](UQ_EVIDENCE.md) — explicit evidence limits for the UQ tools.
+- [Archived planning documents](archive/README.md) — superseded roadmaps and dated handoffs retained for provenance.
 
 ## Authority and maintenance rules
 
@@ -36,4 +37,3 @@ These files live at the repository root because they apply across the whole appl
 3. `PROOF.md` and `sonkayıtlar/LOG.md` are append/prepend records respectively; do not rewrite their history to make it look cleaner.
 4. Keep generated source snapshots under `graft/`; do not link to them as user-facing documentation.
 5. When a document describes a limitation, keep the limitation visible until the corresponding implementation and evidence exist.
-

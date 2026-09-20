@@ -312,7 +312,7 @@ def solve_marangoni_flow_and_porosity(payload):
                 # Stochastic Pore Generation inside High Probability Trapping Zones
                 if (is_liquid or is_mushy) and p_pore_pct > 60.0:
                     # Random sampling based on local probability
-                    
+                    pass
 
     # Overall Defect & Density Metrics
     high_risk_ratio = high_risk_voxels / max(1, total_voxels)

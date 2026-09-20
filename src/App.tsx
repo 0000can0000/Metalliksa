@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Cpu, X, ArrowRight, Search, Layers, BookOpen, Flame } from 'lucide-react';
+import { Cpu, X, ArrowRight, Search, Layers, BookOpen, Flame, Network } from 'lucide-react';
 import { MODULES, WORKSPACES, ModuleId, isModuleId, moduleFromHash, moduleHash } from './data/workspaces';
 import { WorkspaceVisibility } from './components/WorkspaceVisibility';
 import { ModuleBoundary } from './components/ModuleBoundary';
@@ -35,6 +35,8 @@ const MultiTrackThermalLab = lazy(() => import("./components/MultiTrackThermalLa
 const PowderDEMCompactionLab = lazy(() => import("./components/PowderDEMCompactionLab").then(m => ({ default: m.PowderDEMCompactionLab }))); // Phase 18
 const OpticalTomographyLab = lazy(() => import("./components/OpticalTomographyLab").then(m => ({ default: m.OpticalTomographyLab }))); // Phase 19
 const TransientEnthalpy3DGPULab = lazy(() => import("./components/TransientEnthalpy3DGPULab").then(m => ({ default: m.TransientEnthalpy3DGPULab }))); // Phase 22
+const KeyholeRaytracingLab = lazy(() => import("./components/KeyholeRaytracingLab").then(m => ({ default: m.KeyholeRaytracingLab }))); // Phase 26
+
 const AerospaceAuditReportGenerator = lazy(() => import("./components/AerospaceAuditReportGenerator").then(m => ({ default: m.AerospaceAuditReportGenerator })));
 const AdvancedResearchHub = lazy(() => import("./components/AdvancedResearchHub").then(m => ({ default: m.AdvancedResearchHub })));
 const PhaseDiagramViewer = lazy(() => import("./components/PhaseDiagramViewer").then(m => ({ default: m.PhaseDiagramViewer })));
@@ -42,6 +44,7 @@ const EDSSpectrumLab = lazy(() => import("./components/EDSSpectrumLab").then(m =
 const DigitalTwinHub = lazy(() => import("./components/DigitalTwinHub").then(m => ({ default: m.DigitalTwinHub })));
 const PhaseKineticsTTTCCTStudio = lazy(() => import("./components/PhaseKineticsTTTCCTStudio").then(m => ({ default: m.PhaseKineticsTTTCCTStudio })));
 const UQLab = lazy(() => import("./components/UQLab").then(m => ({ default: m.UQLab })));
+const AIOrchestratorPanel = lazy(() => import("./components/AIOrchestratorPanel").then(m => ({ default: m.AIOrchestratorPanel })));
 
 export type NavSubTab = ModuleId;
 export type DisciplineHubId = typeof WORKSPACES[number]['id'];
@@ -128,6 +131,7 @@ export default function App() {
       case 'powder-compaction': return <PowderDEMCompactionLab />; // Phase 18
       case 'optical-tomography': return <OpticalTomographyLab />; // Phase 19
       case 'transient-3d-gpu': return <TransientEnthalpy3DGPULab />; // Phase 22
+      case 'keyhole-raytracing': return <KeyholeRaytracingLab />; // Phase 26
       case 'research-hub': return <AdvancedResearchHub />;
       case 'experimental-data': return <EvidenceWorkspace mode="experimental" />;
       case 'traceability': return <EvidenceWorkspace mode="traceability" />;
@@ -146,6 +150,7 @@ export default function App() {
       case 'database': return <MaterialsDatabaseView onNavigate={navigate} />;
       case 'phase-diagram': return <PhaseDiagramViewer />;
       case 'copilot': return <MetallurgyCopilot />;
+      case 'ai-orchestrator': return <AIOrchestratorPanel />;
     }
   }
 
@@ -164,7 +169,7 @@ export default function App() {
         <div className="mb-5 flex items-center justify-between"><div><p className="text-[10px] uppercase tracking-[0.18em] text-cyan-100/75">Navigation</p><p className="mt-1 text-xs text-slate-200">Engineering surfaces</p></div><span className="mk-count-badge font-mono text-[10px]">{String(MODULES.length).padStart(2, '0')}</span></div><label htmlFor="module-search" className="mb-2 block text-xs text-cyan-50/85">Find a module</label><div className="relative mb-5"><Search className="absolute left-3 top-3 w-4 h-4 text-cyan-200/80"/><input id="module-search" type="search" value={moduleSearch} onChange={e => setModuleSearch(e.target.value)} placeholder="Materials, evidence…" className="aero-input w-full rounded-xl border pl-9 pr-2 py-2.5 text-sm focus:ring-2 focus:ring-cyan-400/40"/></div>
         <nav aria-label="Engineering workspaces">
           {WORKSPACES.map(workspace => {
-            const Icon = workspace.id === 'lpbf' ? Flame : workspace.id === 'materials' ? Layers : BookOpen;
+            const Icon = workspace.id === 'lpbf' ? Flame : workspace.id === 'materials' ? Layers : workspace.id === 'orchestration' ? Network : BookOpen;
             const modules = filtered.filter(m => m.workspace === workspace.id);
             if (!modules.length) return null;
             return <div key={workspace.id} className="mb-5"><button onClick={() => navigate(workspace.defaultModule)} className={`mb-2 flex items-center gap-2 text-xs font-semibold ${workspace.id === activeWorkspace.id ? 'text-cyan-100' : 'text-slate-200'}`}><Icon className="w-4 h-4"/>{workspace.label}</button><div className="space-y-0.5">{modules.map(module => <button key={module.id} aria-current={activeTab === module.id ? 'page' : undefined} title={module.description} onClick={() => navigate(module.id)} className={`mk-nav-item w-full text-left px-3 py-2 text-sm transition-colors ${activeTab === module.id ? 'is-active text-cyan-50 font-medium' : 'text-slate-300 hover:text-white'}`}>{module.label}</button>)}</div></div>;
@@ -179,7 +184,7 @@ export default function App() {
           <div className="mt-3 grid gap-3 md:grid-cols-2 text-slate-400"><p>Hatch {specimen.lpbf.hatch_um} µm · Layer {specimen.lpbf.layer_um} µm · Beam {specimen.lpbf.beamDiameter_um} µm · Preheat {specimen.lpbf.preheatTemp_C} °C. Material and process are shared across LPBF stages.</p><p>Module scope: Production / Research / Preview / Unresolved. Result evidence: Measured / Validated simulation / Calibrated simulation / Literature estimate / Screening only / Unresolved. Conservation, convergence and experimental validation are separate checks.</p><p>Visited modules retain their local view during navigation. Specimen and registry persist in this browser. Meshes and most specialist views remain session-only.</p></div>
         </details>
         {materialTransfer.message && <p role={materialTransfer.error ? 'alert' : 'status'} className={`mb-4 rounded-lg border px-4 py-3 text-xs ${materialTransfer.error ? 'border-amber-500/30 text-amber-200' : 'border-cyan-500/20 text-cyan-200'}`}>{materialTransfer.message}</p>}
-        <ScientificContextPanel moduleId={activeTab} specimen={specimen} />
+        {activeTab !== 'ai-orchestrator' && <ScientificContextPanel moduleId={activeTab} specimen={specimen} />}
         {visited.map(id => <div key={id} hidden={id !== activeTab} data-module={id}><WorkspaceVisibility visible={id === activeTab}>
           <ModuleBoundary label={MODULES.find(m => m.id === id)!.label}>
             <Suspense fallback={<div role="status" className="min-h-60 flex items-center justify-center text-slate-400">Loading engineering module…</div>}>

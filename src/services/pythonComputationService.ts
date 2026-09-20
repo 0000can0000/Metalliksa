@@ -880,6 +880,27 @@ class PythonComputationService {
     return res.json();
   }
 
+  // Phase 22: Transient 3D GPU Solver
+  async computeTransient3DGPU(data: {
+    nx: number; ny: number; nz: number;
+    dx: number; dy: number; dz: number;
+    power_W: number;
+    T_preheat_K: number;
+    toolpath?: { t: number[]; x: number[]; y: number[]; p: number[] };
+    rho?: number;
+    L_f?: number;
+    T_solidus?: number;
+    T_liquidus?: number;
+  }): Promise<any> {
+    const res = await fetch("/api/python/transient-3d-gpu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
   /**
    * Check whether the configured Python runtime is reachable
    */

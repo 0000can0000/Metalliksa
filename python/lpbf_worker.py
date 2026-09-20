@@ -474,6 +474,121 @@ def main():
                     data = engine.optimize_dwell_delays(cfg, max_allowable_drift_K=allowable_drift)
                 else:
                     data = engine.simulate_hatch_sequence(cfg)
+            elif method == "powder-dem-compaction":          # Phase 18
+                from lpbf_powder_dem_compaction import PowderCompactionEngine
+                payload = request["payload"]
+                engine = PowderCompactionEngine(
+                    d10_um=float(payload.get("d10_um", 20.0)),
+                    d50_um=float(payload.get("d50_um", 35.0)),
+                    d90_um=float(payload.get("d90_um", 55.0)),
+                    recoater_gap_um=float(payload.get("recoater_gap_um", 60.0)),
+                    box_width_um=float(payload.get("box_width_um", 500.0))
+                )
+                data = engine.generate_psd_deterministic(int(payload.get("num_particles", 500)))
+
+            elif method == "optical-tomography":             # Phase 19
+                from lpbf_optical_tomography import OpticalTomographySimulator
+                payload = request["payload"]
+                sim = OpticalTomographySimulator(
+                    sensor_resolution=(int(payload.get("res_x", 64)), int(payload.get("res_y", 64))),
+                    fov_um=float(payload.get("fov_um", 1000.0)),
+                    emissivity=float(payload.get("emissivity", 0.35))
+                )
+                data = sim.simulate_sensor_frame(
+                    laser_power_W=float(payload.get("laserPower_W", 280.0)),
+                    scan_speed_mm_s=float(payload.get("scanSpeed_mms", 1000.0)),
+                    material_k=float(payload.get("material_k", 15.0)),
+                    material_alpha=float(payload.get("material_alpha", 5e-6)),
+                    T0_K=float(payload.get("T0_K", 300.0))
+                )
+
+            elif method == "support-optimization":           # Phase 20
+                from lpbf_support_optimization import SupportStructureOptimizer
+                payload = request["payload"]
+                opt = SupportStructureOptimizer(
+                    E_modulus_Pa=float(payload.get("E_modulus_Pa", 110e9)),
+                    cte_1_K=float(payload.get("cte_1_K", 9e-6)),
+                    yield_strength_Pa=float(payload.get("yield_strength_Pa", 950e6)),
+                    thermal_k_W_mK=float(payload.get("thermal_k_W_mK", 15.0)),
+                    T_melt_K=float(payload.get("T_melt_K", 1928.0)),
+                    T_preheat_K=float(payload.get("T_preheat_K", 353.15))
+                )
+                # Quick response bundling both thermal and mechanical requirements
+                heat_input = float(payload.get("heat_input_W", 280.0))
+                L_m = float(payload.get("support_length_m", 0.01))
+                area_m2 = float(payload.get("layer_area_m2", 0.0001))
+                data = {
+                    "thermal_area_m2": opt.calculate_thermal_requirement(heat_input, L_m),
+                    "mechanical_area_m2": opt.calculate_mechanical_requirement(area_m2)
+                }
+
+            elif method == "transient-enthalpy-fdm":         # Phase 21
+                from lpbf_transient_enthalpy_fdm import TransientEnthalpyFDMSolver
+                payload = request["payload"]
+                solver = TransientEnthalpyFDMSolver(
+                    nx=int(payload.get("nx", 100)),
+                    nz=int(payload.get("nz", 50)),
+                    dx=float(payload.get("dx", 2e-6)),
+                    dz=float(payload.get("dz", 2e-6))
+                )
+                # Using 2D method signature
+                data = solver.solve_meltpool_cross_section(
+                    power_W=float(payload.get("power_W", 250.0)),
+                    speed_m_s=float(payload.get("speed_m_s", 0.8)),
+                    T_preheat_K=float(payload.get("T_preheat_K", 300.0)),
+                    rho=float(payload.get("rho", 4420.0)),
+                    cp=float(payload.get("cp", 670.0)),
+                    k_solid=float(payload.get("k_solid", 15.0)),
+                    k_liquid=float(payload.get("k_liquid", 25.0)),
+                    latent_heat_J_kg=float(payload.get("latent_heat_J_kg", 2.9e5)),
+                    T_solidus=float(payload.get("T_solidus", 1878.0)),
+                    T_liquidus=float(payload.get("T_liquidus", 1928.0)),
+                    sim_time_s=float(payload.get("sim_time_s", 5e-4)),
+                    dt=float(payload.get("dt", 1e-6))
+                )
+                # Convert numpy arrays to lists for JSON serialization
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        if hasattr(v, 'tolist'):
+                            data[k] = v.tolist()
+
+            elif method == "transient-3d-gpu":              # Phase 22
+                from lpbf_transient_3d_gpu import TransientEnthalpy3DGPU
+                payload = request["payload"]
+                
+                # Safety clamping to prevent GPU OOM
+                nx = max(8, min(256, int(payload.get("nx", 64))))
+                ny = max(8, min(256, int(payload.get("ny", 64))))
+                nz = max(8, min(128, int(payload.get("nz", 32))))
+
+                solver = TransientEnthalpy3DGPU(
+                    nx=nx,
+                    ny=ny,
+                    nz=nz,
+                    dx=float(payload.get("dx", 2e-6)),
+                    dy=float(payload.get("dy", 2e-6)),
+                    dz=float(payload.get("dz", 2e-6))
+                )
+                toolpath = payload.get("toolpath", {
+                    't': [0.0, 100e-6],
+                    'x': [32e-6, 96e-6],
+                    'y': [32e-6, 32e-6],
+                    'p': [float(payload.get("power_W", 200.0)), float(payload.get("power_W", 200.0))]
+                })
+                
+                # Check for empty toolpath arrays
+                if not toolpath.get("t") or not toolpath.get("x") or not toolpath.get("y") or not toolpath.get("p"):
+                     raise ValueError("Toolpath arrays cannot be empty")
+
+                data = solver.solve_toolpath(
+                    toolpath=toolpath,
+                    T_preheat_K=float(payload.get("T_preheat_K", 300.0)),
+                    rho=float(payload.get("rho", 4420.0)),
+                    L_f=float(payload.get("L_f", 2.9e5)),
+                    T_solidus=float(payload.get("T_solidus", 1878.0)),
+                    T_liquidus=float(payload.get("T_liquidus", 1928.0))
+                )
+
             else: raise ValueError("Unknown method")
             response = dict(id=request["id"], data=data)
         except Exception as e:

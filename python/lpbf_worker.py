@@ -23,8 +23,6 @@ from lpbf_solidification_microstructure import compute_solidification_microstruc
 from lpbf_adaptive_feedforward import AdaptiveFeedforwardMitigator
 from lpbf_experimental_validation import validate_experiment
 from lpbf_fatigue_fracture import MurakamiFatigueEngine
-from lpbf_keyhole_raytracing import compute_keyhole_raytracing
-from lpbf_modulus_fno import predict_part_scale_thermal_history
 from lpbf_multilaser_plume import ShieldGasFlow, PlumeParameters, MultiLaserPlumeEngine
 from lpbf_optical_tomography import OpticalTomographySimulator
 from lpbf_powder_dem_compaction import PowderCompactionEngine
@@ -32,7 +30,6 @@ from lpbf_support_optimization import SupportStructureOptimizer
 from lpbf_thermal_accumulation import AlloyThermalProperties, HatchProcessConfig, MultiTrackThermalEngine
 from lpbf_thermomechanical import analyze_distortion
 from lpbf_toolpath_kinematics import LPBFToolpathParser, GalvanometerKinematicsEngine, ScannerProfile
-from lpbf_transient_3d_gpu import TransientEnthalpy3DGPU
 from lpbf_transient_enthalpy_fdm import TransientEnthalpyFDMSolver
 from stl_voxelizer import STLVoxelizer
 
@@ -319,6 +316,7 @@ def main():
                 exp = payload.get("experimentalData", {})
                 data = validate_experiment(p, m, sim, exp)
             elif method == "modulus-fno":                     # Phase 11
+                from lpbf_modulus_fno import predict_part_scale_thermal_history
                 payload = request["payload"]
                 power_W = payload.get("laserPower_W", 250.0)
                 speed_mms = payload.get("scanSpeed_mms", 1000.0)
@@ -553,6 +551,7 @@ def main():
                             data[k] = v.tolist()
 
             elif method == "transient-3d-gpu":              # Phase 22
+                from lpbf_transient_3d_gpu import TransientEnthalpy3DGPU
                 payload = request["payload"]
                 
                 # Safety clamping to prevent GPU OOM
@@ -593,6 +592,7 @@ def main():
                 )
 
             elif method == "keyhole-raytracing":            # Phase 26
+                from lpbf_keyhole_raytracing import compute_keyhole_raytracing
                 data = compute_keyhole_raytracing(request.get("payload", {}))
 
             else: raise ValueError("Unknown method")

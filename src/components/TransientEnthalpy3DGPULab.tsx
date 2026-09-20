@@ -13,10 +13,10 @@ const Select = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => <select
 const Label = ({ children }: SlotProps) => <span className="block text-xs text-slate-500">{children}</span>;
 
 const MATERIALS = {
-  "Ti-6Al-4V": { rho: 4420.0, L_f: 2.9e5, T_solidus: 1878.0, T_liquidus: 1928.0 },
-  "IN718": { rho: 8190.0, L_f: 2.1e5, T_solidus: 1533.0, T_liquidus: 1609.0 },
-  "316L": { rho: 7950.0, L_f: 2.7e5, T_solidus: 1650.0, T_liquidus: 1700.0 },
-  "AlSi10Mg": { rho: 2680.0, L_f: 3.9e5, T_solidus: 831.0, T_liquidus: 868.0 }
+  "Ti-6Al-4V": { rho: 4420.0, L_f: 2.9e5, T_solidus: 1878.0, T_liquidus: 1928.0, cp_solid: 670.0, cp_liquid: 730.0, k_solid: 15.0, k_liquid: 25.0 },
+  "IN718": { rho: 8190.0, L_f: 2.1e5, T_solidus: 1533.0, T_liquidus: 1609.0, cp_solid: 435.0, cp_liquid: 550.0, k_solid: 11.4, k_liquid: 28.0 },
+  "316L": { rho: 7950.0, L_f: 2.7e5, T_solidus: 1650.0, T_liquidus: 1700.0, cp_solid: 500.0, cp_liquid: 600.0, k_solid: 16.3, k_liquid: 22.0 },
+  "AlSi10Mg": { rho: 2680.0, L_f: 3.9e5, T_solidus: 831.0, T_liquidus: 868.0, cp_solid: 900.0, cp_liquid: 1050.0, k_solid: 113.0, k_liquid: 85.0 }
 };
 
 export function TransientEnthalpy3DGPULab() {
@@ -51,7 +51,11 @@ export function TransientEnthalpy3DGPULab() {
         rho: mat.rho,
         L_f: mat.L_f,
         T_solidus: mat.T_solidus,
-        T_liquidus: mat.T_liquidus
+        T_liquidus: mat.T_liquidus,
+        cp_solid: mat.cp_solid,
+        cp_liquid: mat.cp_liquid,
+        k_solid: mat.k_solid,
+        k_liquid: mat.k_liquid
       }));
     } finally {
       setLoading(false);

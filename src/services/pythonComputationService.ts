@@ -891,6 +891,10 @@ class PythonComputationService {
     L_f?: number;
     T_solidus?: number;
     T_liquidus?: number;
+    cp_solid?: number;
+    cp_liquid?: number;
+    k_solid?: number;
+    k_liquid?: number;
   }): Promise<any> {
     const res = await fetch("/api/python/transient-3d-gpu", {
       method: "POST",

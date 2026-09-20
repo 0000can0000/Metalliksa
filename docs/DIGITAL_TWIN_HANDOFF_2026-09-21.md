@@ -1,4 +1,122 @@
-# CURRENT CONTINUATION — successor checkpoint after 8157c18
+# CURRENT CONTINUATION — checkpoint after cd24cb0 and f2229c5
+
+Read parent ../STATUS.md FIRST. User explicitly authorized continuous work while
+away, automatic fresh-task continuation before context fills, and reminded:
+"hep statuse kaydetmeyi ve ordan da devam etmeyi unutma". Do not ask them to restate
+the task. No exact context percentage is available; never claim it was measured.
+This section supersedes ALL historical sections below.
+
+## Ownership / repository / commits
+
+- Same shared LOCAL checkout C:/Users/can02/Projects/metalliksaa/Metalliksa-1,
+  main. Parent workspace is a separate repo with unrelated changes. No worktree.
+- Source task01a0c11f-9971-7130-b007-bfc77b3a474a stops edits after dispatch.
+  Recheck git status/log/index and ACTIVE_WORK, then inherit ownership. No Gemini
+  scope assumed. No unsolicited subagents. Only local commits; no push authority.
+- Earlier code8157c18 + handoff a1348ff preserved. This task committed:
+  cd24cb0 EIS fallback/stale-result repair; f2229c5 micrograph export/import guards.
+  Application tree/index clean after f2229c5; this handoff checkpoint follows as
+  a docs-only commit. Confirm actual HEAD. Parent STATUS prepended, not staged.
+
+## Work completed and current evidence
+
+1. EISUploadInsightsStudio and PhysicalValidationStudio no longer fabricate
+   fallback metrics, compliance/default scores, SOH or DRT. Removed unconditional
+   ASTM/ISO certificate and fixed unsourced charging/corrosion instructions.
+   Missing metrics display Unavailable; real zero survives. Partial response does
+   not retain old sections. Export disabled on missing/pending/failed results.
+   Physical initialDataset replacements are handled. Shared usePythonAnalysis
+   binds result to serialized input, clears retries, aborts HTTP, rejects stale
+   replies even if transport ignores abort. HTTP abort is NOT compute cancellation.
+   Old upload-record result cache removed. Circuit presets imported on navigation
+   to avoid eager Plotly browser globals in SSR.
+2. Found eisFileParser's built-in spectra are generated circuit examples with
+   synthetic perturbation, despite instrument/experiment naming. Two repaired
+   studios/exports explicitly label synthetic. Other consumers and original
+   metadata still need audit. Synthetic test fixtures must not be blindly deleted.
+3. Fresh full unit117/117 PASS; buildPASS25.35s. General lint still FAIL, no changed
+   EIS/shared hook diagnostics. Exact errors `.runtime/phase0-audit/lint-eis-final.txt`.
+   Initial added SSR import test hit Plotly `self` then eager import repaired;
+   full suite rerun passed. Initial no-result SSR test genuinely failed fabricated95.
+4. Browser actual components on tests/eis-browser.html, real NodeAPI→CPU Python:
+   CPE8.2761uF and actual Lin-KK0 shown; upload SCREENING with real residuals.
+   Test-only transport controls: HTTP503 clears previous results, partial response
+   has unavailable missing metrics, disabled exports, held old success released
+   AFTER newer input/error cannot replace it in either studio. Temp→capacity Tab
+   focus and screenshot checked. Synthetic input/UI software evidence only.
+5. train_micrograph_segmentation.py no longer installs smp at import. No implicit
+   ImageNet weights download. epochs/batch/lr validated; missing pipeline or empty
+   training/validation loaders fail BEFORE model allocation. Non-finite losses
+   abort. Both --export-only and export_to_onnx fail explicitly until trained
+   checkpoint provenance, preprocessing/class contract and independent evaluation
+   exist. Export deliberately unavailable, not a newly trained model.
+   python/lpbf_real_dataset_pipeline.py is absent (CBM missing + filesystem check),
+   so actual research training is unavailable too. No new training/install/artifact.
+   Scientific venv test_micrograph_export_guards.py7PASS; CPU
+   test_no_fabricated_outputs.py10PASS6.265s. Red/green logs in audit runtime dir.
+
+## Concrete next work — Phase0 still OPEN
+
+1. Fix TypeScript lint by actual contracts, not `any`/suppression:
+   EmbeddedPythonLPBFSimulator alloy prop; LPBFGroundTruthDataLab Recharts click
+   `record` vs payload; ResolvedThermalViewer useRef initial values; translated
+   ReactNode/string in AdvancedBatteryPhysicsStudio; EDSSpectrumLab modal props;
+   EquivalentCircuitBuilder Lucide title/chart union/chiSquared vs chiSquare;
+   HeatTreatmentAgingSimulator Scheil f_solid_at_pinch and alloy properties;
+   InverseAlloyStudio CandidateAlloySolution→specimen mapping;
+   LaserMeltPoolThermalMap nested meltPoolGeometry; LPBFAdditivePhysicsSuite and
+   MicroAlloySandbox wrong property names; PlotlyEISViewer NodeJS.Timeout.
+   These paths NOT edited or claimed yet. Inspect, claim ACTIVE_WORK, implement,
+   verify affected behavior + unit/build/lint. Do not invent substitute properties.
+2. New source gaps to address within existing anti-fabrication request:
+   cnls_fitting_solver.perform_lin_kk_stationarity_test len<5 still returns
+   isStationaryTrue,score95,zero metrics. Physical UI now rejects empty residuals,
+   uploaded-EIS path already screening, but direct API/other consumers remain.
+   Normal-equation/clipped Voigt fit and stationarity/ASTM claims need scientific
+   review. `eisFileParser.ts` synthetic examples carry fabricated instrument names
+   and are described as experiments elsewhere. Preserve examples as synthetic,
+   audit metadata/export/all consumers. Battery SOH/DRT/Tafel heuristics still need
+   scope review. Do not claim exhaustive fake-result removal.
+3. Duplicated material authority/unknown-alloy fallback; transient GPU route is
+   missing and UI duplicates material constants. Do not simply expose uncontrolled
+   compute: bound input/budget, resolve canonical materials, use existing persistent
+   job queue for cancellation. Direct worker RPCs block input; abort is not cancel.
+4. AIOrchestratorPanel all-agents-completed badge still wrong for unconfigured
+   providers. Distinct from repaired python/orchestrator.py; route optionally
+   collects allowlisted sources, so not merely plan-only.
+5. Finish Phase0 acceptance: actual WSL check outside sandbox, thermal wall-time/
+   RAM/VRAM/artifact profile, raw benchmark hashes/source terms, isolated Node
+   SQLite transaction/backup/restore ADR, bounded current engine mapping and next
+   dependent detailed plan. Do not accept dependent phases early.
+
+## Environment / tools / cleanup
+
+- Read AGENTS/RULES/ACTIVE_WORK/master plan/Phase0 audit. Skills read in this task:
+  AgentMemory recall; Superpowers systematic-debugging, verification, TDD + writing
+  good tests; computer-use. Recall returned zero. CBM project
+  C-Users-can02-Projects-metalliksaa-Metalliksa-1 gen2026-09-18T15:50:24Z, stale/
+  not_tracked on evidence paths; coverage checked and sources used. Local Graft
+  refreshed8files with `graft ask usePythonAnalysis --source`. No exhaustive claim.
+- CPU .runtime/lpbf-win-py312/Scripts/python.exe; scientific
+  .runtime/scientific-win-py312-cu128/Scripts/python.exe, both3.12. System Python
+  Warp1.17 works but NumPy/SciPy exceed repo ranges; scientific venv lacks Warp.
+  py-3 selects3.14. Do not install things merely from historical claims.
+- Browser must use cua_repl. Fresh getState/getTab docs provide locator operations.
+  First create timed out; reselecting same URL succeeded. tests/eis-browser.html
+  is a manual dev-only regression harness with explicitly labeled transport faults;
+  normal mode uses real Python. Production build does not import it.
+- Node spawn EPERM/Python temp cleanup PermissionError need scoped escalations;
+  reruns succeeded, no auto-review rejection. Logs are ignored .runtime artifacts.
+- Owned test server3190/5190 PID41348 and children41876/39392/30524/20596/23780
+  stopped; no port listeners remained. Unknown HMR24678 untouched. No live server
+  left. Earlier3187/5187 and3188/5188 already stopped by source task.
+- At every meaningful package and handoff update STATUS with test/commit/limits/
+  next concrete work. On next automatic handoff include full objective and latest
+  user reminder, create successor on SAME LOCAL project, verify started, then stop
+  all writing in source task.
+
+---
+# HISTORICAL checkpoint after 8157c18 (superseded)
 
 Read parent ../STATUS.md first at every restart. The user explicitly reminded:
 "hep statuse kaydetmeyi ve ordan da devam etmeyi unutma". Update STATUS at every

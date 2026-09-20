@@ -35,3 +35,8 @@ Next repair scope (same owner, 2026-09-21): python/lpbf_keyhole_raytracing.py, p
 Integration scope also owned by Codex: routes/lpbfSimulation.ts, src/components/KeyholeRaytracingLab.tsx, docs/MODULE_EVIDENCE_INVENTORY.md, and tests for the new route. Acceptance: same-origin UI → Node → worker requests; visible backend failure; superseded results discarded; no implicit remote scene assets; current inventory includes all registry modules with honest evidence limits.
 
 Codex maintains shared STATUS.md and serial Git index operations until an explicit handoff. Further product fixes will be claimed here after inspection and before editing. Gemini scope remains unknown; this record is not delivery confirmation. Recheck working tree and this record before each write/commit.
+
+Checkpoint8157c18 complete. Source task01a0c10a stops writes when successor is
+created. Next owner must read STATUS and the CURRENT CONTINUATION section of
+DIGITAL_TWIN_HANDOFF_2026-09-21.md, verify Git, then continue the claimed open scopes.
+No Gemini work assumed; no phase gate accepted. Temporary test servers are stopped.

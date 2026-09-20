@@ -1,0 +1,283 @@
+# CURRENT CONTINUATION — successor checkpoint after 8157c18
+
+Read parent ../STATUS.md first at every restart. The user explicitly reminded:
+"hep statuse kaydetmeyi ve ordan da devam etmeyi unutma". Update STATUS at every
+meaningful package and handoff, including tests, commit, limits and next action.
+This section supersedes the older handoff preserved below.
+
+## Ownership and state
+
+Continue immediately, same shared local checkout
+C:/Users/can02/Projects/metalliksaa/Metalliksa-1 (parent is a different repo).
+User authorized work until completion while away and automatic new-task transfer
+when context gets low. No exact remaining context percentage is available; never
+claim it was measured. Previous task 01a0c10a-46a8-76f0-8ab9-a58e32966009 stops
+writing after successor dispatch. Read AGENTS/RULES and ACTIVE_WORK; recheck dirty
+paths before changes/index. Gemini still unassigned/unknown. No subagents spawned.
+No push authority. Make local commits of only the authorized scope.
+
+HEAD **8157c18** contains ALL production changes previously handed off plus the
+completed keyhole UI/runtime/tests and inventory corrections (19 files). The code
+working tree is clean after that commit; only this handoff/ownership checkpoint
+will follow as a documentation commit. Do not reimplement these repairs.
+Parent STATUS has pre-existing unrelated content; current task prepended records,
+not staged parent. Preserve unrelated parent repository changes.
+
+No live test/server remains: temporary servers on 3187/5187 and 3188/5188 stopped,
+verified no listeners. Last server PID17076 and captured descendants were stopped.
+No packages installed, no user data reset, no push. Browser tab is disposable.
+
+## What passed freshly in this task
+
+- Full `npm run test:unit`: **111 PASS / 0 FAIL**, 2.564s. Initial 109/2 inventory
+  failures repaired by honest 35-module mapping and runtime groups. No test relaxed.
+- `npm run build`: PASS, Vite24.36s, existing large chunk warning retained.
+- General TypeScript lint: still FAIL. Full diagnostics in
+  `.runtime/phase0-audit/lint-successor.txt`; no Keyhole diagnostic. Errors include
+  EmbeddedPythonLPBFSimulator alloy prop, Recharts ScatterPointItem record accesses,
+  ResolvedThermalViewer useRef arguments, AdvancedBatteryPhysicsStudio translation
+  ReactNode, EDSSpectrumLab modal props, EquivalentCircuitBuilder chart unions/
+  chiSquared/title, HeatTreatmentAgingSimulator and inverse-alloy property names,
+  LaserMeltPoolThermalMap nested geometry, MicroAlloySandbox fields, PlotlyEISViewer
+  NodeJS type. Inspect actual contracts rather than silencing types.
+- `python -B python/test_keyhole_contract.py`: six CPU/CUDA PASS.
+- `python -B python/test_phase26.py`: real worker RPC PASS, now temp job root and
+  bounded timeout/cleanup/stderr diagnostics. Uses sys.executable.
+- CPU venv `python/test_no_fabricated_outputs.py`: **10 PASS**, 7.277s; observed
+  battery derivatives, analytic Tafel Ecorr/icorr/slopes, A/mA/uA/log(A) equivalence,
+  invalid branches, actual EIS residual dependence and actual thermal solver with
+  in-flight cooperative cancellation.
+- scientific venv `python/test_phase11.py`: untrained FNO rejection PASS.
+- Runtime/API16 PASS: regression first failed because explicit METALLIX_PYTHON
+  was ignored by WSL-first worker launch; now explicit host executable takes
+  precedence. Without override WSL-first remains. Initial real API used WSL and
+  returned missing Warp; host override now returns real successful CPU optics.
+- Browser at localhost3188: Keyhole UI same-origin, real CPU result and rendered
+  geometry, seed/backend/error/limits/energy visible. Rays1 removes result in same
+  change and shows bounded-input error; 4096 restores result. Keyboard Tab from
+  Rays focuses Random seed. Screenshot checked controls and 3D mesh/rays. Initial
+  CUA timeouts recovered after app finished loading. No external scene asset.
+- Curved sensitivity script committed: `python/benchmark_keyhole_convergence.py`.
+  Fixed200um aperture,250W,radius50um,depth120um,A=.35,16384 rays,seed17,CPU.
+  Mesh32/64/128 efficiencies .71489646/.71137585/.70515435; zero energy error.
+  Mesh differences do NOT decrease regularly: asymptotic convergence unresolved.
+  At128 nodes budgets4/8/16 agree and unresolved power is zero. No experiment claim.
+
+## Immediate next work — Phase 0 still OPEN
+
+1. **Remove fake frontend EIS fallbacks** (claimed, NOT edited):
+   - src/components/EISUploadInsightsStudio.tsx `runDeepEISAnalysis` catch ~173–309
+     fabricates R/C, K–K PASS/zero residuals, fixed92.4% SOH and DRT peaks. Remove
+     fallback, setAnalysisResult(null), setAnalysisError(real error), clear cached
+     legacy results and reject stale responses when data/domain/temp changes.
+     Badge ~873 maps non-PASSED to DRIFT; backend now returns SCREENING or
+     NOT_EVALUATED, display actual status without inventing qualification.
+   - src/components/PhysicalValidationStudio.tsx `computeClientFallbackValidation`
+     ~160–249 has real formula fragments mixed with fabricated LinKK compliance,
+     drift92, zero residuals, frequency45000. Use Python as authority, explicit
+     unavailable/error state, clear all old reports on changed inputs/error, reject
+     stale replies. Copy report ~280–310 and UI ~757 invent defaults `|| 95`,
+     `|| 1.2e-4`, `|| Compliant`; missing != zero/pass. Read full render guards.
+     These sublabs are under electrochemistry; find visible route via parent.
+   - Backend cnls_fitting_solver Voigt normal equations/clipping and broad
+     stationarity/ASTM wording need independent scientific review. Current uploaded
+     EIS path uses actual residuals but is only screening. Tafel branch-selection
+     heuristic and battery phase/severity heuristics also not fully qualified.
+2. **Untrained ONNX export** (claimed, NOT edited):
+   python/train_micrograph_segmentation.py imports missing smp by running pip at
+   import time; remove automatic install and expose dependency error. --export-only
+   builds random U-Net and exports it, export_to_onnx accepts untrained models,
+   epochs0 returns untrained model. Require traceable trained checkpoint/provenance
+   and independent evaluation, or explicitly disable export until supported. No
+   new large training expected by initial plan. Do not remove legitimate test
+   fixtures, architecture initialization or shape probes just for random/dummy words.
+3. Fix lint by actual type contracts; preserve all unrelated changes.
+4. Runtime/material audit: transient GPU UI fetches /api/python/transient-3d-gpu,
+   missing in routes. Do NOT just expose uncontrolled compute; first bound input,
+   budget, material authority, real solver/error/cancel contract. UI duplicates
+   hardcoded MATERIALS. Worker thermal-accumulation silently defaults unknown alloy
+   to Ti64; unify with authority and reject missing data. Direct lab RPCs still
+   block worker input; HTTP abort is NOT compute cancellation. Existing queue owns
+   persistent jobs/process cancel; avoid new queue.
+5. AIOrchestratorPanel is distinct from python/orchestrator.py. Current route has
+   optional allowlisted source collection, so do not claim it is plan-only. UI marks
+   all agents Completed when any response exists even when Sol/Astra unconfigured;
+   stale/error/approval semantics and English product language still need repair.
+6. Finish Phase0: WSL readiness actual commands outside sandbox, representative
+   thermal wall-time/RAM/VRAM/artifact profiling, benchmark raw hashes/source terms,
+   isolated Node SQLite transaction/backup/restore ADR, bounded complete engine
+   mapping and first dependent detailed plan. No dependent phase accepted early.
+
+## Tools, environment and continuity
+
+- CPU `.runtime/lpbf-win-py312/Scripts/python.exe`, scientific
+  `.runtime/scientific-win-py312-cu128/Scripts/python.exe`, both3.12.10.
+- System `C:/Users/can02/AppData/Local/Programs/Python/Python312/python.exe` has
+  Warp1.17/CUDA12.9; NumPy2.5.3/SciPy1.18.1 exceed repo ranges. Scientific venv
+  matches ranges but lacks Warp. py -3 picks3.14.5. No new installations performed.
+- Live server needs explicit PORT, METALLIX_IPC_PORT, METALLIX_PYTHON,
+  METALLIKSA_JOB_ROOT and AIRGAPPED=1. Track owned PID descendants for cleanup.
+  Vite default HMR port24678 was in use by someone else; leave that owner untouched.
+- CUA browser use only via mcp__cua_repl; initialized docs provide getTab/getAXState,
+  setValue/pressKey/scroll/getScreenshot. First tab create timed out then binding
+  retried after reset. Prefer existing handle and concise DOM/AX. No native apps.
+- Read skills: AgentMemory recall, Superpowers verification/systematic-debugging/
+  TDD+writing-good-tests, computer-use. Targeted recall returned0. CBM project
+  C-Users-can02-Projects-metalliksaa-Metalliksa-1 gen2026-09-18T15:50:24Z, stale or
+  untracked on modified files. Check coverage then source. Local graft refreshed
+  10 then5 files; avoid wide ask --source causing huge packs. No full graph claim.
+- Git diff --check passed. Production commit8157c18, proof/audit current. Full logs
+  `.runtime/phase0-audit/` ignored. Source task writes nothing after handoff dispatch.
+- Carry full authorized objective and latest STATUS instruction into the next
+  automatic handoff. Exact context percentage unavailable; checkpoint early, create
+  successor on same LOCAL project (never worktree that drops ongoing edits), verify
+  started, and stop writing. Do not wait for the user to restate the job.
+
+---
+## HISTORICAL PRIOR HANDOFF (superseded above)
+# Digital Twin — fresh-task continuation
+
+Date 2026-09-21. Work directly in the **existing shared checkout**:
+`C:/Users/can02/Projects/metalliksaa/Metalliksa-1`. The parent is a separate Git repo.
+User requested a new task because context was getting low, and authorized continued
+work until completion while away overnight. Also requested automatic future task
+handoff below 25% context. Exact remaining-context percentage is not exposed here;
+checkpoint early rather than pretending to measure it. Carry this authorization
+forward, open the successor yourself, and avoid simultaneous owners editing.
+
+## Objective and constraints
+
+Continue `docs/DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md` from current code, Phase 0
+first. User additionally requested all random/dummy/fake outputs removed and Python
+engines repaired. Preserve the earlier explicit distinction: Monte Carlo is not
+itself fake physics; evaluate seed/method/convergence/uncertainty. Remove fabricated
+measurement/results and untrained inference presented as calculation. Preserve
+legitimate equation models and isolated analytic/synthetic test fixtures.
+
+Read applicable AGENTS.md, RULES.md, parent STATUS.md, ACTIVE_WORK.md, master plan
+and Phase 0 audit. Do not ask again for routine authorization. Do not invent data,
+relax tolerances after results, or conflate software/numerical/experimental evidence.
+Gemini scope is unknown; preserve changes, recheck ownership before writing, stop
+overlapping writes and continue independent work. Local commits only, no push.
+
+## Git/checkpoint
+
+- Initial HEAD fb1a614, clean application tree/index.
+- Current HEAD **95b6222**: optional Warp/PyTorch imports isolated from CPU worker.
+  Includes worker regression test, initial Phase 0 audit and ownership record.
+  Fresh tests: optional-backend RPC PASS; CPU engineering 25 PASS / 1 OpenFOAM SKIP.
+- Index currently empty. **All application uncommitted changes at handoff are ours**:
+  ACTIVE_WORK.md, battery_corrosion_eis_solver.py, battery_corrosion_python_ingest.py,
+  lpbf_keyhole_raytracing.py, lpbf_modulus_fno.py, orchestrator.py, test_phase11.py,
+  routes/lpbfSimulation.ts; new test_keyhole_contract.py, test_no_fabricated_outputs.py,
+  tests/lpbf-keyhole-api.test.ts; this handoff and audit correction.
+- Parent STATUS.md already had changes before this session; our entries prepend
+  them. Do not stage the whole parent file as wholly ours. Parent contains many
+  unrelated cache deletions/untracked files/nested repos. No reset/stash/cleanup.
+- No live test/server process from this task remains. No packages installed.
+  Logs/temporary edit helpers are ignored under `.runtime/phase0-audit/`.
+- Phase 0 is **not complete**, no dependent phase accepted.
+
+## Uncommitted repairs and exact verification limits
+
+1. **Keyhole:** finite bounded inputs before allocation; explicit cpu/cuda:0;
+   local seeded PCG64 (default 0), correct mesh dx/dy, two-sided reflection, Warp
+   dynamic counter; separate absorbed/escaped/bounce-limited power; sampling
+   standard error and empirical/prescribed model limitations. Default CPU Warp.
+   `python -B python/test_keyhole_contract.py`: **6 PASS**, actual CPU/CUDA, 5.943 s.
+   Flat-surface analytic absorption, Gaussian aperture at 1024/4096/16384 rays,
+   closure <1e-6, seed/global RNG, CPU/GPU <0.025 W. Red/green logs exist. Baseline
+   unchecked invalid dimensions triggered OOM in the now-exited red test process;
+   green had no such error. Curved mesh/bounce convergence still needs a report.
+2. **FNO:** removed random untrained inference, artificial temperature profile and
+   invented cooling rates. Public API raises RuntimeError requiring a trained
+   validated checkpoint/provenance/normalization/bounds. Architecture class remains
+   but cannot publish predictions. `test_phase11.py` changed to rejection contract;
+   red observed, green PASS with scientific venv. No actual trained artifact found.
+3. **Standalone orchestrator:** now calls existing `lpbf_simulation.run`, preserves
+   input, returns real result/errors, enforces thermal balance, cooperative event
+   cancellation at progress callbacks. Existing worker Queue remains persistent
+   queue/process-cancellation owner. CLI stdin JSON, no new queue. Tests passed
+   input dependence/failure/pre-cancel; add in-flight cancellation test. It is NOT
+   the AI dataset planner exposed by routes/orchestrator.ts.
+4. **Ingestion:** removed invented missing battery/Tafel/EIS/OCP curves; finite,
+   aligned observed columns required. Battery currently requires all cycling/CE/
+   retention and V/Q arrays plus explicit nominal capacity. Tafel now uses explicit
+   current-unit fields, explicit density/area/EW and opposing branch regression
+   intersection instead of min-current multiplier. **Before committing, add actual
+   valid battery, analytic Tafel, A/mA/uA equivalence, and edge-case tests.**
+5. **Uploaded EIS:** replaces frequency-only fake residuals/PASSED with existing
+   `cnls_fitting_solver.perform_lin_kk_stationarity_test` computed Voigt residuals.
+   Reports only SCREENING or NOT_EVALUATED; no qualification. Underlying clipped
+   normal-equation fit needs scientific review; do not repeat its broad compliance
+   claims. `test_no_fabricated_outputs.py`: **6 PASS**, CPU venv, 4.536 s. Covers
+   missing/misaligned EIS, actual OCP, impedance-dependent residuals, orchestrator.
+6. **Keyhole Node route:** added POST `/api/python/lpbf-keyhole-raytracing` → worker
+   method with body. New HTTP test red failed 404 vs expected400. **Final green not
+   run yet**. It replaces subprocess boundary only, tests actual HTTP error routing.
+   **Keyhole UI has not been edited** and still calls localhost:5000/rpc.
+
+## Immediate continuation and confirmed remaining fabrication
+
+- Run route green; finish UI same-origin route, visible errors, abort/ignore stale
+  replies, clear result on input change, dispose geometry, seed/backend controls,
+  show escaped/truncated and model limits. Remove remote Environment preset. Use
+  stable serialized params in effect dependency. NodeJS.Timeout currently breaks
+  type-check. test_phase26.py still needs isolated job root, timeout cleanup,
+  sys.executable and stderr diagnostics. No UI/browser work performed yet.
+- **Unedited/unclaimed UI files:** EISUploadInsightsStudio.tsx catch (~169–310)
+  fabricates R/C values, K–K PASS/zero residuals, SOH 92.4%, DRT peaks. Remove fallback,
+  clear result and surface error. Existing badge (~873) treats all non-PASSED as
+  DRIFT; show actual SCREENING/NOT_EVALUATED status. It has setAnalysisError.
+- PhysicalValidationStudio.tsx (~227) fallback fabricates Lin-KK compliance/drift/
+  chi-square; defaults `|| 1.2e-4` (~296,757) invent metrics. Inspect complete error
+  flow, remove fake fallback/default metrics, expose unavailable. Not edited yet.
+- **Unedited but claimed Python:** train_micrograph_segmentation.py --export-only
+  builds random U-Net and exports it; export_to_onnx accepts untrained models and
+  train_model(epochs=0) can return untrained network. Remove/restrict with traceable
+  trained checkpoint and tests. Import-time pip install also needs explicit error.
+- Literal candidates: `.runtime/phase0-audit/python-candidates.txt` and
+  `ui-candidates.txt`. Not every match is a defect (IDs, model initialization, ONNX
+  shape probes, seeded uncertainty). Review beyond keywords before comprehensive
+  claims. Global RNG in powder/marangoni, unseeded CNLS DE/inverse alloy search,
+  empirical constants and legacy thermal fallback need targeted triage.
+- Worker thermal-accumulation duplicates material presets, silently substitutes
+  Ti64 for unknown alloy. Migrate to authority with missing-data errors. Direct
+  lab RPCs block stdin and do not support in-flight cancellation; integrate with
+  existing queue when scope reaches that repair.
+- Inventory stale: 35 registered modules vs doc saying32; missing AI orchestrator
+  and transient GPU rows, runtime list also missing keyhole. Unit suite fails these
+  assertions. Reconcile mapping/evidence without falsely upgrading maturity.
+- Phase 0 remaining: live API/browser, WSL check, representative thermal time/RAM/
+  VRAM/artifact profiling, raw benchmark hashes/source terms, Node SQLite transaction/
+  backup/restore ADR, complete bounded engine mapping and next detailed plan.
+
+## Environments and baseline
+
+- CPU `.runtime/lpbf-win-py312/Scripts/python.exe`, scientific
+  `.runtime/scientific-win-py312-cu128/Scripts/python.exe`, both Python3.12.10.
+- System Python312 has Warp1.17/CUDA12.9 but NumPy2.5.3/SciPy1.18.1 exceed repo
+  requirements. Scientific venv matches ranges/CUDA Torch but lacks Warp. System
+  Warp tests are not clean locked-environment reproduction. `py -3` selects3.14.5.
+- Baseline build PASS, Vite3640 modules/chunk warnings. Lint FAIL multiple existing
+  component errors. Unit suite FAIL inventory assertions. Do not claim all pass.
+- Fast Build Job/Eagar–Tsai/Goldak/Fabbro/meltpool accuracy scripts passed scientific
+  venv with missing-Warp fallback warnings. These are existing fixture envelopes,
+  not newly frozen independent experimental evaluation.
+- Scientific doctor/ranges/CUDA SGD smoke PASS. Docker engine and ParaView PATH
+  gaps. WSL sandbox denied access; retry escalated before claiming unavailable.
+- Windows sandbox caused Node spawn EPERM and Python temp cleanup PermissionError.
+  Specific tests/build escalations approved; no auto-review rejection occurred.
+- Next live server: unused PORT and METALLIX_IPC_PORT, explicit METALLIX_PYTHON,
+  isolated METALLIKSA_JOB_ROOT, AIRGAPPED=1. Record/stop only your process IDs.
+
+## Discovery / skills
+
+Agent Memory targeted recall returned zero. CBM project
+`C-Users-can02-Projects-metalliksaa-Metalliksa-1`, generation2026-09-18T15:50:24Z;
+coverage says new keyhole/orchestrator not_tracked, older paths metadata_changed.
+Read source. Local `graft map/ask/skeleton` worked; workspace Graft MCP very slow,
+stale. No exhaustive claim from top-N. No subagents spawned.
+Read skills: recall; Superpowers verification, systematic-debugging, TDD and its
+writing-good-tests reference. Computer-use SKILL.md read, browser not started;
+use available cua_repl browser APIs and first-call docs, native apps disabled.

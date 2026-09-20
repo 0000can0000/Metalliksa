@@ -76,12 +76,12 @@ export const getHostPython = createPythonRuntime({
   exists: existsSync, probe: probePythonCommand,
 }, loadPythonEnvironment);
 
-/** Keep WSL first on Windows; only host launches resolve host Python. */
+/** An explicit host executable takes precedence; otherwise keep WSL first on Windows. */
 export function lpbfWorkerCommand(options: {
   platform: string; file: string; localFallback: boolean;
   env: Record<string, string | undefined>; hostPython: () => PythonCommand;
 }): { cmd: string; args: string[] } {
-  if (options.platform === "win32" && !options.localFallback) {
+  if (options.platform === "win32" && !options.localFallback && !options.env.METALLIX_PYTHON) {
     const linuxPath = options.file.replace(/^([A-Za-z]):/, (_, drive: string) => `/mnt/${drive.toLowerCase()}`).replaceAll("\\", "/");
     return { cmd: "wsl.exe", args: ["-d", options.env.METALLIKSA_WSL_DISTRO || "Ubuntu-22.04", "--", "python3", "-u", linuxPath] };
   }

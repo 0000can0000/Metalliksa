@@ -1,114 +1,56 @@
+"""Synchronous entry point to the existing CPU solver; no second job queue.
+
+For persistent jobs, hard timeouts and process cancellation use lpbf_worker.Queue.
+This adapter supports cooperative cancellation at solver progress checkpoints.
+"""
+import copy
+import json
+import sys
 import time
-from typing import Any, Dict, Callable
+from lpbf_simulation import run
+from lpbf_evidence import enforce_thermal_balances
 
-# ==========================================
-# 1. STATE (DURUM) TANIMI
-# ==========================================
-def create_initial_state(input_data: Dict[str, Any] = None) -> Dict[str, Any]:
-    return {
-        "status": "running",
-        "next_task": "load_data",
-        "data": input_data or {},
-        "logs": [],
-        "errors": [],
-        "step_count": 0
-    }
 
-def log(state: Dict[str, Any], message: str):
-    print(message)
-    state["logs"].append(message)
+class SimulationCancelled(Exception):
+    pass
 
-# ==========================================
-# 2. GÖREV (TASK) FONKSİYONLARI
-# ==========================================
-def load_data_task(state: Dict[str, Any]) -> Dict[str, Any]:
-    log(state, "[Görev: Veri Yükleme] Sistem ayarları ve girdiler hazırlanıyor...")
-    time.sleep(0.5)
-    
-    # Simüle edilmiş veri yükleme
-    state["data"]["mesh_size"] = 1000
-    state["data"]["laser_power"] = 250
-    
-    state["next_task"] = "run_simulation"
+
+def run_orchestrator(input_data=None, *, cancel_event=None):
+    state = {"status": "running", "data": copy.deepcopy(input_data),
+             "logs": [], "errors": [], "step_count": 0}
+    started = time.perf_counter()
+
+    def report(progress, message):
+        if cancel_event is not None and cancel_event.is_set():
+            raise SimulationCancelled("Cancelled by user")
+        state["logs"].append({"progress": progress, "message": message})
+
+    try:
+        report(0.0, "Validating simulation input")
+        if not isinstance(input_data, dict):
+            raise ValueError("Simulation input must be an object")
+        state["step_count"] = 1
+        result = run(copy.deepcopy(input_data), report=report)
+        report(1.0, "Checking computed result")
+        enforce_thermal_balances(result)
+        state["result"] = result
+        state["status"] = "completed"
+        state["step_count"] = 2
+    except SimulationCancelled as error:
+        state["status"] = "cancelled"
+        state["errors"].append(str(error))
+    except Exception as error:
+        state["status"] = "failed"
+        state["errors"].append(str(error))
+    state["runtime_s"] = time.perf_counter() - started
     return state
 
-def run_simulation_task(state: Dict[str, Any]) -> Dict[str, Any]:
-    log(state, "[Görev: Simülasyon] Termal analiz başlatılıyor...")
-    time.sleep(1)
-    
-    power = state["data"].get("laser_power", 0)
-    if power < 100:
-        state["errors"].append("Lazer gücü çok düşük!")
-        state["next_task"] = "error_handler"
-    else:
-        state["data"]["max_temperature"] = 1500
-        log(state, "[Görev: Simülasyon] Analiz başarılı.")
-        state["next_task"] = "generate_report"
-        
-    return state
-
-def generate_report_task(state: Dict[str, Any]) -> Dict[str, Any]:
-    log(state, "[Görev: Rapor] Sonuçlar kaydediliyor...")
-    time.sleep(0.5)
-    
-    state["data"]["report_generated"] = True
-    state["next_task"] = "end"
-    return state
-
-def error_handler_task(state: Dict[str, Any]) -> Dict[str, Any]:
-    log(state, f"[Görev: Hata Yöneticisi] Hatalar tespit edildi: {state['errors']}")
-    # Hata kurtarma veya güvenli durdurma işlemleri
-    state["next_task"] = "end"
-    state["status"] = "failed"
-    return state
-
-# ==========================================
-# 3. YÖNLENDİRİCİ (ROUTER)
-# ==========================================
-TASK_REGISTRY: Dict[str, Callable] = {
-    "load_data": load_data_task,
-    "run_simulation": run_simulation_task,
-    "generate_report": generate_report_task,
-    "error_handler": error_handler_task,
-}
-
-def run_orchestrator(input_data: Dict[str, Any] = None):
-    print("=== İş Akışı (Pipeline) Başlıyor ===")
-    state = create_initial_state(input_data)
-    
-    while state["status"] == "running":
-        current_task_name = state["next_task"]
-        
-        # Bitiş kontrolü
-        if current_task_name == "end":
-            state["status"] = "completed"
-            break
-            
-        # Sonsuz döngü koruması
-        state["step_count"] += 1
-        if state["step_count"] > 20:
-            log(state, "[Sistem] Maksimum adım limitine ulaşıldı!")
-            state["status"] = "timeout"
-            break
-            
-        # İlgili görevi bul ve çalıştır
-        task_func = TASK_REGISTRY.get(current_task_name)
-        if not task_func:
-            log(state, f"[Sistem] Bilinmeyen görev: {current_task_name}")
-            state["status"] = "error"
-            break
-            
-        # State'i güncelle
-        state = task_func(state)
-
-    # Final Raporu
-    print("\n=== İş Akışı Özeti ===")
-    print(f"Son Durum : {state['status'].upper()}")
-    print(f"Adım Sayısı: {state['step_count']}")
-    print(f"Elde Edilen Veriler: {state['data']}")
-    if state["errors"]:
-        print(f"Hatalar: {state['errors']}")
 
 if __name__ == "__main__":
-    # Test 1: Başarılı Senaryo
-    run_orchestrator({"job_id": "LPBF-001"})
+    try:
+        payload = json.load(sys.stdin)
+        state = run_orchestrator(payload)
+    except (ValueError, OSError) as error:
+        state = {"status": "failed", "errors": [str(error)]}
+    print(json.dumps(state, allow_nan=False))
+    sys.exit(0 if state["status"] == "completed" else 1)

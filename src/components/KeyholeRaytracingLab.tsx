@@ -1,176 +1,131 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, Line } from '@react-three/drei';
-import { Leva, useControls } from 'leva';
+import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
-
-// Define the interface for the backend response
-interface RayPath {
-  points: [number, number, number][];
-  powers: number[];
-}
-
-interface KeyholeMesh {
-  vertices: number[];
-  indices: number[];
-}
+import { useMaterialSpecimenStore } from '../store/useMaterialSpecimenStore';
 
 interface RaytracingResult {
   status: string;
+  model_id: string;
+  device: string;
   solve_time_ms: number;
   total_absorbed_W: number;
+  total_escaped_W: number;
+  total_truncated_W: number;
   absorption_efficiency: number;
-  mesh: KeyholeMesh;
-  ray_paths: RayPath[];
+  energy_balance_relative_error: number;
+  sampling: { seed: number; num_rays: number; absorption_efficiency_standard_error: number; uncertainty_scope: string };
+  limitations: string[];
+  mesh: { vertices: number[]; indices: number[] };
+  ray_paths: { points: [number, number, number][]; powers: number[] }[];
 }
 
-// Global UI Component
 export const KeyholeRaytracingLab: React.FC = () => {
-  const [result, setResult] = useState<RaytracingResult | null>(null);
+  const process = useMaterialSpecimenStore(state => state.activeSpecimen.lpbf);
+  const updateProcess = useMaterialSpecimenStore(state => state.updateLpbfProcess);
+  const [optics, setOptics] = useState({ keyhole_depth_um: 120, base_absorption: 0.35, max_bounces: 5, num_rays: 4096, seed: 0, device: 'cpu' });
+  const [reply, setReply] = useState<{ request: string; data: RaytracingResult } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const request = JSON.stringify({ ...optics, power_W: process.laserPower_W, beam_radius_um: process.beamDiameter_um / 2, ui_ray_limit: 150 });
+  // Hide old results in the same render that changes the inputs.
+  const result = reply?.request === request ? reply.data : null;
 
-  // 1. Leva UI Controls (CAD-like panel on the top right)
-  const params = useControls('Keyhole Laser Parameters', {
-    power_W: { value: 250.0, min: 50, max: 1000, step: 10, label: 'Laser Power (W)' },
-    beam_radius_um: { value: 50.0, min: 20, max: 150, step: 1, label: 'Beam Radius (µm)' },
-    keyhole_depth_um: { value: 120.0, min: 10, max: 300, step: 5, label: 'Keyhole Depth (µm)' },
-    base_absorption: { value: 0.35, min: 0.05, max: 0.9, step: 0.01, label: 'Base Absorption' },
-    max_bounces: { value: 5, min: 1, max: 15, step: 1, label: 'Max Bounces' },
-  });
-
-  // 2. Fetch data from Python Backend (NVIDIA Warp)
   useEffect(() => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    
-    debounceTimer.current = setTimeout(async () => {
-      setLoading(true);
+    const controller = new AbortController();
+    let active = true;
+    setReply(null);
+    setError(null);
+    setLoading(true);
+    const timer = setTimeout(async () => {
       try {
-        const response = await fetch('http://localhost:5000/rpc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: `raytrace-${Date.now()}`,
-            method: 'keyhole-raytracing',
-            payload: params
-          })
+        const response = await fetch('/api/python/lpbf-keyhole-raytracing', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: request, signal: controller.signal,
         });
-        const json = await response.json();
-        if (json.data?.status === 'success') {
-          setResult(json.data);
-        }
-      } catch (e) {
-        console.error("Failed to fetch raytracing data from Warp:", e);
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') throw new Error(data.error || 'Ray tracing failed');
+        if (active) setReply({ request, data });
+      } catch (failure) {
+        if (active) setError(failure instanceof Error ? failure.message : 'Ray tracing failed');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }, 300);
+    // HTTP abort discards stale responses; cancelling worker computation still
+    // requires queue integration, tracked separately in the Phase 0 audit.
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
+  }, [request, attempt]);
 
-    return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
-  }, [params]);
-
-  // 3. Prepare 3D Geometry
   const geometry = useMemo(() => {
-    if (!result?.mesh) return null;
+    if (!result) return null;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(result.mesh.vertices, 3));
     geo.setIndex(result.mesh.indices);
     geo.computeVertexNormals();
     return geo;
-  }, [result?.mesh]);
+  }, [result]);
+  useEffect(() => () => { geometry?.dispose(); }, [geometry]);
+
+  const numberControl = (label: string, value: number, min: number, max: number, step: number, change: (value: number) => void) => (
+    <label className="flex flex-col gap-1 text-xs text-gray-300">
+      {label}
+      <input aria-label={label} type="number" value={value} min={min} max={max} step={step}
+        className="rounded border border-gray-600 bg-gray-800 p-2 text-white"
+        onChange={event => { const next = event.currentTarget.valueAsNumber; if (Number.isFinite(next)) change(next); }} />
+    </label>
+  );
 
   return (
-    <div className="relative w-full h-screen bg-gray-950 text-white font-sans overflow-hidden">
-      {/* Leva takes care of its own UI panel */}
-      
-      {/* Overlay Dashboard */}
-      <div className="absolute top-6 left-6 z-10 flex flex-col gap-4 pointer-events-none">
-        <div className="bg-gray-900/80 backdrop-blur border border-gray-700 p-6 rounded-xl shadow-2xl">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-600 bg-clip-text text-transparent">
-            NVIDIA Warp Ray Tracing
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">GPU Accelerated Keyhole Light Trapping</p>
-          
-          <div className="mt-6 grid grid-cols-2 gap-6">
-            <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Efficiency</div>
-              <div className="text-4xl font-light text-emerald-400">
-                {result ? (result.absorption_efficiency * 100).toFixed(1) : '--'}%
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Absorbed Power</div>
-              <div className="text-4xl font-light text-orange-400">
-                {result ? result.total_absorbed_W.toFixed(0) : '--'}<span className="text-lg">W</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              Solve Time: <span className="text-gray-300 font-mono">{result ? result.solve_time_ms.toFixed(1) : '--'} ms</span>
-            </div>
-            {loading && <div className="w-4 h-4 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />}
-          </div>
+    <div className="grid min-h-[700px] grid-cols-1 bg-gray-950 text-white lg:grid-cols-[340px_1fr]">
+      <section className="space-y-4 p-5" aria-label="Keyhole optics controls and results">
+        <h1 className="text-xl font-semibold">Keyhole Ray Tracing</h1>
+        <p className="text-sm text-gray-400">Prescribed cavity optics. Power and beam diameter use the shared LPBF process.</p>
+        <div className="grid grid-cols-2 gap-3">
+          {numberControl('Laser power (W)', process.laserPower_W, 0, 1000, 10, value => updateProcess({ laserPower_W: value }))}
+          {numberControl('Beam diameter (µm, 1/e²)', process.beamDiameter_um, 40, 300, 2, value => updateProcess({ beamDiameter_um: value }))}
+          {numberControl('Cavity depth (µm)', optics.keyhole_depth_um, 0, 300, 5, value => setOptics(old => ({ ...old, keyhole_depth_um: value })))}
+          {numberControl('Base absorption', optics.base_absorption, 0, 1, 0.01, value => setOptics(old => ({ ...old, base_absorption: value })))}
+          {numberControl('Maximum bounces', optics.max_bounces, 1, 32, 1, value => setOptics(old => ({ ...old, max_bounces: value })))}
+          {numberControl('Rays', optics.num_rays, 32, 100000, 256, value => setOptics(old => ({ ...old, num_rays: value })))}
+          {numberControl('Random seed', optics.seed, 0, 4294967295, 1, value => setOptics(old => ({ ...old, seed: value })))}
+          <label className="flex flex-col gap-1 text-xs text-gray-300">Backend
+            <select aria-label="Backend" value={optics.device} className="rounded border border-gray-600 bg-gray-800 p-2" onChange={event => setOptics(old => ({ ...old, device: event.target.value }))}>
+              <option value="cpu">Warp CPU</option><option value="cuda:0">Warp CUDA 0</option>
+            </select>
+          </label>
         </div>
+        <p role="status" className="text-sm text-gray-400">{loading ? 'Computing ray paths…' : result ? `Computed on ${result.device}` : 'No computed result'}</p>
+        {error && <div role="alert" className="rounded border border-red-700 p-3 text-sm text-red-300">{error}<button className="ml-3 underline" onClick={() => setAttempt(value => value + 1)}>Retry</button></div>}
+        {result && <>
+          <dl className="grid grid-cols-2 gap-2 text-sm">
+            <dt>Absorption</dt><dd>{(result.absorption_efficiency * 100).toFixed(2)}%</dd>
+            <dt>Absorbed power</dt><dd>{result.total_absorbed_W.toFixed(3)} W</dd>
+            <dt>Escaped power</dt><dd>{result.total_escaped_W.toFixed(3)} W</dd>
+            <dt>Bounce-limited power</dt><dd>{result.total_truncated_W.toFixed(3)} W</dd>
+            <dt>Energy closure error</dt><dd>{(result.energy_balance_relative_error * 100).toExponential(2)}%</dd>
+            <dt>Sampling standard error</dt><dd>{(result.sampling.absorption_efficiency_standard_error * 100).toFixed(3)} pp</dd>
+            <dt>Solve time</dt><dd>{result.solve_time_ms.toFixed(1)} ms</dd>
+          </dl>
+          <p className="text-xs text-gray-400">{result.model_id} · seed {result.sampling.seed} · {result.sampling.num_rays} rays</p>
+          <p className="text-xs text-gray-400">{result.sampling.uncertainty_scope}</p>
+          <ul className="list-disc space-y-1 pl-4 text-xs text-amber-300">{result.limitations.map(limit => <li key={limit}>{limit}</li>)}</ul>
+        </>}
+      </section>
+      <div className="min-h-[500px]" aria-label="Computed ray paths and prescribed cavity">
+        <Canvas camera={{ position: [0.0003, 0.0003, 0.0002], fov: 45, near: 0.000001, far: 0.01 }}>
+          <color attach="background" args={['#030712']} />
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[1, 1, 1]} intensity={1.5} />
+          <OrbitControls target={[0, 0, -0.00005]} makeDefault />
+          {geometry && <mesh geometry={geometry}><meshStandardMaterial color="#3b82f6" transparent opacity={0.8} roughness={0.4} side={THREE.DoubleSide} /></mesh>}
+          {result?.ray_paths.filter(path => path.points.length > 1).map((path, index) => (
+            <Line key={index} points={path.points} color="#fde68a" lineWidth={1} transparent opacity={0.5} />
+          ))}
+          <gridHelper args={[0.001, 20, '#1f2937', '#111827']} rotation={[Math.PI / 2, 0, 0]} />
+        </Canvas>
       </div>
-
-      {/* R3F 3D Canvas */}
-      <Canvas camera={{ position: [0.0003, 0.0003, 0.0002], fov: 45, near: 0.000001, far: 0.01 }}>
-        <color attach="background" args={['#030712']} />
-        
-        {/* Lights */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[1, 1, 1]} intensity={1.5} />
-        
-        {/* Scene Environment */}
-        <Environment preset="city" />
-        
-        {/* Orbit Controls */}
-        <OrbitControls target={[0, 0, -0.00005]} makeDefault />
-        
-        {/* Keyhole Mesh */}
-        {geometry && (
-          <mesh geometry={geometry}>
-            <meshStandardMaterial 
-              color="#3b82f6" 
-              wireframe={false} 
-              transparent 
-              opacity={0.8}
-              roughness={0.2}
-              metalness={0.8}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        )}
-        
-        {/* Laser Rays */}
-        {result?.ray_paths.map((path, idx) => {
-          // Flatten points for the Line component
-          const flatPoints = path.points.map(p => new THREE.Vector3(p[0], p[1], p[2]));
-          
-          // Generate vertex colors based on power (white/yellow -> red -> dark)
-          const colors = path.powers.map(p => {
-            const ratio = p / params.power_W;
-            return new THREE.Color().setHSL(0.1 * ratio, 1.0, 0.1 + 0.4 * ratio);
-          });
-          
-          return (
-            <Line
-              key={idx}
-              points={flatPoints}
-              color="white"
-              vertexColors={colors.map(c => [c.r, c.g, c.b] as [number, number, number])}
-              lineWidth={1.5}
-              transparent
-              opacity={0.6}
-            />
-          );
-        })}
-
-        {/* Origin Grid Helper scaled for micrometers */}
-        <gridHelper args={[0.001, 20, '#1f2937', '#111827']} rotation={[Math.PI/2, 0, 0]} />
-      </Canvas>
     </div>
   );
 };

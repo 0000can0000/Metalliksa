@@ -577,3 +577,28 @@ This logbook records all empirically tested and mathematically verified models, 
 - Build observation: entry JS approximately 301 kB (96 kB gzip), previously 9.58 MB monolithic. This is entry-chunk size, not total LPBF download. LPBF and electrochemistry chunks remain large. Numerical physics is unchanged; VOF/momentum/evaporation/stress remain unresolved, and the platform is not production-ready.
 
 Final checks: `npm run lint` and `npm run build` pass on the final WebGL context-reuse change. Field/JSON contract suites pass. Browser high-fidelity request returned Screening only with no resolved 3D explorer. Remaining production chunk warnings are retained and documented.
+
+## 2026-09-21 — Keyhole numerical/software verification (bounded)
+
+Scope: prescribed Gaussian cavity, empirical angular absorption and normalized
+Gaussian Monte Carlo rays; no thermal/free-surface or experimental validation.
+`python/test_keyhole_contract.py`: 6 PASS on system Python 3.12, Warp 1.17 CPU/CUDA.
+Acceptance checks: flat normal-incidence absorbed power 75 W for 250 W/.3 input
+within 1e-4 W; energy relative error <1e-6; seed reproducibility/local RNG isolation;
+finite bounded inputs; CPU/GPU absorbed power agreement within .025 W. Analytic
+Gaussian aperture is checked at 1024/4096/16384 samples with reported standard error.
+`python/test_phase26.py`: isolated real worker RPC PASS. Full product build PASS.
+
+Curved sensitivity is reproducible with `python/benchmark_keyhole_convergence.py`.
+For 200 um aperture, 250 W, radius 50 um, cavity depth 120 um, base absorption .35,
+16384 rays, seed 17, CPU: 32/64/128 grids yield efficiency .71489646/.71137585/
+.70515435. Zero closure error, 128-grid bounce budgets 4/8/16 agree. Mesh increments
+do not decrease regularly; asymptotic convergence is unresolved. Sampling standard
+error is not a mesh/model uncertainty bound. System NumPy/SciPy exceed repository
+requirements; locked-environment reproduction remains open.
+
+Tafel ingestion uses exact analytic branch fixtures (Ecorr=-.2 V, icorr=10 uA/cm2,
+beta_a=.1, beta_c=.2 V/dec; area 2 cm2), recovering current-unit equivalence in
+A/mA/uA/log(A). These checks verify equations and unit handling, not ASTM conformity
+or experimental applicability. See `python/test_no_fabricated_outputs.py` and the
+Phase 0 audit for the 10-test software/analytic scope and remaining limitations.

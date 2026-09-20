@@ -94,72 +94,24 @@ class ModulusFNO3D(nn.Module):
         return torch.cat((gridx, gridy, gridz), dim=-1)
 
 def predict_part_scale_thermal_history(
-    power_W: float,
-    speed_mms: float,
-    preheat_C: float,
-    hatch_um: float,
-    layer_um: float,
-    nx: int = 64,
-    ny: int = 64,
-    nz: int = 64
+    power_W: float, speed_mms: float, preheat_C: float,
+    hatch_um: float, layer_um: float, nx: int = 64, ny: int = 64, nz: int = 64,
 ):
+    """Unavailable until a trained checkpoint and its model/data contract exist.
+
+    A randomly initialized network is not a physical surrogate. Retain the API
+    so callers receive an explicit error instead of fabricated thermal fields.
     """
-    Simulates NVIDIA Modulus FNO inference for a whole part bounding box.
-    Returns the maximum temperature field and cooling rates in ms.
-    """
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    t0 = time.perf_counter()
-    
-    # Initialize the FNO surrogate model
-    model = ModulusFNO3D(modes1=8, modes2=8, modes3=8, width=20).to(device)
-    model.eval()
-    
-    # Create input feature tensor: geometry + process params
-    input_tensor = torch.zeros((1, nx, ny, nz, 5), device=device)
-    input_tensor[..., 0] = power_W / 1000.0   # Normalized P
-    input_tensor[..., 1] = speed_mms / 2000.0 # Normalized v
-    input_tensor[..., 2] = preheat_C / 1000.0
-    input_tensor[..., 3] = hatch_um / 200.0
-    input_tensor[..., 4] = layer_um / 100.0
-    
-    with torch.no_grad():
-        # FNO Forward Pass
-        pred_temp_normalized = model(input_tensor)
-        
-    # Denormalize output (scale to real temperatures)
-    # T_base = preheat + some heat based on laser energy density
-    energy_density = power_W / (speed_mms * (hatch_um/1000.0) * (layer_um/1000.0))
-    base_temp = preheat_C + energy_density * 20.0
-    
-    # Apply spatial scaling to make it look like a real thermal field
-    grid = model.get_grid((1, nx, ny, nz), device)
-    spatial_dist = torch.exp(-((grid[..., 0] - 0.5)**2 + (grid[..., 1] - 0.5)**2 + (grid[..., 2] - 0.5)**2) * 5)
-    
-    final_temp = base_temp + (pred_temp_normalized.squeeze() * 100.0) + (spatial_dist.squeeze() * power_W)
-    
-    # Calculate synthetic cooling rates (K/s)
-    cooling_rate = final_temp / (0.1 + spatial_dist.squeeze()) 
-    
-    t1 = time.perf_counter()
-    inference_time_ms = (t1 - t0) * 1000.0
-    
-    return {
-        "status": "success",
-        "device": str(device),
-        "inference_time_ms": inference_time_ms,
-        "grid_shape": [nx, ny, nz],
-        "max_temp_C": float(final_temp.max().cpu().numpy()),
-        "min_temp_C": float(final_temp.min().cpu().numpy()),
-        "avg_cooling_rate_Ks": float(cooling_rate.mean().cpu().numpy()),
-        "max_cooling_rate_Ks": float(cooling_rate.max().cpu().numpy()),
-        "thermal_field_sample": final_temp[nx//2, ny//2, :].cpu().numpy().tolist()
-    }
+    raise RuntimeError(
+        "FNO inference unavailable: a trained, validated checkpoint with "
+        "normalization, dataset provenance and applicability bounds is required. "
+        "Use the reference thermal solver."
+    )
+
 
 if __name__ == "__main__":
-    print("Initializing NVIDIA Modulus FNO 3D Surrogate Model...")
-    res = predict_part_scale_thermal_history(
-        power_W=350, speed_mms=1200, preheat_C=200, hatch_um=100, layer_um=40
-    )
     import json
-    print(json.dumps(res, indent=2))
+    import sys
+    print(json.dumps({"status": "unavailable", "error":
+        "No trained, validated FNO checkpoint is registered."}))
+    sys.exit(1)

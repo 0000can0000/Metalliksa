@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 
 def test_keyhole_raytracing():
@@ -23,16 +24,24 @@ def test_keyhole_raytracing():
         "payload": payload
     }
     
+    proc = None
     try:
+      with tempfile.TemporaryDirectory(prefix='metalliksa-keyhole-') as root:
         proc = subprocess.Popen(
             [sys.executable, str(worker_script)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            env={**os.environ, 'METALLIKSA_JOB_ROOT': root},
         )
         
-        stdout_data, stderr_data = proc.communicate(json.dumps(request) + "\n", timeout=10)
+        try:
+            stdout_data, stderr_data = proc.communicate(json.dumps(request) + "\n", timeout=60)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            stdout_data, stderr_data = proc.communicate()
+            raise AssertionError(f'Worker timed out: {stderr_data[-4000:]}')
         
         response = None
         for line in stdout_data.split('\n'):
@@ -45,7 +54,8 @@ def test_keyhole_raytracing():
             except json.JSONDecodeError:
                 pass
                 
-        assert response is not None, "No valid response from worker"
+        assert proc.returncode == 0, f'Worker exited {proc.returncode}: {stderr_data[-4000:]}'
+        assert response is not None, f'No valid response from worker: {stderr_data[-4000:]}'
         assert "error" not in response, f"Worker returned error: {response.get('error')}"
         
         data = response["data"]
@@ -59,6 +69,10 @@ def test_keyhole_raytracing():
     except Exception as e:
         print(f"FAIL: {e}")
         sys.exit(1)
+    finally:
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            proc.communicate()
 
 if __name__ == "__main__":
     test_keyhole_raytracing()

@@ -1,8 +1,13 @@
+"""Seeded optics on a prescribed cavity, not a thermal/free-surface solver.
+
+The angular absorption law is empirical, not complex-index Fresnel optics.
+Power still in flight at the bounce limit is unresolved, never escaped/absorbed.
+"""
+import math
+import time
 import numpy as np
 import warp as wp
-import time
 
-wp.init()
 
 @wp.kernel
 def trace_rays_kernel(
@@ -12,158 +17,144 @@ def trace_rays_kernel(
     ray_powers: wp.array(dtype=float),
     max_bounces: int,
     base_absorption: float,
-    # Outputs
+    offset: float,
     path_points: wp.array(dtype=wp.vec3, ndim=2),
     path_powers: wp.array(dtype=float, ndim=2),
-    hit_counts: wp.array(dtype=int)
+    path_counts: wp.array(dtype=int),
+    escaped: wp.array(dtype=int),
 ):
     tid = wp.tid()
-    
     pos = ray_starts[tid]
-    dir = ray_dirs[tid]
+    direction = ray_dirs[tid]
     power = ray_powers[tid]
-    
     path_points[tid, 0] = pos
     path_powers[tid, 0] = power
-    bounces = 0
-    
+    count = int(0)
     for i in range(max_bounces):
-        t = float(0.0)
-        u = float(0.0)
-        v = float(0.0)
-        sign = float(0.0)
-        n = wp.vec3(0.0, 0.0, 0.0)
-        f = int(0)
-        
-        # offset slightly to avoid self-intersection
-        pos = pos + dir * 1e-7
-        
-        # wp.mesh_query_ray args: id, pos, dir, max_t, t, u, v, sign, n, f
-        if wp.mesh_query_ray(mesh, pos, dir, 1.0, t, u, v, sign, n, f):
-            hit_pos = pos + dir * t
-            cos_theta = -wp.dot(dir, n)
-            if cos_theta < 0.0:
-                cos_theta = 0.0
-                
-            A = base_absorption * (1.0 + 0.5 * (1.0 - cos_theta))
-            if A > 1.0: A = 1.0
-            
-            power = power - power * A
-            
-            dot_dn = -cos_theta
-            dir = wp.normalize(dir - 2.0 * dot_dn * n)
-            pos = hit_pos
-            
-            bounces = bounces + 1
-            path_points[tid, bounces] = pos
-            path_powers[tid, bounces] = power
+        pos = pos + direction * offset
+        query = wp.mesh_query_ray(mesh, pos, direction, 1.0)
+        count = count + 1
+        if query.result:
+            normal = wp.normalize(query.normal)
+            dot_dn = wp.dot(direction, normal)
+            if dot_dn > 0.0:
+                normal = -normal
+                dot_dn = -dot_dn
+            cos_theta = wp.clamp(-dot_dn, 0.0, 1.0)
+            absorption = wp.min(1.0, base_absorption * (1.0 + 0.5 * (1.0 - cos_theta)))
+            power = power * (1.0 - absorption)
+            pos = pos + direction * query.t
+            direction = wp.normalize(direction - 2.0 * dot_dn * normal)
+            path_points[tid, count] = pos
+            path_powers[tid, count] = power
+            if power == 0.0:
+                break
         else:
-            bounces = bounces + 1
-            path_points[tid, bounces] = pos + dir * 0.001
-            path_powers[tid, bounces] = power
+            escaped[tid] = 1
+            path_points[tid, count] = pos + direction * 0.001
+            path_powers[tid, count] = power
             break
-            
-    hit_counts[tid] = bounces
+    path_counts[tid] = count
+
+
+def _number(params, key, default, lower, upper, integer=False):
+    value = params.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{key} must be a finite number")
+    if not math.isfinite(value) or not lower <= value <= upper:
+        raise ValueError(f"{key} must be in [{lower}, {upper}]")
+    if integer and int(value) != value:
+        raise ValueError(f"{key} must be an integer")
+    return int(value) if integer else float(value)
+
 
 def compute_keyhole_raytracing(params):
-    start_time = time.time()
-    
-    nx = int(params.get("nx", 64))
-    ny = int(params.get("ny", 64))
-    dx = float(params.get("dx", 2e-6))
-    dy = float(params.get("dy", 2e-6))
-    
-    total_power_W = float(params.get("power_W", 250.0))
-    radius_m = float(params.get("beam_radius_um", 50.0)) * 1e-6
-    absorption = float(params.get("base_absorption", 0.3))
-    depth_m = float(params.get("keyhole_depth_um", 100.0)) * 1e-6
-    max_bounces = int(params.get("max_bounces", 5))
-    
-    # 1. Generate Surface Mesh (Keyhole Depth Map)
-    x = np.linspace(-nx/2 * dx, nx/2 * dx, nx)
-    y = np.linspace(-ny/2 * dy, ny/2 * dy, ny)
-    X, Y = np.meshgrid(x, y, indexing='ij')
-    
-    # Gaussian keyhole
-    Z = -depth_m * np.exp(-(X**2 + Y**2) / (2 * (radius_m/1.5)**2))
-    
-    # Create vertices and faces for Warp Mesh
+    started = time.perf_counter()
+    if not isinstance(params, dict):
+        raise ValueError("Ray-tracing parameters must be an object")
+    # Operational bounds limit allocations and avoid sub-float geometry.
+    nx = _number(params, "nx", 64, 2, 256, True)
+    ny = _number(params, "ny", 64, 2, 256, True)
+    dx = _number(params, "dx", 2e-6, 1e-9, 1e-3)
+    dy = _number(params, "dy", 2e-6, 1e-9, 1e-3)
+    power = _number(params, "power_W", 250, 0, 1e6)
+    radius = _number(params, "beam_radius_um", 50, 0.01, 10000) * 1e-6
+    absorption = _number(params, "base_absorption", 0.3, 0, 1)
+    depth = _number(params, "keyhole_depth_um", 100, 0, 10000) * 1e-6
+    bounces = _number(params, "max_bounces", 5, 1, 32, True)
+    count = _number(params, "num_rays", 10000, 32, 100000, True)
+    seed = _number(params, "seed", 0, 0, 2**32 - 1, True)
+    ui_count = _number(params, "ui_ray_limit", 1000, 0, 1000, True)
+    device_name = params.get("device", "cpu")
+    if device_name not in ("cpu", "cuda:0"):
+        raise ValueError("device must be cpu or cuda:0; no silent backend substitution")
+    device = wp.get_device(device_name)
+    rng = np.random.default_rng(seed)
+    x = (np.arange(nx) - (nx - 1) / 2) * dx
+    y = (np.arange(ny) - (ny - 1) / 2) * dy
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    Z = -depth * np.exp(-(X**2 + Y**2) / (2 * (radius / 1.5)**2))
     vertices = np.stack([X, Y, Z], axis=-1).reshape(-1, 3).astype(np.float32)
     faces = []
     for i in range(nx - 1):
         for j in range(ny - 1):
             idx = i * ny + j
-            faces.append([idx, idx + ny, idx + 1])
-            faces.append([idx + 1, idx + ny, idx + ny + 1])
-    faces = np.array(faces, dtype=np.int32)
-    
-    wp_vertices = wp.array(vertices, dtype=wp.vec3)
-    wp_faces = wp.array(faces.flatten(), dtype=int)
-    mesh = wp.Mesh(points=wp_vertices, indices=wp_faces)
-    
-    # 2. Initialize Rays (Gaussian Distribution)
-    # Using 10,000 rays for physics, subsampling for UI
-    num_rays = 10000
-    r = np.sqrt(-0.5 * radius_m**2 * np.log(1.0 - np.random.rand(num_rays)))
-    theta = 2.0 * np.pi * np.random.rand(num_rays)
-    
-    ray_x = r * np.cos(theta)
-    ray_y = r * np.sin(theta)
-    ray_z = np.ones_like(ray_x) * 1e-5 # Start slightly above surface
-    
-    ray_starts_np = np.stack([ray_x, ray_y, ray_z], axis=-1).astype(np.float32)
-    ray_dirs_np = np.zeros_like(ray_starts_np)
-    ray_dirs_np[..., 2] = -1.0
-    ray_powers_np = np.ones(num_rays, dtype=np.float32) * (total_power_W / num_rays)
-    
-    wp_starts = wp.array(ray_starts_np, dtype=wp.vec3)
-    wp_dirs = wp.array(ray_dirs_np, dtype=wp.vec3)
-    wp_powers = wp.array(ray_powers_np, dtype=float)
-    
-    wp_path_points = wp.zeros((num_rays, max_bounces + 1), dtype=wp.vec3)
-    wp_path_powers = wp.zeros((num_rays, max_bounces + 1), dtype=float)
-    wp_hit_counts = wp.zeros(num_rays, dtype=int)
-    
-    # 3. Launch Warp Kernel
-    wp.launch(
-        kernel=trace_rays_kernel,
-        dim=num_rays,
-        inputs=[mesh.id, wp_starts, wp_dirs, wp_powers, max_bounces, absorption],
-        outputs=[wp_path_points, wp_path_powers, wp_hit_counts]
-    )
-    
-    # Synchronize
-    wp.synchronize()
-    
-    path_points = wp_path_points.numpy()
-    path_powers = wp_path_powers.numpy()
-    hit_counts = wp_hit_counts.numpy()
-    
-    # 4. Process Results
-    final_powers = np.array([path_powers[i, hit_counts[i]] for i in range(num_rays)])
-    power_escaped = np.sum(final_powers)
-    total_absorbed_W = total_power_W - power_escaped
-    efficiency = total_absorbed_W / total_power_W
-    
-    # Subsample for UI (max 1000 rays to prevent browser crash)
-    ui_ray_limit = min(num_rays, 1000)
-    ui_indices = np.random.choice(num_rays, ui_ray_limit, replace=False)
-    
-    ui_paths = []
-    for idx in ui_indices:
-        bounces = hit_counts[idx]
-        pts = path_points[idx, :bounces+1].tolist()
-        pwrs = path_powers[idx, :bounces+1].tolist()
-        ui_paths.append({"points": pts, "powers": pwrs})
-    
+            faces.extend(([idx, idx + ny, idx + 1], [idx + 1, idx + ny, idx + ny + 1]))
+    faces = np.asarray(faces, dtype=np.int32)
+    mesh = wp.Mesh(points=wp.array(vertices, dtype=wp.vec3, device=device),
+                   indices=wp.array(faces.ravel(), dtype=int, device=device))
+    # Equal-power rays sampled from normalized Gaussian I(r) ~ exp(-2r²/w²).
+    r = radius * np.sqrt(-0.5 * np.log1p(-rng.random(count)))
+    theta = 2 * np.pi * rng.random(count)
+    starts = np.column_stack((r * np.cos(theta), r * np.sin(theta), np.full(count, 1e-5))).astype(np.float32)
+    dirs = np.zeros_like(starts)
+    dirs[:, 2] = -1
+    initial = np.full(count, power / count, dtype=np.float32)
+    points_wp = wp.zeros((count, bounces + 1), dtype=wp.vec3, device=device)
+    powers_wp = wp.zeros((count, bounces + 1), dtype=float, device=device)
+    counts_wp = wp.zeros(count, dtype=int, device=device)
+    escaped_wp = wp.zeros(count, dtype=int, device=device)
+    wp.launch(trace_rays_kernel, dim=count, device=device,
+              inputs=[mesh.id, wp.array(starts, dtype=wp.vec3, device=device),
+                      wp.array(dirs, dtype=wp.vec3, device=device),
+                      wp.array(initial, dtype=float, device=device), bounces, absorption,
+                      min(dx, dy, radius) * 1e-4],
+              outputs=[points_wp, powers_wp, counts_wp, escaped_wp])
+    wp.synchronize_device(device)
+    points, powers, counts = points_wp.numpy(), powers_wp.numpy(), counts_wp.numpy()
+    escaped = escaped_wp.numpy().astype(bool)
+    remaining = powers[np.arange(count), counts].astype(np.float64)
+    absorbed = initial.astype(np.float64) - remaining
+    absorbed_w = float(absorbed.sum())
+    escaped_w = float(remaining[escaped].sum())
+    truncated_w = float(remaining[~escaped].sum())
+    efficiency = absorbed_w / power if power else 0.0
+    fractions = absorbed / (power / count) if power else np.zeros(count)
+    se = float(np.std(fractions, ddof=1) / np.sqrt(count))
+    # UI stream never changes physics samples.
+    ui_rng = np.random.default_rng(seed ^ 0x9E3779B9)
+    selected = ui_rng.choice(count, min(count, ui_count), replace=False)
     return {
-        "status": "success",
-        "solve_time_ms": (time.time() - start_time) * 1000.0,
-        "total_absorbed_W": float(total_absorbed_W),
-        "absorption_efficiency": float(efficiency),
-        "mesh": {
-            "vertices": vertices.flatten().tolist(),
-            "indices": faces.flatten().tolist()
-        },
-        "ray_paths": ui_paths
+        "status": "success", "model_id": "prescribed-cavity-ray-optics-v2",
+        "device": str(device), "warp_version": wp.__version__,
+        "solve_time_ms": (time.perf_counter() - started) * 1000,
+        "total_input_W": power, "total_absorbed_W": absorbed_w,
+        "total_escaped_W": escaped_w, "total_truncated_W": truncated_w,
+        "energy_balance_relative_error": abs(power - absorbed_w - escaped_w - truncated_w) / power if power else 0.0,
+        "absorption_efficiency": efficiency,
+        "sampling": {"method": "equal-power Gaussian Monte Carlo", "generator": "PCG64",
+                     "seed": seed, "num_rays": count, "beam_radius_definition": "1/e^2 intensity",
+                     "absorption_efficiency_standard_error": se,
+                     "uncertainty_scope": "Sampling only; excludes geometry, bounce truncation and model error"},
+        "inputs": dict(nx=nx, ny=ny, dx=dx, dy=dy, power_W=power,
+                       beam_radius_um=radius * 1e6, keyhole_depth_um=depth * 1e6,
+                       base_absorption=absorption, max_bounces=bounces, seed=seed,
+                       num_rays=count, device=str(device), ui_ray_limit=ui_count),
+        "limitations": ["Prescribed Gaussian cavity, not a solved free surface",
+                        "Empirical angular absorption, not Fresnel optics",
+                        "Finite mesh aperture; no material or experimental qualification",
+                        "Bounce-limited power remains unresolved"],
+        "mesh": {"vertices": vertices.ravel().tolist(), "indices": faces.ravel().tolist()},
+        "ray_paths": [{"points": points[i, :counts[i] + 1].tolist(),
+                       "powers": powers[i, :counts[i] + 1].tolist()} for i in selected],
     }

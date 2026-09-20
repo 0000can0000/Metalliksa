@@ -1782,46 +1782,22 @@ def analyze_uploaded_eis_dataset(frequencies, z_real, z_imag, application_domain
                 warburg_r2 = round(r2, 4)
                 has_warburg = r2 >= 0.70 and points[-1]["phase_deg"] < -30.0
                 
-    # 5. Kramers-Kronig (K-K) Linearity & Causality Validation
-    # Use Voigt measurement model to compute KK residuals
-    # Voigt model: Z_kk(w) = R_0 + sum( R_k / (1 + j*w*tau_k) )
-    num_kk_elements = min(12, max(5, num_pts // 5))
-    kk_tau_min = 1.0 / (2.0 * math.pi * f_max)
-    kk_tau_max = 1.0 / (2.0 * math.pi * f_min)
-    kk_taus = [10.0 ** (math.log10(kk_tau_min) + i * (math.log10(kk_tau_max) - math.log10(kk_tau_min)) / (num_kk_elements - 1)) for i in range(num_kk_elements)]
-    
-    # Fit imaginary component: minus_zi = sum( R_k * (w*tau_k) / (1 + (w*tau_k)^2) )
-    kk_residuals = []
-    sum_res_sq = 0.0
-    for p in points:
-        w = 2.0 * math.pi * p["f"]
-        # Simplified approximate KK evaluation
-        # Calculate residual percentage: Delta_re = (Z_re - Z_kk_re) / |Z|
-        # Simulated standard residual profile
-        est_noise = 0.005 * math.cos(math.log10(p["f"]) * 2.5) * (1.0 + 0.5 * (p["f"] / f_max))
-        delta_re_pct = est_noise * 100.0
-        delta_im_pct = - est_noise * 0.8 * 100.0
-        res_norm = (delta_re_pct ** 2 + delta_im_pct ** 2)
-        sum_res_sq += res_norm
-        
-        kk_residuals.append({
-            "f": p["f"],
-            "delta_real_pct": round(delta_re_pct, 3),
-            "delta_imag_pct": round(delta_im_pct, 3),
-            "z_mag": round(p["z_mag"], 5)
-        })
-        
-    chi_sq_kk = sum_res_sq / (num_pts * 10000.0)
-    if chi_sq_kk < 1e-4:
-        kk_status = "EXCELLENT (K-K Compliant, Linear, Time-Invariant)"
-        kk_grade = "PASSED"
-    elif chi_sq_kk < 1e-3:
-        kk_status = "GOOD (Minor noise, fully valid for physical parameter extraction)"
-        kk_grade = "PASSED"
-    else:
-        kk_status = "CAUTION (Non-stationary drift or non-linear perturbation detected)"
-        kk_grade = "WARNING"
-        
+    # A computed Voigt-fit consistency diagnostic, not proof of stationarity,
+    # linearity, ASTM compliance, or independent experimental validation.
+    from cnls_fitting_solver import perform_lin_kk_stationarity_test
+    kk = perform_lin_kk_stationarity_test([
+        {"frequency": p["f"], "zReal": p["zr"], "minusZImag": -p["zi"]}
+        for p in points
+    ])
+    kk_residuals = [
+        {"f": p["f"], "delta_real_pct": r["zRealResPct"],
+         "delta_imag_pct": -r["zImagResPct"], "z_mag": p["z_mag"]}
+        for p, r in zip(points, kk["residuals"])
+    ]
+    chi_sq_kk = kk["pseudoChiSquare"] if kk_residuals else None
+    kk_status = "Voigt-fit residual screening; measurement validity is not established"
+    kk_grade = "SCREENING" if kk_residuals else "NOT_EVALUATED"
+
     # 6. DRT Deconvolution
     drt_out = compute_drt_spectrum([p["f"] for p in points], [p["zr"] for p in points], [p["zi"] for p in points], num_tau=60, lambda_reg=1e-3)
     
@@ -1999,7 +1975,7 @@ def analyze_uploaded_eis_dataset(frequencies, z_real, z_imag, application_domain
         "kramersKronigValidation": {
             "status": kk_status,
             "grade": kk_grade,
-            "pseudoChiSq": round(chi_sq_kk, 6),
+            "pseudoChiSq": chi_sq_kk,
             "residuals": kk_residuals
         },
         "apexPeaks": apex_peaks,

@@ -77,6 +77,13 @@ test("WSL remains first and never resolves host Python", () => {
   assert.deepEqual(command, { cmd: "wsl.exe", args: ["-d", "Research Linux", "--", "python3", "-u", "/mnt/c/project space/python/lpbf_worker.py"] });
 });
 
+test("explicit host Python also controls the first LPBF worker launch", () => {
+  const python = { cmd: 'C:/scientific env/python.exe', prefix: [] };
+  const command = lpbfWorkerCommand({ platform: 'win32', file: 'C:/project/python/lpbf_worker.py',
+    localFallback: false, env: { METALLIX_PYTHON: python.cmd }, hostPython: () => python });
+  assert.deepEqual(command, { cmd: python.cmd, args: ['-u', 'C:/project/python/lpbf_worker.py'] });
+});
+
 test("preexisting process override wins over dotenv values", () => {
   const f = fixture("win32", { METALLIX_PYTHON: "shell python" });
   f.working.add("shell python");

@@ -87,6 +87,26 @@ class PandasShim:
             return DF(res)
         return DF({})
 
+def require_observations(minimum=2, **columns):
+    """Validate uploaded columns without generating or truncating measurements."""
+    lengths = set()
+    for name, values in columns.items():
+        if not isinstance(values, (list, tuple)) or len(values) < minimum:
+            raise ValueError(f"{name}: at least {minimum} observed values are required")
+        if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
+            raise ValueError(f"{name}: observations must be finite numbers")
+        lengths.add(len(values))
+    if len(lengths) != 1:
+        raise ValueError("Observation columns must have equal lengths")
+
+
+def require_positive(payload, key):
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{key}: an explicit positive finite value is required")
+    return float(value)
+
+
 # =========================================================================
 # 1. BATTERY CYCLING & dQ/dV ANALYTICS
 # =========================================================================
@@ -100,20 +120,9 @@ def analyze_battery_data(payload):
     ce = payload.get("coulombicEfficiencyPct") or payload.get("ce_pct") or []
     voltage = payload.get("voltage") or payload.get("voltage_V") or []
     capacity = payload.get("capacity_mAh") or payload.get("capacity") or []
-    nominal_cap = float(payload.get("nominalCapacityAh") or 5.0)
-
-    # Generate synthetic cycling curve if only single profile provided
-    if not cycles and voltage and capacity:
-        cycles = [1, 25, 50, 100, 150, 200, 250, 300]
-        retention = [100.0, 99.4, 98.6, 96.8, 95.1, 93.2, 91.5, 89.8]
-        ce = [99.2, 99.7, 99.82, 99.85, 99.81, 99.79, 99.75, 99.72]
-
-    # Generate synthetic V vs Q if only cycles provided
-    if not voltage or not capacity:
-        v_min, v_max = 3.0, 4.2
-        num_pts = 60
-        voltage = [round(v_min + (v_max - v_min) * (i / (num_pts - 1)), 4) for i in range(num_pts)]
-        capacity = [round(nominal_cap * 1000.0 * (i / (num_pts - 1)), 2) for i in range(num_pts)]
+    nominal_cap = require_positive(payload, "nominalCapacityAh")
+    require_observations(cycles=cycles, retention=retention, efficiency=ce)
+    require_observations(minimum=4, voltage=voltage, capacity=capacity)
 
     # Compute dQ/dV differential capacity profile
     dqdv_points = []
@@ -152,9 +161,9 @@ def analyze_battery_data(payload):
             })
 
     # Summary metrics
-    initial_cap = capacity[-1] if capacity else (nominal_cap * 1000.0)
-    final_retention = retention[-1] if retention else 100.0
-    avg_ce = sum(ce) / max(1, len(ce)) if ce else 99.8
+    initial_cap = capacity[-1]
+    final_retention = retention[-1]
+    avg_ce = sum(ce) / len(ce)
 
     metrics = [
         {"name": "Nominal Capacity", "value": f"{nominal_cap:.2f} Ah", "badge": "Specification"},
@@ -192,35 +201,22 @@ def analyze_corrosion_tafel(payload):
     """
     potentials = payload.get("potential_V") or payload.get("potential") or payload.get("voltage") or []
     currents = payload.get("current_A") or payload.get("current_mA") or payload.get("current_uA") or payload.get("log_i") or []
-    area_cm2 = float(payload.get("electrodeArea_cm2") or 1.0)
-    density = float(payload.get("density_g_cm3") or 7.85) # default steel ~7.85
-    equiv_weight = float(payload.get("equivalentWeight") or 27.92) # Fe ~ 27.92
-
-    # Synthetic curve generation if empty
-    if not potentials or not currents:
-        e_corr_synth = -0.450
-        e_points = [round(-0.75 + i * 0.01, 3) for i in range(70)]
-        c_points = []
-        for e in e_points:
-            overpot = e - e_corr_synth
-            # Butler-Volmer
-            i_val = 0.5 * (math.exp(2.303 * overpot / 0.12) - math.exp(-2.303 * overpot / 0.11))
-            c_points.append(abs(i_val) + 0.005) # uA
-        potentials = e_points
-        currents = c_points
-
-    # Normalize current density in uA/cm2
-    current_density_uA = []
-    is_log = any(c < 0 for c in currents if c != 0)
-    for c in currents:
-        if is_log:
-            c_uA = (10.0 ** c) * 1e6 / area_cm2
-        else:
-            c_uA = abs(c) / area_cm2
-            # Check if current was in Amperes or mA
-            if c_uA < 0.01 and max(currents) < 1.0:
-                c_uA = c_uA * 1e6 # was in A
-        current_density_uA.append(max(1e-6, c_uA))
+    area_cm2 = require_positive(payload, "electrodeArea_cm2")
+    density = require_positive(payload, "density_g_cm3")
+    equiv_weight = require_positive(payload, "equivalentWeight")
+    require_observations(minimum=5, potential=potentials, current=currents)
+    unit_fields = [key for key in ("current_A", "current_mA", "current_uA", "log_i") if payload.get(key)]
+    if len(unit_fields) != 1:
+        raise ValueError("Exactly one current column with explicit units is required")
+    current_key = unit_fields[0]
+    # log_i explicitly means log10(current in A); signed currents are not logs.
+    scales = {"current_A": 1e6, "current_mA": 1e3, "current_uA": 1.0}
+    current_density_uA = [
+        (10.0 ** c * 1e6 if current_key == "log_i" else abs(c) * scales[current_key]) / area_cm2
+        for c in currents
+    ]
+    if any(not math.isfinite(c) or c <= 0 for c in current_density_uA):
+        raise ValueError("Tafel fitting requires nonzero finite current magnitudes")
 
     # Identify E_corr (minimum current density point)
     min_idx = 0
@@ -248,22 +244,24 @@ def analyze_corrosion_tafel(payload):
             anodic_e.append(p)
             anodic_log_i.append(math.log10(i_uA))
 
-    def linear_slope(x, y):
+    def linear_fit(x, y):
         if len(x) < 2:
-            return 0.12
-        n = len(x)
-        mx = sum(x) / n
-        my = sum(y) / n
-        num = sum((x[i] - mx) * (y[i] - my) for i in range(n))
-        den = sum((x[i] - mx) ** 2 for i in range(n))
-        slope = num / den if den != 0 else 8.0 # d(log i) / dE
-        return abs(1.0 / slope) if slope != 0 else 0.12 # Volts per decade
+            raise ValueError("Both Tafel branches require at least two observed points")
+        mx, my = sum(x) / len(x), sum(y) / len(y)
+        den = sum((value - mx) ** 2 for value in x)
+        if den == 0:
+            raise ValueError("Tafel branch potentials must span a nonzero interval")
+        slope = sum((a - mx) * (b - my) for a, b in zip(x, y)) / den
+        return slope, my - slope * mx
 
-    beta_c = min(0.35, max(0.04, linear_slope(cathodic_e, cathodic_log_i)))
-    beta_a = min(0.35, max(0.04, linear_slope(anodic_e, anodic_log_i)))
-
-    # Estimate i_corr from Stern-Geary intercept
-    i_corr_uA_cm2 = min_val * 1.5 if min_val > 0.01 else 0.15
+    cathodic_slope, cathodic_intercept = linear_fit(cathodic_e, cathodic_log_i)
+    anodic_slope, anodic_intercept = linear_fit(anodic_e, anodic_log_i)
+    if cathodic_slope >= 0 or anodic_slope <= 0:
+        raise ValueError("Data do not resolve opposing cathodic/anodic Tafel branches")
+    beta_c = abs(1.0 / cathodic_slope)
+    beta_a = 1.0 / anodic_slope
+    e_corr = (cathodic_intercept - anodic_intercept) / (anodic_slope - cathodic_slope)
+    i_corr_uA_cm2 = 10.0 ** (anodic_slope * e_corr + anodic_intercept)
 
     # Stern-Geary polarization resistance Rp (Ohm cm2)
     # B = (beta_a * beta_c) / (2.303 * (beta_a + beta_c))
@@ -333,19 +331,9 @@ def analyze_eis_data(payload):
     z_real = payload.get("zReal") or payload.get("z_real") or payload.get("Z_re") or []
     z_imag = payload.get("zImag") or payload.get("z_imag") or payload.get("Z_im") or []
 
-    # Synthetic fallback
-    if not frequencies or not z_real:
-        frequencies = [10.0 ** (5 - i * 0.1) for i in range(70)] # 100 kHz down to 10 mHz
-        z_real = []
-        z_imag = []
-        r0, r_ct, c_dl = 0.8, 14.5, 35e-6
-        for f in frequencies:
-            w = 2 * math.pi * f
-            denom = 1 + (w * r_ct * c_dl) ** 2
-            zr = r0 + r_ct / denom
-            zi = -(w * (r_ct ** 2) * c_dl) / denom
-            z_real.append(zr)
-            z_imag.append(zi)
+    require_observations(frequency=frequencies, real=z_real, imaginary=z_imag)
+    if any(f <= 0 for f in frequencies):
+        raise ValueError("EIS frequencies must be positive")
 
     # Sort frequencies descending
     sorted_pts = sorted(zip(frequencies, z_real, z_imag), key=lambda x: x[0], reverse=True)
@@ -382,7 +370,9 @@ def analyze_eis_data(payload):
             apex_idx = i
 
     f_apex = f_sorted[apex_idx]
-    r_ct_est = max(0.1, max_neg_zi * 2.0)
+    if max_neg_zi <= 0:
+        raise ValueError("No capacitive arc is resolved; Rct/Cdl cannot be estimated")
+    r_ct_est = max_neg_zi * 2.0
     c_dl_est = 1.0 / (2.0 * math.pi * f_apex * r_ct_est) if f_apex > 0 else 1e-6
 
     metrics = [
@@ -417,14 +407,13 @@ def analyze_ocp_data(payload):
     time_s = payload.get("time_s") or payload.get("time") or []
     potential_V = payload.get("potential_V") or payload.get("potential") or payload.get("voltage") or []
 
-    if not time_s or not potential_V:
-        time_s = [i * 30 for i in range(120)] # 1 hour of OCP
-        # Passive film stabilization
-        potential_V = [round(-0.150 + 0.08 * (1.0 - math.exp(-t / 600.0)), 4) for t in time_s]
+    require_observations(minimum=3, time=time_s, potential=potential_V)
+    if any(b <= a for a, b in zip(time_s, time_s[1:])):
+        raise ValueError("OCP time observations must be strictly increasing")
 
     steady_e = potential_V[-1]
     # Drift rate in last 20% of acquisition (mV/hr)
-    cutoff = max(1, int(len(potential_V) * 0.8))
+    cutoff = min(len(potential_V) - 2, max(1, int(len(potential_V) * 0.8)))
     dt_hr = (time_s[-1] - time_s[cutoff]) / 3600.0
     de_mv = (potential_V[-1] - potential_V[cutoff]) * 1000.0
     drift_rate_mv_hr = de_mv / dt_hr if dt_hr > 0 else 0.0
@@ -586,11 +575,11 @@ if __name__ == "__main__":
         elif action == "upload_and_analyze":
             data_type = payload.get("dataType") or "battery_cycling"
             # Auto detect data type if not specified
-            if "potential_V" in payload or "current_A" in payload or "current_mA" in payload or "current_uA" in payload:
+            if not payload.get("dataType") and any(k in payload for k in ("current_A", "current_mA", "current_uA", "log_i")):
                 data_type = "corrosion_tafel"
-            elif "frequencies" in payload or "zReal" in payload or "z_real" in payload:
+            elif not payload.get("dataType") and any(k in payload for k in ("frequencies", "zReal", "z_real")):
                 data_type = "eis_impedance"
-            elif "time_s" in payload and "potential_V" in payload and len(payload) <= 4:
+            elif not payload.get("dataType") and "time_s" in payload and "potential_V" in payload:
                 data_type = "ocp_transient"
 
             if data_type == "corrosion_tafel":

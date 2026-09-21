@@ -265,7 +265,7 @@ export const LPBFAdditivePhysicsSuite: React.FC<Props> = ({ candidate, targets }
     // Residual Thermal Stress & Distortion Estimation (Mercelis / Kruth Model)
     // Residual stress scales with thermal expansion alpha_th * E * deltaT, reduced by preheat and rotation
     const baseStress_MPa = Math.round(
-      (candidate.yieldStrength_MPa || 600) * 0.85 * (1 - (T0 - 25) / (Tm * 0.6))
+      candidate.yieldStrength_25C_MPa * 0.85 * (1 - (T0 - 25) / (Tm * 0.6))
     );
     const strategyReduction =
       scanStrategy === "island_67" ? 0.65 : scanStrategy === "meander_90" ? 0.82 : 1.0;

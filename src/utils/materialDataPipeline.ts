@@ -1,4 +1,5 @@
 import { MaterialSpec } from "../types";
+import type { CandidateAlloySolution } from "./inverseAlloyOptimizer";
 import { MaterialThermalProfile, ThermalStage, HardnessAlloyPreset } from "../types/thermalKinetic";
 
 export type ModuleTargetId =
@@ -626,27 +627,24 @@ export function createPipelinePayloadFromMaterialSpec(mat: MaterialSpec, sourceM
 
 // Convert Synthesized Candidate Alloy (from Inverse Alloy Studio) into Pipeline Payload
 export function createPipelinePayloadFromCandidate(
-  candidate: {
-    alloyName?: string;
-    chemicalFormula?: string;
-    composition_wtPct?: Record<string, number>;
-    composition?: Record<string, number>;
-    predictedProperties?: any;
-    baseMetal?: string;
-    matrix?: string;
-  },
+  candidate: Pick<CandidateAlloySolution, "name" | "compositionWt" | "yieldStrength_25C_MPa" | "uts_25C_MPa" | "density_gcm3" | "youngsModulus_GPa" | "elongation_pct">,
   sourceModule = "Alloy Formulator & Inverse Studio"
 ): PipelineMaterialPayload {
-  const comp = candidate.composition_wtPct || candidate.composition || {};
-  const name = candidate.alloyName || candidate.chemicalFormula || "Custom Synthesized Alloy";
-  const baseMetal = detectBaseMetal(candidate.baseMetal || candidate.matrix || "", comp);
-
-  const props = candidate.predictedProperties || {};
-  const yieldStrength = props.yieldStrength_25C_MPa || props.yieldStrength || 1050;
-  const tensileStrength = props.uts_25C_MPa || props.tensileStrength || Math.round(yieldStrength * 1.25);
-  const density = props.density_gcm3 || props.density || (baseMetal === "Al" ? 2.8 : baseMetal === "Ti" ? 4.5 : baseMetal === "Ni" ? 8.2 : 7.85);
-  const youngsModulus = props.youngsModulus_GPa || props.youngsModulus || (baseMetal === "Al" ? 72 : baseMetal === "Ti" ? 115 : baseMetal === "Ni" ? 205 : 210);
-  const elongation = props.elongation_pct || props.elongation || 14;
+  const comp = { ...candidate.compositionWt };
+  if (!Object.keys(comp).length || !Object.values(comp).every(v => Number.isFinite(v) && v >= 0)
+    || Object.values(comp).reduce((sum, v) => sum + v, 0) <= 0) {
+    throw new Error("Candidate composition must contain finite nonnegative weight percentages");
+  }
+  for (const field of ["yieldStrength_25C_MPa", "uts_25C_MPa", "density_gcm3", "youngsModulus_GPa", "elongation_pct"] as const) {
+    if (!Number.isFinite(candidate[field]) || candidate[field] < 0) throw new Error(`Invalid candidate ${field}`);
+  }
+  const name = candidate.name;
+  const baseMetal = detectBaseMetal("", comp);
+  const yieldStrength = candidate.yieldStrength_25C_MPa;
+  const tensileStrength = candidate.uts_25C_MPa;
+  const density = candidate.density_gcm3;
+  const youngsModulus = candidate.youngsModulus_GPa;
+  const elongation = candidate.elongation_pct;
 
   const { profile: kineticProfile, stages: suggestedThermalCycle, icme } = deriveKineticProfile(name, baseMetal, comp, yieldStrength);
   const { hardnessProfile, hardnessHV, hardnessHRC } = deriveHardnessProfile(

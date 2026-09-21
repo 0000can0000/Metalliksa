@@ -65,7 +65,7 @@ export const MicroAlloySandbox: React.FC<Props> = ({
     // Solute strengthening scaling
     let predictedYield_25C = Math.round(
       candidate.yieldStrength_25C_MPa *
-        (1 + (thermo.deltaMismatch - candidate.atomicSizeMismatch_pct) * 0.04)
+        (1 + (thermo.deltaMismatch - candidate.atomicSizeMismatch_deltaPct) * 0.04)
     );
 
     // Hardening elements positive multipliers (Al, Ti, Nb, Ta for precipitates; Mo, W for solid solution)
@@ -243,7 +243,7 @@ export const MicroAlloySandbox: React.FC<Props> = ({
 
   // Delta comparison values
   const deltaYield = tunedProfile.predictedYield_25C - candidate.yieldStrength_25C_MPa;
-  const deltaCost = tunedProfile.thermo.rawCostUSD - candidate.cost_USD_kg;
+  const deltaCost = tunedProfile.thermo.rawCostUSD - candidate.rawCostUSD_kg;
   const deltaDensity = tunedProfile.thermo.density - candidate.density_gcm3;
   const deltaPREN = tunedProfile.thermo.pren - candidate.pren;
 

@@ -6,6 +6,61 @@ contained changes, including STATUS.md and cache deletions; these are not ours.
 Gemini ownership is unknown. See ACTIVE_WORK.md for this task's scope.
 
 **Phase 0 is open. No later phase or experimental qualification is accepted.**
+
+## 2026-09-21 continuation: UI contract repairs
+
+- Clean baseline 6600806, same LOCAL main checkout. AgentMemory recall empty;
+  CBM generation2026-09-18 stale on all inspected paths, new tests/helper untracked.
+  Source fallback used; Graft refreshed16files. No independent agents or installs.
+- TypeScript errors repaired through real fields/contracts: legacy embedded alloy
+  inputs, Recharts payload selection, refs/timer types, numeric tooltip label,
+  chart row schema, nested melt-pool width and actual candidate strength/cost/misfit.
+- Candidate pipeline now accepts CandidateAlloySolution fields and rejects missing
+  or nonfinite supplied properties instead of generating1050MPa/default chemistry.
+  Existing derived kinetic/XRD/hardness heuristics remain; this is no scientific
+  qualification of those profiles. Inverse component itself required no edit.
+- EDS broken modal replaced with reference-spot chemistry transfer to Alloy Builder.
+  No hardcoded ASTM grain8.5 is transferred. Raw uploaded spectrum disables this
+  action because preset chemistry is not its quantified composition. Other EDS
+  spectrum/AI/report/compliance claims remain an explicit unreviewed audit scope.
+- Heat-treatment scenario requires explicit precipitate fraction0–0.35, accepts0,
+  and hides results on blank/invalid input. Scheil solid fraction is not reused.
+  Candidate YS/UTS corrected. Existing empirical coefficients,0.95% porosity and
+  4um spacing are disclosed assumptions. Model validity and hardcoded property
+  multipliers are NOT validated by this UI repair.
+- Browser exposed actual CNLS response crash after initial type fix: Python emits
+  reducedChiSquare, not chiSquare/chiSquared. New normalizer validates available
+  report fields, maps parameter identities/bounds, derives RMSE from residuals and
+  weighted chiSquare from reducedChiSquare*DOF. Missing fields reject; zero stays0.
+  EquivalentCircuitBuilder no longer invents0.001/0.99/default success, nor switches
+  solver on HTTP failure. Retry clears old fit. Missing convergence is not confirmed.
+- Fresh evidence: lint PASS, unit122/122 PASS, build PASS25.61s (chunk warnings).
+  Candidate transfer2 and missing-heat-input1 regressions observed red then green.
+  CNLS helper2 PASS; its initial red was module-not-yet-present, while the real
+  component crash was reproduced in browser before normalization.
+- Actual browser: heat blank/0/0.2/0.5, zero gain and invalid-result removal; EDS
+  keyboard Enter transferred exact spot values Ni53.4/Cr19.3/etc; Recharts point
+  opened TI64-GONG-LOF-01 detail, keyboard closed it; inverse transfer modal displayed
+  actual candidate; all four classic circuit charts rendered, screenshot checked.
+  Real API→CPU Python fit showed reducedChiSquare1.14e3, R²0,80iterations with
+  convergence NOT confirmed. Test-only HTTP503 and incomplete report cleared fit
+  and showed explicit errors. Software/fixture evidence only. Full EDS upload and
+  standalone legacy embedded simulator were not browser-tested.
+- The dev Vite watcher was disabled; browser reload initially retained cached old
+  code. Restarting ONLY owned server descendants loaded current code. Port24678
+  is owned elsewhere and was not touched. Final server cleanup recorded in STATUS.
+
+New bounded findings for next package (not fixed here): Python run_cnls_fit appears
+to use residual exp-calc and its Jacobian but adds +solve(JTJ,JTr); inspect step sign
+with analytic regression before changing it. Browser result stayed at initial
+parameters with high cost. It omits convergence/rmse, returns fake perfect scores
+when no adjustable parameters, and clips covariance/R². len<5 Lin-KK still reports
+95/true/zero. CNLSFittingStudio and cnlsOptimizer.runAsyncAutoFit still have invented
+default metrics; EquivalentCircuitBuilder/Plotly stale-input cancellation remains
+to audit. Built-in EIS metadata still calls synthetic circuits measured experiments.
+Repair these next, then material authority/queued transient and remaining Phase0
+profiling/raw hashes/source terms/SQLite ADR. Phase0 remains OPEN.
+
 The user's subsequent instruction expands the audit to fabricated Python outputs.
 Random sampling is evaluated by method/seed/convergence; it is not itself fabrication.
 

@@ -1,5 +1,21 @@
 # Active Work
 
+Continuation task 01a0c133-a81d-7f93-9174-d85ad5b1e979 owns the shared LOCAL
+checkout from clean HEAD 6600806 on 2026-09-21; source 01a0c11f stopped writing.
+Current package: the twelve component paths in lint-continuation-baseline.txt,
+src/utils/materialDataPipeline.ts and focused regression/browser tests. Ownership
+also includes this record, Phase0 audit, handoff and parent STATUS.md. No worktree,
+push, package install or Gemini assignment. Acceptance: tsc passes through actual
+contracts; candidate identity/properties survive transfer; missing precipitation
+input cannot become a default prediction; EDS transfers chemistry only; browser
+interaction, unit suite and build verified. Phase0 remains OPEN.
+
+Browser exposed a real Python CNLS report mismatch (missing chiSquare crashes
+the circuit builder). Same owner additionally claims src/utils/pythonCnlsReport.ts
+and tests/python-cnls-report.test.ts. Normalize observed fields without success
+defaults; do not infer convergence when Python omits its termination reason.
+
+
 Continuation task 01a0c11f-9971-7130-b007-bfc77b3a474a takes ownership on
 2026-09-21 from source 01a0c10a after verifying clean HEAD a1348ff and empty index.
 Same LOCAL checkout; no worktree, push or Gemini assignment. Current package owns

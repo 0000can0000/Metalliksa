@@ -23,6 +23,19 @@ import {
 import { pythonComputationService } from "../../services/pythonComputationService";
 
 export interface EmbeddedPythonLPBFSimulatorProps {
+  alloy: {
+    id: string;
+    name: string;
+    density_kg_m3: number;
+    specificHeat_J_kgK: number;
+    thermalConductivity_W_mK: number;
+    liquidusTemp_C: number;
+    solidusTemp_C: number;
+    absorptivity: number;
+    huntExponent_n: number;
+    huntConstant_aCET: number;
+    nucleationUndercooling_dTN_K: number;
+  };
   laserPower_W: number;
   scanSpeed_mms: number;
   beamDiameter_um: number;

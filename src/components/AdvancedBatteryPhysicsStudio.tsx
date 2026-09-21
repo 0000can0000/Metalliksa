@@ -759,7 +759,8 @@ export function AdvancedBatteryPhysicsStudio() {
                     <Tooltip
                       contentStyle={{ backgroundColor: "#0b1220", borderColor: "#1e293b", borderRadius: "8px", fontSize: "11px" }}
                       formatter={(val: any) => [`${val} Ah/V`, "dQ/dV"]}
-                      labelFormatter={(label) => `Voltage: ${parseFloat(label).toFixed(3)} V`}
+                      labelFormatter={(label) => typeof label === "number" && Number.isFinite(label)
+                        ? `Voltage: ${label.toFixed(3)} V` : "Voltage unavailable"}
                     />
                     <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }} />
                     <Line type="monotone" dataKey="dq_dv" stroke="#10b981" strokeWidth={2} dot={false} name="Fresh Cell dQ/dV" />

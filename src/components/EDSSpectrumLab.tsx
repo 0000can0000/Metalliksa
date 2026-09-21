@@ -54,7 +54,8 @@ import {
   SpectrumPoint,
 } from "../data/edsReferenceData";
 import { parseRawEDSFile, ParsedEDSSpectrum } from "../utils/edsParser";
-import { SendToModuleModal } from "./SendToModuleModal";
+import { useMaterialSpecimenStore } from "../store/useMaterialSpecimenStore";
+import { dispatchNavigateToTab } from "../utils/materialDataPipeline";
 import { WebGLSpectrometerCanvas } from "./WebGLSpectrometerCanvas";
 import { WebGLEDSHyperMapCanvas } from "./WebGLEDSHyperMapCanvas";
 
@@ -142,7 +143,6 @@ export const EDSSpectrumLab: React.FC<{
   // AI & Export State
   const [isAiDiagnosing, setIsAiDiagnosing] = useState<boolean>(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
-  const [isSendModalOpen, setIsSendModalOpen] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
 
   // Generate real-time theoretical / empirical spectrum data
@@ -375,11 +375,25 @@ Provide:
 
             <button
               id="eds-send-to-module-btn"
-              onClick={() => setIsSendModalOpen(true)}
+              disabled={!!uploadedSpectrum || !Object.keys(currentCompositionRecord).length}
+              title={uploadedSpectrum ? "Uploaded spectra require quantified composition before transfer" : "Transfer the selected reference spot chemistry as a design input; mechanical and grain properties are not measured by EDS"}
+              onClick={() => {
+                if (uploadedSpectrum) return;
+                if (onSendToAlloyBuilder) onSendToAlloyBuilder(currentCompositionRecord);
+                else {
+                  useMaterialSpecimenStore.getState().updateComposition(
+                    currentCompositionRecord,
+                    `${activeDataset.sampleName} — ${activeSpot.name} (reference spot chemistry)`,
+                    undefined,
+                    "EDS reference spot; local composition used as a design input, not bulk material qualification",
+                  );
+                  dispatchNavigateToTab("alloy-builder");
+                }
+              }}
               className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
             >
               <Share2 className="w-4 h-4" />
-              <span>Send Chemistry to Module</span>
+              <span>Send Reference Chemistry to Alloy Builder</span>
             </button>
           </div>
         </div>
@@ -1350,20 +1364,6 @@ Provide:
         </div>
       </div>
 
-      {/* Send to Module Modal */}
-      {isSendModalOpen && (
-        <SendToModuleModal
-          isOpen={isSendModalOpen}
-          onClose={() => setIsSendModalOpen(false)}
-          sourceModule="SEM-EDS Microanalysis Suite"
-          initialData={{
-            alloyName: `${activeDataset.sampleName.split("(")[0].trim()} (${activeSpot.name.split(":")[0]})`,
-            baseSystem: activeDataset.materialClass,
-            composition: currentCompositionRecord,
-            grainSizeAstm: "8.5",
-          }}
-        />
-      )}
     </div>
   );
 };

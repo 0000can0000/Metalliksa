@@ -59,7 +59,7 @@ export function PlotlyEISViewer({
   const [pyPoints, setPyPoints] = useState<any[] | null>(null);
 
   // Debounce ref for Python simulation request
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Real-time Python Spectra Simulation API call

@@ -25,12 +25,31 @@ interface Props {
 export type HeatTreatmentStage = "stress-relief" | "hip" | "solution" | "aging" | "full-cycle";
 
 export const HeatTreatmentAgingSimulator: React.FC<Props> = ({ candidate, targets }) => {
+  const [input, setInput] = useState({ candidate, fraction: "" });
+  const text = input.candidate === candidate ? input.fraction : "";
+  const fraction = text.trim() === "" ? null : Number(text);
+  const valid = fraction !== null && Number.isFinite(fraction) && fraction >= 0 && fraction <= 0.35;
+  return <div className="space-y-4">
+    <div className="p-4 rounded-xl border border-amber-500/40 text-sm text-slate-300 space-y-2">
+      <p>Illustrative heat-treatment sensitivity model. Fixed empirical coefficients, 0.95% initial porosity and 4 µm dendrite spacing are assumptions; outputs are not validated material predictions.</p>
+      <label className="block">Precipitate volume fraction (0–0.35, scenario input)
+        <input type="number" min="0" max="0.35" step="0.01" value={text}
+          onChange={event => setInput({ candidate, fraction: event.target.value })}
+          className="ml-3 w-24 bg-slate-900 border border-slate-600 rounded p-1" />
+      </label>
+      {!valid && <p role="status">Results unavailable. Supply a precipitate volume fraction; Scheil solid fraction is not a precipitate fraction.</p>}
+    </div>
+    {valid && <HeatTreatmentScenario key={candidate.id} candidate={candidate} targets={targets} precipitateFraction={fraction!} />}
+  </div>;
+};
+
+const HeatTreatmentScenario: React.FC<Props & { precipitateFraction: number }> = ({ candidate, targets, precipitateFraction }) => {
   const [activeStage, setActiveStage] = useState<HeatTreatmentStage>("full-cycle");
 
   // Material thermal base parameters
   const matrix = targets.baseMatrix;
-  const liquidus_C = candidate.liquidus_C || 1400;
-  const solidus_C = candidate.solidus_C || 1320;
+  const liquidus_C = candidate.liquidus_C;
+  const solidus_C = candidate.solidus_C;
 
   // Recommended default temperatures based on matrix
   const defaults = useMemo(() => {
@@ -171,7 +190,7 @@ export const HeatTreatmentAgingSimulator: React.FC<Props> = ({ candidate, target
     const r_optimal_nm = matrix === "Aluminum" ? 4.5 : matrix === "Nickel" ? 18.0 : matrix === "Titanium" ? 8.0 : 6.0;
 
     // Precipitate volume fraction f_vol
-    const f_vol = Math.min(0.35, candidate.scheilKou.f_solid_at_pinch || 0.18);
+    const f_vol = precipitateFraction;
 
     // Shearing / Cutting strength contribution (Under-aged): delta_sigma_cut = C1 * sqrt(f * r)
     const delta_cut = 140 * Math.sqrt(f_vol * Math.max(0.5, current_r_nm));
@@ -207,8 +226,8 @@ export const HeatTreatmentAgingSimulator: React.FC<Props> = ({ candidate, target
     });
 
     // 5. MECHANICAL PROPERTY STATE PROGRESSION
-    const asBuiltYield = candidate.yieldStrength_25C;
-    const asBuiltUTS = candidate.tensileStrength_25C;
+    const asBuiltYield = candidate.yieldStrength_25C_MPa;
+    const asBuiltUTS = candidate.uts_25C_MPa;
     const asBuiltElong = candidate.elongation_pct;
     const asBuiltK1c = candidate.fractureToughness_K1c;
 
@@ -272,6 +291,7 @@ export const HeatTreatmentAgingSimulator: React.FC<Props> = ({ candidate, target
     solidus_C,
     candidate,
     matrix,
+    precipitateFraction,
   ]);
 
   return (

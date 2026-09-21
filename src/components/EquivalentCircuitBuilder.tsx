@@ -1,4 +1,5 @@
 import { ResponsiveContainer } from './VisibleResponsiveContainer';
+import { normalizePythonCnlsReport } from '../utils/pythonCnlsReport';
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   Activity,
@@ -71,8 +72,6 @@ import {
 } from "../utils/eisFileParser";
 import {
   extractAdjustableParameters,
-  runCNLSFit,
-  runAsyncAutoFit,
   applyParametersToTopology,
 } from "../utils/cnlsOptimizer";
 
@@ -706,7 +705,12 @@ export function EquivalentCircuitBuilder() {
   }, [eisData]);
 
   // Merged Chart Data for Overlaid Experimental + Model Curves
-  const chartPoints = useMemo(() => {
+  const chartPoints = useMemo<Array<{
+    frequency: number; logFreq: number;
+    modelZReal: number; modelMinusZImag: number; modelZMag: number; modelPhaseDeg: number;
+    expZReal?: number; expMinusZImag?: number; expZMag?: number; expPhaseDeg?: number;
+    resZRealPct?: number; resZImagPct?: number;
+  }>>(() => {
     if (activeTab !== "automated-fit" && !fitReport) {
       return eisData.map((d) => ({
         ...d,
@@ -937,6 +941,8 @@ export function EquivalentCircuitBuilder() {
   const handleRunAutoFit = async () => {
     setIsAutoFitting(true);
     setFitError(null);
+    setFitReport(null);
+    setAutoFitSummary(null);
     setAppliedFitSuccess(false);
 
     try {
@@ -964,24 +970,9 @@ export function EquivalentCircuitBuilder() {
         if (pythonResult.error) {
           throw new Error(pythonResult.error);
         }
-        report = {
-          topology: pythonResult.topology || activeTopology,
-          parameters: pythonResult.parameters || [],
-          dataset: activeDataset,
-          chiSquare: pythonResult.reducedChiSquare || 0.001,
-          reducedChiSquare: pythonResult.reducedChiSquare || 0.001,
-          rmse: pythonResult.rmse || 0.05,
-          rSquared: pythonResult.rSquared || 0.99,
-          iterations: pythonResult.iterations || maxIterations,
-          converged: pythonResult.converged !== false,
-          weighting,
-          executionTimeMs: Math.round(pythonResult.computeTimeMs || 100),
-          residuals: pythonResult.residuals || [],
-          kramersKronig: pythonResult.kramersKronig,
-          engineUsed: "CPython 3.10 (Differential Evolution + LM)",
-        };
+        report = normalizePythonCnlsReport(pythonResult, activeTopology, activeDataset, weighting, initialParams);
       } else {
-        report = await runAsyncAutoFit(activeTopology, activeDataset, initialParams, weighting, maxIterations);
+        throw new Error(`Python CNLS unavailable (HTTP ${response.status})`);
       }
 
       setFitReport(report);
@@ -1052,6 +1043,8 @@ export function EquivalentCircuitBuilder() {
   const handleRunPythonFit = async () => {
     setIsFitting(true);
     setFitError(null);
+    setFitReport(null);
+    setAutoFitSummary(null);
     setAppliedFitSuccess(false);
 
     try {
@@ -1077,12 +1070,9 @@ export function EquivalentCircuitBuilder() {
         if (pythonResult.error) {
           throw new Error(pythonResult.error);
         }
-        report = pythonResult;
-        report.engineUsed = "CPython 3.10+ (LM + Covariance)";
+        report = normalizePythonCnlsReport(pythonResult, activeTopology, activeDataset, weighting, initialParams);
       } else {
-        // Fallback to client-side JS optimizer if server is unreachable
-        report = runCNLSFit(activeTopology, activeDataset, initialParams, weighting, maxIterations);
-        report.engineUsed = "Client JavaScript Engine";
+        throw new Error(`Python CNLS unavailable (HTTP ${response.status})`);
       }
 
       setFitReport(report);
@@ -1562,7 +1552,7 @@ export function EquivalentCircuitBuilder() {
                                 </span>
                               )}
                               {el.isFixed && (
-                                <Lock className="w-3 h-3 text-amber-400" title="Locked during CNLS optimization" />
+                                <span title="Locked during CNLS optimization"><Lock className="w-3 h-3 text-amber-400" aria-label="Locked during CNLS optimization" /></span>
                               )}
                               <button
                                 type="button"
@@ -2089,7 +2079,7 @@ export function EquivalentCircuitBuilder() {
               <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-400/30 text-amber-200 text-xs font-mono space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold flex items-center gap-1 text-amber-300">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Global Auto-Fit Converged
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Global Auto-Fit Result (check convergence)
                   </span>
                   <span className="text-[10px] text-amber-400/80">{autoFitSummary.computeTimeMs} ms</span>
                 </div>
@@ -2118,11 +2108,11 @@ export function EquivalentCircuitBuilder() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     <span className="text-xs font-mono font-bold text-emerald-300">
-                      Convergence Achieved ({fitReport.iterations} iters)
+                      {fitReport.converged ? "Convergence reported" : "Convergence not confirmed"} ({fitReport.iterations} iters)
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
-                    <span>Reduced χ²: <strong className="text-sky-300">{fitReport.chiSquared.toExponential(2)}</strong></span>
+                    <span>Reduced χ²: <strong className="text-sky-300">{fitReport.reducedChiSquare.toExponential(2)}</strong></span>
                     <span>R²: <strong className="text-emerald-300">{fitReport.rSquared.toFixed(4)}</strong></span>
                   </div>
                 </div>

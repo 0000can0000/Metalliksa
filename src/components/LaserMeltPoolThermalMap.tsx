@@ -414,7 +414,7 @@ export const LaserMeltPoolThermalMap: React.FC<Props> = ({
         ctx.strokeStyle = "#f59e0b";
         ctx.fillStyle = "#f59e0b";
         ctx.lineWidth = 1.5;
-        const b_px = ((geom?.meltPoolGeometry?.width_um || 100) / 2.0) / (umPerPixel * 1.6);
+        const b_px = ((geom?.width_um ?? 0) / 2.0) / (umPerPixel * 1.6);
         // Top vortex
         ctx.beginPath();
         ctx.arc(laserPixelX - 10, laserPixelY - b_px * 0.55, b_px * 0.35, Math.PI * 0.2, Math.PI * 1.3);

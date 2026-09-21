@@ -26,8 +26,8 @@ export function decodeField(buffer: ArrayBuffer, count: number): Float32Array {
 export function ResolvedThermalViewer({jobId,result,onTimeChange}:{jobId:string;result?:SimulationResult;onTimeChange?:(time:number)=>void}) {
   const workspaceVisible=useWorkspaceVisible();
   const resetVersion=useRef(0);
-  const cameraState=useRef<{position:THREE.Vector3;target:THREE.Vector3}>();
-  const rendererRef=useRef<THREE.WebGLRenderer>();
+  const cameraState=useRef<{position:THREE.Vector3;target:THREE.Vector3} | undefined>(undefined);
+  const rendererRef=useRef<THREE.WebGLRenderer | undefined>(undefined);
   useEffect(()=>()=>{rendererRef.current?.dispose();rendererRef.current?.forceContextLoss();rendererRef.current?.domElement.remove();rendererRef.current=undefined;},[]);
   const host = useRef<HTMLDivElement>(null);
   const [series,setSeries]=useState<Series>(); const [coordinates,setCoordinates]=useState<Float32Array>();

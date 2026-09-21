@@ -786,7 +786,8 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                       data={scatterData}
                       fill="#38bdf8"
                       onClick={(e) => {
-                        if (e && e.record) setSelectedRecord(e.record);
+                        const selected = scatterData.find(point => point === e.payload);
+                        if (selected) setSelectedRecord(selected.record);
                       }}
                       className="cursor-pointer"
                     />
@@ -856,7 +857,8 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                       data={scatterData.filter((d) => d.uts > 0)}
                       fill="#10b981"
                       onClick={(e) => {
-                        if (e && e.record) setSelectedRecord(e.record);
+                        const selected = scatterData.find(point => point === e.payload);
+                        if (selected) setSelectedRecord(selected.record);
                       }}
                       className="cursor-pointer"
                     />
@@ -899,7 +901,8 @@ export const LPBFGroundTruthDataLab: React.FC<LPBFGroundTruthDataLabProps> = ({
                     data={scatterData}
                     fill="#38bdf8"
                     onClick={(e) => {
-                      if (e && e.record) setSelectedRecord(e.record);
+                      const selected = scatterData.find(point => point === e.payload);
+                      if (selected) setSelectedRecord(selected.record);
                     }}
                     className="cursor-pointer"
                   />

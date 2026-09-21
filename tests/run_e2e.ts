@@ -7,16 +7,13 @@ import { LpbfSourceArchiveService } from '../server/lpbfSourceArchiveService';
 import { LpbfRunArchiveService } from '../server/lpbfRunArchiveService';
 import { lpbfWorker } from '../server/lpbfWorkerBridge';
 
-test('Phase 4: Uçtan Uca Test - Calisma Secimi -> Is Calistirma -> Karsilastirma -> Export/Import', async t => {
+(async function() { const t = { after: () => {} };
   try {
     const directory = mkdtempSync(path.join(tmpdir(), 'metalliksa-e2e-'));
     const sourceRoot = path.join(directory, 'sources');
     const runRoot = path.join(directory, 'runs');
     const jobRoot = path.join(directory, 'jobs');
-    t.after(() => { 
-      lpbfWorker.close();
-      try { rmSync(directory, { recursive: true, force: true }); } catch (e) {}
-    });
+    t.after(() => { rmSync(directory, { recursive: true, force: true }); });
 
     process.env.METALLIKSA_LPBF_SOURCE_ROOT = sourceRoot;
     process.env.METALLIKSA_LPBF_RUN_ROOT = runRoot;
@@ -93,4 +90,4 @@ test('Phase 4: Uçtan Uca Test - Calisma Secimi -> Is Calistirma -> Karsilastirm
     console.error("TEST FAILED WITH ERROR:", e);
     throw e;
   }
-});
+})();

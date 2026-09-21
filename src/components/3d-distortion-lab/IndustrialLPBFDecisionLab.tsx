@@ -594,11 +594,36 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
           <Tiny label="Engine" value={job?.modelId || "Python"} icon={<Cpu className="w-3 h-3" />} />
           <Tiny label="Regime" value={thermal.meltPoolGeometry.regime} icon={<Zap className="w-3 h-3" />} />
           <Tiny label="W×D (µm)" value={`${thermal.meltPoolGeometry.width_um}×${thermal.meltPoolGeometry.depth_um}`} icon={<Layers className="w-3 h-3" />} />
-          <Tiny label="ΔH/hₛ" value={String(thermal.processParameters.normalizedEnthalpy)} icon={<Activity className="w-3 h-3" />} />
-          <Tiny label="I₀ MW/cm²" value={String(thermal.processParameters.peakIntensity_MW_cm2 ?? "—")} />
+          <Tiny label="ΔH/hs" value={String(thermal.processParameters.normalizedEnthalpy)} icon={<Activity className="w-3 h-3" />} />
+          <Tiny label="I0 MW/cm²" value={String(thermal.processParameters.peakIntensity_MW_cm2 ?? "-")} />
           <Tiny label="LED J/mm" value={(thermal.processParameters.linearEnergyDensity_J_m / 1000).toFixed(3)} />
           <Tiny label="VED J/mm³" value={String(thermal.processParameters.volumetricEnergyDensity_J_mm3)} />
-          <Tiny label="Ṫ K/s" value={thermal.solidificationKinetics.coolingRate_K_s.toExponential(1)} />
+          <Tiny label="ε K/s" value={thermal.solidificationKinetics.coolingRate_K_s.toExponential(1)} />
+        </div>
+      )}
+
+      {job?.porosity && (
+        <div className="rounded-2xl border border-violet-500/30 bg-[#090e18] p-3.5 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-bold text-violet-300 uppercase tracking-widest">Part Relative Density</h3>
+            <div className="text-xl text-white font-bold">{job.porosity.relativeDensity.mean_percent.toFixed(2)}%</div>
+            <div className="text-[9px] text-slate-500">95% CI: {job.porosity.relativeDensity.p05_percent.toFixed(2)} - {job.porosity.relativeDensity.p95_percent.toFixed(2)}</div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-bold text-violet-300 uppercase tracking-widest">Dominant Mechanism</h3>
+            <div className="text-sm text-slate-200 capitalize">{job.porosity.dominantMechanism}</div>
+            <div className="text-[9px] text-slate-500">Based on MC aggregation</div>
+          </div>
+          {job.kinematics && (
+            <div className="col-span-2 space-y-1">
+              <h3 className="text-[10px] font-bold text-violet-300 uppercase tracking-widest">Scanner Kinematics</h3>
+              <div className="text-sm text-slate-200">
+                Mid-track: {job.kinematics.effectiveMidTrackSpeed_mms.toFixed(0)} mm/s 
+                (Accel dist: {job.kinematics.skywritingRequired_mm.toFixed(2)} mm)
+              </div>
+              <div className="text-[9px] text-amber-500/80">{job.kinematics.warning || "Skywriting sufficient for acceleration."}</div>
+            </div>
+          )}
         </div>
       )}
 

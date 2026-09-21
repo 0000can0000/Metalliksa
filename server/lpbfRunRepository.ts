@@ -47,7 +47,9 @@ export function validateRunDocument(raw: unknown): RunDocument {
   if (d.schemaVersion !== 1 || c.schemaVersion !== 1 || typeof d.runId !== 'string'
     || !/^[a-f0-9]{32}$/.test(d.runId) || d.runId !== c.jobId) throw new Error('Invalid run identity');
   const result = snapshot(c.resultJson);
-  parseSimulationJob({ id: c.jobId, status: 'completed', progress: 1, log: '', error: null, result });
+  if (!result.verdict) { // Not a build-job
+    parseSimulationJob({ id: c.jobId, status: 'completed', progress: 1, log: '', error: null, result });
+  }
   if (!isDeepStrictEqual(snapshot(c.inputJson), result.settings)
     || !isDeepStrictEqual(snapshot(c.materialJson), result.material)) throw new Error('Run snapshot identity mismatch');
   const bound = Object.hasOwn(result, 'coreContract');

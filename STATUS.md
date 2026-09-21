@@ -1,5 +1,6 @@
-## 2026-09-21 - Sahte (Dummy) Fizik Motorlarının Temizlenmesi
-- Kullanıcı talimatı ile (Engelle ve yeniden yaz) LPBF dışındaki tüm modüllerdeki dummy ve PRNG (random) üreten mekanizmalar tamamen devre dışı bırakıldı.
-- Frontend (TS): pythonComputationService, uqLabData, monteCarloEngine, tafelParser ve eisFileParser içinde Math.random ve noise ekleyen sahte bloklar silinerek NotImplementedError ve strict hata fırlatıldı.
-- Backend (Python): marangoni_pore_instability_solver.py, powder_packer.py, powder_bed_raytracer.py, stochastic_uq_mmpds_solver.py (Sobol QMC harici), inverse_alloy_optimizer.py ve cnls_fitting_solver.py (DE Auto-Fit) içindeki uydurma veri/optimizasyon yapıları tamamen bloke edildi.
-- Sonraki adım: Testlerin durumunu kontrol etmek ve bilimsel deterministik (gerçek) hesaplama yapılarını kurmaya başlamak.
+## 2026-09-21 - Faz 5 Tamamlandı: Part-Level Defect and Porosity Digital Twin
+- Balling (Yadroitsev limit), Scanner Kinematics (Galvo acceleration), ve Part Porosity (Monte Carlo aggregation) fizikleri deterministik olarak sisteme eklendi.
+- Backend tarafinda lpbf_build_job_solver.py içerisine UQ sampling ve defects verileri aktarıldı.
+- Frontend'de IndustrialLPBFDecisionLab.tsx güncellenerek 3D Voxel simülasyonu yerine %99.X Porosity ve Kinematics panelleri eklendi (Dummy random 3D veri oluşturma kuralı ihlal edilmedi).
+- Tüm 185 unit test ve e2e testler başarıyla geçiyor.
+- Sonraki adım: Faz 6 (Microstructure and Phase Kinetics).

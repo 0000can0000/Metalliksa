@@ -76,6 +76,13 @@ class LpbfWorkerBridge {
     const reply = await this.request('archive-capture', jobId) as { capture: unknown; root: string; platform: string };
     return { capture: reply.capture, root: path.join(archiveJobRoot(reply.root, reply.platform, process.platform), jobId) };
   }
+
+  close() {
+    if (this.process) {
+      this.process.kill();
+      this.process = undefined;
+    }
+  }
 }
 
 export const lpbfWorker = new LpbfWorkerBridge();

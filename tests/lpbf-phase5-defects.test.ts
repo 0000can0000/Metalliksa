@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+test('Phase 5: Defect Diagnostics & Porosity Aggregation', async t => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'metalliksa-phase5-'));
+  t.after(() => {
+    try { rmSync(directory, { recursive: true, force: true }); } catch (e) {}
+  });
+
+  const testScript = path.join(directory, 'test_defects.py');
+  const pythonCode = `
+import json
+import sys
+import math
+sys.path.insert(0, 'python')
+
+from lpbf_defect_diagnostics import defect_diagnostics
+from lpbf_part_porosity_aggregator import aggregate_part_porosity
+from lpbf_scanner_kinematics import calculate_scanner_kinematics
+
+# 1. Scanner Kinematics
+kinematics = calculate_scanner_kinematics(1000.0, 500.0, 200000.0)
+assert kinematics['warning'] is not None, "Should warn about short track"
+assert kinematics['effectiveMidTrackSpeed_mms'] < 1000.0, "Should not reach nominal speed"
+
+# 2. Defect Diagnostics (Rayleigh-Plateau Balling)
+# L/W > pi
+diag_balling = defect_diagnostics(width_um=50, depth_um=30, length_um=200, hatch_um=40, layer_um=20)
+assert diag_balling['balling']['risk'] in ['high', 'moderate'], "Balling risk should be elevated"
+assert diag_balling['balling']['lengthToWidth'] == 4.0
+
+# King/Cunningham Keyhole
+diag_keyhole = defect_diagnostics(width_um=50, depth_um=80, length_um=100, hatch_um=40, layer_um=20)
+assert diag_keyhole['keyhole']['risk'] == 'high', "Keyhole risk should be high"
+assert diag_keyhole['keyhole']['depthToWidth'] == 1.6
+
+# 3. Aggregation
+samples = [diag_balling, diag_keyhole]
+agg = aggregate_part_porosity(samples, powder_gas_prior_percent=0.01)
+assert agg['status'] == 'aggregated'
+assert agg['mechanismCounts']['keyhole'] == 1
+assert agg['mechanismCounts']['balling'] == 1
+assert agg['relativeDensity']['mean_percent'] < 100.0
+
+print(json.dumps(agg))
+`;
+
+  writeFileSync(testScript, pythonCode);
+  
+  // Run python script
+  const output = execSync(`python "${testScript}"`, { encoding: 'utf8' });
+  const result = JSON.parse(output);
+  
+  assert.equal(result.status, 'aggregated');
+  assert.equal(result.sampleCount, 2);
+  assert.ok(result.relativeDensity.mean_percent > 0);
+});

@@ -114,6 +114,8 @@ def run_screening_uq(
     z_spot: List[float] = []
     z_k: List[float] = []
     z_rho: List[float] = []
+    
+    defect_samples = []
 
     for _ in range(n):
         zp = rng.gauss(0.0, 1.0)
@@ -142,6 +144,7 @@ def run_screening_uq(
             "_uq_rho_scale": rho_scale,
         }
         thermal = thermal_runner(p, beam, overrides)
+        defect_samples.append(thermal.get("geometricDefectScreen", {}))
         decision = verdict_fn(thermal)
         v = decision.get("verdict", "risky")
         if v == "printable":
@@ -186,9 +189,10 @@ def run_screening_uq(
         # Alias for older UI / tests.
         "sobolProxy": sensitivity_share,
         "dominantUncertainty": dominant,
+        "defectSamples": defect_samples,
         "note": (
-            "Monte Carlo with literature ± bands; screeningSensitivity is |Spearman ρ| share "
-            "vs verdict score (proxy — not Saltelli Sobol'). SCREENING ONLY — not machine-calibrated."
+            "Monte Carlo with literature \u00b1 bands; screeningSensitivity is |Spearman \u03c1| share "
+            "vs verdict score (proxy - not Saltelli Sobol'). SCREENING ONLY - not machine-calibrated."
         ),
     }
 

@@ -284,6 +284,10 @@ def main():
                 result = solve_lpbf_build_job(input_data)
                 if "provenance" not in result:
                     result["provenance"] = {}
+                result["settings"] = input_data
+                result["material"] = {"id": input_data.get("alloyId")}
+                from lpbf_evidence import write_artifacts
+                write_artifacts(result, folder)
             else:
                 result = run(input_data, report, folder,
                              json.loads((folder/"capabilities.json").read_text()))

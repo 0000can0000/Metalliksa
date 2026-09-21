@@ -88,7 +88,25 @@ def defect_diagnostics(width_um, depth_um, length_um, hatch_um, layer_um, *, agg
 
     result["keyhole"]["depthToWidth"] = _finite_ratio(depth, width)
     result["balling"]["lengthToWidth"] = _finite_ratio(length, width)
-    
+    # Balling Instability (Rayleigh-Plateau Criterion)
+    # Cylindrical capillary breakup when length/width > \pi (Yadroitsev continuity threshold)
+    lw_ratio = result["balling"]["lengthToWidth"]
+    if lw_ratio is not None:
+        if lw_ratio > math.pi * 1.2:
+            result["balling"]["risk"] = "high"
+            result["balling"]["reason"] = f"L/W ratio {lw_ratio:.2f} significantly exceeds Rayleigh-Plateau limit (\u03c0). High risk of severe balling and track discontinuity."
+        elif lw_ratio > math.pi:
+            result["balling"]["risk"] = "moderate"
+            result["balling"]["reason"] = f"L/W ratio {lw_ratio:.2f} exceeds \u03c0 limit. Marginal capillary instability expected."
+        else:
+            result["balling"]["risk"] = "low"
+            result["balling"]["reason"] = f"L/W ratio {lw_ratio:.2f} < \u03c0 indicates stable continuous track without capillary breakup."
+        result["provenance"].append({
+            "title": "Yadroitsev et al. (2010)",
+            "url": "https://doi.org/10.1016/j.jmatprotec.2010.01.011",
+            "use": "Rayleigh-Plateau capillary instability for single-track balling (L/W > \u03c0).",
+        })
+
     # King & Cunningham Keyhole Criterion
     # High-speed X-ray vapor depression stability based on aspect ratio D/W > 1.5
     # (or normalized enthalpy, but we only have D and W in this purely geometric screen).

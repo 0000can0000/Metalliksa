@@ -28,6 +28,8 @@ from murakami_fatigue_screening import (
 )
 from nist_ambench_2018_02 import coverage_for_alloy, run_ambench_validation
 from stl_slicer_build_time_solver import solve_slicer
+from lpbf_part_porosity_aggregator import aggregate_part_porosity
+from lpbf_scanner_kinematics import calculate_scanner_kinematics
 
 # Hatch/layer used with literature-box mid P–v when LoF is the dominant gate.
 # Matches src/utils/lpbfDemoVectors.ts printable demos (inputs only).
@@ -530,6 +532,10 @@ def solve_lpbf_build_job(data):
         "computeTimeMs": elapsed,
         "thermal": thermal,
         "slicer": slicer,
+        "kinematics": calculate_scanner_kinematics(speed, max(50.0, float(stripe_width_mm * 1000.0))),
+        "porosity": aggregate_part_porosity(
+            uq_block.pop("defectSamples", []) if uq_block else [thermal.get("geometricDefectScreen", {})]
+        ),
         "verdict": decision,
         "uq": uq_block,
         "ambench": ambench,

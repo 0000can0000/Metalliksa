@@ -16,6 +16,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from lpbf_material_registry import catalog
+from four_alloy_materials import resolve_alloy_id, thermal_props, THERMAL_NAME
 from lpbf_simulation import run, validate, fingerprint
 from lpbf_openfoam import BINARY
 from lpbf_evidence import resource_estimate, enforce_thermal_balances
@@ -439,24 +440,20 @@ def main():
             elif method == "thermal-accumulation":           # Phase 17
                 payload = request["payload"]
                 mat_cfg = payload.get("material", {})
-                alloy_name = mat_cfg.get("name", "Ti-6Al-4V")
-
-                # Empirical thermophysical parameters
-                material_presets = {
-                    "Ti-6Al-4V": dict(density_kg_m3=4420.0, specific_heat_J_kgK=670.0, thermal_conductivity_W_mK=15.0, absorptivity=0.35, melting_temp_K=1928.0, boiling_temp_K=3533.0),
-                    "IN718": dict(density_kg_m3=8190.0, specific_heat_J_kgK=435.0, thermal_conductivity_W_mK=11.4, absorptivity=0.38, melting_temp_K=1609.0, boiling_temp_K=3190.0),
-                    "316L": dict(density_kg_m3=7950.0, specific_heat_J_kgK=500.0, thermal_conductivity_W_mK=16.3, absorptivity=0.36, melting_temp_K=1673.0, boiling_temp_K=3086.0),
-                    "AlSi10Mg": dict(density_kg_m3=2680.0, specific_heat_J_kgK=900.0, thermal_conductivity_W_mK=113.0, absorptivity=0.20, melting_temp_K=870.0, boiling_temp_K=2743.0),
-                }
-                props = material_presets.get(alloy_name, material_presets["Ti-6Al-4V"])
+                alloy_name = mat_cfg.get("name")
+                alloy_id = resolve_alloy_id(alloy_name)
+                if alloy_id is None:
+                    raise ValueError("Unknown or missing alloy for thermal accumulation")
+                # Shared screening constants; this model uses IR absorptivity.
+                props = thermal_props(alloy_id)
                 mat = AlloyThermalProperties(
-                    name=alloy_name,
+                    name=THERMAL_NAME[alloy_id],
                     density_kg_m3=props["density_kg_m3"],
                     specific_heat_J_kgK=props["specific_heat_J_kgK"],
                     thermal_conductivity_W_mK=props["thermal_conductivity_W_mK"],
-                    absorptivity=props["absorptivity"],
-                    melting_temp_K=props["melting_temp_K"],
-                    boiling_temp_K=props["boiling_temp_K"]
+                    absorptivity=props["absorptivity_IR"],
+                    melting_temp_K=props["liquidus_C"] + 273.15,
+                    boiling_temp_K=props["boiling_C"] + 273.15
                 )
                 hatch_cfg = payload.get("config", {})
                 cfg = HatchProcessConfig(

@@ -1,3 +1,17 @@
+# Current owner — 01a0c339-7e60-7573-b548-4fd5e6cbef44, 2026-09-21
+
+Continuation started from clean application HEAD affdaec. Source01a0c326 stops
+writing after dispatch. First package owns python/lpbf_worker.py,
+python/test_lpbf_thermal_materials.py and checkpoint documents/parent STATUS.md.
+Acceptance: thermal-accumulation uses four_alloy_materials, resolves aliases,
+rejects unknown/missing identity instead of silently calculating Ti64, and keeps
+the screening equations unchanged. Verify real JSON-lines worker requests and
+CPU engineering/Phase17 tests. No secondary-module work, push or installation.
+Graph generation18Sep is stale; exact source fallback applies. Phase0 OPEN.
+Also owns the thermal service's required material type. Package verified:
+RPC3, engineering25+1skip, Phase17 5, optional1, unit133 and lint PASS.
+Next owns tests/lpbf-sqlite-compatibility.test.ts and SQLite ADR/provenance notes.
+
 # Latest architecture decision — shared LPBF core authorized
 
 User explicitly reversed the earlier restriction: "Yok yok ortak çekirdek yapalım".

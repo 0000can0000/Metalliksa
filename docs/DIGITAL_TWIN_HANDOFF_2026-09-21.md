@@ -1,5 +1,20 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+Active owner01a0c339-7e60-7573-b548-4fd5e6cbef44 started from clean affdaec.
+Thermal-accumulation now uses shared four_alloy_materials properties and canonical
+aliases, converts Celsius to Kelvin, and rejects missing/unknown alloys. Real RPC
+regression first failed (9 subcase failures), then all3 tests passed. CPU engineering
+25PASS/1OpenFOAM skip (26 total), Phase17 5PASS, optional GPU isolation1PASS,
+unit133PASS and lintPASS. Initial engineering run had6 sandbox temp-directory
+permission errors; scoped unsandboxed rerun above passed. Screening equations and
+their physical limitations remain unchanged; no experimental validation claimed.
+Client service now requires material identity. No UI behavior changes in this package.
+Build-job/meltpool baseline is still running; do not claim it passed yet.
+IN718 manifest archive verification: all3 local files match recorded hashes;
+raw thermography remains ineligible for thermal/powder validation and training.
+Next: source terms/measurement context and SQLite transaction/backup trial+ADR,
+then persistence contracts. Secondary modules remain deferred; Phase0 OPEN.
+
 LATEST USER DECISION: build a shared LPBF core. The user explicitly reversed the
 previous restriction with "Yok yok ortak çekirdek yapalım". The earlier prohibition
 is superseded. LPBF engines/shared core/database remain the priority; secondary

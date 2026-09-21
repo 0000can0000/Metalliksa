@@ -775,7 +775,7 @@ class PythonComputationService {
 
   // Phase 17: Multi-Track Thermal Accumulation & Inter-Pass Drift
   async simulateThermalAccumulation(data: {
-    material?: { name: string };
+    material: { name: string };
     config?: {
       laserPower_W?: number;
       scanVelocity_mms?: number;

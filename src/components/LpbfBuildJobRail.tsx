@@ -14,6 +14,7 @@ const LPBF_JOB_ALLOYS: { alloyId: LPBFAlloyId; presetId: string; label: string }
   { alloyId: "ss316l", presetId: "ss-316l", label: "316L" },
   { alloyId: "alsi10mg", presetId: "alsi10mg", label: "AlSi10Mg" },
   { alloyId: "in718", presetId: "inconel-718", label: "IN718" },
+  { alloyId: "in625", presetId: "inconel-625", label: "IN625" },
 ];
 
 export type LpbfBuildJobStage = "alloy" | "cad" | "process" | "record";

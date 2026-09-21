@@ -30,6 +30,31 @@ from lpbf_defect_diagnostics import defect_diagnostics
 
 # Secondary alloys only. Ti-6Al-4V, 316L, AlSi10Mg, IN718 live in four_alloy_materials.py.
 SECONDARY_THERMOPHYSICAL_DB = {
+    "Inconel 625": {
+        "base": "Ni",
+        "liquidus_C": 1350.0,
+        "solidus_C": 1290.0,
+        "boiling_C": 2880.0,
+        "M_molar_kg_mol": 0.0585,
+        "density_kg_m3": 8440.0,
+        "density_liquid_kg_m3": 7600.0,
+        "thermal_conductivity_W_mK": 9.8,
+        "thermal_conductivity_liquid_W_mK": 30.0,
+        "specific_heat_J_kgK": 410.0,
+        "specific_heat_liquid_J_kgK": 750.0,
+        "latent_heat_fusion_J_kg": 260000.0,
+        "latent_heat_vap_J_kg": 6300000.0,
+        "absorptivity_IR": 0.38,
+        "absorptivity_Green": 0.58,
+        "surface_tension_N_m": 1.76,
+        "d_gamma_dT_N_mK": -0.00045,
+        "viscosity_Pa_s": 0.0055,
+        "thermal_expansion_1_K": 12.8e-6,
+        "youngs_modulus_GPa": 205.0,
+        "poissons_ratio": 0.31,
+        "pdas_A1": 80.0,
+        "sdas_B1": 42.0
+    },
     "CoCrMo": {
         "base": "Co",
         "liquidus_C": 1395.0,

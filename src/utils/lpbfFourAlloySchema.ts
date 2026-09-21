@@ -52,6 +52,14 @@ export const LITERATURE_PV_WINDOWS: Record<
     notes: "Jia dense ~130 W / 600 mm/s; EOS-class ~285 W / 960 mm/s / 40 µm; LoF at 90 W / 1200 mm/s.",
     sources: ["10.1016/j.jallcom.2013.09.171", "10.1016/j.msea.2015.05.035", "10.1016/j.matlet.2015.10.136"],
   },
+  in625: {
+    powerMin_W: 150,
+    powerMax_W: 350,
+    speedMin_mm_s: 600,
+    speedMax_mm_s: 1200,
+    notes: "Typical AM-Bench IN625 parameter window; analogous to IN718 but slightly more power tolerance.",
+    sources: ["NIST AMB2018-01"],
+  }
 };
 
 export function alloyRecords(alloyId: LPBFAlloyId): TraceableLPBFRecord[] {
@@ -182,7 +190,8 @@ export function mapDisplayNameToAlloyId(name: string): LPBFAlloyId | null {
   if (n.includes("ti-6") || n.includes("ti64") || n.includes("grade 5")) return "ti6al4v";
   if (n.includes("316")) return "ss316l";
   if (n.includes("alsi")) return "alsi10mg";
-  if (n.includes("718") || n.includes("inconel")) return "in718";
+  if (n.includes("718") || n.includes("inconel 718")) return "in718";
+  if (n.includes("625") || n.includes("inconel 625")) return "in625";
   return null;
 }
 
@@ -190,6 +199,7 @@ export function alloyIdToAnisotropyKey(id: LPBFAlloyId): string {
   if (id === "ti6al4v") return "Ti-6Al-4V Grade 5";
   if (id === "ss316l") return "316L Stainless Steel";
   if (id === "alsi10mg") return "AlSi10Mg";
+  if (id === "in625") return "Inconel 625";
   return "Inconel 718";
 }
 

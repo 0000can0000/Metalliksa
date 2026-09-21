@@ -11,9 +11,7 @@
  * 
  * Fully documents and calculates the recognized physical limitations of VED.
  */
-
-export type LPBFAlloyId = "ti6al4v" | "ss316l" | "alsi10mg" | "in718";
-
+export type LPBFAlloyId = "ti6al4v" | "ss316l" | "alsi10mg" | "in718" | "in625";
 export type ProcessRegime = 
   | "Lack of Fusion (LoF)"
   | "Stable Conduction"

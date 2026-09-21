@@ -343,3 +343,13 @@ This does not clear the separate TypeScript lint or Phase 0 scientific gates.
   suite remains ten PASS on CPU venv. Logs in `.runtime/phase0-audit/`.
 - EIS test server PID41348 and captured children stopped; no listeners remain
   on 3190/5190. Unknown-owner HMR24678 was left untouched. Phase0 stays open.
+# 2026-09-21 — Python synthetic recovery contract
+
+Owner01a0c326. Four focused regressions first failed, including actual CLI
+constant-magnitude benchmark failing on null R-squared. After repair 4/4 pass;
+existing CNLS12/12 and no_fabricated_outputs10/10 pass with lpbf-win-py312.
+Recovery preserves missing values, undefined zero-denominator percentages and
+unavailable uncertainty; aggregate percentages require every row. No arbitrary
+robustness grade, inferred reliability, default convergence/time or score.
+One synthetic realization is not experimental qualification. Frontend migration
+and its tests remain pending; Phase0 is open.

@@ -1,4 +1,16 @@
-# Current owner retained — successor NOT created
+# Current owner — 01a0c326-5fad-7fb1-8c28-47770538592d, 2026-09-21
+
+User explicitly authorized continuation and confirmed no other agent is editing
+the three dirty EIS files; inherit their existing changes without reverting.
+Source01a0c323 has stopped writing. Starting HEAD5c9e7cb. First package owns
+python/cnls_fitting_solver.py, focused synthetic contract tests, then the
+SyntheticNoiseStressStudio/cnlsOptimizer/syntheticEISNoiseGenerator consumers,
+their types and regression/browser harnesses. Preserve observed external edits.
+Acceptance: fit displayed points, no invented recovery/uncertainty/grades,
+input-bound asynchronous work, meaningful unit/numerical/browser checks.
+Phase0 OPEN. STATUS and handoff maintained by this owner.
+
+# Historical owner retained — successor NOT created
 
 Two create_thread calls were auto-review rejected. Original user messages were
 retrieved before retry, but review still requires direct approval in this task.

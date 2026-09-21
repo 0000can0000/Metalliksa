@@ -1983,6 +1983,47 @@ def simulate_circuit_spectra(topology_data, initial_params=None, min_freq=0.01, 
         }
     }
 
+def summarize_synthetic_recovery(ground_truth_params, fit_result):
+    """Observed recovery for one synthetic realization; no qualification score.
+
+    Missing parameters and zero denominators have unavailable percentage errors.
+    An aggregate is available only when every ground-truth row is comparable.
+    """
+    def finite(value):
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) else None
+
+    recovered = fit_result.get("parameters") or []
+    rows = []
+    for truth in ground_truth_params:
+        matches = [p for p in recovered if p.get("elementId") == truth.get("elementId")
+                   and p.get("field") == truth.get("field")]
+        match = matches[0] if len(matches) == 1 else {}
+        actual = finite(match.get("fittedValue"))
+        expected = finite(truth.get("value"))
+        absolute = finite(abs(actual - expected)) if actual is not None and expected is not None else None
+        percent = finite(absolute / abs(expected) * 100) if absolute is not None and expected != 0 else None
+        sigma = finite(match.get("stdError"))
+        rows.append({
+            "paramName": truth.get("paramName"), "elementId": truth.get("elementId"),
+            "field": truth.get("field"), "unit": truth.get("unit"),
+            "trueValue": expected, "recoveredValue": actual, "absError": absolute,
+            "pctError": percent, "stdError": sigma if sigma is not None and sigma >= 0 else None,
+            "isReliable": None,
+        })
+    comparable = bool(rows) and all(row["pctError"] is not None for row in rows)
+    result = {
+        "parameterErrors": rows,
+        "meanAbsolutePctError": sum(row["pctError"] / len(rows) for row in rows) if comparable else None,
+        "maxAbsolutePctError": max(row["pctError"] for row in rows) if comparable else None,
+        "robustnessScore": None, "robustnessGrade": None,
+        "assessment": "Single synthetic realization; no validated robustness grade or experimental qualification.",
+        "converged": fit_result.get("converged") if isinstance(fit_result.get("converged"), bool) else None,
+    }
+    for key in ("chiSquare", "reducedChiSquare", "rSquared", "rmse", "iterations", "computeTimeMs"):
+        result[key] = finite(fit_result.get(key))
+    return result
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--status":
         print(json.dumps({
@@ -2250,72 +2291,17 @@ if __name__ == "__main__":
                 polish_lm
             )
 
-            # Compare Ground Truth Parameters with Fitted Parameters
-            ground_truth_params = extract_topology_parameters(topology_data)
-            recovered_params = fit_result.get("parameters", [])
-            param_errors = []
-            sum_err = 0.0
-            max_err = 0.0
-
-            for tp in ground_truth_params:
-                matched = next((rp for rp in recovered_params if rp.get("elementId") == tp.get("elementId") and rp.get("field") == tp.get("field")), None)
-                rec_val = matched.get("fittedValue", tp.get("value", 1.0)) if matched else tp.get("value", 1.0)
-                std_err = matched.get("stdError", 0.0) if matched else 0.0
-                true_val = float(tp.get("value", 1.0))
-                abs_err = abs(rec_val - true_val)
-                pct_err = (abs_err / abs(true_val)) * 100.0 if true_val != 0 else 0.0
-
-                sum_err += pct_err
-                if pct_err > max_err:
-                    max_err = pct_err
-
-                param_errors.append({
-                    "paramName": tp.get("paramName", "Param"),
-                    "elementId": tp.get("elementId", ""),
-                    "field": tp.get("field", "value"),
-                    "trueValue": true_val,
-                    "recoveredValue": rec_val,
-                    "unit": tp.get("unit", ""),
-                    "absError": abs_err,
-                    "pctError": round(pct_err, 2),
-                    "stdError": std_err,
-                    "isReliable": pct_err <= 10.0
-                })
-
-            mape = sum_err / len(param_errors) if param_errors else 0.0
-            score = 100.0 - min(60.0, mape * 2.0) - min(25.0, max_err * 0.5)
-            if not fit_result.get("converged", True):
-                score -= 30.0
-            r_sq = fit_result.get("rSquared", 0.99)
-            if r_sq < 0.98:
-                score -= (1.0 - r_sq) * 500.0
-            robustness_score = max(0, min(100, int(round(score))))
-
-            grade = "F"
-            if robustness_score >= 95: grade = "A+"
-            elif robustness_score >= 85: grade = "A"
-            elif robustness_score >= 75: grade = "B"
-            elif robustness_score >= 60: grade = "C"
-            elif robustness_score >= 40: grade = "D"
-
+            recovery = summarize_synthetic_recovery(extract_topology_parameters(topology_data), fit_result)
             print(json.dumps({
-                "success": True,
-                "engine": "CPython-3.10-Synthetic-Noise-Stress-Lab",
+                "success": fit_result.get("success") is True,
+                "engine": "CPython-Synthetic-Noise-Stress-Lab",
                 "syntheticPoints": synthetic_points,
                 "cleanPoints": clean_points,
                 "fitReport": fit_result,
-                "parameterErrors": param_errors,
-                "meanAbsolutePctError": round(mape, 2),
-                "maxAbsolutePctError": round(max_err, 2),
-                "robustnessScore": robustness_score,
-                "robustnessGrade": grade,
-                "reducedChiSquare": fit_result.get("reducedChiSquare", 0.001),
-                "rSquared": r_sq,
-                "rmse": fit_result.get("rmse", 0.01),
-                "converged": fit_result.get("converged", True),
-                "iterations": fit_result.get("iterations", max_gens),
-                "computeTimeMs": fit_result.get("computeTimeMs", 120)
-            }))
+                "noiseSeed": int(noise_cfg.get("randomSeed", 42)),
+                "dataOrigin": "synthetic",
+                **recovery,
+            }, allow_nan=False))
         elif action in ["auto_fit", "autofit", "global_fit"] or data.get("isAutoFit"):
             points = data.get("points", [])
             initial_params = data.get("parameters", [])

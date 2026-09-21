@@ -1,3 +1,25 @@
+## 2026-09-21 — CPU reference audit and material boundary
+
+Application code2a118ee, CPU Python3.12. Engineering26 tests:25PASS,1OpenFOAM
+skip. Phase17 5PASS, worker optional-backend1PASS, new material RPC3PASS after
+9 failing subcases before repair. BuildJob fast, Eagar–Tsai, Goldak–Fabbro and
+meltpool accuracy scripts PASS with missing-Warp/flat-plate fallback warnings.
+These results do not establish GPU execution or new experimental validation.
+
+Single small synthetic IN718 reference profile:10W,40um mesh,200um track,
+2tracks/2layers,45um layer,35deg rotation,20us dwell,100us cooling.
+2156cells/1181steps; wall3.77623s, process-lifetime peak working set243924992bytes
+(Windows GetProcessMemoryInfo, includes imports),63artifact files/560547bytes.
+Energy relative error3.7662e-15; stationary mass accounting5.5560e-17.
+Peak1175.58K: no melt, so this is a low-power conduction/runtime baseline,
+not representative melt-pool performance or experimental validation. VRAM not
+measured (CPU path); repeat/profile scaling and a melting case remain open.
+Local raw report: `.runtime/phase0-audit/lpbf-reference-profile-01a0c339/profile.json`.
+Input hash7bd1b26132e690523930f79ae3c0f199103affe3a1b3974fd7441c0a48d0e628;
+implementation hash3e7cd5b26540f6aef3c01e27b8c422a1a087f74b79688a0ae996fa860d464813.
+Acceptance here is successful execution and existing balance gates only; no new
+benchmark tolerance is introduced. Phase0 remains open.
+
 ## 2026-09-18 16:05 — LPBF Multiphysics CFD Phase 3: Knight Recoil Pressure and Hertz-Knudsen Evaporation
 - Scope: `metalliksaMeltPoolFoam-OpenFOAM14-3` / `recoil-knight-clausius-v1`. Standalone OpenFOAM 14 multiphysics CFD solver in `python/openfoam/meltPoolFoam/` with Hertz-Knudsen evaporative mass flux and Knight (1979) recoil normal pressure. Python orchestration in `python/lpbf_cfd.py` and automated verification in `python/test_lpbf_cfd.py`.
 - Formulated physics:

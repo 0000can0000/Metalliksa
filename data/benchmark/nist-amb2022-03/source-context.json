@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "dataset_id": "nist-mds2-2716",
+  "source_version": "1.0.0",
+  "reviewed_at": "2026-09-21",
+  "review_scope": "Archived README and manifest, not HDF5 attribute or measurement review",
+  "evidence_kind": "source-metadata",
+  "readme": {
+    "path": "raw/README.txt",
+    "sha256": "ba44076ed51b69c0e4ca80ff0e2568eed2dc6459e85c9ad83b85860bee5760f2",
+    "source_url": "https://data.nist.gov/od/ds/mds2-2716/README.txt"
+  },
+  "source_terms": {
+    "locator": "README: Data Use Notes and Disclaimer",
+    "policy_url": "https://www.nist.gov/director/copyright-fair-use-and-licensing-statements-srd-data-and-software",
+    "citation_url": "https://www.nist.gov/open/license",
+    "summary": "Archived README permits reuse subject to its terms and NIST acknowledgment; modifications should identify their date and nature. Foreign copyright and no-warranty provisions are stated in the source.",
+    "license_spdx": null,
+    "license_spdx_missing_reason": "README gives NIST terms, not an SPDX identifier"
+  },
+  "experiment": {
+    "material": "IN718",
+    "process_scope": "bare-plate",
+    "powder_present": false,
+    "machine": "NIST Additive Manufacturing Metrology Testbed (AMMT)",
+    "locator": "README: Description and ScanStrategy",
+    "heat_treatment": null,
+    "heat_treatment_missing_reason": "Not established by this README review"
+  },
+  "scan_channels": [
+    {"name": "X", "unit_source": "mm", "unit_si": "m", "si_scale": 0.001, "quantity": "commanded galvo X position"},
+    {"name": "Y", "unit_source": "mm", "unit_si": "m", "si_scale": 0.001, "quantity": "commanded galvo Y position"},
+    {"name": "P", "unit_source": "W", "unit_si": "W", "si_scale": 1, "quantity": "commanded laser power"},
+    {"name": "T", "unit_source": null, "unit_si": null, "si_scale": null, "quantity": "instrument trigger command, unsigned integer, NOT time or temperature"}
+  ],
+  "scan_locator": "README: ScanStrategy; /Xpad/ and /Ypad/ datasets",
+  "reported_process_uncertainty": {
+    "locator": "README: ScanStrategy",
+    "coverage_factor_k": 1,
+    "scan_speed_relative": 0.025,
+    "delivered_power_relative": 0.05,
+    "scope": "As reported by source; not independently re-estimated"
+  },
+  "measurement": {
+    "quantity": "raw thermographic camera signal",
+    "source_locator": "README: Thermography /ThermalData/*/Signal",
+    "unit_source": null,
+    "unit_missing_reason": "Must inspect HDF5 attributes before assigning signal units",
+    "temperature_conversion": null,
+    "temperature_conversion_missing_reason": "Requires review of ThermalCal model, coefficients, input/output units and measurement operator",
+    "beam_diameter_definition": null,
+    "beam_diameter_missing_reason": "README names spot_size but does not establish a diameter convention in this review",
+    "repeat_group_rule": "Line_X_Y_Z: X=set, Y=subset, Z=one of three repeats; repeats stay in the same evaluation partition",
+    "excluded_from_challenge": "Y_padX_SS is additional reference data, not an AMB2022-03 challenge condition"
+  },
+  "split": "unassigned",
+  "thermal_validation_ready": false,
+  "powder_bed_validation_ready": false,
+  "unresolved": [
+    "Inspect HDF5 attributes without loading the full signal cube",
+    "Confirm signal units, camera timing, spatial calibration and surface/emissivity assumptions",
+    "Confirm laser spot definition and measurement locations",
+    "Choose independent conditions and freeze comparison definitions/tolerances before model evaluation"
+  ]
+}

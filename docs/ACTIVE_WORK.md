@@ -11,6 +11,9 @@ Graph generation18Sep is stale; exact source fallback applies. Phase0 OPEN.
 Also owns the thermal service's required material type. Package verified:
 RPC3, engineering25+1skip, Phase17 5, optional1, unit133 and lint PASS.
 Next owns tests/lpbf-sqlite-compatibility.test.ts and SQLite ADR/provenance notes.
+Material repair committed2a118ee. SQLite trial3 and full unit136PASS; source-context
+metadata and low-power profile recorded. Also owns PROOF.md. Next scope is isolated
+versioned metadata repository and its tests; no live legacy data migration yet.
 
 # Latest architecture decision — shared LPBF core authorized
 

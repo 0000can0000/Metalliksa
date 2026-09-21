@@ -9,11 +9,22 @@ unit133PASS and lintPASS. Initial engineering run had6 sandbox temp-directory
 permission errors; scoped unsandboxed rerun above passed. Screening equations and
 their physical limitations remain unchanged; no experimental validation claimed.
 Client service now requires material identity. No UI behavior changes in this package.
-Build-job/meltpool baseline is still running; do not claim it passed yet.
+BuildJob fast, Eagar–Tsai, Goldak–Fabbro, meltpool fixture now PASS; missing Warp
+causes flat-plate fallback warnings, so GPU paths were not verified.
 IN718 manifest archive verification: all3 local files match recorded hashes;
 raw thermography remains ineligible for thermal/powder validation and training.
-Next: source terms/measurement context and SQLite transaction/backup trial+ADR,
-then persistence contracts. Secondary modules remain deferred; Phase0 OPEN.
+SQLite trial3PASS, full unit136PASS; ADR_LPBF_SQLITE_2026-09-21.md selects
+node:sqlite on verified Node24.20.0. No production storage switched/migrated yet.
+IN718 source-context.json records archived README terms, units and condition
+limits: scan T is trigger, not time/temperature; repeats stay grouped, raw signal
+needs calibration. CPU/scientific envs lack h5py; no package was installed.
+Low-power reference profile3.776s/243924992peakRSSbytes/560547artifactbytes;
+no melt; see PROOF. Representative melting/GPU profile still open. Graft local
+wiring refreshed; generator rewrote tracked unrelated cards, only those generated
+changes were restored. CBM still18Sep stale; direct source evidence remains primary.
+Next: versioned persistence contracts/repository, artifact store and dry-run import;
+complete IN718 attribute/measurement review and remaining Phase0 gates. Secondary
+modules remain deferred; Phase0 OPEN.
 
 LATEST USER DECISION: build a shared LPBF core. The user explicitly reversed the
 previous restriction with "Yok yok ortak çekirdek yapalım". The earlier prohibition

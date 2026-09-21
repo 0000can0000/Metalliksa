@@ -1,3 +1,18 @@
+## 2026-09-21 — Bounded melting CPU resource profile
+
+Fresh NumPy reference `enthalpy-fv-6`, Windows Python3.12.10/NumPy2.2.6,
+40W IN718 /800mm-s /80um beam /200um single track.40um and20um meshes produce
+2119.8101K and2803.3077K above1609.15K liquidus, with saved-frame confirmation.
+Solver wall2.3170s/4.8926s; peak process RAM244932608/244813824bytes;
+solver artifacts319141/2179754bytes. Energy closure5.71e-16/4.57e-16.
+Acceptance here: explicit CPU identity, nonzero molten volume and saved thermal
+fields, measured resources, existing balance bounds. PASS for that bounded scope.
+Mesh-dependent W/D40/40→80/20um is NOT convergence or experiment validation.
+VRAM/GPU not exercised. Full setup/log/fingerprint references and limitations:
+`docs/LPBF_CORE_BASELINE_2026-09-21.md`. Prior profile actually used10W, not40W.
+Current CPU regression44PASS/5Linux-OpenFOAMskip across engineering/source/peak/
+overlap/material RPC groups. Phase0 OPEN; no later phase acceptance.
+
 ## 2026-09-21 — Source archive byte integrity and portable backup (software evidence)
 
 IN718 nist-mds2-2716, archived manifest/source-context,3 files/550398609bytes.

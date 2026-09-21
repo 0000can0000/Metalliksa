@@ -1,5 +1,18 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+Owner01a0c36f claimed clean2ce1abc. Bounded16entry LPBF wiring/core audit and
+fresh melting40W CPU profiles complete: `LPBF_CORE_BASELINE_2026-09-21.md`.
+40/20um mesh peaks2119.81/2803.31K, wall2.317/4.893s, peakRAM~245MB.
+Strong mesh sensitivity, no convergence accepted. Old profile was10W, not40W.
+CPU engineering/source/peak/overlap/material suites44PASS/5OpenFOAMskip after
+sandbox temp-directory failure was removed by scoped test permission.
+New spec `LPBF_SHARED_CORE_CONTRACT.md`; first implementation plan
+`superpowers/plans/2026-09-21-lpbf-core-identity.md`. Next: TDD bound result
+model/backend/material/input identity, then consumer guard. Phase0 stays OPEN.
+Additional located LPBF risks: ExperimentalValidationLab hardcoded predictions
+and backend unconditional validated; powder worker returns radii instead of packing;
+old GPU no route, incompatible physics/materials/boundaries. Do not auto-enable.
+
 CHECKPOINT: UI661153a, HDF5 b0bd0bd; next git log identifies final docs checkpoint.
 WSL fresh verification complete: Ubuntu22.04/WSL2 starts, Python3.10.12 at
 /usr/bin/python3, NumPy1.21.5/SciPy1.8.0. Doctor has15missing dependencies including

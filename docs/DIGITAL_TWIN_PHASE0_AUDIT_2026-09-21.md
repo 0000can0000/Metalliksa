@@ -7,6 +7,17 @@ Gemini ownership is unknown. See ACTIVE_WORK.md for this task's scope.
 
 **Phase 0 is open. No later phase or experimental qualification is accepted.**
 
+## Current bounded core baseline — owner01a0c36f
+
+See `LPBF_CORE_BASELINE_2026-09-21.md` for current16entry UI/API/worker map,
+shared thermal seams, source-backed specialist gaps and fresh melting CPU profile.
+40W/40um and20um produce actual saved molten fields, wall2.317/4.893s and~245MB
+peak process working set. W/D changes40/40→80/20um; convergence remains OPEN.
+Prior nonmelting profile input was10W (historical40W wording corrected).
+Fresh five CPU groups44PASS/5explicit Linux/OpenFOAMskip. First sandbox failures
+were temp-directory permissions; scoped reruns pass. Source calibration still null.
+Detailed first shared-core contract plan is written; no later phase accepted.
+
 ## 2026-09-21 — LPBF source and current WSL checkpoint
 
 UI661153a and HDF5 inspection b0bd0bd are committed locally. Source archive UI

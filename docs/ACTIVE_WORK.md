@@ -1,4 +1,14 @@
-# Current owner — 01a0c35a-2c97-7352-8d90-87ae9e0403b3, 2026-09-21
+# Current owner — 01a0c36f-7006-7eb3-992d-73265a0a354d, 2026-09-21
+
+Continues clean application HEAD2ce1abc in the same LOCAL checkout. Predecessor
+stopped writes after dispatch. Owns bounded current LPBF engine/core evidence map,
+representative melting CPU resource profile, shared-core contracts/implementation
+subplan, and checkpoint documents/parent STATUS.md. Preserve model identities and
+frozen numerical acceptance thresholds. Phase0 remains OPEN. No installation,
+push, live migration or secondary-module work. Graph generation18Sep is stale;
+task-directed coverage and direct source fallback are required.
+
+# Previous owner — 01a0c35a-2c97-7352-8d90-87ae9e0403b3, 2026-09-21
 
 Packages complete:661153a source UI; b0bd0bd HDF5 metadata review. Fresh WSL
 engineering26PASS including OpenFOAM; doctor records missing dependencies, no

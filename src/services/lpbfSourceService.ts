@@ -88,3 +88,9 @@ export async function sourceAction(datasetId: string, action: SourceAction,
   }
   return snapshot;
 }
+
+export async function sourceMeasurements(datasetId: string, signal: AbortSignal): Promise<{datasetId:string; data:any[]}> {
+  const response = await fetch(`/api/lpbf/sources/${encodeURIComponent(datasetId)}/measurements`, { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error('Failed to load experimental measurements');
+  return response.json();
+}

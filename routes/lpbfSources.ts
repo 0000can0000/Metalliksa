@@ -42,6 +42,7 @@ export function createLpbfSourcesRouter(service = new LpbfSourceArchiveService()
     return service.import(req.params.datasetId, req.body.expectedRevision, req.body.documentSha256);
   }));
   router.post(`${prefix}/:datasetId/verify`, handle(req => { body(req, []); return service.verify(req.params.datasetId); }));
+  router.get(`${prefix}/:datasetId/measurements`, handle(req => service.measurements(req.params.datasetId)));
   const bodyError: ErrorRequestHandler = (error, _req, res, _next) => {
     res.status(error?.status === 413 ? 413 : 400).json({ error: error?.status === 413 ? 'Source request exceeds 16 KiB.' : 'Source request must contain valid JSON.' });
   };

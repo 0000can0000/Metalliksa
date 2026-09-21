@@ -48,3 +48,18 @@ export function nistIn718CatalogEntry(root = path.resolve('data/benchmark/nist-a
         sourceContext: context });
     } };
 }
+
+export function cmuTi64CatalogEntry(root = path.resolve('data/benchmark/cmu-ti64-meltpool-v1')): LpbfSourceCatalogEntry {
+  return { datasetId: 'cmu-ti64-meltpool-v1', title: 'CMU Single/Multi-track Meltpool Dimensions', sourceRoot: root,
+    loadDocument() {
+      const manifest = readJson(root, 'manifest.json');
+      if (manifest.schema_version !== 1 || manifest.dataset_id !== 'cmu-ti64-meltpool-v1' || manifest.material !== 'Ti-6Al-4V' || !Array.isArray(manifest.files)) {
+        throw new Error('Source manifest identity mismatch');
+      }
+      return validateSourceDocument({ schemaVersion: 1, datasetId: manifest.dataset_id, materialId: 'ti6al4v', processScope: 'bare-plate',
+        source: { url: manifest.doi ? `https://doi.org/${manifest.doi}` : '', citation: manifest.attribution, version: '1',
+          terms: null, termsMissingReason: 'Public benchmark' },
+        artifacts: manifest.files.map((file: any) => ({ relativePath: file.path, sha256: file.sha256, byteSize: file.bytes, sourceUrl: file.source_url })),
+        sourceContext: { schema_version: 1, dataset_id: manifest.dataset_id, source_version: '1' } });
+    } };
+}

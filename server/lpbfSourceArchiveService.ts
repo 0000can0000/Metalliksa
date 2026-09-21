@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
-import { lstatSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { artifactDirectory, LpbfArtifactStore } from './lpbfArtifactStore';
 import { LpbfSourceRepository, validateSourceDocument } from './lpbfSourceRepository';
 import { dryRunSourceImport, importSource } from './lpbfSourceImport';
-import { nistIn718CatalogEntry, type LpbfSourceCatalogEntry } from './lpbfSourceCatalog';
+import { nistIn718CatalogEntry, cmuTi64CatalogEntry, type LpbfSourceCatalogEntry } from './lpbfSourceCatalog';
 
 export class LpbfSourceArchiveError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -14,7 +14,7 @@ const digest = (document: unknown) => createHash('sha256').update(JSON.stringify
 export class LpbfSourceArchiveService {
   private busy = false;
   constructor(private readonly storageRoot = path.resolve(process.env.METALLIKSA_LPBF_SOURCE_ROOT || '.lpbf-sources'),
-    private readonly entries: LpbfSourceCatalogEntry[] = [nistIn718CatalogEntry()]) {}
+    private readonly entries: LpbfSourceCatalogEntry[] = [nistIn718CatalogEntry(), cmuTi64CatalogEntry()]) {}
 
   catalog() { return { sources: this.entries.map(({ datasetId, title }) => ({ datasetId, title })) }; }
 
@@ -98,5 +98,31 @@ export class LpbfSourceArchiveService {
       return { datasetId, revision: current.revision, documentSha256: current.documentSha256,
         artifactIntegrity: 'verified-now' as const, verifiedAt: new Date().toISOString(), evidenceStatus: current.evidenceStatus };
     });
+  measurements(datasetId: string) {
+    const current = this.current(datasetId).current;
+    if (!current) throw new LpbfSourceArchiveError(404, 'Source dataset has not been imported.');
+    if (datasetId === 'cmu-ti64-meltpool-v1') {
+      const artifact = current.document.artifacts.find(a => a.relativePath === 'raw/MTMeasurements.csv');
+      if (!artifact) throw new Error('MTMeasurements.csv not found');
+      const filename = path.join(this.storageRoot, 'artifacts', 'objects', artifact.sha256.slice(0, 2), artifact.sha256);
+      const csv = readFileSync(filename, 'utf8');
+      const lines = csv.trim().split('\n').slice(1);
+      return {
+        datasetId,
+        data: lines.map((line: string) => {
+          const parts = line.split(',');
+          return {
+            slice: Number(parts[0]),
+            orientation: Number(parts[1]),
+            power_W: Number(parts[2]),
+            velocity_mms: Number(parts[3]),
+            width_um: Number(parts[4]),
+            depth_um: Number(parts[5]),
+            cap_um: Number(parts[6])
+          };
+        })
+      };
+    }
+    return { datasetId, data: [] };
   }
 }

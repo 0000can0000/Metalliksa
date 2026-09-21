@@ -1,3 +1,4 @@
+import { normalizePythonCnlsReport } from "../utils/pythonCnlsReport";
 import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import React, { useState, useMemo, useRef } from "react";
 import {
@@ -176,6 +177,8 @@ export function CNLSFittingStudio({
   const handleRunAutoFit = async () => {
     setIsAutoFitting(true);
     setFitError(null);
+    setFitReport(null);
+    setDrtResult(null);
 
     try {
       const response = await fetch("/api/python/cnls-autofit", {
@@ -200,33 +203,9 @@ export function CNLSFittingStudio({
         if (pythonResult.error) {
           throw new Error(pythonResult.error);
         }
-        report = {
-          topology: pythonResult.topology || selectedTopology,
-          parameters: pythonResult.parameters || [],
-          dataset: activeDataset,
-          chiSquare: pythonResult.reducedChiSquare || 0.001,
-          reducedChiSquare: pythonResult.reducedChiSquare || 0.001,
-          rmse: pythonResult.rmse || 0.05,
-          rSquared: pythonResult.rSquared || 0.99,
-          iterations: pythonResult.iterations || maxIterations,
-          converged: pythonResult.converged !== false,
-          weighting,
-          executionTimeMs: Math.round(pythonResult.computeTimeMs || 100),
-          residuals: pythonResult.residuals || [],
-          kramersKronig: pythonResult.kramersKronig,
-          astmG106: pythonResult.astmG106,
-          physicalValidation: pythonResult.physicalValidation,
-          engineUsed: "CPython 3.10 (Differential Evolution + LM)",
-        };
+        report = normalizePythonCnlsReport(pythonResult, selectedTopology, activeDataset, weighting, editableParams);
       } else {
-        report = runCNLSFit(
-          selectedTopology,
-          activeDataset,
-          editableParams,
-          weighting,
-          maxIterations
-        );
-        report.engineUsed = "Client Heuristic Fallback";
+        throw new Error(`Python CNLS returned HTTP ${response.status}`);
       }
 
       setFitReport(report);
@@ -283,6 +262,8 @@ export function CNLSFittingStudio({
   const handleRunFit = async () => {
     setIsFitting(true);
     setFitError(null);
+    setFitReport(null);
+    setDrtResult(null);
 
     try {
       let report: CNLSFitReport;
@@ -307,37 +288,12 @@ export function CNLSFittingStudio({
             if (pythonResult.error) {
               throw new Error(pythonResult.error);
             }
-            report = {
-              topology: pythonResult.topology || selectedTopology,
-              parameters: pythonResult.parameters || [],
-              dataset: activeDataset,
-              chiSquare: pythonResult.reducedChiSquare || 0.001,
-              reducedChiSquare: pythonResult.reducedChiSquare || 0.001,
-              rmse: pythonResult.rmse || 0.05,
-              rSquared: pythonResult.rSquared || 0.99,
-              iterations: pythonResult.iterations || maxIterations,
-              converged: pythonResult.converged !== false,
-              weighting,
-              executionTimeMs: Math.round(pythonResult.computeTimeMs || 100),
-              residuals: pythonResult.residuals || [],
-              kramersKronig: pythonResult.kramersKronig,
-              astmG106: pythonResult.astmG106,
-              physicalValidation: pythonResult.physicalValidation,
-              engineUsed: "CPython 3.10+ (LM + ASTM G106)",
-            };
+            report = normalizePythonCnlsReport(pythonResult, selectedTopology, activeDataset, weighting, editableParams);
           } else {
             throw new Error("Python backend returned non-200");
           }
         } catch (pyErr) {
-          console.warn("Python backend error, falling back to Client JS:", pyErr);
-          report = runCNLSFit(
-            selectedTopology,
-            activeDataset,
-            editableParams,
-            weighting,
-            maxIterations
-          );
-          report.engineUsed = "Client JavaScript Engine (Fallback)";
+          throw pyErr;
         }
       } else {
         report = runCNLSFit(
@@ -879,14 +835,14 @@ export function CNLSFittingStudio({
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                   <div>
                     <h3 className="text-xs font-bold text-white uppercase">
-                      Fit Converged Successfully ({fitReport.iterations} iterations in {fitReport.executionTimeMs} ms)
+                      {fitReport.converged ? "Fit converged" : "Convergence not confirmed"} ({fitReport.iterations} iterations in {fitReport.executionTimeMs} ms)
                     </h3>
                     <span className="text-[10px] text-slate-400">
                       Reduced Chi-Square (&chi;&sup2;<sub>red</sub>):{" "}
                       <strong className="text-emerald-300 font-bold">
                         {fitReport.reducedChiSquare.toExponential(3)}
                       </strong>{" "}
-                      | R² = <strong className="text-emerald-300 font-bold">{fitReport.rSquared.toFixed(5)}</strong>
+                      | R² = <strong className="text-emerald-300 font-bold">{(fitReport.rSquared == null ? "Unavailable" : fitReport.rSquared.toFixed(5))}</strong>
                     </span>
                   </div>
                 </div>
@@ -918,7 +874,7 @@ export function CNLSFittingStudio({
                   </span>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/40">
-                  {fitReport.kramersKronig.score}% Score
+                  {fitReport.kramersKronig.score == null ? "Independent K-K unavailable" : `${fitReport.kramersKronig.score}% Score`}
                 </span>
               </div>
 
@@ -1294,7 +1250,7 @@ export function CNLSFittingStudio({
                   {/* ASTM Standard Recommendation Banner */}
                   <div
                     className={`p-3.5 rounded-xl border text-xs space-y-2 ${
-                      (fitReport?.astmG106?.isAstmG106Compliant ?? weighting !== "unit")
+                      (fitReport?.astmG106?.isAstmG106Compliant === true)
                         ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
                         : "bg-rose-500/15 border-rose-500/40 text-rose-200"
                     }`}
@@ -1304,17 +1260,10 @@ export function CNLSFittingStudio({
                         <Scale className="w-5 h-5 text-indigo-400 shrink-0" />
                         <div>
                           <h4 className="font-bold text-xs uppercase tracking-wide">
-                            {(fitReport?.astmG106?.isAstmG106Compliant ?? weighting !== "unit")
-                              ? "ASTM G106-89 Compliance: Optimal Multi-Decade Weighting Active"
-                              : "ASTM G106 Non-Compliance Alert: Severe Unweighted Least Squares Skew"}
+                            ASTM G106 compliance unavailable
                           </h4>
                           <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
-                            {fitReport?.astmG106?.astmStandardRecommendation ||
-                              (weighting === "modulus"
-                                ? "ASTM G106 Compliant: Modulus weighting (1/|Z|²) normalizes fractional error squared, preventing low-frequency impedance from overwhelming high-frequency electrolyte resistance."
-                                : weighting === "proportional"
-                                ? "ASTM G106 Compliant: Regularized proportional weighting applied with singularity floor."
-                                : "ASTM G106 Non-Compliant: Unweighted least squares (w=1) causes low-frequency points to dominate by over 12 orders of magnitude.")}
+                            {"Weighting diagnostics do not establish standards compliance. Modulus weights fractional complex residuals; proportional weighting uses component magnitudes with a floor; unit weighting uses absolute residuals."}
                           </p>
                         </div>
                       </div>
@@ -1467,19 +1416,19 @@ export function CNLSFittingStudio({
                     <div className="p-3 rounded-xl bg-[#050810] border border-[#162032]">
                       <span className="text-slate-500 text-[10px] block">Mean Residual</span>
                       <span className="text-emerald-400 text-base font-bold">
-                        {fitReport ? fitReport.kramersKronig.meanResidualPct : 1.2}%
+                        {fitReport ? fitReport.kramersKronig.meanResidualPct : "Unavailable"}%
                       </span>
                     </div>
                     <div className="p-3 rounded-xl bg-[#050810] border border-[#162032]">
                       <span className="text-slate-500 text-[10px] block">Max Residual</span>
                       <span className="text-slate-200 text-base font-bold">
-                        {fitReport ? fitReport.kramersKronig.maxResidualPct : 3.8}%
+                        {fitReport ? fitReport.kramersKronig.maxResidualPct : "Unavailable"}%
                       </span>
                     </div>
                     <div className="p-3 rounded-xl bg-[#050810] border border-[#162032]">
                       <span className="text-slate-500 text-[10px] block">Status</span>
                       <span className="text-sky-400 text-xs font-bold block mt-1">
-                        {fitReport ? fitReport.kramersKronig.assessment : "K-K Validated"}
+                        {fitReport ? fitReport.kramersKronig.assessment : "Independent K-K unavailable"}
                       </span>
                     </div>
                   </div>
@@ -1631,7 +1580,7 @@ def objective_function(params, freqs, z_exp, weighting="${weighting}"):
                           {formatSci(p.fittedValue, 4)} {p.unit}
                         </td>
                         <td className="p-2.5 text-slate-300 whitespace-nowrap">
-                          {p.isFixed ? "—" : `± ${formatSci(p.stdError, 3)}`}
+                          {p.isFixed ? "—" : p.stdError == null ? "Unavailable" : `± ${formatSci(p.stdError, 3)}`}
                         </td>
                         <td className="p-2.5 whitespace-nowrap">
                           {p.isFixed ? (
@@ -1639,14 +1588,14 @@ def objective_function(params, freqs, z_exp, weighting="${weighting}"):
                           ) : (
                             <span
                               className={`font-bold ${
-                                p.percentError < 5
+                                p.percentError != null && p.percentError < 5
                                   ? "text-emerald-400"
-                                  : p.percentError < 15
+                                  : p.percentError != null && p.percentError < 15
                                   ? "text-amber-400"
                                   : "text-rose-400"
                               }`}
                             >
-                              ±{p.percentError}%
+                              {p.percentError == null ? "Unavailable" : `±${p.percentError}%`}
                             </span>
                           )}
                         </td>

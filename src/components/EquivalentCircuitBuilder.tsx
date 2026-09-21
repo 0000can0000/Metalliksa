@@ -2085,7 +2085,7 @@ export function EquivalentCircuitBuilder() {
                 </div>
                 <div className="text-[11px] text-slate-300 grid grid-cols-2 gap-2 pt-1 border-t border-amber-500/20">
                   <div>Reduced χ²: <strong className="text-white font-mono">{autoFitSummary.reducedChiSquare.toExponential(2)}</strong></div>
-                  <div>R² Score: <strong className="text-emerald-300 font-mono">{autoFitSummary.rSquared.toFixed(4)}</strong></div>
+                  <div>R² Score: <strong className="text-emerald-300 font-mono">{(autoFitSummary.rSquared == null ? "Unavailable" : autoFitSummary.rSquared.toFixed(4))}</strong></div>
                 </div>
                 <div className="text-[10px] text-slate-400 pt-0.5">
                   Parameters globally estimated &amp; applied to drag-and-drop circuit topology.
@@ -2113,7 +2113,7 @@ export function EquivalentCircuitBuilder() {
                   </div>
                   <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
                     <span>Reduced χ²: <strong className="text-sky-300">{fitReport.reducedChiSquare.toExponential(2)}</strong></span>
-                    <span>R²: <strong className="text-emerald-300">{fitReport.rSquared.toFixed(4)}</strong></span>
+                    <span>R²: <strong className="text-emerald-300">{(fitReport.rSquared == null ? "Unavailable" : fitReport.rSquared.toFixed(4))}</strong></span>
                   </div>
                 </div>
 
@@ -2142,7 +2142,7 @@ export function EquivalentCircuitBuilder() {
                             {p.isFixed ? (
                               <span className="text-amber-400 text-[10px]">FIXED</span>
                             ) : (
-                              `±${p.percentError.toFixed(1)}%`
+                              (p.percentError == null ? "Unavailable" : `±${p.percentError.toFixed(1)}%`)
                             )}
                           </td>
                         </tr>

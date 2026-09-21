@@ -7,6 +7,11 @@ import '../src/index.css';
 const EDS = lazy(() => import('../src/components/EDSSpectrumLab').then(m => ({ default: m.EDSSpectrumLab })));
 const GroundTruth = lazy(() => import('../src/components/3d-distortion-lab/LPBFGroundTruthDataLab').then(m => ({ default: m.LPBFGroundTruthDataLab })));
 const Circuit = lazy(() => import('../src/components/EquivalentCircuitBuilder').then(m => ({ default: m.EquivalentCircuitBuilder })));
+const Fitting = lazy(async () => {
+  const [{ CNLSFittingStudio }, { STANDARD_CIRCUIT_PRESETS }] = await Promise.all([
+    import('../src/components/CNLSFittingStudio'), import('../src/components/EquivalentCircuitBuilder')]);
+  return { default: () => <CNLSFittingStudio currentTopology={STANDARD_CIRCUIT_PRESETS[0]} onApplyTopology={() => {}} /> };
+});
 const Inverse = lazy(() => import('../src/components/InverseAlloyStudio').then(m => ({ default: m.InverseAlloyStudio })));
 const targets: InverseDesignTargets = {
   applicationName: 'Synthetic UI fixture', baseMatrix: 'Nickel',
@@ -19,7 +24,7 @@ const candidate = solveInverseAlloyCandidates(targets)[0];
 const realFetch = window.fetch.bind(window);
 let transport = 'real';
 window.fetch = async (input, init) => {
-  if (String(input) === '/api/python/cnls-fit' && init?.body && typeof init.body === 'string') {
+  if (['/api/python/cnls-fit', '/api/python/cnls-autofit'].includes(String(input)) && init?.body && typeof init.body === 'string') {
     const action = JSON.parse(init.body).action ?? 'fit';
     if (action === 'fit' || action === 'auto_fit') {
       if (transport === 'failure') return new Response(JSON.stringify({ error: 'Controlled test failure' }), { status: 503 });
@@ -34,7 +39,7 @@ function Harness() {
   const [navigation, setNavigation] = useState('');
   return <main className="min-h-screen bg-slate-950 text-white p-5">
     <h1>Component contract tests — synthetic inputs, no experimental evidence</h1>
-    <nav className="flex gap-5 my-4">{['heat', 'eds', 'ground', 'circuit', 'inverse'].map(id =>
+    <nav className="flex gap-5 my-4">{['heat', 'eds', 'ground', 'circuit', 'fitting', 'inverse'].map(id =>
       <button key={id} onClick={() => setTab(id)}>{id}</button>)}</nav>
     <output aria-label="Transfer result">{composition ? JSON.stringify(composition) : navigation}</output>
     <label className="block mb-3">CNLS test transport <select className="bg-slate-800" defaultValue="real" onChange={e => { transport = e.target.value; }}>
@@ -45,6 +50,7 @@ function Harness() {
       {tab === 'eds' && <EDS onSendToAlloyBuilder={setComposition} />}
       {tab === 'ground' && <GroundTruth />}
       {tab === 'circuit' && <Circuit />}
+      {tab === 'fitting' && <Fitting />}
       {tab === 'inverse' && <Inverse onNavigate={setNavigation} />}
     </Suspense>
   </main>;

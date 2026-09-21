@@ -616,3 +616,17 @@ below1e-5, reduced objective below1e-12. Command:
 .runtime/lpbf-win-py312/Scripts/python.exe python/test_cnls_numerics.py (2 PASS).
 Known remaining limitations: termination/uncertainty/fixed-parameter reporting,
 K-K and standards claims, and synthetic provenance are separate open repairs.
+
+## 2026-09-21 — CNLS evaluation and uncertainty regression evidence
+
+Acceptance uses independent closed-form R/Randles fixtures from test_cnls_numerics,
+not measured spectra. Twelve tests PASS with the CPU Python3.12 environment:
+known-parameter recovery, fixed model residuals, iter0 evaluation, negative/undefined
+magnitude R², rank-deficient uncertainty, invalid inputs/options, frontend bounds,
+local seeded DE, short LinKK unavailable, and no stationarity/K-K/ASTM certification.
+Uncertainty is conditional local linearized residual-scaled covariance only. Null
+means unavailable; pure-Python fitting works but uncertainty requires NumPy SVD.
+Shared frontend contract5 tests PASS including HTTP503/no fallback and real-zero
+retention; full unit125, lint and buildPASS. Real browser studio/builder fit and
+error/partial report flows passed using isolated IPC5192. See Phase0 audit for
+exact runtime/browser limits and the still-unreviewed Voigt/JS/synthetic paths.

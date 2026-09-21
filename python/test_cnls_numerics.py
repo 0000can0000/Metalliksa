@@ -20,6 +20,81 @@ def resistor_points():
 
 
 class CNLSNumericsTests(unittest.TestCase):
+    def test_frontend_bounds_are_respected(self):
+        p = parameter("R", 2)
+        del p["min"], p["max"]
+        p.update(lowerBound=1, upperBound=3)
+        report = solver.run_cnls_fit(RESISTOR, resistor_points(), [p])
+        self.assertLessEqual(report["parameters"][0]["fittedValue"], 3)
+        self.assertIsNone(report["parameters"][0]["stdError"])
+
+    def test_global_fit_has_local_reproducible_rng(self):
+        import random
+        state = random.getstate()
+        kwargs = dict(max_generations=3, pop_size=10, polish_lm=False, seed=27)
+        first = solver.run_global_auto_fit(RESISTOR, resistor_points(), [parameter("R", 2)], **kwargs)
+        second = solver.run_global_auto_fit(RESISTOR, resistor_points(), [parameter("R", 2)], **kwargs)
+        self.assertEqual(first["globalDeChiSquare"], second["globalDeChiSquare"])
+        self.assertEqual(first["parameters"], second["parameters"])
+        self.assertEqual(first["randomSeed"], 27)
+        self.assertEqual(random.getstate(), state)
+        self.assertFalse(first["converged"])
+
+    def test_fixed_model_is_evaluated_instead_of_declared_perfect(self):
+        report = solver.run_cnls_fit(RESISTOR, resistor_points(), [parameter("R", 2, fixed=True)])
+        self.assertGreater(report["reducedChiSquare"], 0.1)
+        self.assertEqual(len(report["residuals"]), 20)
+        self.assertEqual(report["parameters"][0]["fittedValue"], 2)
+        self.assertFalse(report["converged"])
+        self.assertEqual(report["terminationReason"], "no_adjustable_parameters")
+
+    def test_zero_iterations_evaluates_without_claiming_convergence(self):
+        report = solver.run_cnls_fit(RESISTOR, resistor_points(), [parameter("R", 2)], max_iter=0)
+        self.assertEqual(report["iterations"], 0)
+        self.assertFalse(report["converged"])
+        self.assertGreater(report["reducedChiSquare"], 0.1)
+        self.assertIsNone(report["parameters"][0]["stdError"])
+        self.assertIsNone(report["rSquared"])
+
+    def test_negative_r_squared_is_not_clipped(self):
+        points = [dict(frequency=i+1, zReal=i+1, minusZImag=0) for i in range(10)]
+        report = solver.run_cnls_fit(RESISTOR, points, [parameter("R", 100, fixed=True)], "unit")
+        self.assertLess(report["rSquared"], 0)
+
+    def test_rank_deficient_parameters_have_no_invented_certainty(self):
+        topology = {"branches": [{"connection": "series", "elements": [
+            {"id": name, "name": name, "type": "R", "value": 2} for name in ("R1", "R2")]}]}
+        report = solver.run_cnls_fit(topology, resistor_points(), [parameter("R1", 2), parameter("R2", 2)])
+        self.assertIsNone(report["parameters"][0]["stdError"])
+        self.assertIsNone(report["parameters"][1]["percentError"])
+
+    def test_invalid_data_and_options_are_rejected(self):
+        for points, options in [([], {}), ([dict(frequency=0, zReal=1, minusZImag=0)], {}),
+                                ([dict(frequency=1, zReal=float("nan"), minusZImag=0)], {}),
+                                (resistor_points(), {"max_iter": -1}),
+                                (resistor_points(), {"weighting": "typo"})]:
+            with self.subTest(points=points, options=options), self.assertRaises(ValueError):
+                solver.run_cnls_fit(RESISTOR, points, [parameter("R", 2)], **options)
+
+    def test_short_lin_kk_is_unavailable(self):
+        report = solver.perform_lin_kk_stationarity_test(resistor_points()[:4])
+        self.assertEqual(report["status"], "unavailable")
+        self.assertIsNone(report["isStationary"])
+        self.assertIsNone(report["driftScore"])
+        self.assertIsNone(report["kkChiSquare"])
+
+    def test_voigt_screen_does_not_identify_time_domain_stationarity(self):
+        report = solver.perform_lin_kk_stationarity_test(resistor_points())
+        self.assertIsNone(report["isStationary"])
+        self.assertIsNone(report["driftScore"])
+        self.assertNotIn("Compliant", report["stationarityStatus"])
+
+    def test_fitting_does_not_certify_kk_or_astm(self):
+        report = solver.run_cnls_fit(RESISTOR, resistor_points(), [parameter("R", 20)])
+        self.assertTrue(report["converged"])
+        self.assertIsNone(report["kramersKronig"]["isValid"])
+        self.assertIsNone(report["astmG106"]["isAstmG106Compliant"])
+
     def test_resistor_moves_toward_known_value_in_both_backends(self):
         for numpy in (False, True):
             with self.subTest(numpy=numpy), patch.object(solver, "HAS_NUMPY", numpy):

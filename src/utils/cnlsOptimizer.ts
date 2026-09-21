@@ -1,3 +1,4 @@
+import { normalizePythonCnlsReport } from "./pythonCnlsReport";
 import {
   CircuitTopology,
   CircuitElement,
@@ -679,7 +680,7 @@ export function runCNLSFit(
 
 /**
  * Executes Global Differential Evolution Auto-Fit via Python Backend
- * with client-side heuristic fallback
+ * with explicit backend errors and validated report fields
  */
 export async function runAsyncAutoFit(
   topology: CircuitTopology,
@@ -690,49 +691,13 @@ export async function runAsyncAutoFit(
 ): Promise<CNLSFitReport> {
   const activeParams = userParams || extractAdjustableParameters(topology);
 
-  try {
-    const res = await fetch("/api/python/cnls-autofit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "auto_fit",
-        topology,
-        topologyId: topology.id,
-        points: dataset.points,
-        parameters: activeParams,
-        weighting,
-        maxGenerations,
-        polishLM: true,
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && !data.error) {
-        const report: CNLSFitReport = {
-          topology: data.topology || applyParametersToTopology(topology, activeParams),
-          parameters: data.parameters || [],
-          dataset,
-          chiSquare: data.reducedChiSquare || 0.001,
-          reducedChiSquare: data.reducedChiSquare || 0.001,
-          rmse: data.rmse || 0.05,
-          rSquared: data.rSquared || 0.99,
-          iterations: data.iterations || maxGenerations,
-          converged: data.converged !== false,
-          weighting,
-          executionTimeMs: Math.round(data.computeTimeMs || 100),
-          residuals: data.residuals || [],
-          kramersKronig: data.kramersKronig || evaluateKramersKronig(dataset),
-          engineUsed: "CPython 3.10+ Differential Evolution + LM",
-        };
-        return report;
-      }
-    }
-  } catch (err) {
-    console.warn("Python Auto-Fit API call failed, using client optimization:", err);
-  }
-
-  // Fallback: physics-informed seeding + standard fit
-  return runCNLSFit(topology, dataset, activeParams, weighting, maxGenerations);
+  const res = await fetch("/api/python/cnls-autofit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "auto_fit", topology, topologyId: topology.id,
+      points: dataset.points, parameters: activeParams, weighting, maxGenerations,
+      polishLM: true }),
+  });
+  if (!res.ok) throw new Error(`Python CNLS returned HTTP ${res.status}`);
+  return normalizePythonCnlsReport(await res.json(), topology, dataset, weighting, activeParams);
 }
-

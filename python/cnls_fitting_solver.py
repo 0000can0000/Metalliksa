@@ -3,8 +3,8 @@
 MetalliX Python CNLS Impedance Fitting Solver
 High-performance Complex Non-Linear Least Squares (CNLS) Levenberg-Marquardt optimizer
 for electrochemical impedance spectroscopy (EIS) equivalent circuit models.
-Computes true covariance matrix, parameter standard error bounds (±sigma%),
-and Hilbert transform Kramers-Kronig (Lin-KK) validation.
+Reports local linearized covariance when identifiable, with explicit unavailable
+uncertainties and a separate, unvalidated Voigt residual screening model.
 """
 
 import sys
@@ -422,12 +422,12 @@ def evaluate_topology_impedance(topology_data, omega, params_dict=None):
 def compute_weights(points, weighting_mode="modulus"):
     """
     Computes statistical weights for Real and Imaginary parts of impedance.
-    Adheres strictly to ASTM G106-89 standard practice for CNLS impedance analysis.
+    Weighting definitions; weighting alone does not certify standards compliance.
     
     Addresses the 6 to 9 orders-of-magnitude impedance dynamic range problem (Rs ~ 10-100 Ohm
     vs Rp/Rct ~ 10^7 - 10^9 Ohm):
-    - Modulus Weighting (ASTM G106 Standard): w_i = 1 / |Z_i|^2. Equal relative fractional error weighting.
-    - Proportional Weighting (ASTM G106 / Macdonald): w_re = 1 / (Z')^2, w_im = 1 / (Z'')^2.
+    - Modulus Weighting: w_i = 1 / |Z_i|^2. Equal relative fractional error weighting.
+    - Proportional Weighting: w_re = 1 / (Z')^2, w_im = 1 / (Z'')^2.
       Regularized with a (0.01 * |Z|)^2 floor to prevent singularity when Z'' crosses 0.
     - Unit Weighting: w_i = 1.0 (unweighted). Skews completely towards low frequencies.
     """
@@ -777,13 +777,15 @@ def extract_topology_parameters(topology_data):
         {"paramName": "Rct", "elementId": "el-rct", "field": "value", "value": 100.0, "unit": "Ω", "paramType": "Resistor", "min": 1e-3, "max": 1e7},
     ]
 
-def run_global_auto_fit(topology_data, points, initial_params=None, weighting="modulus", max_generations=80, pop_size=40, polish_lm=True):
+def run_global_auto_fit(topology_data, points, initial_params=None, weighting="modulus", max_generations=80, pop_size=40, polish_lm=True, seed=42):
     """
     High-performance Global Optimizer for Automated Equivalent Circuit Fitting against experimental Nyquist data.
-    Uses Differential Evolution (DE/rand/1/bin with Latin Hypercube Stratified Seeding & Log-Parameter Scaling)
-    to discover the true global parameter basin without requiring manual initial guesses, followed by
-    Levenberg-Marquardt local polishing for exact Hessian covariance and statistical confidence intervals.
+    Uses Differential Evolution (DE/rand/1/bin with Stratified Seeding & Log-Parameter Scaling)
+    to search bounded parameter space from explicit initial guesses, followed by
+    optional Levenberg-Marquardt polishing and local linearized uncertainty estimates.
+    Finite DE runs do not establish a global optimum.
     """
+    rng = random.Random(seed)
     start_time = time.perf_counter()
     if not points:
         return {"error": "No experimental EIS points provided for Auto-Fit"}
@@ -792,6 +794,9 @@ def run_global_auto_fit(topology_data, points, initial_params=None, weighting="m
     if not initial_params:
         initial_params = extract_topology_parameters(topology_data)
         
+    initial_params = [dict(p, **({"min": p["lowerBound"]} if "min" not in p and "lowerBound" in p else {}),
+                           **({"max": p["upperBound"]} if "max" not in p and "upperBound" in p else {}))
+                      for p in initial_params]
     params = []
     for p in initial_params:
         p_name = p.get("paramName", "")
@@ -944,7 +949,7 @@ def run_global_auto_fit(topology_data, points, initial_params=None, weighting="m
     n_pop = max(pop_size, num_adj * 10)
     population = []
     
-    # Stratified Latin Hypercube initialization + Elite Seeds
+    # Stratified initialization + Elite Seeds
     # Individual 0: User initial values
     population.append(initial_u)
     
@@ -970,12 +975,12 @@ def run_global_auto_fit(topology_data, points, initial_params=None, weighting="m
         heuristic_u.append(max(0.0, min(1.0, map_val_to_u(h_val, params[p_idx]))))
     population.append(heuristic_u)
 
-    # Fill remaining population with Latin Hypercube Stratified Samples
+    # Fill remaining population with Stratified Samples
     for i in range(2, n_pop):
         ind = []
         for j in range(num_adj):
             # Stratified random sample in [0, 1]
-            u_samp = (i + random.random()) / float(n_pop)
+            u_samp = (i + rng.random()) / float(n_pop)
             ind.append(u_samp)
         population.append(ind)
 
@@ -994,16 +999,16 @@ def run_global_auto_fit(topology_data, points, initial_params=None, weighting="m
         for i in range(n_pop):
             # Choose 3 distinct random individuals != i
             candidates = [idx for idx in range(n_pop) if idx != i]
-            r1, r2, r3 = random.sample(candidates, 3)
+            r1, r2, r3 = rng.sample(candidates, 3)
             
             # Adaptive mutation with dither
-            f_mut = random.uniform(0.45, 0.90)
+            f_mut = rng.uniform(0.45, 0.90)
             
             # DE/rand/1/bin mutation vector
             mutant = []
-            rand_j = random.randint(0, num_adj - 1)
+            rand_j = rng.randint(0, num_adj - 1)
             for j in range(num_adj):
-                if random.random() < crossover_rate or j == rand_j:
+                if rng.random() < crossover_rate or j == rand_j:
                     v_j = population[r1][j] + f_mut * (population[r2][j] - population[r3][j])
                     # Bounce-back boundary handling
                     if v_j < 0.0:
@@ -1049,8 +1054,9 @@ def run_global_auto_fit(topology_data, points, initial_params=None, weighting="m
 
     elapsed_ms = round((time.perf_counter() - start_time) * 1000.0, 2)
     
+    final_result["randomSeed"] = seed
     final_result["isGlobalAutoFit"] = True
-    final_result["globalMethod"] = "Differential Evolution (DE/rand/1/bin) + Levenberg-Marquardt Hybrid"
+    final_result["globalMethod"] = "Differential Evolution (DE/rand/1/bin)" + (" + Levenberg-Marquardt" if polish_lm else "")
     final_result["computeTimeMs"] = elapsed_ms
     final_result["initialChiSquare"] = round(initial_cost, 6)
     final_result["globalDeChiSquare"] = round(best_cost, 6)
@@ -1072,8 +1078,23 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
     Levenberg-Marquardt optimizer for complex impedance spectra.
     """
     start_time = time.perf_counter()
+    if not points or not initial_params:
+        raise ValueError("CNLS requires observations and explicit parameters")
+    if weighting not in ("unit", "modulus", "proportional"):
+        raise ValueError("Unknown CNLS weighting")
+    if isinstance(max_iter, bool) or not isinstance(max_iter, int) or max_iter < 0:
+        raise ValueError("max_iter must be a nonnegative integer")
+    if not math.isfinite(damping) or damping <= 0:
+        raise ValueError("damping must be finite and positive")
+    for pt in points:
+        vals = (pt.get("frequency"), pt.get("zReal"), pt.get("minusZImag", -pt["zImag"] if "zImag" in pt else None))
+        if any(v is None or isinstance(v, bool) or not math.isfinite(v) for v in vals) or vals[0] <= 0:
+            raise ValueError("CNLS requires finite complex observations at positive frequencies")
     
     # Prepare parameter list with bounds and fix flags
+    initial_params = [dict(p, **({"min": p["lowerBound"]} if "min" not in p and "lowerBound" in p else {}),
+                           **({"max": p["upperBound"]} if "max" not in p and "upperBound" in p else {}))
+                      for p in initial_params]
     params = []
     for p in initial_params:
         params.append({
@@ -1093,14 +1114,13 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
     num_adj = len(adjustable_indices)
     num_points = len(points)
     
-    if num_adj == 0:
-        return {
-            "success": True,
-            "parameters": params,
-            "reducedChiSquare": 0.0,
-            "rSquared": 1.0,
-            "iterations": 0
-        }
+    for p in params:
+        if (not all(math.isfinite(p[k]) for k in ("value", "min", "max"))
+                or p["min"] > p["max"] or not p["min"] <= p["value"] <= p["max"]
+                or (not p["isFixed"] and p["min"] == p["max"])):
+            raise ValueError("CNLS parameter values must be finite and within valid bounds")
+    if 2 * num_points <= num_adj:
+        raise ValueError("CNLS requires more residual observations than adjustable parameters")
     
     weights = compute_weights(points, weighting)
     
@@ -1154,32 +1174,40 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
                 res_list.append(diff_im)
             return res_list
 
+    def compute_jacobian(p_list, residuals):
+        jac = [[0.0] * num_adj for _ in residuals]
+        for col, p_idx in enumerate(adjustable_indices):
+            p = p_list[p_idx]
+            original = p["value"]
+            step = max(abs(original) * 1e-5, 1e-15)
+            delta = min(step, p["max"] - original)
+            if delta == 0:
+                delta = -min(step, original - p["min"])
+            try:
+                p["value"] = original + delta
+                shifted = compute_residuals(p_list)
+            finally:
+                p["value"] = original
+            for row in range(len(residuals)):
+                jac[row][col] = (shifted[row] - residuals[row]) / delta
+        return jac
+
     # Levenberg-Marquardt Iteration Loop
     current_residuals = compute_residuals(params)
     current_chi_sq = sum(r * r for r in current_residuals)
     
     lambda_damp = damping
     iter_count = 0
+    converged = False
+    termination_reason = "no_adjustable_parameters" if num_adj == 0 else "maximum_iterations"
     
     for it in range(max_iter):
+        if num_adj == 0:
+            break
         iter_count = it + 1
         
         # Calculate numerical Jacobian J (2*N x num_adj)
-        jacobian = []
-        for r_idx in range(len(current_residuals)):
-            jacobian.append([0.0] * num_adj)
-            
-        for col_idx, p_idx in enumerate(adjustable_indices):
-            orig_val = params[p_idx]["value"]
-            delta = max(abs(orig_val) * 1e-5, 1e-8)
-            
-            params[p_idx]["value"] = orig_val + delta
-            res_plus = compute_residuals(params)
-            
-            params[p_idx]["value"] = orig_val
-            
-            for row_idx in range(len(current_residuals)):
-                jacobian[row_idx][col_idx] = (res_plus[row_idx] - current_residuals[row_idx]) / delta
+        jacobian = compute_jacobian(params, current_residuals)
         
         # J differentiates (experimental - calculated) residuals. The minimizing
         # step solves (J^T J + lambda * diag(J^T J)) dp = -J^T residuals.
@@ -1197,6 +1225,13 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
             for k in range(len(current_residuals)):
                 s_r += jacobian[k][i] * current_residuals[k]
             jt_r[i] = s_r
+
+        # Scale by Jacobian column norms so farad/ohm units do not set the test.
+        gradient = max(abs(jt_r[i]) / max(math.sqrt(jt_j[i][i]), 1e-300) for i in range(num_adj))
+        if gradient <= 1e-10 * max(1.0, math.sqrt(current_chi_sq)):
+            converged = True
+            termination_reason = "scaled_gradient_tolerance"
+            break
         
         # Apply Levenberg damping to diagonal
         a_mat = [[jt_j[i][j] for j in range(num_adj)] for i in range(num_adj)]
@@ -1244,40 +1279,49 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
         trial_chi_sq = sum(r * r for r in trial_residuals)
         
         if trial_chi_sq < current_chi_sq:
+            relative_step = max(abs(trial_params[i]["value"] - params[i]["value"]) /
+                                max(abs(params[i]["value"]), abs(params[i]["initialValue"]), 1e-15)
+                                for i in adjustable_indices)
+            relative_reduction = (current_chi_sq - trial_chi_sq) / max(current_chi_sq, 1e-300)
             params = trial_params
             current_residuals = trial_residuals
             current_chi_sq = trial_chi_sq
             lambda_damp = max(1e-7, lambda_damp / 3.0)
             
             # Check relative convergence
-            if sum(dp[i] ** 2 for i in range(num_adj)) < 1e-14:
+            if relative_step <= 1e-8 and relative_reduction <= 1e-12:
+                converged = True
+                termination_reason = "relative_step_and_objective_tolerance"
                 break
         else:
             lambda_damp = min(1e7, lambda_damp * 4.0)
 
     # Compute Statistical Covariance and Standard Errors
-    dof = max(1, 2 * num_points - num_adj)
+    dof = 2 * num_points - num_adj
     reduced_chi_sq = current_chi_sq / float(dof)
     
-    # Invert J^T * J to get covariance matrix
-    cov_mat = [[0.0] * num_adj for _ in range(num_adj)]
-    try:
-        aug = [jt_j[i] + [1.0 if i == j else 0.0 for j in range(num_adj)] for i in range(num_adj)]
-        for i in range(num_adj):
-            pivot = aug[i][i]
-            if abs(pivot) > 1e-20:
-                for c in range(i, 2 * num_adj):
-                    aug[i][c] /= pivot
-                for r in range(num_adj):
-                    if r != i:
-                        factor = aug[r][i]
-                        for c in range(i, 2 * num_adj):
-                            aug[r][c] -= factor * aug[i][c]
-        for i in range(num_adj):
-            for j in range(num_adj):
-                cov_mat[i][j] = aug[i][num_adj + j] * reduced_chi_sq
-    except Exception:
-        cov_mat = [[0.0] * num_adj for _ in range(num_adj)]
+    # Local linearized covariance at the FINAL iterate. SVD avoids squaring the
+    # Jacobian condition number. Rank loss or an active bound means unavailable.
+    cov_mat = None
+    uncertainty_status = "unavailable_not_converged"
+    if num_adj == 0:
+        uncertainty_status = "fixed_parameters_not_estimated"
+    elif converged and HAS_NUMPY:
+        uncertainty_status = "unavailable_rank_deficient_or_active_bound"
+        at_bound = any(params[i]["value"] in (params[i]["min"], params[i]["max"]) for i in adjustable_indices)
+        final_j = np.asarray(compute_jacobian(params, current_residuals))
+        scales = np.linalg.norm(final_j, axis=0)
+        if not at_bound and np.all(scales > 0):
+            try:
+                _, singular, vt = np.linalg.svd(final_j / scales, full_matrices=False)
+                if singular[-1] > singular[0] * max(final_j.shape) * np.finfo(float).eps:
+                    inverse = (vt.T / singular**2) @ vt
+                    cov_mat = inverse / np.outer(scales, scales) * reduced_chi_sq
+                    uncertainty_status = "local_linearized_residual_scaled"
+            except np.linalg.LinAlgError:
+                uncertainty_status = "unavailable_svd_failed"
+    elif converged:
+        uncertainty_status = "unavailable_numpy_required"
 
     # Final Parameter Report with Uncertainties
     p_dict = get_param_dict(params)
@@ -1300,11 +1344,8 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
             })
         else:
             adj_col = adjustable_indices.index(idx)
-            var = max(0.0, cov_mat[adj_col][adj_col])
-            std_err = math.sqrt(var)
-            pct_err = round((std_err / max(1e-12, abs(p["value"]))) * 100.0, 2)
-            if pct_err > 999.9:
-                pct_err = 999.9
+            std_err = math.sqrt(max(0.0, cov_mat[adj_col][adj_col])) if cov_mat is not None else None
+            pct_err = std_err / abs(p["value"]) * 100 if std_err is not None and p["value"] != 0 else None
             
             out_params.append({
                 "paramName": p["paramName"],
@@ -1366,35 +1407,26 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
     mean_exp = sum(exp_mag_list) / max(1, len(exp_mag_list))
     ss_tot = sum((x - mean_exp)**2 for x in exp_mag_list)
     ss_res = sum((exp_mag_list[i] - calc_mag_list[i])**2 for i in range(len(exp_mag_list)))
-    r_squared = max(0.0, min(0.99999, 1.0 - (ss_res / max(1e-12, ss_tot))))
+    r_squared = 1.0 - ss_res / ss_tot if ss_tot > 0 else None
     
     # Kramers-Kronig Validation Test
     mean_res = sum(r["totalResidualPct"] for r in residuals_table) / max(1, len(residuals_table))
     max_res = max(r["totalResidualPct"] for r in residuals_table)
-    kk_score = max(0, min(100, int(100 - mean_res * 15.0)))
-    kk_valid = mean_res < 3.5 and max_res < 12.0
     
     # ASTM G106-89 Multi-Decade Dynamic Range & Impedance Weighting Audit
     min_mag = min(exp_mag_list) if exp_mag_list else 1.0
     max_mag = max(exp_mag_list) if exp_mag_list else 1.0
     dynamic_range_decades = math.log10(max(1e-6, max_mag) / max(1e-6, min_mag))
     hf_scale_factor = (max_mag / max(1e-6, min_mag)) ** 2
-    is_astm_compliant = weighting in ["modulus", "proportional"]
 
     astm_report = {
-        "isAstmG106Compliant": is_astm_compliant,
+        "isAstmG106Compliant": None,
         "weightingScheme": weighting,
         "dynamicRangeDecades": round(dynamic_range_decades, 2),
         "minImpedanceMagnitude_Ohm": round(min_mag, 3),
         "maxImpedanceMagnitude_Ohm": round(max_mag, 3),
         "hfSensitivityBalancingFactor": round(hf_scale_factor, 1),
-        "astmStandardRecommendation": (
-            f"ASTM G106 Standard: Modulus weighting (1/|Z|²) provides uniform fractional sensitivity across all {dynamic_range_decades:.1f} impedance decades, preserving electrolyte resistance (Rs) and Cdl semicircles."
-            if weighting == "modulus" else
-            (f"ASTM G106 Standard: Regularized proportional weighting (1/Z'^2, 1/Z''^2) applied across {dynamic_range_decades:.1f} decades."
-             if weighting == "proportional" else
-             f"ASTM G106 Non-Compliant: Unweighted least squares (w=1) causes {max_mag:.1e} Ω low-frequency points to dominate {min_mag:.1f} Ω electrolyte points by 10^{dynamic_range_decades*2:.1f}x!")
-        ),
+        "astmStandardRecommendation": "Weighting diagnostics only. A weighting choice does not establish ASTM G106 compliance.",
         "unweightedSkewWarning": (
             f"Low-frequency impedance ({max_mag:.1e} Ω) overwhelms high-frequency electrolyte resistance ({min_mag:.1f} Ω) by {dynamic_range_decades:.1f} orders of magnitude. Switch to Modulus Weighting (1/|Z|²) to prevent high-frequency semicircle loss."
             if weighting == "unit" else None
@@ -1413,18 +1445,25 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
         "engine": "MetalliX-Python-HPC-CNLS-v3.10",
         "computeTimeMs": compute_time_ms,
         "iterations": iter_count,
+        "converged": converged,
+        "terminationReason": termination_reason,
+        "uncertaintyStatus": uncertainty_status,
+        "degreesOfFreedom": dof,
+        "chiSquare": current_chi_sq,
+        "rmse": math.sqrt(sum((r["expZReal"]-r["calcZReal"])**2 + (r["expMinusZImag"]-r["calcMinusZImag"])**2 for r in residuals_table)/(2*num_points)),
         "reducedChiSquare": reduced_chi_sq,
         "rSquared": r_squared,
+        "rSquaredDefinition": "1 - SSE(|Z|) / SST(|Z|); unavailable for constant observed magnitude",
         "weighting": weighting,
         "parameters": out_params,
         "residuals": residuals_table,
         "astmG106": astm_report,
         "kramersKronig": {
-            "isValid": kk_valid,
-            "score": kk_score,
+            "isValid": None,
+            "score": None,
             "meanResidualPct": round(mean_res, 2),
             "maxResidualPct": round(max_res, 2),
-            "assessment": "Kramers-Kronig Valid (Linear & Stationary)" if kk_valid else "K-K Warning: High Residual Deviation"
+            "assessment": "Circuit-fit residuals only; independent K-K validation unavailable"
         },
         "physicalValidation": {
             "cpeCapacitances": cpe_capacitances,
@@ -1559,25 +1598,25 @@ def calculate_cpe_effective_capacitances(params, topology_data, electrode_area=1
 
 def perform_lin_kk_stationarity_test(points):
     """
-    Performs Linear Kramers-Kronig (Lin-KK) validation using an exact generalized Voigt measurement model.
-    Evaluates:
-      1. Causality & Linearity (Hilbert Transform compliance)
-      2. Time-Domain Stationarity & Low-Frequency Drift (e.g. OCP drift during long acquisition)
-      3. High-Frequency Parasitic Inductance / Mutual Coupling
+    Computes descriptive residuals for a fixed regularized Voigt basis.
+    This legacy clipped-coefficient model still needs numerical/model-selection
+    review. It cannot certify K-K consistency or time-domain stationarity.
     """
     if not points or len(points) < 5:
         return {
-            "isStationary": True,
-            "driftScore": 95,
+            "status": "unavailable",
+            "isStationary": None,
+            "driftScore": None,
             "stationarityStatus": "Insufficient Points for Full Lin-KK",
-            "muDriftMetric": 0.0,
-            "kkChiSquare": 0.0,
-            "pseudoChiSquare": 0.0,
+            "muDriftMetric": None,
+            "kkChiSquare": None,
+            "pseudoChiSquare": None,
             "flaggedFrequencies": [],
             "residuals": [],
-            "recommendation": "Import at least 5 frequency decades for Lin-KK testing."
+            "recommendation": "At least five frequency points are required; this alone does not guarantee adequate frequency coverage."
         }
         
+    points = sorted(points, key=lambda p: p["frequency"])
     n_pts = len(points)
     freqs = [float(p["frequency"]) for p in points]
     omegas = [2.0 * math.pi * f for f in freqs]
@@ -1716,29 +1755,15 @@ def perform_lin_kk_stationarity_test(points):
     pseudo_chi_sq = kk_chi_sq
     mean_tot_res = sum(tot_res_list) / max(1, n_pts)
     
-    drift_score = max(0, min(100, int(100 - (mean_tot_res * 12.0 + drift_slope * 15.0))))
-    
-    # 5. Diagnostic Classification
-    if drift_slope > 2.2 and mean_tot_res > 2.5:
-        stationarity_status = "Low-Frequency Drift Detected (OCP shift during measurement)"
-        is_stat = False
-        recom = "The lowest frequency points exhibit monotonic residual drift. Consider discarding the lowest decade or increasing OCP rest stabilization time before EIS sweep."
-    elif max(tot_res_list[-3:]) > 4.0: # High frequency end
-        stationarity_status = "High-Frequency Induction / Potentiostat Phase Lag"
-        is_stat = True
-        recom = "High-frequency inductive distortion detected. Apply High-Frequency Cable De-embedding."
-    elif mean_tot_res <= 1.5 and drift_score >= 85:
-        stationarity_status = "Stationary, Causal, and Linear (ASTM G106 / Lin-KK Compliant)"
-        is_stat = True
-        recom = "Dataset passes Kramers-Kronig transform test with excellent stationarity and no significant drift."
-    else:
-        stationarity_status = "Acceptable Linear Response with Minor Dispersion"
-        is_stat = True
-        recom = "Residuals are within normal electrochemical variance tolerances."
+    # Frequency residuals alone cannot identify time-domain stationarity, OCP
+    # drift, linearity, causality, or standards compliance. Preserve descriptive
+    # residual metrics while withholding those unsupported diagnoses.
+    stationarity_status = "Voigt residual screening only; stationarity unavailable"
+    recom = "This fixed-basis regularized Voigt screen is not independent K-K or ASTM certification. Time-resolved acquisition and model-selection validation are not available."
 
     return {
-        "isStationary": is_stat,
-        "driftScore": drift_score,
+        "isStationary": None,
+        "driftScore": None,
         "stationarityStatus": stationarity_status,
         "muDriftMetric": round(drift_slope, 4),
         "kkChiSquare": round(kk_chi_sq, 6),
@@ -2298,7 +2323,7 @@ if __name__ == "__main__":
             max_gens = int(data.get("maxGenerations", data.get("maxIterations", 80)))
             pop_size = int(data.get("populationSize", 40))
             polish_lm = bool(data.get("polishLM", True))
-            result = run_global_auto_fit(topology_data, points, initial_params, weighting, max_gens, pop_size, polish_lm)
+            result = run_global_auto_fit(topology_data, points, initial_params, weighting, max_gens, pop_size, polish_lm, seed=data.get("randomSeed", 42))
             print(json.dumps(result))
         else:
             points = data.get("points", [])

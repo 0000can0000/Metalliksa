@@ -7,6 +7,50 @@ Gemini ownership is unknown. See ACTIVE_WORK.md for this task's scope.
 
 **Phase 0 is open. No later phase or experimental qualification is accepted.**
 
+## 2026-09-21 continuation: CNLS numerical and result contracts
+
+- Source HEAD4f76eca inherited clean. Sign repair committed b5c83c3 after failing
+  analytic resistor/Randles fixtures. New report repair follows in the next commit.
+- Local LM now solves against -J^T r for the experimental-minus-calculated
+  residual Jacobian. R20 and Rs5/Rct120/C20uF are recovered against independent
+  analytic fixtures. NumPy and scalar resistor paths pass. These are numerical
+  verification only, not experimental model validation.
+- Fixed parameters and max_iter0 evaluate actual residuals, never perfect defaults.
+  Report includes termination reason/converged, actual chiSquare/DOF/RMSE, and
+  unclipped magnitude-based R² (null for constant observed magnitude). Finite
+  inputs/options/bounds checked; frontend lowerBound/upperBound aliases honored.
+- Local uncertainty uses a final-iterate column-scaled SVD and residual variance.
+  Rank loss, active bounds, no convergence or missing NumPy => null uncertainty.
+  Fixed-parameter zero error is conditional on an imposed value, not estimated
+  confidence. Covariance remains a local linear approximation, not calibration.
+- DE has a local RNG and reported randomSeed (default42, CLI configurable).
+  Determinism test checks identical parameters/objective and no global RNG mutation.
+  Finite global runs do not prove a global optimum. No-polish uses actual iter0
+  evaluation. Global input/budget validation and correlated stratified seeding
+  remain separate review candidates; not claimed fully audited.
+- Fitted-circuit residuals no longer certify independent K-K or ASTM compliance.
+  Short LinKK input returns unavailable/null. Existing fixed-basis regularized
+  clipped-Voigt model is now explicitly descriptive screening, not a stationarity
+  diagnosis or standards certificate; its normal equations and basis selection
+  still require review. Frequency sorting stabilizes the low/high subset meaning.
+- Shared report normalizer preserves explicit null and rejects missing/duplicate
+  parameter rows, out-of-bounds fits and residual/input identity mismatch. Studio
+  and asyncAutoFit now use it; HTTP/partial responses do not fall back to JS.
+  Studio retry clears fit/DRT. Builder and studio render unavailable uncertainty/R².
+  Existing explicit client-JS solver, late input/reply paths, Plotly, synthetic-noise
+  wrappers and remaining synthetic instrument/experiment metadata are NOT repaired.
+- Fresh validation: Python CNLS12/12, no-fabricated-outputs10/10; unit125/125,
+  lintPASS, buildPASS23.32s. Logs `.runtime/phase0-audit/cnls-*`.
+- Browser real components / actual Node→Python at3192/5192: studio and builder
+  local fit65iterations/reduced objective1.029e-2/R²0.99124; nullable independent
+  K-K assessment displayed. Studio HTTP503 clears old results, partial global
+  report errors. Enter runs local fit; Tab reaches apply button with visible focus;
+  builder result panel visually checked. No experimental evidence claimed.
+- First test server used default IPC5055 and returned legacy metrics despite a
+  fresh Node frontend. Those results were discarded. Only owned PID23964 and
+  verified descendants were stopped; replacementPID17488 uses isolatedIPC5192.
+  Record this runtime identity risk for supervisor follow-up. Port24678 untouched.
+
 ## 2026-09-21 continuation: UI contract repairs
 
 - Clean baseline 6600806, same LOCAL main checkout. AgentMemory recall empty;

@@ -1,3 +1,13 @@
+# CNLS package checkpoint — current owner01a0c148
+
+Sign fix b5c83c3; result-contract package verified with Python12+10, unit125,
+lint and buildPASS; browser actualAPI3192→IPC5192 passed local fit/error/partial
+flows. Owned paths include CNLSFittingStudio, cnlsOptimizer, pythonCnlsReport,
+eisData types, builder null rendering, focused tests and checkpoint documents.
+Next immediate scope: late-input/report identity across Studio/Builder/Plotly;
+explicit client-JS and SyntheticNoise stress wrappers still need audit. Then
+synthetic EIS provenance and prior Phase0 gates. Phase0 OPEN. No push/install.
+
 # Current owner — 2026-09-21
 
 Continuation task 01a0c148-fa30-79c0-8e4f-94a5c74bb4d4 inherits the shared LOCAL

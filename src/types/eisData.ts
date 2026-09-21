@@ -40,8 +40,8 @@ export interface ParameterFitResult {
   initialValue: number;
   fittedValue: number;
   unit: string;
-  stdError: number; // Absolute standard error
-  percentError: number; // Relative error % (stdError / fittedValue * 100)
+  stdError: number | null; // Unavailable when covariance cannot be estimated
+  percentError: number | null; // Relative standard error; null is not zero
   isFixed: boolean;
   lowerBound: number;
   upperBound: number;
@@ -75,8 +75,8 @@ export interface AstmG106Metrics {
 }
 
 export interface KramersKronigResult {
-  isValid: boolean;
-  score: number; // 0 to 100%
+  isValid: boolean | null;
+  score: number | null; // null when independent validation is unavailable
   meanResidualPct: number;
   maxResidualPct: number;
   assessment: string;
@@ -286,7 +286,7 @@ export interface CNLSFitReport {
   chiSquare: number;
   reducedChiSquare: number;
   rmse: number;
-  rSquared: number;
+  rSquared: number | null;
   iterations: number;
   converged: boolean;
   weighting: WeightingMethod;

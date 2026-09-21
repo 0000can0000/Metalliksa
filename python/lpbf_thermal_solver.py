@@ -312,10 +312,10 @@ def calculate_meltpool_physics(
     # (Appl. Sci. 2020 eq. 2). Stacking eta_eff on both double-counts Trapp multiple reflections.
     if source in ("eagar-tsai", "goldak"):
         P_absorbed = eta_base * P_laser
-        A_fabbro = eta_base
+        A_fabbro = eta_base_flat
     else:
         P_absorbed = effective_power
-        A_fabbro = eta_base
+        A_fabbro = eta_base_flat
     P_geom = P_absorbed / (1.0 + 0.55 * stefan)
     r_reg = max(r_beam / math.sqrt(2.0), 8e-6)
 

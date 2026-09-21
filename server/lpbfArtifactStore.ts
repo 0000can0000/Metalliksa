@@ -11,7 +11,7 @@ export interface ArtifactIdentity { sha256: string; byteSize: number }
 export interface VerifiedArtifact extends ArtifactIdentity { path: string }
 
 function identity(ref: ArtifactIdentity) {
-  if (!ref || typeof ref.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(ref.sha256) || !Number.isSafeInteger(ref.byteSize) || ref.byteSize <= 0) {
+  if (!ref || typeof ref.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(ref.sha256) || !Number.isSafeInteger(ref.byteSize) || ref.byteSize < 0) {
     throw new Error('Invalid artifact hash or size');
   }
 }

@@ -20,6 +20,7 @@ from four_alloy_materials import resolve_alloy_id, thermal_props, THERMAL_NAME
 from lpbf_simulation import run, validate, fingerprint
 from lpbf_openfoam import BINARY
 from lpbf_evidence import resource_estimate, enforce_thermal_balances
+from lpbf_run_capture import capture_run
 from lpbf_solidification_microstructure import compute_solidification_microstructure  # Phase 8
 from lpbf_adaptive_feedforward import AdaptiveFeedforwardMitigator
 from lpbf_experimental_validation import validate_experiment
@@ -113,6 +114,12 @@ class Queue:
                 out.update(status="failed", error=f"Saved result integrity failed: {error}")
                 self.update(job, status=out["status"], error=out["error"])
         return out
+
+    def capture(self, job):
+        with self.lock:
+            if self.get(job)['status'] != 'completed':
+                raise ValueError('Only completed jobs can be captured')
+            return capture_run(self.root/job, job)
 
     def artifact(self, payload):
         state = self.get(payload["id"])
@@ -264,6 +271,11 @@ def main():
             result = run(json.loads((folder/"input.json").read_text()), report, folder,
                          json.loads((folder/"capabilities.json").read_text()))
             result["provenance"]["runtime_s"] = time.monotonic()-execution_start
+            import platform
+            import numpy
+            result["provenance"]["executionRuntime"] = dict(
+                executable=sys.executable, python=platform.python_version(),
+                platform=platform.platform(), numpy=numpy.__version__)
             (folder/"result.tmp").write_text(json.dumps(result, allow_nan=False))
             (folder/"result.tmp").replace(folder/"result.json")
         except Exception as e:
@@ -295,6 +307,7 @@ def main():
                 data = resource_estimate(p,m)
             elif method == "submit": data = queue.submit(request["payload"])
             elif method == "artifact": data = queue.artifact(request["payload"])
+            elif method == "capture": data = queue.capture(request["payload"])
             elif method == "get": data = queue.get(request["payload"])
             elif method == "cancel": data = queue.cancel(request["payload"])
             elif method == "solidification-microstructure":   # Phase 8

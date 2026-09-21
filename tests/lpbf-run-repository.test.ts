@@ -1,0 +1,127 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { test, type TestContext } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import { LpbfRunRepository, validateRunDocument } from '../server/lpbfRunRepository';
+import { dryRunRunImport, importRun } from '../server/lpbfRunImport';
+import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
+import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
+
+const sha = (value: string) => createHash('sha256').update(value).digest('hex');
+function capture() {
+  const result = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
+    fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
+    settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
+    material: { name: 'Synthetic', quality: 'synthetic', source: 'Unit test only' },
+    label: 'Screening', regime: 'test', mainRisk: 'test', recommendation: 'test', riskScope: 'test',
+    metrics: { width_um: 0, depth_um: 0, length_um: 0 }, assumptions: ['Synthetic only'],
+    analyticalComparison: { goldak: { width_um: 0, depth_um: 0, length_um: 0 } },
+    provenance: { executionRuntime: null },
+    artifacts: [{ path: 'case/empty', size_bytes: 0, sha256: sha('') },
+      { path: 'peak-field.npz', size_bytes: 3, sha256: sha('abc') }] };
+  return { schemaVersion: 1, jobId: 'a'.repeat(32), resultJson: JSON.stringify(result),
+    inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material),
+    contractStatus: 'legacy-unbound' };
+}
+function fixture(t: TestContext) {
+  const root = mkdtempSync(path.join(tmpdir(), 'lpbf-run-test-'));
+  const repository = new LpbfRunRepository(path.join(root, 'runs.sqlite'));
+  const sources = new LpbfSourceRepository(path.join(root, 'sources.sqlite'));
+  const store = new LpbfArtifactStore(path.join(root, 'store'));
+  const job = path.join(root, 'job'); mkdirSync(job); mkdirSync(path.join(job, 'case'));
+  writeFileSync(path.join(job, 'case/empty'), ''); writeFileSync(path.join(job, 'peak-field.npz'), 'abc');
+  writeFileSync(path.join(job, 'result.json'), capture().resultJson);
+  const handles = [repository];
+  t.after(() => { handles.forEach(r => r.close()); sources.close(); rmSync(root, { recursive: true, force: true }); });
+  return { root, repository, sources, store, job, handles };
+}
+
+test('dry run writes nothing; full import preserves empty/nested bytes and detached legacy snapshots', async t => {
+  const f = fixture(t), raw = capture();
+  const preview = await dryRunRunImport(raw, [], f.sources, f.job);
+  assert.equal(preview.artifactCount, 2);
+  assert.equal(f.repository.get(raw.jobId), null);
+  const saved = await importRun(f.repository, f.store, raw, [], f.sources, f.job);
+  assert.equal(saved.document.capture.contractStatus, 'legacy-unbound');
+  assert.equal(saved.evidenceStatus, 'unvalidated-model');
+  raw.materialJson = '{}';
+  assert.notEqual(f.repository.get(raw.jobId)!.document.capture.materialJson, '{}');
+  assert.equal((await f.store.verify({ sha256: sha(''), byteSize: 0 })).byteSize, 0);
+  await assert.rejects(importRun(f.repository, f.store, capture(), [], f.sources, f.job), /conflict/i);
+});
+
+test('reopen and metadata-only restore preserve hashes; tampered rows fail', async t => {
+  const f = fixture(t);
+  const saved = await importRun(f.repository, f.store, capture(), [], f.sources, f.job);
+  const backup = await f.repository.backupMetadata(path.join(f.root, 'backup'));
+  assert.equal(backup.artifactPayloadsIncluded, false);
+  const restored = new LpbfRunRepository(backup.path, { readOnly: true }); f.handles.push(restored);
+  assert.deepEqual(restored.get(saved.document.runId), saved);
+  const other = new LpbfRunRepository(f.repository.filename); f.handles.push(other);
+  assert.throws(() => other.save(saved.document), /conflict/i);
+  const db = new DatabaseSync(f.repository.filename);
+  db.exec("UPDATE lpbf_runs SET document_json='{}'"); db.close();
+  assert.throws(() => f.repository.get(saved.document.runId), /integrity/i);
+});
+
+test('missing/changed bytes and extra files never publish a completed record', async t => {
+  const f = fixture(t);
+  await dryRunRunImport(capture(), [], f.sources, f.job);
+  writeFileSync(path.join(f.job, 'peak-field.npz'), 'bad');
+  await assert.rejects(importRun(f.repository, f.store, capture(), [], f.sources, f.job), /integrity/i);
+  assert.equal(f.repository.get(capture().jobId), null);
+  writeFileSync(path.join(f.job, 'peak-field.npz'), 'abc'); writeFileSync(path.join(f.job, 'extra'), 'x');
+  await assert.rejects(dryRunRunImport(capture(), [], f.sources, f.job), /manifest/i);
+});
+
+test('exact historical source links survive newer revisions; missing or changed hash fails', async t => {
+  const f = fixture(t);
+  const source = { schemaVersion: 1, datasetId: 'fixture', materialId: 'in718', processScope: 'unknown',
+    source: { url: 'https://example.org/source', citation: 'Synthetic', version: '1', terms: null, termsMissingReason: 'Unknown' },
+    artifacts: [{ relativePath: 'raw', sha256: sha('raw'), byteSize: 3, sourceUrl: 'https://example.org/raw' }], sourceContext: null };
+  const v1 = f.sources.save(source, 0); source.source.version = '2'; f.sources.save(source, 1);
+  const link = { datasetId: 'fixture', revision: 1, documentSha256: v1.documentSha256 };
+  const saved = await importRun(f.repository, f.store, capture(), [link], f.sources, f.job);
+  assert.deepEqual(saved.document.sources, [link]);
+  assert.equal(f.sources.revision('fixture', 1)!.evidenceStatus, 'unreviewed-source-archive');
+  for (const bad of [{ ...link, revision: 3 }, { ...link, documentSha256: sha('bad') }])
+    await assert.rejects(dryRunRunImport(capture(), [bad], f.sources, f.job), /source/i);
+});
+
+test('invalid snapshots, duplicate paths, false bound status and nonfinite values fail', () => {
+  const document = () => ({ schemaVersion: 1, runId: 'a'.repeat(32), capture: capture(), sources: [] });
+  for (const change of [
+    d => { d.capture.inputJson = '{}'; }, d => { d.capture.contractStatus = 'core-v1-bound'; },
+    d => { d.runId = '../bad'; }, d => { d.science = 'validated'; },
+    d => { const r = JSON.parse(d.capture.resultJson); r.artifacts.push(r.artifacts[0]); d.capture.resultJson = JSON.stringify(r); },
+    d => { const r = JSON.parse(d.capture.resultJson); r.artifacts[0].path = '../bad'; d.capture.resultJson = JSON.stringify(r); },
+    d => { d.capture.resultJson = d.capture.resultJson.replace('"power_W":0', '"power_W":1e999'); },
+  ] as Array<(d: any) => void>) { const d = document(); change(d); assert.throws(() => validateRunDocument(d)); }
+});
+
+test('bound snapshots hash Python number spelling verbatim and reject rewritten bytes', () => {
+  const raw = capture(), result = JSON.parse(raw.resultJson);
+  raw.inputJson = '{"backend":"auto","power_W":0.0}';
+  result.solver.id = 'rosenthal+goldak';
+  result.coreContract = { schemaVersion: 1, modelId: 'analytical-conduction-screening-v1',
+    actualBackend: 'analytical', requestedBackend: 'auto', effectiveMode: 'screening', solverId: 'rosenthal+goldak',
+    inputSha256: sha(raw.inputJson), materialSha256: sha(raw.materialJson), evidenceClass: 'unvalidated-model',
+    units: { power: 'W', speed: 'mm/s', length: 'um', preheat: 'degC', temperature: 'K', internalLength: 'm', time: 's', energy: 'J', beamDiameter: '1/e2-intensity' },
+    resolvedPhysics: { conduction: true, transient: false, latentHeat: false, momentum: false, freeSurface: false, evaporation: false } };
+  raw.resultJson = JSON.stringify(result); raw.contractStatus = 'core-v1-bound';
+  const document = { schemaVersion: 1, runId: raw.jobId, capture: raw, sources: [] };
+  assert.doesNotThrow(() => validateRunDocument(document));
+  raw.inputJson = JSON.stringify(result.settings);
+  assert.throws(() => validateRunDocument(document), /hash binding/i);
+});
+
+test('result file drift after capture is rejected before import', async t => {
+  const f = fixture(t);
+  await dryRunRunImport(capture(), [], f.sources, f.job);
+  writeFileSync(path.join(f.job, 'result.json'), '{}');
+  await assert.rejects(importRun(f.repository, f.store, capture(), [], f.sources, f.job), /integrity/i);
+  assert.equal(f.repository.get(capture().jobId), null);
+});

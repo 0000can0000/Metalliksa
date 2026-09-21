@@ -1,5 +1,16 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+LATEST owner01a0c383: run capture/repository package implemented, see
+LPBF_RUN_ARCHIVE.md and superpowers/plans/2026-09-21-lpbf-run-capture.md ledger.
+Python capture5/core8PASS; latest affected Node21PASS; strictTS/lint/buildPASS.
+Actual40W worker66files322352bytes import+metadatarestorePASS; numerics unchanged.
+Fullunit151PASS/4FAIL from external EIS/UQ changes (eis-unavailable plus3UQ).
+User stopped other writer; preserve all unowned files. User reiterated ONLY LPBF
+database/Python shared core and investigate unscientific LPBF behavior. Next bounded
+package: experimentalvalidation fixed predictions/false validated status. Persistence
+still needs fullrun+sourcebundle, API/UI; current backup is metadata ONLY. Phase0 OPEN.
+
+
 LATEST: coreContract v1 implemented; commit is next application git log entry.
 New Python lpbf_core_contract.py binds resolved settings/material SHA256, actual
 backend/model/units/physics. run attaches it; enforce_thermal_balances verifies

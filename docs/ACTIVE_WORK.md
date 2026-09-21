@@ -271,3 +271,13 @@ Checkpoint8157c18 complete. Source task01a0c10a stops writes when successor is
 created. Next owner must read STATUS and the CURRENT CONTINUATION section of
 DIGITAL_TWIN_HANDOFF_2026-09-21.md, verify Git, then continue the claimed open scopes.
 No Gemini work assumed; no phase gate accepted. Temporary test servers are stopped.
+# Current owner — 01a0c383-a755-7b53-84c6-3ec040b67aa0, 2026-09-21
+
+Continues LOCAL HEAD64bc5aa. Owns new lpbf run capture/repository/import modules,
+their focused tests, narrow python/lpbf_worker.py integration and checkpoint docs.
+Acceptance: immutable snapshots, Python-verified bindings, complete output manifest,
+exact historical source revisions, byte checks before publication, isolated restore.
+No live migration, second queue, installation, push or secondary module work.
+Preserve external edits in SECONDARY_MODULE_BACKLOG, uqLabData,
+pythonComputationService, monteCarloEngine, eisFileParser and tafelParser.
+CBM generation2026-09-18 stale/untracked; direct source fallback for named paths.

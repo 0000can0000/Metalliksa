@@ -67,7 +67,6 @@ import {
 } from "../utils/eisFileParser";
 import {
   extractAdjustableParameters,
-  runCNLSFit,
   applyParametersToTopology,
 } from "../utils/cnlsOptimizer";
 
@@ -187,9 +186,7 @@ function CNLSFittingSession({
     const request = fitTask.begin(global ? "global" : "local");
     setAppliedNotification(false);
     try {
-      const report = !global && executionEngine === "client_js"
-        ? runCNLSFit(selectedTopology, activeDataset, editableParams, weighting, maxIterations)
-        : normalizePythonCnlsReport(await requestPythonAnalysis(
+      const report = normalizePythonCnlsReport(await requestPythonAnalysis(
           global ? "/api/python/cnls-autofit" : "/api/python/cnls-fit",
           JSON.stringify({
             action: global ? "auto_fit" : "fit",
@@ -555,7 +552,6 @@ function CNLSFittingSession({
                   className="w-full bg-[#050810] border border-[#1e2d46] rounded-xl px-2 py-1.5 text-xs text-emerald-400 font-mono focus:outline-none"
                 >
                   <option value="python_hpc">CPython 3.10+ (LM + DRT)</option>
-                  <option value="client_js">Client JS (In-Browser)</option>
                 </select>
               </div>
 

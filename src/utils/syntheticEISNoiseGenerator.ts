@@ -29,9 +29,8 @@ import {
 } from "../types/eisData";
 import {
   extractAdjustableParameters,
-  runCNLSFit,
+  runAsyncAutoFit,
   evalTopologyImpedance,
-  evaluateKramersKronig,
 } from "./cnlsOptimizer";
 
 // =========================================================================
@@ -541,10 +540,9 @@ export function buildSyntheticDataset(
     })),
     metadata: {
       instrument: `MetalliX Synthetic Hardware Simulator (Noise: ${config.whiteNoisePct}%, L_cable: ${config.cableInductance_uH}uH, Drift: ${config.driftPct}%)`,
-      temperatureC: 25.0,
-      potentialV: 0.0,
-      acAmplitudeMv: 10.0,
-      electrodeAreaCm2: 1.0,
+      dataOrigin: "synthetic",
+      generator: "metalliksa-seeded-noise-v1",
+      noiseConfig: structuredClone(config),
       sampleRate: `${syntheticPoints.length} points (${syntheticPoints[0]?.frequency.toFixed(1)} Hz to ${syntheticPoints[syntheticPoints.length - 1]?.frequency.toFixed(3)} Hz)`,
     },
   };
@@ -562,181 +560,57 @@ export function evaluateAutoFitRobustness(
   presetId?: string
 ): RobustnessBenchmarkResult {
   const groundTruthParams = extractAdjustableParameters(groundTruthTopology);
-  const recoveredParams = fitReport.parameters;
-
-  const parameterErrors: ParameterRecoveryError[] = [];
-  let sumPctError = 0;
-  let maxPctError = 0;
-
-  for (const trueP of groundTruthParams) {
-    const matched = recoveredParams.find(
-      (rp) => rp.elementId === trueP.elementId && rp.field === trueP.field
-    );
-
-    const recoveredVal = matched ? matched.fittedValue : trueP.value;
-    const stdErr = matched ? matched.stdError : 0;
-    const absErr = Math.abs(recoveredVal - trueP.value);
-    const pctErr = trueP.value !== 0 ? (absErr / Math.abs(trueP.value)) * 100 : 0;
-
-    sumPctError += pctErr;
-    if (pctErr > maxPctError) maxPctError = pctErr;
-
-    parameterErrors.push({
-      paramName: trueP.paramName,
-      elementId: trueP.elementId,
-      field: trueP.field,
-      trueValue: trueP.value,
-      recoveredValue: recoveredVal,
-      unit: trueP.unit,
-      absError: absErr,
-      pctError: pctErr,
-      stdError: stdErr,
-      isReliable: pctErr <= 10.0,
-    });
-  }
-
-  const meanAbsolutePctError = parameterErrors.length > 0 ? sumPctError / parameterErrors.length : 0;
-
-  // Compute Robustness Score (0 to 100)
-  // Penalizes parameter error, chi-square inflation, and convergence failure
-  let score = 100;
-  score -= Math.min(60, meanAbsolutePctError * 2.0);
-  score -= Math.min(25, maxPctError * 0.5);
-  if (!fitReport.converged) score -= 30;
-  if (fitReport.rSquared < 0.98) score -= (1 - fitReport.rSquared) * 500;
-  const robustnessScore = Math.max(0, Math.min(100, Math.round(score)));
-
-  let robustnessGrade: "A+" | "A" | "B" | "C" | "D" | "F" = "F";
-  if (robustnessScore >= 95) robustnessGrade = "A+";
-  else if (robustnessScore >= 85) robustnessGrade = "A";
-  else if (robustnessScore >= 75) robustnessGrade = "B";
-  else if (robustnessScore >= 60) robustnessGrade = "C";
-  else if (robustnessScore >= 40) robustnessGrade = "D";
-
-  // Kramers-Kronig Stationarity Check
-  const rawDataset = buildSyntheticDataset(syntheticPoints, groundTruthTopology, config, presetId);
-  const kkRes = evaluateKramersKronig(rawDataset);
-
-  // Inductance de-embedding check
-  const hasHighFreqInductance = config.cableInductance_uH > 0.5;
-  const rsParam = parameterErrors.find((p) => p.paramName.toLowerCase().includes("s") || p.paramName.toLowerCase().includes("0"));
-  const recoveredTrueRs = rsParam ? rsParam.pctError <= 8.0 : true;
-
-  // Key Diagnosis & Recommendation
-  let keyDiagnosis = "Auto-Fitting algorithm successfully recovered ground-truth equivalent circuit parameters within <5% error.";
-  let recommendation = "Fitted parameters represent true electrochemical kinetics with high fidelity.";
-
-  if (meanAbsolutePctError > 15.0 || maxPctError > 35.0) {
-    if (config.driftPct > 5.0) {
-      keyDiagnosis = "Severe parameter distortion caused by low-frequency non-stationary OCP drift (Lin-KK violation).";
-      recommendation = "Apply sub-Hz frequency truncation or Lin-KK stationarity de-trending before fitting.";
-    } else if (config.cableInductance_uH > 2.0) {
-      keyDiagnosis = "High-frequency cable inductance (L_cable) corrupted the solution resistance Rs and double-layer capacitance.";
-      recommendation = "Enable High-Frequency Inductance De-embedding filter or add a series L element to the topology.";
-    } else if (config.strayCapacitance_pF > 30.0) {
-      keyDiagnosis = "Parasitic stray capacitance (C_stray) suppressed high-frequency semicircle arcs.";
-      recommendation = "Use 4-electrode cell configuration or include parasitic parallel C in the circuit model.";
-    } else if (config.whiteNoisePct > 3.0) {
-      keyDiagnosis = "High Gaussian measurement noise degraded parameter confidence intervals.";
-      recommendation = "Switch weighting method to 'modulus' or 'proportional' to stabilize the Levenberg-Marquardt optimizer.";
-    }
-  }
-
+  const finite = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) ? value : null;
+  const parameterErrors: ParameterRecoveryError[] = groundTruthParams.map(truth => {
+    const matches = fitReport.parameters.filter(p => p.elementId === truth.elementId && p.field === truth.field);
+    const matched = matches.length === 1 ? matches[0] : undefined;
+    const recoveredValue = finite(matched?.fittedValue);
+    const absError = recoveredValue === null ? null : finite(Math.abs(recoveredValue - truth.value));
+    const pctError = absError === null || truth.value === 0 ? null : finite(absError / Math.abs(truth.value) * 100);
+    const sigma = finite(matched?.stdError);
+    return { paramName: truth.paramName, elementId: truth.elementId, field: truth.field,
+      trueValue: truth.value, recoveredValue, unit: truth.unit, absError, pctError,
+      stdError: sigma !== null && sigma >= 0 ? sigma : null, isReliable: null };
+  });
+  const comparable = parameterErrors.length > 0 && parameterErrors.every(p => p.pctError !== null);
+  const meanAbsolutePctError = comparable ? parameterErrors.reduce((sum,p) => sum + p.pctError / parameterErrors.length, 0) : null;
+  const maxAbsolutePctError = comparable ? Math.max(...parameterErrors.map(p => p.pctError)) : null;
   return {
-    config,
-    noisePresetId: presetId,
-    groundTruthTopology,
-    fittedTopology: fitReport.topology,
-    parameterErrors,
-    meanAbsolutePctError,
-    maxAbsolutePctError: maxPctError,
-    robustnessScore,
-    robustnessGrade,
-    reducedChiSquare: fitReport.reducedChiSquare,
-    rSquared: fitReport.rSquared,
-    rmse: fitReport.rmse,
-    converged: fitReport.converged,
-    iterations: fitReport.iterations,
-    executionTimeMs: fitReport.executionTimeMs,
-    engineUsed: fitReport.engineUsed || "MetalliX Optimizer",
-    linKKStationarity: {
-      isStationary: kkRes.isValid,
-      driftScore: Math.round(kkRes.score),
-      meanResidualPct: kkRes.meanResidualPct,
-    },
-    inductanceDeembedded: {
-      detectedInductance_uH: config.cableInductance_uH,
-      targetInductance_uH: config.cableInductance_uH,
-      recoveredTrueRs,
-    },
-    keyDiagnosis,
-    recommendation,
-    noisyDataset: rawDataset,
-    syntheticPoints,
+    config, noisePresetId: presetId, groundTruthTopology, fittedTopology: fitReport.topology,
+    parameterErrors, meanAbsolutePctError, maxAbsolutePctError,
+    robustnessScore: null, robustnessGrade: null,
+    reducedChiSquare: fitReport.reducedChiSquare, rSquared: fitReport.rSquared, rmse: fitReport.rmse,
+    converged: fitReport.converged, iterations: fitReport.iterations, executionTimeMs: fitReport.executionTimeMs,
+    engineUsed: fitReport.engineUsed ?? "Python CNLS",
+    linKKStationarity: { isStationary: null, driftScore: null, meanResidualPct: null },
+    inductanceDeembedded: { detectedInductance_uH: null, targetInductance_uH: config.cableInductance_uH, recoveredTrueRs: null },
+    keyDiagnosis: "Observed parameter recovery for one seeded synthetic realization. No validated robustness grade is available.",
+    recommendation: "Compare errors across independent seeds and initial guesses. This result does not establish experimental accuracy, stationarity or cable de-embedding.",
+    noisyDataset: fitReport.dataset, syntheticPoints,
   };
 }
 
-// =========================================================================
-// 6. MULTI-LEVEL NOISE SWEEP STRESS TEST (MONTE CARLO)
-// =========================================================================
-
-export function runNoiseSweepStressTest(
-  topology: CircuitTopology,
-  cleanPoints: RawEISPoint[],
-  baseConfig: SyntheticNoiseConfig,
+/** One realization per level, evaluated sequentially by the Python fitting service. */
+export async function runNoiseSweepStressTest(
+  topology: CircuitTopology, cleanPoints: RawEISPoint[], baseConfig: SyntheticNoiseConfig,
   sweepLevels: number[] = [0.1, 0.5, 1.0, 2.0, 3.5, 5.0, 7.5, 10.0],
-  weighting: WeightingMethod = "modulus"
-): SweepStressPoint[] {
+  weighting: WeightingMethod = "modulus",
+  options: {signal?: AbortSignal; maxGenerations?: number; populationSize?: number; polishLM?: boolean} = {},
+): Promise<SweepStressPoint[]> {
   const initialParams = extractAdjustableParameters(topology);
-
-  return sweepLevels.map((noiseLevel) => {
-    const testConfig: SyntheticNoiseConfig = {
-      ...baseConfig,
-      whiteNoisePct: noiseLevel,
-    };
-
-    const syntheticPts = injectSyntheticNoise(cleanPoints, testConfig);
-    const dataset = buildSyntheticDataset(syntheticPts, topology, testConfig);
-
-    // Run CNLS Fit
-    const fit = runCNLSFit(topology, dataset, initialParams, weighting, 60);
-
-    // Compute parameter recovery
-    let sumErr = 0;
-    let maxErr = 0;
-    let rsErr = 0;
-    let rctErr = 0;
-    let cpeErr = 0;
-
-    for (const trueP of initialParams) {
-      const matched = fit.parameters.find(
-        (rp) => rp.elementId === trueP.elementId && rp.field === trueP.field
-      );
-      const val = matched ? matched.fittedValue : trueP.value;
-      const pct = trueP.value !== 0 ? (Math.abs(val - trueP.value) / Math.abs(trueP.value)) * 100 : 0;
-      sumErr += pct;
-      if (pct > maxErr) maxErr = pct;
-
-      const pName = trueP.paramName.toLowerCase();
-      if (pName.includes("s") || pName.includes("0")) rsErr = pct;
-      if (pName.includes("ct") || pName.includes("p") || pName.includes("corr")) rctErr = pct;
-      if (pName.includes("q") || pName.includes("c") || pName.includes("dl")) cpeErr = pct;
-    }
-
-    const meanErr = initialParams.length > 0 ? sumErr / initialParams.length : 0;
-    const score = Math.max(0, Math.min(100, Math.round(100 - meanErr * 2.2)));
-
-    return {
-      noiseLevelPct: noiseLevel,
-      meanParamErrorPct: parseFloat(meanErr.toFixed(2)),
-      maxParamErrorPct: parseFloat(maxErr.toFixed(2)),
-      rsErrorPct: parseFloat(rsErr.toFixed(2)),
-      rctErrorPct: parseFloat(rctErr.toFixed(2)),
-      cpeErrorPct: parseFloat(cpeErr.toFixed(2)),
-      reducedChiSquare: fit.reducedChiSquare,
-      rSquared: fit.rSquared,
-      converged: fit.converged,
-      robustnessScore: score,
-    };
-  });
+  const results: SweepStressPoint[] = [];
+  for (const noiseLevel of sweepLevels) {
+    options.signal?.throwIfAborted();
+    const testConfig = { ...baseConfig, whiteNoisePct: noiseLevel };
+    const points = injectSyntheticNoise(cleanPoints, testConfig);
+    const dataset = buildSyntheticDataset(points, topology, testConfig);
+    const fit = await runAsyncAutoFit(topology, dataset, initialParams, weighting,
+      options.maxGenerations ?? 60, {...options, randomSeed: baseConfig.randomSeed ?? 42});
+    options.signal?.throwIfAborted();
+    const recovery = evaluateAutoFitRobustness(topology, points, testConfig, fit);
+    results.push({ noiseLevelPct: noiseLevel, meanParamErrorPct: recovery.meanAbsolutePctError,
+      maxParamErrorPct: recovery.maxAbsolutePctError, rsErrorPct: null, rctErrorPct: null, cpeErrorPct: null,
+      reducedChiSquare: fit.reducedChiSquare, rSquared: fit.rSquared, converged: fit.converged, robustnessScore: null });
+  }
+  return results;
 }

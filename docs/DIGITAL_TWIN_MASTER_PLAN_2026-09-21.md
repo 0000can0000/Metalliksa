@@ -1,5 +1,28 @@
 # Metalliksa — Açık Veriye Dayalı Simülasyon ve Dijital İkiz Ana Planı
 
+## Güncel öncelik kararı — 21 Eylül 2026
+
+Kullanıcı ana hedefi **LPBF motorları ve bunları besleyen veritabanı** olarak
+netleştirdi. EIS/EDS ve diğer yan araştırma modüllerinin genel onarımı ertelendi;
+bu işler LPBF fazlarının kabul kapısı değildir. Ortak malzeme/veri kodu LPBF'yi
+doğrudan etkiliyorsa gerekli dar kapsamda incelenir.
+
+**Motorları birleştirme:** Kullanıcının açık ek talebi. LPBF çözücüleri ve yan
+modül motorları bağımsız kalır; tek birleşik solver oluşturulmaz. Ortak veritabanı
+ve veri alışverişi motor birleştirmesi anlamına gelmez. Her motorun model kimliği,
+varsayımları, girdileri, çıktıları ve doğrulama testleri ayrı korunur. Aşağıdaki
+eski “ortak termal çekirdek” ifadeleri bu kararla sınırlanmıştır: yalnız ortak
+veri sözleşmesi ve bağımsız çözücü adaptörleri; hesap motorlarını birleştirme yok.
+
+Ürün iki çalışma alanı olarak ele alınacak: LPBF üretim/simülasyon çekirdeği ve
+ikincil araştırma araçları. İki ayrı uygulama/repo/dağıtım henüz oluşturulmadı.
+Ertelenen bulgular [SECONDARY_MODULE_BACKLOG.md](SECONDARY_MODULE_BACKLOG.md).
+
+İlk sıra: LPBF motor testleri ve kanıt sınırları → ortak malzeme otoritesi →
+kaynak/hash/birim/deney koşulu izlenebilirliği → SQLite kayıt/transaction/backup
+kararı → IN718 deney paketi ve ölçüm karşılaştırması. Mevcut 0–9 fazları bu
+LPBF kapsamıyla sürer; ilgisiz yan modüllerin tamamlanması beklenmez.
+
 Tarih: 21 Eylül 2026  
 Durum: İncelemeye hazır mimari ve program planı; uygulama başlatılmadı. Belirli bir planlama becerisi veya onay ritüeline bağımlı değildir.  
 Sahip: Can Erganiş  

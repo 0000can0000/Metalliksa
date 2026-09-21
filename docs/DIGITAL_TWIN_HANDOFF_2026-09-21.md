@@ -1,4 +1,38 @@
-# CURRENT CONTINUATION — d4db76d complete; successor creation blocked
+# CURRENT CONTINUATION — LPBF engines and database FIRST
+
+EXPLICIT USER CONSTRAINT: do not merge engines. Preserve independent LPBF solvers
+and secondary-module engines, their model identities, assumptions, I/O and tests.
+Shared data/database adapters are allowed; no combined solver implementation.
+This supersedes historical common-thermal-core wording in the master plan.
+
+User21Sep explicitly reprioritized: stop spending effort on secondary modules;
+primary target is LPBF engines and their database. Proposed application split is
+recorded as two work streams, not yet two deployments. Read MASTER_PLAN's newest
+priority section and SECONDARY_MODULE_BACKLOG. Do NOT resume historical EIS/EDS
+next-work lists below unless a concrete LPBF dependency requires it.
+
+Owner01a0c326 inherited three dirty EIS files with direct user permission and
+finished the in-progress bounded repair before switching scope. Python commit
+0159cdf: recovery nulls, removed grades, constant-magnitude R² crash fixed.
+UI package: exact displayed spectrum→Python autofit; signal/options/seed preserved;
+no client fit fallback; sequential Python noise sweep; guarded input identity,
+topology replacement and export timer; explicit unavailable recovery and synthetic
+metadata, no invented temperature/potential/amplitude/area. Unit133/lint/buildPASS;
+Python4+12+10PASS. Actual browser3194→IPC5194 CPU Python benchmark mean error0.73%,
+eight sweep levels, HTTP503/incomplete/held fit/input change/topology replacement,
+Enter export and lifecycle10PASS. Synthetic checks, NOT experimental validation.
+Check git log for final UI/checkpoint commit. Owned server24916 and descendant
+process tree stopped,3194/5194 no listeners; other server processes untouched.
+
+Next: bounded LPBF current test baseline (existing CPU numerical/engineering,
+material registry and API contracts); separate analytical/experimental evidence;
+material authority and unknown-alloy fallback; benchmark raw hash/source terms;
+SQLite driver transaction/backup ADR; representative thermal runtime/RAM/VRAM
+profile and real transient queue/cancellation/budget. Phase0 remains OPEN.
+Use existing runtimes; don't reinstall without a concrete requirement. Graph
+generation18Sep stale, Graft stale; source fallback used in this task.
+
+# HISTORICAL CONTINUATION — superseded scope and approval blocker
 
 Read parent ../STATUS.md FIRST. User explicitly authorized continuing until done
 while away, automatic fresh LOCAL task handoff when context becomes limited,

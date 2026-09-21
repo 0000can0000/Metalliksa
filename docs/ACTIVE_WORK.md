@@ -1,5 +1,10 @@
 # Current owner — 01a0c326-5fad-7fb1-8c28-47770538592d, 2026-09-21
 
+USER PRIORITY UPDATE: LPBF engines and database first. Secondary module work is
+deferred in SECONDARY_MODULE_BACKLOG, no longer a phase gate. In-flight EIS repair
+verified unit133/lint/build, Python4+12+10 and actual browser; recording final
+checkpoint only. Next scope is LPBF tests, material authority and data persistence.
+
 User explicitly authorized continuation and confirmed no other agent is editing
 the three dirty EIS files; inherit their existing changes without reverting.
 Source01a0c323 has stopped writing. Starting HEAD5c9e7cb. First package owns

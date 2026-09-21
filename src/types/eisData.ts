@@ -77,8 +77,8 @@ export interface AstmG106Metrics {
 export interface KramersKronigResult {
   isValid: boolean | null;
   score: number | null; // null when independent validation is unavailable
-  meanResidualPct: number;
-  maxResidualPct: number;
+  meanResidualPct: number | null;
+  maxResidualPct: number | null;
   assessment: string;
   details?: string;
 }
@@ -225,12 +225,12 @@ export interface ParameterRecoveryError {
   elementId: string;
   field: "value" | "exponent";
   trueValue: number;
-  recoveredValue: number;
+  recoveredValue: number | null;
   unit: string;
-  absError: number;
-  pctError: number;
-  stdError: number;
-  isReliable: boolean;
+  absError: number | null;
+  pctError: number | null;
+  stdError: number | null;
+  isReliable: boolean | null;
 }
 
 export interface RobustnessBenchmarkResult {
@@ -239,26 +239,26 @@ export interface RobustnessBenchmarkResult {
   groundTruthTopology: CircuitTopology;
   fittedTopology: CircuitTopology;
   parameterErrors: ParameterRecoveryError[];
-  meanAbsolutePctError: number;
-  maxAbsolutePctError: number;
-  robustnessScore: number; // 0 to 100
-  robustnessGrade: "A+" | "A" | "B" | "C" | "D" | "F";
+  meanAbsolutePctError: number | null;
+  maxAbsolutePctError: number | null;
+  robustnessScore: number | null; // 0 to 100
+  robustnessGrade: "A+" | "A" | "B" | "C" | "D" | "F" | null;
   reducedChiSquare: number;
-  rSquared: number;
+  rSquared: number | null;
   rmse: number;
   converged: boolean;
   iterations: number;
   executionTimeMs: number;
   engineUsed: string;
   linKKStationarity: {
-    isStationary: boolean;
-    driftScore: number;
-    meanResidualPct: number;
+    isStationary: boolean | null;
+    driftScore: number | null;
+    meanResidualPct: number | null;
   };
   inductanceDeembedded: {
-    detectedInductance_uH: number;
+    detectedInductance_uH: number | null;
     targetInductance_uH: number;
-    recoveredTrueRs: boolean;
+    recoveredTrueRs: boolean | null;
   };
   keyDiagnosis: string;
   recommendation: string;
@@ -268,15 +268,15 @@ export interface RobustnessBenchmarkResult {
 
 export interface SweepStressPoint {
   noiseLevelPct: number;
-  meanParamErrorPct: number;
-  maxParamErrorPct: number;
-  rsErrorPct: number;
-  rctErrorPct: number;
-  cpeErrorPct: number;
+  meanParamErrorPct: number | null;
+  maxParamErrorPct: number | null;
+  rsErrorPct: number | null;
+  rctErrorPct: number | null;
+  cpeErrorPct: number | null;
   reducedChiSquare: number;
-  rSquared: number;
+  rSquared: number | null;
   converged: boolean;
-  robustnessScore: number;
+  robustnessScore: number | null;
 }
 
 export interface CNLSFitReport {

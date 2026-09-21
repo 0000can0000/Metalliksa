@@ -59,16 +59,18 @@ import {
 } from "../utils/syntheticEISNoiseGenerator";
 import {
   extractAdjustableParameters,
-  runCNLSFit,
+  runAsyncAutoFit,
   evalTopologyImpedance,
 } from "../utils/cnlsOptimizer";
+
+import { useInputBoundTask } from "../hooks/useInputBoundTask";
 
 interface SyntheticNoiseStressStudioProps {
   onExportToCNLS?: (dataset: ExperimentalEISDataset, topology: CircuitTopology) => void;
   initialTopology?: CircuitTopology;
 }
 
-export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProps> = ({
+const SyntheticNoiseStressSession: React.FC<SyntheticNoiseStressStudioProps> = ({
   onExportToCNLS,
   initialTopology,
 }) => {
@@ -85,8 +87,6 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
     setSelectedTopology(topo);
     const newParams = extractAdjustableParameters(topo);
     setGroundTruthParams(newParams);
-    setBenchmarkResult(null);
-    setSweepResults(null);
   };
 
   const handleParamValueChange = (index: number, val: number) => {
@@ -114,7 +114,6 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
       }));
       return { ...prev, branches: newBranches };
     });
-    setBenchmarkResult(null);
   };
 
   // 2. Frequency Sweep Configuration
@@ -122,24 +121,33 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
 
   // 3. Sensor Artifact & Noise Configuration
   const [noiseConfig, setNoiseConfig] = useState<SyntheticNoiseConfig>(DEFAULT_SYNTHETIC_NOISE_CONFIG);
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("pristine_lab");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("custom");
   const [randomSeed, setRandomSeed] = useState<number>(42);
 
   // 4. Auto-Fit Algorithm & Weighting Settings
-  const [optimizerEngine, setOptimizerEngine] = useState<"cpython" | "client">("cpython");
   const [weighting, setWeighting] = useState<WeightingMethod>("modulus");
   const [maxIterations, setMaxIterations] = useState<number>(75);
   const [populationSize, setPopulationSize] = useState<number>(35);
   const [polishLM, setPolishLM] = useState<boolean>(true);
 
   // 5. Execution State & Results
-  const [isExecuting, setIsExecuting] = useState<boolean>(false);
-  const [isSweeping, setIsSweeping] = useState<boolean>(false);
-  const [benchmarkResult, setBenchmarkResult] = useState<RobustnessBenchmarkResult | null>(null);
-  const [sweepResults, setSweepResults] = useState<SweepStressPoint[] | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const task = useInputBoundTask<{benchmark?: RobustnessBenchmarkResult; sweep?: SweepStressPoint[]}>(
+    JSON.stringify([selectedTopology, groundTruthParams, freqConfig, noiseConfig, randomSeed,
+      selectedPresetId, weighting, maxIterations, populationSize, polishLM]));
+  const benchmarkResult = task.data?.benchmark ?? null;
+  const sweepResults = task.data?.sweep ?? null;
+  const isExecuting = task.pending === "benchmark";
+  const isSweeping = task.pending === "sweep";
+  const statusMessage = task.error ? `Calculation unavailable: ${task.error}` : task.pending
+    ? "Fitting the displayed synthetic data with Python..."
+    : task.data ? "Calculation completed. Review convergence and observed recovery; this is synthetic evidence." : null;
   const [activePlotTab, setActivePlotTab] = useState<"nyquist" | "bode" | "artifacts" | "sweep">("nyquist");
   const [exportSuccess, setExportSuccess] = useState<boolean>(false);
+  const exportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setExportSuccess(false);
+    return () => { if (exportTimer.current) clearTimeout(exportTimer.current); };
+  }, [selectedTopology, noiseConfig, freqConfig, randomSeed]);
 
   // 6. Compute Clean and Synthetic Points in Real-Time
   const frequencyGrid = useMemo(() => generateFrequencyGrid(freqConfig), [freqConfig]);
@@ -156,8 +164,6 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
   const handleApplyPreset = (preset: SyntheticNoisePreset) => {
     setSelectedPresetId(preset.id);
     setNoiseConfig({ ...preset.config, randomSeed });
-    setBenchmarkResult(null);
-    setSweepResults(null);
   };
 
   // Re-roll noise generator
@@ -166,151 +172,41 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
     setRandomSeed(newSeed);
   };
 
-  // 7. Execute Auto-Fit Robustness Benchmark
+  // Fit exactly the points currently shown, never a second random spectrum.
   const handleRunBenchmark = async () => {
-    setIsExecuting(true);
-    setStatusMessage("Injecting sensor artifacts & executing Differential Evolution auto-fit...");
-
+    const request = task.begin("benchmark");
     try {
-      if (optimizerEngine === "cpython") {
-        const payload = {
-          action: "synthetic_noise_benchmark",
-          topology: selectedTopology,
-          frequencyConfig: freqConfig,
-          noiseConfig: { ...noiseConfig, randomSeed },
-          weighting,
-          maxGenerations: maxIterations,
-          populationSize,
-          polishLM,
-        };
-
-        const res = await fetch("/api/python/cnls-synthetic-noise", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (res.ok) {
-          const pyData = await res.json();
-          if (pyData.error) throw new Error(pyData.error);
-
-          const fitRep = {
-            topology: selectedTopology,
-            parameters: pyData.fitReport?.parameters || [],
-            dataset: buildSyntheticDataset(syntheticPoints, selectedTopology, noiseConfig, selectedPresetId),
-            chiSquare: pyData.reducedChiSquare || 0.001,
-            reducedChiSquare: pyData.reducedChiSquare || 0.001,
-            rmse: pyData.rmse || 0.02,
-            rSquared: pyData.rSquared || 0.99,
-            iterations: pyData.iterations || maxIterations,
-            converged: pyData.converged !== false,
-            weighting,
-            executionTimeMs: Math.round(pyData.computeTimeMs || 150),
-            residuals: pyData.fitReport?.residuals || [],
-            kramersKronig: {
-              isValid: noiseConfig.driftPct <= 5.0,
-              score: Math.max(10, Math.round(100 - noiseConfig.driftPct * 3.5)),
-              meanResidualPct: parseFloat((noiseConfig.driftPct * 0.4 + noiseConfig.whiteNoisePct * 0.5).toFixed(2)),
-              maxResidualPct: parseFloat((noiseConfig.driftPct * 0.8 + noiseConfig.whiteNoisePct * 1.2).toFixed(2)),
-              assessment: noiseConfig.driftPct > 5.0 ? ("Suspect / Non-Stationary" as const) : ("Excellent (K-K Compliant)" as const),
-              details: "Python Levenberg-Marquardt Lin-KK residual transformation",
-            },
-            engineUsed: "CPython 3.10 (Differential Evolution + LM)",
-          };
-
-          const evaluated = evaluateAutoFitRobustness(
-            selectedTopology,
-            syntheticPoints,
-            noiseConfig,
-            fitRep,
-            selectedPresetId
-          );
-          setBenchmarkResult(evaluated);
-          setStatusMessage(`Benchmark completed in ${pyData.computeTimeMs} ms.`);
-          setIsExecuting(false);
-          return;
-        }
-      }
-
-      // Fallback or Client Engine
-      const dataset = buildSyntheticDataset(syntheticPoints, selectedTopology, noiseConfig, selectedPresetId);
-      const fitReport = runCNLSFit(
-        selectedTopology,
-        dataset,
-        groundTruthParams,
-        weighting,
-        maxIterations
-      );
-      fitReport.engineUsed = "MetalliX Client Heuristic Engine";
-
-      const evaluated = evaluateAutoFitRobustness(
-        selectedTopology,
-        syntheticPoints,
-        noiseConfig,
-        fitReport,
-        selectedPresetId
-      );
-      setBenchmarkResult(evaluated);
-      setStatusMessage(`Client Benchmark completed in ${Math.round(fitReport.executionTimeMs)} ms.`);
-    } catch (err: any) {
-      console.warn("Benchmark error:", err);
-      // Client fallback execution
-      const dataset = buildSyntheticDataset(syntheticPoints, selectedTopology, noiseConfig, selectedPresetId);
-      const fitReport = runCNLSFit(
-        selectedTopology,
-        dataset,
-        groundTruthParams,
-        weighting,
-        maxIterations
-      );
-      fitReport.engineUsed = "MetalliX Fallback Engine";
-      const evaluated = evaluateAutoFitRobustness(
-        selectedTopology,
-        syntheticPoints,
-        noiseConfig,
-        fitReport,
-        selectedPresetId
-      );
-      setBenchmarkResult(evaluated);
-      setStatusMessage("Benchmark executed via high-speed client solver fallback.");
-    } finally {
-      setIsExecuting(false);
-    }
+      const config = { ...noiseConfig, randomSeed };
+      const dataset = buildSyntheticDataset(syntheticPoints, selectedTopology, config, selectedPresetId);
+      const fit = await runAsyncAutoFit(selectedTopology, dataset, groundTruthParams, weighting,
+        maxIterations, { signal: request.signal, populationSize, polishLM, randomSeed });
+      if (!request.isCurrent()) return;
+      request.publish({benchmark: evaluateAutoFitRobustness(selectedTopology, syntheticPoints, config, fit, selectedPresetId)});
+    } catch (error) { request.fail(error); }
+    finally { request.finish(); }
   };
 
-  // 8. Run Multi-Level Noise Sweep Stress Test (Monte Carlo)
-  const handleRunNoiseSweep = () => {
-    setIsSweeping(true);
+  const handleRunNoiseSweep = async () => {
+    const request = task.begin("sweep");
     setActivePlotTab("sweep");
-    setStatusMessage("Running multi-level noise sweep stress test (0.1% to 10% white noise)...");
-
-    setTimeout(() => {
-      try {
-        const results = runNoiseSweepStressTest(
-          selectedTopology,
-          cleanPoints,
-          noiseConfig,
-          [0.1, 0.5, 1.0, 2.0, 3.5, 5.0, 7.5, 10.0],
-          weighting
-        );
-        setSweepResults(results);
-        setStatusMessage("Noise sweep stress test completed.");
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsSweeping(false);
-      }
-    }, 100);
+    try {
+      const sweep = await runNoiseSweepStressTest(selectedTopology, cleanPoints, {...noiseConfig, randomSeed},
+        [0.1, 0.5, 1, 2, 3.5, 5, 7.5, 10], weighting,
+        {signal: request.signal, maxGenerations: maxIterations, populationSize, polishLM});
+      request.publish({sweep});
+    } catch (error) { request.fail(error); }
+    finally { request.finish(); }
   };
 
   // Export Synthetic Dataset to CNLS Fitter
   const handleExportToCNLS = () => {
-    const dataset = buildSyntheticDataset(syntheticPoints, selectedTopology, noiseConfig, selectedPresetId);
+    const dataset = buildSyntheticDataset(syntheticPoints, selectedTopology, {...noiseConfig, randomSeed}, selectedPresetId);
     if (onExportToCNLS) {
       onExportToCNLS(dataset, selectedTopology);
     }
     setExportSuccess(true);
-    setTimeout(() => setExportSuccess(false), 3000);
+    if (exportTimer.current) clearTimeout(exportTimer.current);
+    exportTimer.current = setTimeout(() => setExportSuccess(false), 3000);
   };
 
   // Download CSV of Synthetic Dataset
@@ -483,6 +379,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
           </div>
         </div>
 
+        {statusMessage && <p role={task.error ? "alert" : "status"} className="text-sm text-slate-200">{statusMessage}</p>}
         {/* Real-World Sensor Artifact Presets Bar */}
         <div className="pt-3 border-t border-[#182338] space-y-2">
           <div className="flex items-center justify-between">
@@ -491,7 +388,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
               Select Sensor Artifact Scenario Preset:
             </span>
             <span className="text-[10px] font-mono text-slate-500">
-              Active: <strong className="text-amber-300">{SYNTHETIC_NOISE_PRESETS.find(p => p.id === selectedPresetId)?.name}</strong>
+              Active: <strong className="text-amber-300">{SYNTHETIC_NOISE_PRESETS.find(p => p.id === selectedPresetId)?.name ?? "Custom"}</strong>
             </span>
           </div>
 
@@ -765,12 +662,11 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
               <div>
                 <label className="text-[10px] text-slate-400">Optimization Engine</label>
                 <select
-                  value={optimizerEngine}
-                  onChange={(e) => setOptimizerEngine(e.target.value as any)}
+                  value="cpython"
                   className="w-full bg-[#0d1525] border border-[#1e2c45] rounded-xl px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-sky-400 mt-1"
+                  disabled
                 >
-                  <option value="cpython">CPython 3.10 (DE + LM)</option>
-                  <option value="client">Client-Side JS Engine</option>
+                  <option value="cpython">Python (DE + optional LM)</option>
                 </select>
               </div>
 
@@ -1136,7 +1032,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                       <Gauge className="w-4 h-4 text-sky-400" />
                       Auto-Fit Degradation vs White Noise Sweep
                     </span>
-                    <span className="text-[10px] text-emerald-400">Monte Carlo Stress Curve</span>
+                    <span className="text-[10px] text-emerald-400">One seeded realization per level</span>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -1148,7 +1044,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                           <th className="py-1.5 px-2">Max Param Error %</th>
                           <th className="py-1.5 px-2 text-sky-300">Reduced χ²</th>
                           <th className="py-1.5 px-2 text-emerald-300">R² Score</th>
-                          <th className="py-1.5 px-2">Robustness</th>
+                          <th className="py-1.5 px-2">Convergence</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#121c2e]">
@@ -1156,23 +1052,13 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                           <tr key={idx} className="hover:bg-[#0c1424]">
                             <td className="py-1.5 px-2 text-amber-300 font-bold">{s.noiseLevelPct.toFixed(1)}%</td>
                             <td className={`py-1.5 px-2 font-bold ${s.meanParamErrorPct > 10 ? "text-rose-400" : "text-emerald-400"}`}>
-                              {s.meanParamErrorPct.toFixed(2)}%
+                              {s.meanParamErrorPct == null ? "Unavailable" : s.meanParamErrorPct.toFixed(2)}%
                             </td>
-                            <td className="py-1.5 px-2 text-slate-300">{s.maxParamErrorPct.toFixed(2)}%</td>
+                            <td className="py-1.5 px-2 text-slate-300">{s.maxParamErrorPct == null ? "Unavailable" : s.maxParamErrorPct.toFixed(2)}%</td>
                             <td className="py-1.5 px-2 text-sky-300">{s.reducedChiSquare.toExponential(2)}</td>
-                            <td className="py-1.5 px-2 text-emerald-300">{s.rSquared.toFixed(4)}</td>
+                            <td className="py-1.5 px-2 text-emerald-300">{s.rSquared == null ? "Unavailable" : s.rSquared.toFixed(4)}</td>
                             <td className="py-1.5 px-2">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  s.robustnessScore >= 85
-                                    ? "bg-emerald-500/20 text-emerald-300"
-                                    : s.robustnessScore >= 65
-                                    ? "bg-amber-500/20 text-amber-300"
-                                    : "bg-rose-500/20 text-rose-300"
-                                }`}
-                              >
-                                {s.robustnessScore}/100
-                              </span>
+                              <span>{s.converged ? "Converged" : "Not converged"}</span>
                             </td>
                           </tr>
                         ))}
@@ -1191,27 +1077,13 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
             <div className="bg-[#090e18] rounded-2xl border border-[#1e2c45] p-5 shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#162032] pb-3">
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl font-mono shadow-lg border ${
-                      benchmarkResult.robustnessGrade === "A+" || benchmarkResult.robustnessGrade === "A"
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                        : benchmarkResult.robustnessGrade === "B"
-                        ? "bg-sky-500/20 text-sky-300 border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.3)]"
-                        : benchmarkResult.robustnessGrade === "C"
-                        ? "bg-amber-500/20 text-amber-300 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                        : "bg-rose-500/20 text-rose-300 border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
-                    }`}
-                  >
-                    {benchmarkResult.robustnessGrade}
-                  </div>
-
                   <div>
                     <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
-                      Auto-Fitting Robustness Score:{" "}
-                      <span className="text-amber-400">{benchmarkResult.robustnessScore}/100</span>
+                      Synthetic parameter recovery:{" "}
+                      <span className="text-amber-400">{benchmarkResult.converged ? "Converged" : "Not converged"}</span>
                     </h3>
                     <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                      Mean Parameter Recovery Error: <strong className="text-emerald-300">{benchmarkResult.meanAbsolutePctError.toFixed(2)}%</strong> (Max: {benchmarkResult.maxAbsolutePctError.toFixed(2)}%)
+                      Mean Parameter Recovery Error: <strong className="text-emerald-300">{benchmarkResult.meanAbsolutePctError == null ? "Unavailable" : benchmarkResult.meanAbsolutePctError.toFixed(2)}%</strong> (Max: {benchmarkResult.maxAbsolutePctError == null ? "Unavailable" : benchmarkResult.maxAbsolutePctError.toFixed(2)}%)
                     </p>
                   </div>
                 </div>
@@ -1231,7 +1103,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                     Ground Truth Parameter Recovery vs Auto-Fitted Values
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono">
-                    Reduced χ²: <strong>{benchmarkResult.reducedChiSquare.toExponential(2)}</strong> | R²: <strong>{benchmarkResult.rSquared.toFixed(4)}</strong>
+                    Reduced χ²: <strong>{benchmarkResult.reducedChiSquare.toExponential(2)}</strong> | R²: <strong>{benchmarkResult.rSquared == null ? "Unavailable" : benchmarkResult.rSquared.toFixed(4)}</strong>
                   </span>
                 </div>
 
@@ -1249,8 +1121,8 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                     </thead>
                     <tbody className="divide-y divide-[#121c2e]">
                       {benchmarkResult.parameterErrors.map((pe, idx) => {
-                        const isExcellent = pe.pctError <= 3.0;
-                        const isGood = pe.pctError <= 10.0;
+                        const isExcellent = pe.pctError !== null && pe.pctError <= 3.0;
+                        const isGood = pe.pctError !== null && pe.pctError <= 10.0;
                         return (
                           <tr key={idx} className="hover:bg-[#0c1424]">
                             <td className="py-1.5 px-2.5 font-bold text-slate-200">{pe.paramName}</td>
@@ -1258,15 +1130,15 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                               {pe.trueValue.toPrecision(4)} {pe.unit}
                             </td>
                             <td className="py-1.5 px-2.5 text-emerald-300 font-mono font-bold">
-                              {pe.recoveredValue.toPrecision(4)} {pe.unit}
+                              {pe.recoveredValue == null ? "Unavailable" : pe.recoveredValue.toPrecision(4)} {pe.unit}
                             </td>
-                            <td className="py-1.5 px-2.5 text-slate-400 font-mono">{pe.absError.toPrecision(3)}</td>
+                            <td className="py-1.5 px-2.5 text-slate-400 font-mono">{pe.absError == null ? "Unavailable" : pe.absError.toPrecision(3)}</td>
                             <td
                               className={`py-1.5 px-2.5 font-mono font-bold ${
                                 isExcellent ? "text-emerald-400" : isGood ? "text-amber-400" : "text-rose-400"
                               }`}
                             >
-                              {pe.pctError.toFixed(2)}%
+                              {pe.pctError == null ? "Unavailable" : pe.pctError.toFixed(2)}%
                             </td>
                             <td className="py-1.5 px-2.5 text-right">
                               <span
@@ -1278,7 +1150,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
                                     : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
                                 }`}
                               >
-                                {isExcellent ? "Optimal" : isGood ? "Acceptable" : "Distorted"}
+                                {pe.pctError === null ? "Unavailable" : isExcellent ? "Error ≤3%" : isGood ? "Error ≤10%" : "Error >10%"}
                               </span>
                             </td>
                           </tr>
@@ -1308,3 +1180,7 @@ export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProp
     </div>
   );
 };
+
+// Changing the workspace topology starts a new input-bound session.
+export const SyntheticNoiseStressStudio: React.FC<SyntheticNoiseStressStudioProps> = props =>
+  <SyntheticNoiseStressSession key={JSON.stringify(props.initialTopology ?? null)} {...props} />;

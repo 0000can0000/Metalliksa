@@ -104,7 +104,7 @@ class Queue:
             raise ValueError("Job not found")
         out = dict(row)
         settings = json.loads((self.root/job/"input.json").read_text())
-        out["requestSummary"] = {k:settings[k] for k in ("mode","backend","material")}
+        out["requestSummary"] = {k:settings.get(k) for k in ("mode","backend","material")}
         if out["status"] == "completed":
             try:
                 out["result"] = json.loads((self.root/job/"result.json").read_text())

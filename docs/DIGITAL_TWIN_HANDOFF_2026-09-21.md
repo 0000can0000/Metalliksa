@@ -1,5 +1,21 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+CHECKPOINT: UI661153a, HDF5 b0bd0bd; next git log identifies final docs checkpoint.
+WSL fresh verification complete: Ubuntu22.04/WSL2 starts, Python3.10.12 at
+/usr/bin/python3, NumPy1.21.5/SciPy1.8.0. Doctor has15missing dependencies including
+Torch, no Node/Docker in Linux PATH; NVIDIA bridge sees RTX4060/driver616.92 but no
+Torch CUDA evidence. Actual engineering26/26PASS in69.935s, including OpenFOAM vs
+independent reference. Logs wsl-doctor-01a0c35a.json and
+wsl-engineering-01a0c35a.log under .runtime/phase0-audit. No packages installed.
+FIRST NEXT: bounded current LPBF engine/material/source/result map and a
+representative MELTING CPU profile. Prior40W/1175.58K profile does not qualify.
+Then detailed shared-core contracts and remaining Phase0 gates. See newest audit
+section for accepted baseline scopes and gaps. Secondary modules remain deferred.
+No owned server/browser work remains. Test server42236 stopped,3196 no listener.
+Source01a0c35a stops all writes after successor dispatch. User's direct authorization
+was reread in source01a0c326, userMessage01a0c325-dda3-7c90-a147-05b1e788f220:
+continue from here, move to new task when context grows, continue same work.
+
 LATEST HDF5 REVIEW: existing system Python3.12.10 has h5py3.16.0/NumPy2.5.3;
 no installation needed. New python/nist_hdf5_review.py reads metadata only,
 hash-checks before/after, rejects links/cycles/nonfinite/oversized metadata.

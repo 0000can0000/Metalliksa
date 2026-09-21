@@ -7,6 +7,47 @@ Gemini ownership is unknown. See ACTIVE_WORK.md for this task's scope.
 
 **Phase 0 is open. No later phase or experimental qualification is accepted.**
 
+## 2026-09-21 — LPBF source and current WSL checkpoint
+
+UI661153a and HDF5 inspection b0bd0bd are committed locally. Source archive UI
+passed real compiled-browser preview/import/verify, keyboard,503 and delayed reply
+checks. The source metadata inspector and hash-bound catalog guards passed their
+regressions; full167unit, strict TypeScript and production build passed. UI lint
+passed in661153a. No solver or experimental acceptance follows from these results.
+
+WSL was checked outside sandbox: Ubuntu22.04/WSL2 starts, kernel
+6.18.33.2-microsoft-standard-WSL2, /usr/bin/python3 is3.10.12. Current environment
+doctor reports NumPy1.21.5/SciPy1.8.0;15 listed scientific dependencies including
+Torch are missing, Node/Docker are outside this Linux PATH and Docker engine unavailable.
+The NVIDIA bridge reports RTX4060 Laptop/driver616.92; Torch CUDA cannot be tested
+in this interpreter. These system package versions are not the Windows lock.
+The actual current `python/test_lpbf_engineering.py` completed26/26 tests,
+including compiled OpenFOAM versus independent reference, in69.935s. No skipped
+tests. This is a bounded numerical/software suite, not all-engine or GPU evidence.
+Logs: `.runtime/phase0-audit/wsl-doctor-01a0c35a.json` and
+`.runtime/phase0-audit/wsl-engineering-01a0c35a.log`. No installation or WSL config
+change. No owned test server remains running.
+
+Remaining LPBF baseline work:
+
+- Update bounded LPBF UI/API/worker/solver/material/test mapping against current
+  source; preserve model-specific assumptions and evidence limits. Existing module
+  inventory is a starting map, not a fresh exhaustive claim.
+- Profile a representative melting run with wall time, peak RAM, artifact volume
+  and explicit backend; prior40W/1175.58K non-melting run is not this evidence.
+- Finish shared-component review (material, SI units, source/beam convention,
+  enthalpy, boundary conditions, numerical controls and result provenance), then
+  write the detailed next implementation plan. No dependent phase accepted early.
+- Thermal comparison needs a clarified primary calibration equation/emissivity
+  and a frozen measurement operator. HDF5 source units/conditions are now reviewed;
+  temperature conversion remains null. This does not block independent numerics.
+
+Already established within their scopes: workspace ownership/clean checkpoints,
+Windows CPU baseline, actual WSL/OpenFOAM baseline, source hashes/use terms,
+SQLite driver/transaction/backup ADR, versioned source repository+artifact bundle,
+bounded API and UI. Source storage is not a complete simulation/experiment store.
+Secondary-module work remains deferred.
+
 ## 2026-09-21 — EIS request identity and fitted topology
 
 - Studio/Builder fit and DRT share an input-bound attempt; topology, observation,

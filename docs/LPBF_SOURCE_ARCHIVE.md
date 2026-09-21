@@ -101,5 +101,9 @@ TypeScript PASS. Regressions cover corruption, concurrent duplicate publication,
 multi-chunk binary copy, junction escapes, import failure, immutable history,
 independent restore, existing-destination refusal and SQLite sidecars.
 
-Raw camera signal remains uncalibrated; HDF5 attributes/measurement review is open.
-No thermal/powder-bed validation or phase acceptance follows from this pilot.
+HDF5 metadata was subsequently inspected in b0bd0bd. See
+[the review](NIST_IN718_HDF5_REVIEW_2026-09-21.md) for digital-level units, source
+conditions, thresholding and the malformed stored calibration expression.
+Raw camera signal remains uncalibrated; thermal/powder-bed validation and phase
+acceptance remain open. Updated metadata can be previewed/imported as a new source
+revision; historical revisions retain their original review scope.

@@ -1,3 +1,12 @@
+# Current owner — 2026-09-21
+
+Continuation task 01a0c148-fa30-79c0-8e4f-94a5c74bb4d4 inherits the shared LOCAL
+main checkout at clean HEAD4f76eca. Source01a0c133 stopped writing on dispatch.
+Owns python/cnls_fitting_solver.py, new focused numerical tests, fitting report
+contracts/consumers as inspected, and STATUS/PROOF/audit/handoff/this record.
+First acceptance: analytic R and R-C recovery; truthful fixed/zero-iteration,
+uncertainty and convergence reports. No phase acceptance, push, install or
+Gemini scope assumed. Historical ownership below is superseded.
 # Active Work
 
 Checkpoint ad5adf5: current package complete (lint PASS, unit122, build PASS,

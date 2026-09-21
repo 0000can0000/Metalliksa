@@ -602,3 +602,17 @@ beta_a=.1, beta_c=.2 V/dec; area 2 cm2), recovering current-unit equivalence in
 A/mA/uA/log(A). These checks verify equations and unit handling, not ASTM conformity
 or experimental applicability. See `python/test_no_fabricated_outputs.py` and the
 Phase 0 audit for the 10-test software/analytic scope and remaining limitations.
+
+## 2026-09-21 — CNLS residual Jacobian sign regression
+
+Scope: numerical verification of the local CNLS step, not EIS experimental
+validation. Analytic independent fixtures use R=20 Ohm and
+Z=5+120/(1+j*2*pi*f*120*20e-6), 60 log-spaced frequencies 0.1–100000 Hz.
+Before repair, R stayed at its initial2 Ohm and Randles Rs stayed at12 instead
+of5. The residual is experimental-minus-calculated; its numerical Jacobian
+requires the normal-equation RHS -J^T r. Correcting this sign passes both tests:
+R within1e-6 Ohm (NumPy and pure Python), each Randles parameter relative error
+below1e-5, reduced objective below1e-12. Command:
+.runtime/lpbf-win-py312/Scripts/python.exe python/test_cnls_numerics.py (2 PASS).
+Known remaining limitations: termination/uncertainty/fixed-parameter reporting,
+K-K and standards claims, and synthetic provenance are separate open repairs.

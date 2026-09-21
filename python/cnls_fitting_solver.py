@@ -1181,7 +1181,8 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
             for row_idx in range(len(current_residuals)):
                 jacobian[row_idx][col_idx] = (res_plus[row_idx] - current_residuals[row_idx]) / delta
         
-        # Compute Normal Equations: (J^T * J + lambda * diag(J^T * J)) * dp = J^T * residuals
+        # J differentiates (experimental - calculated) residuals. The minimizing
+        # step solves (J^T J + lambda * diag(J^T J)) dp = -J^T residuals.
         jt_j = [[0.0] * num_adj for _ in range(num_adj)]
         jt_r = [0.0] * num_adj
         
@@ -1203,11 +1204,11 @@ def run_cnls_fit(topology_id, points, initial_params, weighting="modulus", max_i
             diag = a_mat[i][i]
             a_mat[i][i] += lambda_damp * (diag if diag > 1e-12 else 1.0)
         
-        # Solve linear system A * dp = jt_r using Gauss-Jordan elimination
+        # Solve linear system A * dp = -jt_r using Gauss-Jordan elimination
         dp = [0.0] * num_adj
         try:
             # Augment matrix
-            aug = [a_mat[i] + [jt_r[i]] for i in range(num_adj)]
+            aug = [a_mat[i] + [-jt_r[i]] for i in range(num_adj)]
             for i in range(num_adj):
                 # Pivot
                 max_row = i

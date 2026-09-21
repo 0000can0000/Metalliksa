@@ -1,0 +1,11 @@
+import React from 'react';
+import assert from 'node:assert/strict';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ExperimentalValidationLab } from '../src/components/ExperimentalValidationLab';
+const html = renderToStaticMarkup(<ExperimentalValidationLab />);
+assert.match(html, /Comparison unavailable/);
+assert.match(html, /completed simulation run/);
+assert.match(html, /exact source revision/);
+assert.match(html, /does not resolve PDAS or keyhole depth/);
+assert.doesNotMatch(html, /<input|Run Traceability Pipeline|Overall Match|value="1.6"/);
+console.log('PASS: unbound LPBF comparison cannot fabricate simulation or measurement inputs');

@@ -1,5 +1,14 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+NEWEST: run capture commit5ee6fae. Experimental evidence repair completed after it:
+fixed predictions/default measurements removed from unbound UI; backend arithmetic
+comparison-only/unvalidated, no empty validated result or15/20percent pass claims.
+See LPBF_SCIENTIFIC_FINDINGS_2026-09-21.md. Phase10 5PASS, UI1PASS, lint/buildPASS36.60s,
+actualAPI equality unvalidated and empty400; compiled-component browser keyboard/
+visualPASS. Next persistence package fullrun+sourcebundle/restore then API/UI.
+Preserve existing external dirty files; user confirmed stopping other writer.
+No laterphase accepted. Continue LPBF only; do not fix unrelated EIS/UQ failures.
+
 LATEST owner01a0c383: run capture/repository package implemented, see
 LPBF_RUN_ARCHIVE.md and superpowers/plans/2026-09-21-lpbf-run-capture.md ledger.
 Python capture5/core8PASS; latest affected Node21PASS; strictTS/lint/buildPASS.

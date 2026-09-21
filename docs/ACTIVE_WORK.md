@@ -273,6 +273,13 @@ DIGITAL_TWIN_HANDOFF_2026-09-21.md, verify Git, then continue the claimed open s
 No Gemini work assumed; no phase gate accepted. Temporary test servers are stopped.
 # Current owner — 01a0c383-a755-7b53-84c6-3ec040b67aa0, 2026-09-21
 
+Run package committed5ee6fae. Next owns only LPBF experimental comparison:
+python/lpbf_experimental_validation.py, python/test_phase10.py,
+src/components/ExperimentalValidationLab.tsx, its focused presentation test and
+checkpoint docs. Remove fabricated fixed simulation inputs and unconditional
+validated/pass/high claims. Missing linked data remains unavailable; arithmetic
+comparison must not imply independent experimental validation.
+
 Continues LOCAL HEAD64bc5aa. Owns new lpbf run capture/repository/import modules,
 their focused tests, narrow python/lpbf_worker.py integration and checkpoint docs.
 Acceptance: immutable snapshots, Python-verified bindings, complete output manifest,

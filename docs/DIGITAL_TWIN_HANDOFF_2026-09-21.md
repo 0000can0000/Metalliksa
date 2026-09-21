@@ -1,4 +1,126 @@
-# CURRENT CONTINUATION — checkpoint after e1ab00f
+# CURRENT CONTINUATION — checkpoint after d4db76d
+
+Read parent ../STATUS.md FIRST. User explicitly authorized continuing until done
+while away, automatic fresh LOCAL task handoff when context becomes limited,
+and "hep statuse kaydetmeyi ve ordan da devam etmeyi unutma". No exact context
+percentage is exposed. This section supersedes all historical checkpoints below.
+
+## Ownership and verified state
+
+- Shared LOCAL C:/Users/can02/Projects/metalliksaa/Metalliksa-1/main; parent is a
+  separate dirty repo. No worktree, push or install. Local commits authorized.
+  No subagents/fleet. Gemini scope unknown. Preserve others' changes.
+- Source01a0c15d-a9c9-77c1-b20a-d72ba631fa2c stops writing upon successor dispatch.
+  Verify Git/ACTIVE_WORK then inherit. Code d4db76d committed; clean app tree/index
+  before this docs checkpoint. Phase0 OPEN; dependent phases NOT accepted.
+- d4db76d: useInputBoundTask guards input identity, retry, unmount, late success,
+  error/finally, A-B-A changes and multi-stage fit/DRT. Studio/Builder results no
+  longer rewrite inputs automatically; explicit Apply required. FileReader guards.
+  Studio outer wrapper remounts session on changed currentTopology. Plotly hides
+  stale points during debounce, validates finite result fields, shows errors,
+  removes click listeners and purges on unmount. Abort is transport/UI invalidation,
+  NOT cancellation of Python computation.
+- Normalizer previously returned original topology although parameters were fitted;
+  a new R3 initial/R2 returned regression failed, then passed with fitted cloned
+  topology. Apply/preview now correct, initial object unchanged. Builder classic
+  preview uses fitted topology too. Studio initial guesses remain unchanged after
+  fitting; this is intentional to keep input identity stable.
+- Fresh full unit126/126 PASS, lintPASS, buildPASS23.28s (chunk-size warnings).
+  Logs .runtime/phase0-audit/identity-{unit,lint,build}-final.txt.
+  tests/contracts-browser.html includes hold-fit/hold-DRT/hold-simulation modes that
+  return actual Python responses but deliberately ignore abort. New hook self-test
+  in tests/input-bound-task-browser.tsx ran10PASS in real browser.
+- Actual browser3193→IPC5193 explicitCPU Python: before fix held fit overwrote
+  edited Rs9 with0.02874 and showed convergence; afterward Rs9 persists/no report.
+  Held DRT after edits stays empty. External topology replacement rejects old fit.
+  Studio Enter Apply callback returns actual Rs0.028743577/C0.238972388 and preview
+  Rs0.029. Builder Enter Apply updates values and rejects pending DRT. Held global
+  fit after dataset change yields no summary/Apply. Incomplete global report errors.
+  Plotly clears metrics while held; late success cannot overwrite new503 error.
+  Screenshot checked. These are synthetic-input software checks, NOT experiments.
+- Test processes own37764 tree,17228 tree,final25496 tree stopped; no3193/5193
+  listeners. Inventories identity-owned-{1,2,final}.json. Browser tab closed.
+  Unknown24678 untouched. DISABLE_HMR=true requires ownedserver restart after edits.
+
+## Immediate next package — inspected, NOT implemented
+
+1. Explicit client-JS CNLS and SyntheticNoise consumers remain dishonest. Inspect
+   then claim exact paths in ACTIVE_WORK before changes. RULES: Python is science
+   authority; avoid building another solver implementation if existing corrected
+   Python can serve these paths. Source evidence, not stale graph, must guide it.
+   - src/utils/cnlsOptimizer.ts runCNLSFit ~356–678 still solves +JTr although J is
+     residual derivative, synthesizes zero uncertainties if inversion fails,
+     clamps R² and emits0.99 for zero totalSS; ASTM compliance from weighting alone;
+     evaluateKramersKronig is a heuristic with unsupported stationarity claims.
+   - Current call sites: Studio runFit client_js branch; SyntheticNoiseStressStudio
+     three calls in success/fallback/catch; runNoiseSweepStressTest in utility.
+     Graph inbound showed6 stale callers including repaired Builder/asyncAutoFit;
+     do NOT assume those remain. Trace/source showed stale gen2026-09-18.
+   - SyntheticNoiseStressStudio ~174–285: cnls-synthetic-noise API then constructs
+     fitRep with fallback0.001/0.02/0.99/150ms, convergence unless false and fakeKK
+     from configured drift. On failure executes local client and calls it success.
+     Critically Python regenerates a DIFFERENT random spectrum but UI evaluates
+     fit against JS syntheticPoints and ignores returned syntheticPoints. Cannot
+     merely plug normalizer into this mismatch. Fit actual displayed points via
+     existing Python API, OR consume/plot/normalize returned Python points exactly.
+   - ~288 noise sweep setTimeout runs synchronous JS fitting with no input/unmount
+     guard. Reuse input-bound lifecycle; guard late export/callback too. Initial
+     topology prop is only copied once. Preserve valid seeded sampling.
+   - src/utils/syntheticEISNoiseGenerator.ts evaluateAutoFitRobustness~557–679:
+     missing recovered param becomes true value (fake0 error), missing stdError0;
+     null R² coerced into arithmetic, arbitrary heuristic grade, evaluateKK fake
+     stationarity, configured cable inductance reported as detected/deembedded,
+     default recommendation claims true kinetics and <5% error without evidence.
+     Sweep~686–745 likewise missing parameters→truth, missing channel errors0,
+     arbitrary score. Use explicit unavailable/observed recovery metrics. Existing
+     runNoiseSweepStressTest is single realization per level, NOT MC validation.
+   - Nullable fields must remain null in types/render/export; UI .toFixed calls
+     on benchmark/sweep rSquared ~1163/1234 need guards. Robustness types presently
+     number-only; strictNullChecks off. No null→0, no fabricated quality score.
+   - Python cnls_fitting_solver.py synthetic action~2043–2320: legitimate noise
+     generation mixed with fake success tail. ~2255 missing parameter→true and
+     missing sigma0; ~2289 rSquared default. Audit tail/current emitted contract.
+     Preserve seed/method/uncertainty; do not remove scientific noise/MC itself.
+2. EIS provenance: eisFileParser built-in circuits/noise falsely claim laboratory
+   measurements and instruments. Update source, consumers/exports, SOH/DRT/Tafel.
+   Synthetic buildSyntheticDataset also invents25C/0V/10mV/area1 metadata. Studio
+   static ASTM/K-K banners remain misleading. Labels seen in browser are NOT proof.
+3. EDS AIcatch fake report/compliance; heat multipliers/materialDataPipeline derived
+   profiles. Prior candidate/EDS transfer and explicit precipitate input are fixed.
+4. Material authority/unknown-alloy fallback; transient GPU bounded existingqueue
+   route with real cancellation/budget; AIOrchestrator optional-agent completed.
+5. Phase0 gates: WSL outside sandbox; representative thermal walltime/peakRAM/VRAM/
+   artifact profile; raw hashes/source terms; isolated NodeSQLite transaction/backup
+   ADR; capability map and dependent detailed plan. No early phase acceptance.
+
+## Prior numerical repairs still valid; limitations retained
+
+- b5c83c3/e1ab00f fixed Python LM sign, analytic R20/Randles5/120/20uF red→green,
+  fixed/iter0 actual residual metrics, convergence/termination, final-Jacobian
+  scaledSVD uncertainty only identifiable/converged/interior, otherwise null.
+  R² negative preserved/constant magnitude null, bounds honored. DE local RNG
+  seed42, no global mutation. Python12+10 were tested in predecessor, not rerun
+  for this UI-only package. No experimental qualification.
+- Short LinKK null/unavailable; larger legacy Voigt explicitly unverified screening
+  and isStationary/driftScore null. Normal equations/clipped coefficients/fixed
+  basis still need numerical review. DE global budgets/inputs/extremes and
+  correlated stratification remain open. Don't claim all fake outputs gone.
+- EISUploadInsights/PhysicalValidation use guarded usePythonAnalysis already;
+  don't redo them. Their domain interpretations/provenance still part of audit.
+- CPU .runtime/lpbf-win-py312/Scripts/python.exe; scientific
+  .runtime/scientific-win-py312-cu128/Scripts/python.exe. SystemWarp1.17 has NumPy/
+  SciPy outside repo range; scientific lacksWarp; py-3 is3.14. No installs.
+- Isolate BOTH Node PORT and METALLIX_IPC_PORT. Prior Node3192/default5055 reused
+  old Python metrics, discarded. Supervisor cross-instance identity open follow-up.
+- CBM nearest project C-Users-can02-Projects-metalliksaa-Metalliksa-1 generation
+  2026-09-18T15:50:24Z, metadata_changed/not_tracked, studio parsepartial885,
+  SyntheticNoise parsepartial432. Exact source fallback used. Local Graft final
+  refresh said242files changed (includes generated ignored work); app tree clean.
+- AgentMemory recall this task empty. Skills actually read: recall, systematic
+  debugging, TDD+writing-good-tests, verification-before-completion, computer-use.
+  Browser via cua_repl only. Node tests/server needed scoped escalation; no denial.
+
+# Historical checkpoint after e1ab00f — superseded
 
 Read parent ../STATUS.md FIRST. User explicitly authorized continuing until done
 while away, automatic fresh LOCAL task handoff when context becomes limited,

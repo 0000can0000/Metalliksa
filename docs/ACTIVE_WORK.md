@@ -14,6 +14,14 @@ Next owns tests/lpbf-sqlite-compatibility.test.ts and SQLite ADR/provenance note
 Material repair committed2a118ee. SQLite trial3 and full unit136PASS; source-context
 metadata and low-power profile recorded. Also owns PROOF.md. Next scope is isolated
 versioned metadata repository and its tests; no live legacy data migration yet.
+Exact next paths: server/lpbfSourceRepository.ts, tests/lpbf-source-repository.test.ts.
+Contract: immutable source archive metadata revisions, explicit unreviewed evidence,
+bounded validated JSON, hash-checked reads, CAS conflicts, metadata-only backup.
+Repository complete:6new tests/full142unit/targetedTS/strictmodulePASS. Real IN718
+metadata-only pilot saved and restored under ignored .runtime. No live migration.
+Next work is content-addressed artifact storage + dry-run import + full bundle.
+On clean continuation dispatch, source01a0c339 stops writing; successor must claim
+this same LOCAL checkout after reading STATUS/CURRENT CONTINUATION and Git.
 
 # Latest architecture decision — shared LPBF core authorized
 

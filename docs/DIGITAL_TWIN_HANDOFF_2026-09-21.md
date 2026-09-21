@@ -1,5 +1,33 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+LATEST CHECKPOINT: source metadata repository implemented and verified (next git
+log identifies commit). `server/lpbfSourceRepository.ts` uses node:sqlite with
+immutable revisions, expected-revision conflicts, bounded finite JSON validation,
+explicit source terms/missing reason, canonical four-alloy IDs, relative artifact
+references, SHA256-checked reads, and backupMetadata to a NEW directory only.
+Unknown/unrelated DB schemas are rejected. Returned evidence remains
+unreviewed-source-archive / not-verified: referenced artifact bytes are NOT stored
+or verified by this repository. It is not yet connected to a route or UI.
+Six new contracts PASS; full unit142PASS; dedicated TS compilePASS and strict
+server module compilePASS. Previous app lintPASS was on material package.
+Pilot actual IN718 metadata persisted/reopened from its backup at
+`.runtime/lpbf-source-pilot-01a0c339/{metadata.sqlite,backup/metadata.sqlite}`;
+3 references, null conversion preserved, documentSHA
+cbf30982263b00f485f5380de0b0bf2293d73807a14159e14a4aaa470400be75.
+These ignored pilot files are not the live application store. No legacy import,
+new API, source download, dependency installation, push or user-record migration.
+
+NEXT CONCRETE PACKAGE: immutable content-addressed artifact storage (streaming
+SHA256/size, containment/symlink checks, no overwrite; failure cleanup confined to
+owned staging), then dry-run source import that checks all local bytes BEFORE
+publishing a metadata revision. Preserve source-context terms/unknowns. Add a
+restore bundle that contains bytes+metadata; current backup is METADATA ONLY.
+After that connect the reviewed path to API/UI with input-bound results, and
+continue IN718 measurement review/common core gates. No benchmark tolerance changes.
+CPU/scientific runtimes lack h5py; inspect existing tools before any installation.
+Do not restart EIS/EDS work. Phase0 still OPEN; persistence foundation is partial,
+not acceptance of Phase1. No test server currently owned/running by this task.
+
 Active owner01a0c339-7e60-7573-b548-4fd5e6cbef44 started from clean affdaec.
 Thermal-accumulation now uses shared four_alloy_materials properties and canonical
 aliases, converts Celsius to Kelvin, and rejects missing/unknown alloys. Real RPC
@@ -22,7 +50,7 @@ Low-power reference profile3.776s/243924992peakRSSbytes/560547artifactbytes;
 no melt; see PROOF. Representative melting/GPU profile still open. Graft local
 wiring refreshed; generator rewrote tracked unrelated cards, only those generated
 changes were restored. CBM still18Sep stale; direct source evidence remains primary.
-Next: versioned persistence contracts/repository, artifact store and dry-run import;
+Next: artifact store and dry-run import on the new versioned repository;
 complete IN718 attribute/measurement review and remaining Phase0 gates. Secondary
 modules remain deferred; Phase0 OPEN.
 

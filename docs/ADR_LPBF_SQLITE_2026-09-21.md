@@ -45,7 +45,12 @@ manifest; verify artifact hashes and open the restored database before switching
 the active path. Do not copy a live SQLite main file alone. Preserve the original
 storage and legacy registry during dry-run imports and recovery.
 
-Next implementation: versioned schema and repository → content-addressed artifact
+Implementation checkpoint: `server/lpbfSourceRepository.ts` now provides isolated
+versioned metadata persistence, CAS, validated/hash-checked reads and exclusive
+metadata-only backups. Six contract tests and a local IN718 metadata backup round
+trip pass. The API/live registry are not switched. Full artifact backup remains open.
+
+Next implementation: content-addressed artifact
 store → dry-run legacy import → backup/restore bundle → API integration. Existing
 research registry identity/history/conflict semantics must survive migration;
 this ADR does not replace or migrate that registry.

@@ -1,3 +1,11 @@
+# Successor dispatch checkpoint
+
+Code e1ab00f complete; browser serverPID17488 and descendants stopped;
+3192/5192 have no listeners. Source01a0c148 stops writing upon fresh LOCAL
+successor dispatch. Inherit after reading STATUS/CURRENT CONTINUATION and Git.
+First scope: Studio/Builder/Plotly input identity and late responses. All other
+open scopes/limits are in current handoff. Phase0 remains OPEN.
+
 # CNLS package checkpoint — current owner01a0c148
 
 Sign fix b5c83c3; result-contract package verified with Python12+10, unit125,

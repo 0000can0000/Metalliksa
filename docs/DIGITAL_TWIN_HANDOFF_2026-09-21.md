@@ -1,4 +1,109 @@
-# CURRENT CONTINUATION — checkpoint after ad5adf5
+# CURRENT CONTINUATION — checkpoint after e1ab00f
+
+Read parent ../STATUS.md FIRST. User explicitly authorized continuing until done
+while away, automatic fresh LOCAL task handoff when context becomes limited,
+and "hep statuse kaydetmeyi ve ordan da devam etmeyi unutma". Preserve authority.
+No exact context percentage is exposed. This section supersedes all history below.
+
+## Ownership and checkpoint
+
+- Same shared LOCAL C:/Users/can02/Projects/metalliksaa/Metalliksa-1, main.
+  Parent workspace is a separate dirty repo. No worktree, no push or install.
+  Local commits authorized. No new subagents unless asked. Gemini scope unknown.
+- Source01a0c148-fa30-79c0-8e4f-94a5c74bb4d4 stops writing upon successor dispatch.
+  Recheck git status/index/log and ACTIVE_WORK, then inherit ownership.
+- Code commits b5c83c3 and e1ab00f; app tree/index clean before this docs checkpoint.
+  b5c83c3 corrects LM normal-equation RHS to -J^T r for exp-calc residual Jacobian.
+  Independent R20 and Randles Rs5/Rct120/C20uF fixtures failed first, then passed.
+- e1ab00f evaluates fixed/iter0 models honestly, reports explicit convergence and
+  termination, actual chiSquare/DOF/RMSE, unclipped magnitude R² (null for constant
+  magnitude). Validates finite observations/options/bounds, honors frontend
+  lowerBound/upperBound. Final-iterate scaled SVD covariance only when converged,
+  identifiable and not at a bound; otherwise uncertainty null. Fixed sigma0 is
+  conditional on a locked value. Pure-Python LM works; uncertainty requires NumPy.
+- DE local RNG with randomSeed42 default/CLI option; deterministic test and no
+  global RNG mutation. No-polish iter0 evaluated honestly. No proof global optimum.
+  DE input/budget validation, initial metadata, correlated stratification and
+  dynamic finite output checks still deserve review; don't claim complete audit.
+- Circuit-fit residuals no longer certify K-K/ASTM. Short LinKK returns nulls and
+  unavailable. Larger Voigt report withholds isStationary/driftScore and standards
+  diagnosis; keeps descriptive residual metrics and sorts frequency for subsets.
+  Legacy normal equations/clipped coefficients/fixed basis still NOT numerically
+  reviewed, now labeled as such. Do not claim genuine LinKK implementation fixed.
+- Normalizer accepts explicit null, rejects missing/duplicate/count mismatches,
+  fitted bounds and residual observation/frequency mismatch. Studio and async
+  autoFit now use it; no silent Python-error→JS fallback or .001/.05/.99/100 defaults.
+  Studio retry clears fit/DRT; builder/studio null uncertainty/R² render Unavailable.
+  Normalizer currently does not forward astmG106/physicalValidation; the separate
+  validation component uses its own guarded backend hook.
+- Fresh tests: CNLS12/12; no_fabricated_outputs10/10; unit125/125; lintPASS;
+  buildPASS23.32s with chunk warnings. Logs .runtime/phase0-audit/cnls-*. Test:
+  .runtime/lpbf-win-py312/Scripts/python.exe python/test_cnls_numerics.py.
+- Browser tests/contracts-browser.html has new fitting tab. Actual Node→Python
+  local fit in BOTH studio/builder:65iterations,reduced1.029e-2,R².99124; independent
+  K-K unavailable. Studio503 removes fit, partial global report errors. Enter runs
+  local fit; Tab reaches apply with visible focus; builder screenshot checked.
+  No experimental validation; built-in metadata still misleading and next to fix.
+
+## Immediate next work
+
+1. Inspect and fix input identity/late results in CNLSFittingStudio,
+   EquivalentCircuitBuilder and PlotlyEISViewer. Girdi değişince eski sonucu
+   güncel gibi gösterme; pending response must not update new topology/params/data.
+   Studio currently automatically writes fitted params after fit, which complicates
+   identity effects; separate result from editable input or explicitly account for
+   accepted application. Guard DRT replies and callbacks, retries and unmount.
+   Existing usePythonAnalysis already protects EISUploadInsights/PhysicalValidation;
+   don't redo those completed flows. Add held-response browser test to harness.
+2. Explicit client-JS runCNLSFit still has zero-error/covariance/R².99/KK heuristics.
+   src/utils/syntheticEISNoiseGenerator and SyntheticNoiseStressStudio, and Python
+   synthetic action tail still contain fake metric/missing-parameter success
+   defaults. Preserve scientific seeded noise/MC but remove fabricated quality.
+   Note nullable R²/stdError now emitted by Python; these consumers must not coerce
+   null into zero or crash. stdError and CNLS rSquared types nullable; other older
+   interfaces may still say number (tsconfig strictNullChecks is off).
+3. eisFileParser built-in circuits/noise falsely labeled experiments/instruments.
+   Fix provenance at source and consumers/exports. SOH/DRT/Tafel interpretations and
+   CNLS studio static ASTM/K-K educational banners remain partially misleading.
+   UI currently still has experimental/ASTM metadata labels visible. Evidence
+   harness correctly says synthetic, but product metadata not yet repaired.
+4. EDS AI catch fabricates report/compliance; heat empirical multipliers and
+   materialDataPipeline derived profiles still need audit. Candidate/EDS transfer
+   and explicit heat precipitate input were repaired previously, don't regress.
+5. Material authority/unknown-alloy fallback; missing transient GPU bounded route
+   on existing persistent queue with true cancellation/budget; AIOrchestratorPanel
+   optional-agent completed badge remain open.
+6. Phase0 remains OPEN: WSL outside sandbox; representative thermal wall-time,
+   peak RAM/VRAM/artifact measurements; raw hashes/source terms; isolated Node
+   SQLite transaction/backup restore ADR; capability map/detailed dependent plan.
+   Don't prematurely accept dependent phases or claim all fake output removed.
+
+## Environments and cleanup
+
+- CPU .runtime/lpbf-win-py312/Scripts/python.exe; scientific
+  .runtime/scientific-win-py312-cu128/Scripts/python.exe. SystemWarp1.17 but NumPy/
+  SciPy outside repo ranges; scientific lacks Warp; py-3 means3.14. No installs.
+- CRITICAL browser runtime identity: first Node3192 used defaultIPC5055 and returned
+  legacy metrics. Discarded as evidence. Repeating with METALLIX_IPC_PORT=5192
+  returned current fields/results. Always isolate BOTH PORT and IPC port; a new
+  frontend alone is not proof of current Python code. Supervisor cross-instance
+  identity remains a follow-up risk (not fully diagnosed).
+- Owned firstPID23964 and verified descendants stopped; replacementPID17488 and
+  descendants stopped at final cleanup. No listeners3192/5192. Unknown24678 remains
+  untouched. Process inventories saved cnls-owned-*.json. Browser tab closed.
+- DISABLE_HMR=true disables Vite watch/cache refresh too: restart owned server after
+  edits. Cua_repl browser only; no arbitrary browser eval for interaction.
+- CBM project C-Users-can02-Projects-metalliksaa-Metalliksa-1 gen2026-09-18T15:50:24Z
+  stale/metadata_changed, studio partial885. Source fallback used. Local Graft
+  `graft ask 'run_cnls_fit convergence covariance' . --source` refreshed9files.
+  MCP graft freshness used wrong broader workspace scope; prefer local CLI here.
+- Agent Memory recall found prior Vite lesson; saved IPC identity lesson. Skills
+  read: debugging, verification, TDD, recall, computer-use. No agent fleet.
+- Node test spawn EPERM required approved scoped escalation; no auto-review denial.
+  One guessed test_nonfabrication_contracts filename absent; corrected actual
+  test_no_fabricated_outputs ran10PASS. No skipped test counted as passed.
+
+# Historical checkpoint after ad5adf5 — superseded
 
 Read parent ../STATUS.md FIRST. User explicitly authorized continuing until done
 while away, automatic fresh-task handoff when context becomes limited, and

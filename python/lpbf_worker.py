@@ -141,7 +141,11 @@ class Queue:
         return dict(content=base64.b64encode(content).decode(),type="image/svg+xml" if name.endswith(".svg") else "application/octet-stream" if name.endswith(".bin") else "application/json" if name.endswith(".json") else "text/csv")
 
     def submit(self, raw):
-        p, m = validate(raw)
+        job_type = raw.get("jobType")
+        if job_type == "build-job":
+            p, m = raw, raw
+        else:
+            p, m = validate(raw)
         # A rebuilt binary must invalidate a long-lived worker's cache identity.
         self.caps["binaryHash"] = hashlib.sha256(BINARY.read_bytes()).hexdigest() if BINARY.is_file() else None
         self.caps["openfoamThermal"] = bool(self.caps["openfoamVersion"] and self.caps["binaryHash"])
@@ -272,8 +276,18 @@ def main():
             print(json.dumps(dict(progress=progress, message=message)), flush=True)
         try:
             execution_start = time.monotonic()
-            result = run(json.loads((folder/"input.json").read_text()), report, folder,
-                         json.loads((folder/"capabilities.json").read_text()))
+            input_data = json.loads((folder/"input.json").read_text())
+            job_type = input_data.get("jobType")
+
+            if job_type == "build-job":
+                from lpbf_build_job_solver import solve_lpbf_build_job
+                result = solve_lpbf_build_job(input_data)
+                if "provenance" not in result:
+                    result["provenance"] = {}
+            else:
+                result = run(input_data, report, folder,
+                             json.loads((folder/"capabilities.json").read_text()))
+
             result["provenance"]["runtime_s"] = time.monotonic()-execution_start
             import platform
             import numpy

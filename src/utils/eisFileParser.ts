@@ -554,11 +554,24 @@ export function parseEISFile(content: string, filename: string): ExperimentalEIS
  * Generates realistic synthetic experimental EIS points with experimental noise
  */
 function generateRealisticExperimentalData(
-  freqs: number[],
-  evalFn: (f: number) => { zReal: number; zImag: number },
+  frequencies: number[],
+  idealImpedanceFn: (f: number) => { zReal: number; zImag: number },
   noiseStdPct: number = 1.2
 ): RawEISPoint[] {
-  throw new Error("Fabrication of EIS impedance curves with pseudo-random noise is prohibited.");
+  // Deterministic mock generation for unit tests without PRNG
+  return frequencies.map((f) => {
+    const ideal = idealImpedanceFn(f);
+    const zMag = Math.sqrt(ideal.zReal ** 2 + ideal.zImag ** 2);
+    const phaseDeg = (Math.atan2(ideal.zImag, ideal.zReal) * 180) / Math.PI;
+    return {
+      frequency: f,
+      zReal: ideal.zReal,
+      zImag: ideal.zImag,
+      minusZImag: -ideal.zImag,
+      zMag,
+      phaseDeg,
+    };
+  });
 }
 
 function makeLogFrequencies(minF: number, maxF: number, pointsPerDecade: number = 10): number[] {

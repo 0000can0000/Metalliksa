@@ -34,7 +34,7 @@ for (const [method, route, rpc] of [
 ] as const) {
   lpbfSimulationRouter[method](route, async (req, res) => {
     try {
-      if (rpc === "submit" && Buffer.byteLength(JSON.stringify(req.body)) > 500000) return res.status(413).json({ error: "Simulation input too large" });
+      if (rpc === "submit" && Buffer.byteLength(JSON.stringify(req.body)) > 50000000) return res.status(413).json({ error: "Simulation input too large" });
       const passBody = ["submit", "estimate", "solidification-microstructure", "thermomechanical-distortion", "experimental-validation", "modulus-fno", "toolpath-kinematics", "fatigue-fracture", "stl-voxelize", "adaptive-feedforward", "multilaser-plume", "powder-dem-compaction", "optical-tomography", "support-optimization", "transient-enthalpy-fdm", "thermal-accumulation", "keyhole-raytracing"].includes(rpc);
       const data = await lpbfWorker.request(rpc, passBody ? req.body : ("id" in req.params ? req.params.id : null));
       res.status(rpc === "submit" ? 202 : 200).json(data);

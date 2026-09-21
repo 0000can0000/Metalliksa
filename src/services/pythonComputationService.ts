@@ -1679,26 +1679,35 @@ class PythonComputationService {
     bypassCache?: boolean;
     gitSha?: string;
   }): Promise<PythonLpbfBuildJobResult> {
-    const res = await fetch("/api/python/lpbf-build-job", {
+    const res = await fetch("/api/lpbf/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ jobType: "build-job", ...payload }),
     });
     if (!res.ok) {
       let detail = `LPBF build-job proxy error: HTTP ${res.status}`;
       try {
         const failed = await res.json();
         if (failed?.error) detail = String(failed.error);
-      } catch {
-        /* keep HTTP status text */
-      }
+      } catch { /* keep HTTP status text */ }
       throw new Error(detail);
     }
-    const parsed = await res.json();
-    if (parsed?.error || parsed?.success === false) {
-      throw new Error(parsed.error || "Python LPBF build-job failed.");
+    const jobInfo = await res.json();
+    const jobId = jobInfo.id;
+    if (!jobId) throw new Error("No Job ID returned from /api/lpbf/jobs");
+
+    while (true) {
+      const poll = await fetch(`/api/lpbf/jobs/${jobId}`);
+      if (!poll.ok) throw new Error(`Failed to poll job status: HTTP ${poll.status}`);
+      const statusData = await poll.json();
+      if (statusData.status === "completed") {
+        return statusData.result;
+      }
+      if (["failed", "cancelled", "timed_out"].includes(statusData.status)) {
+        throw new Error(statusData.error || `Python LPBF build-job ${statusData.status}`);
+      }
+      await new Promise(r => setTimeout(r, 500));
     }
-    return parsed;
   }
 
   /**

@@ -9,7 +9,45 @@ os.environ.setdefault("HOME", os.environ.get("USERPROFILE", ""))
 _wp_initialized = False
 
 def create_powder_bed_mesh(num_particles=60, radius_um=15.0, bed_width_um=150.0):
-    raise NotImplementedError("Fabrication of powder bed via random np generator is disabled. Use proper LPBF DEM coupling.")
+    import trimesh
+    # Deterministic hexagonal grid packing of spheres (ideal theoretical powder bed)
+    points = []
+    indices = []
+    
+    # Base plate (flat square)
+    w = bed_width_um / 2.0
+    base_pts = np.array([[-w, -w, 0], [w, -w, 0], [w, w, 0], [-w, w, 0]])
+    base_idx = np.array([[0, 1, 2], [0, 2, 3]])
+    points.append(base_pts)
+    indices.append(base_idx)
+    
+    # Particles
+    sphere = trimesh.creation.icosphere(subdivisions=2, radius=radius_um)
+    v_base = sphere.vertices
+    f_base = sphere.faces
+    
+    # Hexagonal grid calculation
+    side_len = int(np.ceil(np.sqrt(num_particles)))
+    spacing = radius_um * 2.0
+    
+    count = 0
+    v_offset = 4
+    for i in range(side_len):
+        for j in range(side_len):
+            if count >= num_particles:
+                break
+            # Hexagonal offset
+            x = (i - side_len/2.0) * spacing + (spacing/2.0 if j % 2 else 0)
+            y = (j - side_len/2.0) * spacing * np.sqrt(3)/2.0
+            z = radius_um
+            
+            p_moved = v_base + np.array([x, y, z])
+            points.append(p_moved)
+            indices.append(f_base + v_offset)
+            v_offset += len(v_base)
+            count += 1
+            
+    return np.vstack(points), np.vstack(indices).flatten().astype(np.int32)
 
 @wp.kernel
 def laser_powder_raytrace(

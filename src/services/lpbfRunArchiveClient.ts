@@ -5,6 +5,11 @@ export interface RunPreview {
   artifactCount: number;
   byteSize: number;
   artifactIntegrity: 'verified-at-dry-run';
+  quota: {
+    totalArchiveSizeBytes: number;
+    maxArchiveSizeBytes: number;
+    approachingLimit: boolean;
+  };
 }
 
 export type RunArchiveList = { runId: string; createdAt: string; evidenceStatus: string }[];

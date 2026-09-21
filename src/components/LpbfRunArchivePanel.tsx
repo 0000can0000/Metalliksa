@@ -100,6 +100,10 @@ export function LpbfJobArchiver({ jobId, sources }: { jobId: string, sources: Ru
     </div>
     {task.pending && <p className="text-xs text-slate-400">Processing...</p>}
     {task.error && <p className="text-xs text-rose-300">{task.error}</p>}
-    {preview && <p className="text-xs text-slate-300">Preview ready: {preview.artifactCount} artifacts, {preview.byteSize} bytes.</p>}
+    {preview && <div className="text-xs text-slate-300 space-y-1">
+      <p>Preview ready: {preview.artifactCount} artifacts, {(preview.byteSize / 1024 / 1024).toFixed(2)} MB.</p>
+      {preview.quota.approachingLimit && <p className="text-amber-300">Warning: Archive is approaching its capacity limit.</p>}
+      <p className="text-slate-500">Archive size: {(preview.quota.totalArchiveSizeBytes / 1024 / 1024 / 1024).toFixed(2)} GB / 15 GB</p>
+    </div>}
   </div>;
 }

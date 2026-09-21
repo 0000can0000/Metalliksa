@@ -1,10 +1,29 @@
 import path from 'node:path';
-import { lstatSync } from 'node:fs';
+import { lstatSync, statSync, readdirSync } from 'node:fs';
 import { artifactDirectory, LpbfArtifactStore } from './lpbfArtifactStore';
 import { LpbfRunRepository, type RunRecord, type RunSourceLink } from './lpbfRunRepository';
 import { LpbfSourceRepository } from './lpbfSourceRepository';
 import { dryRunRunImport, importRun } from './lpbfRunImport';
 import { lpbfWorker } from './lpbfWorkerBridge';
+
+const MAX_RUN_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_ARCHIVE_SIZE_BYTES = 15 * 1024 * 1024 * 1024; // 15 GB
+const QUOTA_WARNING_THRESHOLD = 0.9; // Warn at 90%
+
+function getDirectorySizeBytes(dir: string): number {
+  try {
+    const stats = statSync(dir);
+    if (!stats.isDirectory()) return stats.size;
+    let total = 0;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      total += entry.isDirectory() ? getDirectorySizeBytes(fullPath) : statSync(fullPath).size;
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
 
 export class LpbfRunArchiveError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -61,13 +80,30 @@ export class LpbfRunArchiveService {
     try { return await action(); } finally { this.busy = false; }
   }
 
+  private checkQuota(runSize: number) {
+    if (runSize > MAX_RUN_SIZE_BYTES) {
+      throw new LpbfRunArchiveError(413, `Run size (${(runSize / 1024 / 1024).toFixed(2)} MB) exceeds the maximum allowed size per run (50 MB).`);
+    }
+    const currentArchiveSize = getDirectorySizeBytes(this.runRoot);
+    if (currentArchiveSize + runSize > MAX_ARCHIVE_SIZE_BYTES) {
+      throw new LpbfRunArchiveError(413, `Importing this run would exceed the maximum archive quota of 15 GB.`);
+    }
+    return {
+      totalArchiveSizeBytes: currentArchiveSize,
+      maxArchiveSizeBytes: MAX_ARCHIVE_SIZE_BYTES,
+      approachingLimit: (currentArchiveSize + runSize) / MAX_ARCHIVE_SIZE_BYTES > QUOTA_WARNING_THRESHOLD
+    };
+  }
+
   preview(jobId: string, sources: RunSourceLink[]) {
     return this.exclusive(async () => {
       const sourceRepo = this.sourceRepository();
       if (!sourceRepo) throw new LpbfRunArchiveError(400, 'Source repository not initialized.');
       try {
         const { capture, root } = await lpbfWorker.captureForArchive(jobId);
-        return await dryRunRunImport(capture, sources, sourceRepo, root);
+        const previewResult = await dryRunRunImport(capture, sources, sourceRepo, root);
+        const quota = this.checkQuota(previewResult.byteSize);
+        return { ...previewResult, quota };
       } finally { sourceRepo.close(); }
     });
   }
@@ -78,6 +114,10 @@ export class LpbfRunArchiveService {
       if (!sourceRepo) throw new LpbfRunArchiveError(400, 'Source repository not initialized.');
       try {
         const { capture, root } = await lpbfWorker.captureForArchive(jobId);
+        // Dry run first to get size for quota check
+        const previewResult = await dryRunRunImport(capture, sources, sourceRepo, root);
+        this.checkQuota(previewResult.byteSize);
+
         const repository = this.runRepository(false)!;
         try {
           return await importRun(repository, new LpbfArtifactStore(path.join(this.runRoot, 'artifacts')), capture, sources, sourceRepo, root);

@@ -81,9 +81,7 @@ physicsRouter.post("/api/python/stl-slicer-build-time", (req: Request, res: Resp
   return handlePythonDispatch("python/stl_slicer_build_time_solver.py", req.body, res);
 });
 
-physicsRouter.post("/api/python/lpbf-build-job", (req: Request, res: Response) => {
-  return handlePythonDispatch("python/lpbf_build_job_solver.py", req.body, res, 40000);
-});
+
 
 // Phase 6: Bayesian Process Window Optimization
 physicsRouter.post("/api/python/lpbf-bayesian-optimize", (req: Request, res: Response) => {

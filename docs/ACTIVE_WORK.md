@@ -7,6 +7,12 @@ and import, revision-bound fresh integrity, visible failures, stale-response
 protection and actual browser/keyboard checks. Preserve activeSpecimen inputs.
 Phase0 OPEN; shared LPBF core/database remains the overall objective.
 CBM generation18Sep stale/untracked in scope; exact source fallback used.
+UI package661153a complete;166unit/lint/strictTS/build and actual browser checks
+passed. Test server42236 stopped. Next owns python/nist_hdf5_review.py, its tests,
+IN718 source-context metadata, catalog provenance guard and review/checkpoint docs.
+System Python3.12.10 has h5py3.16.0/NumPy2.5.3; use only metadata inspection here,
+not solver verification. No dependency installation needed. Raw Model string has
+unbalanced parentheses; no inferred correction or temperature conversion allowed.
 
 # Previous owner — 01a0c349-747d-7e52-bbf7-8e87df3211f7, 2026-09-21
 

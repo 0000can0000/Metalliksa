@@ -1,0 +1,1611 @@
+{
+  "schema_version": 1,
+  "dataset_id": "nist-mds2-2716",
+  "source_version": "1.0.0",
+  "scope": "HDF5 attributes and dataset layout only; no dataset values read or calibration model evaluated",
+  "evidence_status": "unreviewed-source-archive",
+  "temperature_conversion": null,
+  "runtime": {
+    "python": "3.12.10",
+    "h5py": "3.16.0",
+    "numpy": "2.5.3"
+  },
+  "integrity": {
+    "schema_version": 1,
+    "dataset_id": "nist-mds2-2716",
+    "files": [
+      {
+        "path": "raw/README.txt",
+        "kind": "readme",
+        "integrity": "pass",
+        "errors": []
+      },
+      {
+        "path": "raw/AMB2022-03-AMMT-718-Pad_XYPT.h5",
+        "kind": "scan-strategy",
+        "integrity": "pass",
+        "errors": []
+      },
+      {
+        "path": "raw/AMB2022-03-718-AMMT-StaringCamera_Signal.h5",
+        "kind": "raw-thermography",
+        "integrity": "pass",
+        "errors": []
+      }
+    ],
+    "integrity": "pass",
+    "integrity_scope": "Matches locally recorded bytes; not an independently supplied publisher checksum",
+    "material": "IN718",
+    "process_scope": "bare-plate",
+    "split": "unassigned",
+    "module_readiness": {
+      "source_archive": {
+        "ready": true,
+        "reason": "File identity checks only"
+      },
+      "thermal_validation": {
+        "ready": false,
+        "reason": "Raw detector signal requires camera calibration, timing, geometry and a reviewed temperature conversion"
+      },
+      "powder_bed_validation": {
+        "ready": false,
+        "reason": "Bare-plate data cannot establish powder-bed validation"
+      },
+      "ml_training": {
+        "ready": false,
+        "reason": "Requires reviewed features/targets and group-separated training/calibration/holdout records"
+      }
+    },
+    "production_ready": false
+  },
+  "files": [
+    {
+      "path": "raw/AMB2022-03-AMMT-718-Pad_XYPT.h5",
+      "sha256": "7b7004753e150bc26632e9ce356e0440429160fa92cbff8fc8559202fdce2103",
+      "objects": [
+        {
+          "path": "/",
+          "kind": "group",
+          "attributes": {}
+        },
+        {
+          "path": "/AMB2022-03-AMMT-718-Pad_XYPT",
+          "kind": "group",
+          "attributes": {
+            "HDF5_file_datetime": "01-Sep-2022 15:43:44",
+            "Notes": "X and Y-pad scan strategy data.",
+            "XYPT_file_datetime": "01-Sep-2022 15:25:16"
+          }
+        },
+        {
+          "path": "/Calibration",
+          "kind": "group",
+          "attributes": {
+            "GalvoCal_Applied": "false",
+            "GalvoCal_Date": "03/08/21",
+            "GalvoCal_X_poly": [
+              0.99884,
+              -0.02017
+            ],
+            "GalvoCal_Y_poly": [
+              0.99507,
+              -0.03093
+            ],
+            "LaserCal_Applied": "false",
+            "LaserCal_poly": [
+              1.0,
+              0.0
+            ],
+            "P_units": "W",
+            "X_units": "mm",
+            "Y_units": "mm"
+          }
+        },
+        {
+          "path": "/XYPT",
+          "kind": "group",
+          "attributes": {
+            "Trigger_bit0": "n/a",
+            "Trigger_bit1": "CoaxialCamera",
+            "Trigger_bit2": "StaringCamera",
+            "Trigger_bit3": "n/a"
+          }
+        },
+        {
+          "path": "/XYPT/Xpad",
+          "kind": "group",
+          "attributes": {}
+        },
+        {
+          "path": "/XYPT/Xpad/P",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            117999
+          ],
+          "dtype": "float32",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Xpad/T",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            117999
+          ],
+          "dtype": "uint8",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Xpad/X",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            117999
+          ],
+          "dtype": "float32",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Xpad/Y",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            117999
+          ],
+          "dtype": "float32",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Ypad",
+          "kind": "group",
+          "attributes": {}
+        },
+        {
+          "path": "/XYPT/Ypad/P",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            25499
+          ],
+          "dtype": "float32",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Ypad/T",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            25499
+          ],
+          "dtype": "uint8",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Ypad/X",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            25499
+          ],
+          "dtype": "float32",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/XYPT/Ypad/Y",
+          "kind": "dataset",
+          "attributes": {},
+          "shape": [
+            1,
+            25499
+          ],
+          "dtype": "float32",
+          "chunks": [
+            1,
+            5000
+          ],
+          "compression": "gzip"
+        }
+      ]
+    },
+    {
+      "path": "raw/AMB2022-03-718-AMMT-StaringCamera_Signal.h5",
+      "sha256": "f6fe21ec911707f72e7efda2932c77eae2b75d84765848878fe5beb6b728cd43",
+      "objects": [
+        {
+          "path": "/",
+          "kind": "group",
+          "attributes": {}
+        },
+        {
+          "path": "/AMB2022-03-718-AMMT",
+          "kind": "group",
+          "attributes": {
+            "BuildDesign_ref": "https://www.nist.gov/system/files/documents/2022/05/26/AMB2022-03%20Measurement%20and%20Challenge%20Descriptions_1.01.pdf",
+            "Build_contact": "Brandon Lane",
+            "Build_datetime": "29-Oct-2021 13:08:08",
+            "HDF5_datetime": "09-Sep-2024 17:51:04",
+            "Notes": "Update 9/12/24: Corrected Calibration/ThermalCal/Model equation.",
+            "ScanStrategy_ref": "https://data.nist.gov/od/ds/ark:/88434/mds2-2716/ScanStrategy/AMB2022-03-AMMT-718-Pad_XYPT.h5"
+          }
+        },
+        {
+          "path": "/Calibration",
+          "kind": "group",
+          "attributes": {}
+        },
+        {
+          "path": "/Calibration/ThermalCal",
+          "kind": "group",
+          "attributes": {
+            "Cal_Method": "RegressionF_ArrayAvg",
+            "Coeff_a": [
+              0.9655
+            ],
+            "Coeff_b": [
+              197.2
+            ],
+            "Coeff_c": [
+              43920000.0
+            ],
+            "Model": "T(x) = 14388/a/log((c*e/x+1)-b/a;",
+            "Model_input": "Signal [DL]",
+            "Model_output": "Emissivity-Corrected Temperature [^oC]",
+            "R-square": [
+              0.9988
+            ],
+            "RMSE": [
+              4.923
+            ]
+          }
+        },
+        {
+          "path": "/ThermalData",
+          "kind": "group",
+          "attributes": {
+            "camera_name": "FASTCAM Mini AX200 type 900K-M-16GB",
+            "frame_rate": [
+              30000.0
+            ],
+            "frame_rate_units": "frames/s",
+            "shutter_speed": [
+              20000.0
+            ],
+            "shutter_speed_units": "ns"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_0_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_0_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_0_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_0_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_0_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_0_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_1_1_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              49.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_1_1_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_1_1_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              49.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_1_1_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_1_1_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              49.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_1_1_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_1_2_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              82.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_1_2_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_1_2_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              82.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_1_2_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_1_2_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              82.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_1_2_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_2_1_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              1200.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_2_1_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_2_1_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              1200.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_2_1_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_2_1_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              1200.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_2_1_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_2_2_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              800.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_2_2_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_2_2_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              800.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_2_2_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_2_2_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              800.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_2_2_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_3_1_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              325.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_3_1_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_3_1_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              325.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_3_1_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_3_1_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              325.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_3_1_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_3_2_1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              245.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_3_2_1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_3_2_2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              245.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_3_2_2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Line_3_2_3",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              245.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Line_3_2_3/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              700.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            700,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/X_pad1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/X_pad1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              40001.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            40001,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/X_pad2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/X_pad2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              40001.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            40001,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Y_pad1",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Y_pad1/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              10001.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            10001,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Y_pad1_SS",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              49.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Y_pad1_SS/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              10001.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            10001,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Y_pad2",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              67.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Y_pad2/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              10001.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            10001,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        },
+        {
+          "path": "/ThermalData/Y_pad2_SS",
+          "kind": "group",
+          "attributes": {
+            "laser_power": [
+              285.0
+            ],
+            "laser_power_units": "W",
+            "scan_speed": [
+              960.0
+            ],
+            "scan_speed_units": "mm/s",
+            "spot_size": [
+              82.0
+            ],
+            "spot_size_measure": "D4s",
+            "spot_size_units": "um"
+          }
+        },
+        {
+          "path": "/ThermalData/Y_pad2_SS/Signal",
+          "kind": "dataset",
+          "attributes": {
+            "bit_depth": [
+              12.0
+            ],
+            "n_frames": [
+              10001.0
+            ],
+            "threshold_level": [
+              100.0
+            ],
+            "threshold_zeros": "true",
+            "units": "digital levels"
+          },
+          "shape": [
+            10001,
+            640,
+            304
+          ],
+          "dtype": "uint16",
+          "chunks": [
+            25,
+            25,
+            25
+          ],
+          "compression": "gzip"
+        }
+      ]
+    }
+  ]
+}

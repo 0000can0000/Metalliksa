@@ -95,3 +95,19 @@ test('NIST catalog adapter preserves unknown measurements and rejects mismatched
   writeFileSync(path.join(directory, 'source-context.json'), JSON.stringify(context));
   assert.throws(() => nistIn718CatalogEntry(directory).loadDocument(), /fingerprint mismatch/i);
 });
+
+test('NIST catalog binds HDF5 review to every reviewed source fingerprint', t => {
+  const root = path.resolve('data/benchmark/nist-amb2022-03');
+  const directory = mkdtempSync(path.join(tmpdir(), 'nist-review-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const manifest = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+  const context = JSON.parse(readFileSync(path.join(root, 'source-context.json'), 'utf8'));
+  context.hdf5_review = { artifacts: manifest.files.filter((file: any) => file.kind !== 'readme')
+    .map((file: any) => ({ path: file.path, sha256: file.sha256, source_url: file.source_url })) };
+  writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifest));
+  writeFileSync(path.join(directory, 'source-context.json'), JSON.stringify(context));
+  assert.doesNotThrow(() => nistIn718CatalogEntry(directory).loadDocument());
+  context.hdf5_review.artifacts[0].sha256 = 'e'.repeat(64);
+  writeFileSync(path.join(directory, 'source-context.json'), JSON.stringify(context));
+  assert.throws(() => nistIn718CatalogEntry(directory).loadDocument(), /HDF5.*fingerprint/i);
+});

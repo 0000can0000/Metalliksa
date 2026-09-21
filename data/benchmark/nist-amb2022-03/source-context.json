@@ -3,7 +3,7 @@
   "dataset_id": "nist-mds2-2716",
   "source_version": "1.0.0",
   "reviewed_at": "2026-09-21",
-  "review_scope": "Archived README and manifest, not HDF5 attribute or measurement review",
+  "review_scope": "Archived README plus hash-checked HDF5 attributes/layout; no signal arrays read or temperature conversion executed",
   "evidence_kind": "source-metadata",
   "readme": {
     "path": "raw/README.txt",
@@ -28,12 +28,36 @@
     "heat_treatment_missing_reason": "Not established by this README review"
   },
   "scan_channels": [
-    {"name": "X", "unit_source": "mm", "unit_si": "m", "si_scale": 0.001, "quantity": "commanded galvo X position"},
-    {"name": "Y", "unit_source": "mm", "unit_si": "m", "si_scale": 0.001, "quantity": "commanded galvo Y position"},
-    {"name": "P", "unit_source": "W", "unit_si": "W", "si_scale": 1, "quantity": "commanded laser power"},
-    {"name": "T", "unit_source": null, "unit_si": null, "si_scale": null, "quantity": "instrument trigger command, unsigned integer, NOT time or temperature"}
+    {
+      "name": "X",
+      "unit_source": "mm",
+      "unit_si": "m",
+      "si_scale": 0.001,
+      "quantity": "commanded galvo X position"
+    },
+    {
+      "name": "Y",
+      "unit_source": "mm",
+      "unit_si": "m",
+      "si_scale": 0.001,
+      "quantity": "commanded galvo Y position"
+    },
+    {
+      "name": "P",
+      "unit_source": "W",
+      "unit_si": "W",
+      "si_scale": 1,
+      "quantity": "commanded laser power"
+    },
+    {
+      "name": "T",
+      "unit_source": null,
+      "unit_si": null,
+      "si_scale": null,
+      "quantity": "instrument trigger command, unsigned integer, NOT time or temperature"
+    }
   ],
-  "scan_locator": "README: ScanStrategy; /Xpad/ and /Ypad/ datasets",
+  "scan_locator": "HDF5 /XYPT/Xpad and /XYPT/Ypad; README ScanStrategy uses abbreviated group paths",
   "reported_process_uncertainty": {
     "locator": "README: ScanStrategy",
     "coverage_factor_k": 1,
@@ -43,23 +67,550 @@
   },
   "measurement": {
     "quantity": "raw thermographic camera signal",
-    "source_locator": "README: Thermography /ThermalData/*/Signal",
-    "unit_source": null,
-    "unit_missing_reason": "Must inspect HDF5 attributes before assigning signal units",
+    "source_locator": "HDF5 /ThermalData/*/Signal attributes and /Calibration/ThermalCal",
+    "unit_source": "digital levels",
+    "unit_missing_reason": null,
     "temperature_conversion": null,
-    "temperature_conversion_missing_reason": "Requires review of ThermalCal model, coefficients, input/output units and measurement operator",
-    "beam_diameter_definition": null,
-    "beam_diameter_missing_reason": "README names spot_size but does not establish a diameter convention in this review",
-    "repeat_group_rule": "Line_X_Y_Z: X=set, Y=subset, Z=one of three repeats; repeats stay in the same evaluation partition",
-    "excluded_from_challenge": "Y_padX_SS is additional reference data, not an AMB2022-03 challenge condition"
+    "temperature_conversion_missing_reason": "The stored Model string has unbalanced parentheses and an unspecified emissivity e. A reviewed equation, emissivity, Celsius/Kelvin convention, valid range and measurement operator are required; no inferred repair was executed.",
+    "beam_diameter_definition": "D4s (literal HDF5 spot_size_measure); NIST challenge Table 2 labels this D4σ",
+    "beam_diameter_missing_reason": null,
+    "repeat_group_rule": "Line_0_Z is baseline; Line_X_Y_Z uses case X.Y; Z=1,2,3 is repeat. Keep all three repeats of each case in one evaluation partition.",
+    "excluded_from_challenge": "Y_padX_SS is additional reference data, not an AMB2022-03 challenge condition",
+    "thresholding": {
+      "bit_depth": 12,
+      "threshold_level": 100,
+      "threshold_zeros": "true",
+      "locator": "All 27 /ThermalData/*/Signal attributes",
+      "interpretation": "Zeroed signal is censored detector data, not zero temperature; threshold semantics require measurement-operator review"
+    },
+    "camera": {
+      "frame_rate": 30000,
+      "frame_rate_unit": "frames/s",
+      "shutter_speed": 20000,
+      "shutter_speed_unit": "ns",
+      "locator": "/ThermalData attributes",
+      "timing_limit": "Rate/exposure metadata alone does not establish trigger offset or per-frame timestamp alignment"
+    },
+    "calibration_attributes": {
+      "Cal_Method": "RegressionF_ArrayAvg",
+      "Coeff_a": [
+        0.9655
+      ],
+      "Coeff_b": [
+        197.2
+      ],
+      "Coeff_c": [
+        43920000.0
+      ],
+      "Model": "T(x) = 14388/a/log((c*e/x+1)-b/a;",
+      "Model_input": "Signal [DL]",
+      "Model_output": "Emissivity-Corrected Temperature [^oC]",
+      "R-square": [
+        0.9988
+      ],
+      "RMSE": [
+        4.923
+      ]
+    }
   },
   "split": "unassigned",
   "thermal_validation_ready": false,
   "powder_bed_validation_ready": false,
   "unresolved": [
-    "Inspect HDF5 attributes without loading the full signal cube",
-    "Confirm signal units, camera timing, spatial calibration and surface/emissivity assumptions",
-    "Confirm laser spot definition and measurement locations",
-    "Choose independent conditions and freeze comparison definitions/tolerances before model evaluation"
-  ]
+    "Resolve the malformed ThermalCal Model string and explicit emissivity; freeze the Celsius/Kelvin convention and calibrated range before computing temperature",
+    "Confirm image orientation, spatial registration, trigger offset and the measurement operator; do not use censored zeros as temperature",
+    "Review source-specific smoothing, centerline selection and apparent-temperature comparison definitions",
+    "Choose independent cases with repeats grouped, then freeze comparison definitions and tolerances before model evaluation"
+  ],
+  "local_review_version": 2,
+  "hdf5_review": {
+    "artifacts": [
+      {
+        "path": "raw/AMB2022-03-AMMT-718-Pad_XYPT.h5",
+        "sha256": "7b7004753e150bc26632e9ce356e0440429160fa92cbff8fc8559202fdce2103",
+        "source_url": "https://data.nist.gov/od/ds/mds2-2716/ScanStrategy/AMB2022-03-AMMT-718-Pad_XYPT.h5"
+      },
+      {
+        "path": "raw/AMB2022-03-718-AMMT-StaringCamera_Signal.h5",
+        "sha256": "f6fe21ec911707f72e7efda2932c77eae2b75d84765848878fe5beb6b728cd43",
+        "source_url": "https://data.nist.gov/od/ds/mds2-2716/Thermography/AMB2022-03-718-AMMT-StaringCamera_Signal.h5"
+      }
+    ],
+    "tool": "python/nist_hdf5_review.py",
+    "report": "hdf5-metadata-review.json",
+    "runtime": {
+      "python": "3.12.10",
+      "h5py": "3.16.0",
+      "numpy": "2.5.3"
+    },
+    "object_counts": {
+      "scan_strategy": 14,
+      "thermography": 59
+    },
+    "signal_dataset_count": 27,
+    "signal_axis_order": "[frame, x, y] is consistent with n_frames and published 640×304 window; image orientation/coordinate registration remains unresolved",
+    "signal_array_reads": false,
+    "temperature_model_evaluated": false,
+    "source_note": "Update 9/12/24: Corrected Calibration/ThermalCal/Model equation.",
+    "conditions": [
+      {
+        "group": "/ThermalData/Line_0_1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_0_2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_0_3",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_1_1_1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          49.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_1_1_2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          49.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_1_1_3",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          49.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_1_2_1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          82.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_1_2_2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          82.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_1_2_3",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          82.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_2_1_1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          1200.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_2_1_2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          1200.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_2_1_3",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          1200.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_2_2_1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          800.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_2_2_2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          800.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_2_2_3",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          800.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_3_1_1",
+        "laser_power": [
+          325.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_3_1_2",
+        "laser_power": [
+          325.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_3_1_3",
+        "laser_power": [
+          325.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_3_2_1",
+        "laser_power": [
+          245.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_3_2_2",
+        "laser_power": [
+          245.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Line_3_2_3",
+        "laser_power": [
+          245.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/X_pad1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/X_pad2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Y_pad1",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Y_pad1_SS",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          49.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Y_pad2",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          67.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      },
+      {
+        "group": "/ThermalData/Y_pad2_SS",
+        "laser_power": [
+          285.0
+        ],
+        "laser_power_units": "W",
+        "scan_speed": [
+          960.0
+        ],
+        "scan_speed_units": "mm/s",
+        "spot_size": [
+          82.0
+        ],
+        "spot_size_measure": "D4s",
+        "spot_size_units": "um"
+      }
+    ],
+    "scan_calibration": {
+      "GalvoCal_Applied": "false",
+      "GalvoCal_Date": "03/08/21",
+      "GalvoCal_X_poly": [
+        0.99884,
+        -0.02017
+      ],
+      "GalvoCal_Y_poly": [
+        0.99507,
+        -0.03093
+      ],
+      "LaserCal_Applied": "false",
+      "LaserCal_poly": [
+        1.0,
+        0.0
+      ],
+      "P_units": "W",
+      "X_units": "mm",
+      "Y_units": "mm"
+    }
+  },
+  "external_review_reference": {
+    "url": "https://www.nist.gov/system/files/documents/2022/05/26/AMB2022-03%20Measurement%20and%20Challenge%20Descriptions_1.01.pdf",
+    "locator": "Table 2 and Table 5; sections 3.1–3.2",
+    "reviewed_at": "2026-09-21",
+    "scope": "External primary document consulted for D4σ naming and measurement definition; not a locally hashed source artifact"
+  }
 }

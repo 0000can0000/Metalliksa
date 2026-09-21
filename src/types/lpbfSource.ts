@@ -16,4 +16,3 @@ export interface LpbfSourceRevision {
   evidenceStatus: 'unreviewed-source-archive';
   artifactIntegrity: 'not-verified';
 }
-

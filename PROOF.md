@@ -668,3 +668,22 @@ Shared frontend contract5 tests PASS including HTTP503/no fallback and real-zero
 retention; full unit125, lint and buildPASS. Real browser studio/builder fit and
 error/partial report flows passed using isolated IPC5192. See Phase0 audit for
 exact runtime/browser limits and the still-unreviewed Voigt/JS/synthetic paths.
+
+## 2026-09-21 — IN718 HDF5 metadata inspection, not thermal validation
+
+Source scope: NIST mds2-2716 local three-file archive, 550398609 bytes. All recorded
+hashes matched before/after read-only metadata inspection. Four new Python tests
+passed (first failed), plus four manifest tests; six source API tests, full167unit,
+strict TypeScript and production build passed. Existing large-chunk warning remains.
+The inspector reads no dataset values; no temperature, width or depth is generated.
+
+73 objects include27 raw signal datasets. Reviewed source conditions and missing
+calibration reasons are in docs/NIST_IN718_HDF5_REVIEW_2026-09-21.md. The stored
+calibration expression has unbalanced parentheses and unspecified emissivity;
+conversion remains null. Source unit digital levels is not Kelvin/Celsius.
+
+Updated metadata was explicitly imported into isolated pilot revision2, retaining
+revision1, and all three archived artifacts were verified again. Document SHA256:
+53a5171e1fdb0fedf5f25bc6160ab57fa835a2594940ef083e78b531d721bc2a.
+Report: .runtime/phase0-audit/hdf5-source-import-01a0c35a.json.
+This is source/provenance and software evidence. Phase0 remains open.

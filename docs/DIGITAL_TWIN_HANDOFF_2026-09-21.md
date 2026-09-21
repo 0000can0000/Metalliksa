@@ -1,5 +1,27 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+LATEST HDF5 REVIEW: existing system Python3.12.10 has h5py3.16.0/NumPy2.5.3;
+no installation needed. New python/nist_hdf5_review.py reads metadata only,
+hash-checks before/after, rejects links/cycles/nonfinite/oversized metadata.
+4tests red→green, benchmark4PASS; catalog provenance regression red→green;
+full167unit/strictTS/buildPASS. UI package661153a (166unit/lint/browserPASS).
+See docs/NIST_IN718_HDF5_REVIEW_2026-09-21.md and checked-in HDF5 metadata report.
+27Signal datasets: digital levels,12bit, threshold100 zeroed, frame rate30000/s,
+exposure20000ns; source spot measure D4s (NISTTable2 D4sigma). Baseline groups
+Line_0_Z differ from other Line_X_Y_Z. X-pad decoded cube15.6GB: do not read whole.
+Stored ThermalCal Model is literally `T(x) = 14388/a/log((c*e/x+1)-b/a;` —
+unbalanced parentheses, no explicit emissivity among inspected attributes. Keep
+temperature_conversion null; don't guess equation/offset/emissivity or qualify data.
+Source-context now has reviewed conditions and both HDF5 fingerprints; catalog
+rejects mismatched review refs. Updated documentSHA
+53a5171e1fdb0fedf5f25bc6160ab57fa835a2594940ef083e78b531d721bc2a.
+Actual isolated store .runtime/lpbf-source-ui-01a0c35a imported revision2 and
+verified3files550398609bytes; revision1 retained. No production store migrated.
+Report .runtime/phase0-audit/hdf5-source-import-01a0c35a.json. No server running.
+Next: finish Phase0 bounded LPBF engine/core mapping, representative melt-run
+resource profile and current runtime/WSL checks; then detailed shared-core contracts.
+Unambiguous primary calibration equation remains required for thermal comparison.
+
 LATEST UI PACKAGE (owner01a0c35a-2c97-7352-8d90-87ae9e0403b3): source archive panel
 added to Experimental Comparison, with source terms/conditions/unknown measurements,
 hash-bound preview/import and revision/hash/time-bound byte verification. The client

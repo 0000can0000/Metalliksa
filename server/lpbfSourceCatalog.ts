@@ -33,6 +33,14 @@ export function nistIn718CatalogEntry(root = path.resolve('data/benchmark/nist-a
         || !Array.isArray(manifest.files)) throw new Error('Source manifest/context identity mismatch');
       const readme = manifest.files.find((item: any) => item.path === context.readme?.path);
       if (!readme || readme.sha256 !== context.readme.sha256 || readme.source_url !== context.readme.source_url) throw new Error('README context fingerprint mismatch');
+      if (context.hdf5_review !== undefined) {
+        const sources = manifest.files.filter((file: any) => file.kind !== 'readme');
+        const reviewed = context.hdf5_review?.artifacts;
+        if (!Array.isArray(reviewed) || reviewed.length !== sources.length || sources.some((file: any) =>
+          reviewed.filter((ref: any) => ref?.path === file.path && ref.sha256 === file.sha256 && ref.source_url === file.source_url).length !== 1)) {
+          throw new Error('HDF5 review fingerprint mismatch');
+        }
+      }
       return validateSourceDocument({ schemaVersion: 1, datasetId: manifest.dataset_id, materialId: 'in718', processScope: 'bare-plate',
         source: { url: 'https://doi.org/10.18434/mds2-2716', citation: manifest.citation, version: manifest.version,
           terms: context.source_terms?.summary, termsMissingReason: null },

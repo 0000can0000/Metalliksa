@@ -1,7 +1,7 @@
-import type { RunRecord, RunSourceLink } from '../types/lpbfRun';
+import type { RunRecord, RunSourceLink, RunDocument } from '../types/lpbfRun';
 
 export interface RunPreview {
-  document: any; // RunDocument
+  document: RunDocument;
   artifactCount: number;
   byteSize: number;
   artifactIntegrity: 'verified-at-dry-run';

@@ -273,6 +273,12 @@ DIGITAL_TWIN_HANDOFF_2026-09-21.md, verify Git, then continue the claimed open s
 No Gemini work assumed; no phase gate accepted. Temporary test servers are stopped.
 # Current owner — 01a0c383-a755-7b53-84c6-3ec040b67aa0, 2026-09-21
 
+Handoff checkpoint:5ee6fae run archive; adfdcca evidence repair. User explicitly
+requested a fresh task now (context grew). Source stops all writes after LOCAL
+successor dispatch; successor claims its real ID. Test3197 server and verified
+descendants stopped. Next fullrun+source bundle/restore then bounded API/UI.
+Remaining dirty files are external, preserved; user stopped that other task.
+
 Run package committed5ee6fae. Next owns only LPBF experimental comparison:
 python/lpbf_experimental_validation.py, python/test_phase10.py,
 src/components/ExperimentalValidationLab.tsx, its focused presentation test and

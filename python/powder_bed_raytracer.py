@@ -9,48 +9,7 @@ os.environ.setdefault("HOME", os.environ.get("USERPROFILE", ""))
 _wp_initialized = False
 
 def create_powder_bed_mesh(num_particles=60, radius_um=15.0, bed_width_um=150.0):
-    np.random.seed(42)
-    u = np.linspace(0, 2 * np.pi, 8)
-    v = np.linspace(0, np.pi, 6)
-    xs = np.outer(np.cos(u), np.sin(v)).flatten()
-    ys = np.outer(np.sin(u), np.sin(v)).flatten()
-    zs = np.outer(np.ones(np.size(u)), np.cos(v)).flatten()
-    sphere_verts = np.vstack([xs, ys, zs]).T * radius_um
-
-    from scipy.spatial import ConvexHull
-    hull = ConvexHull(sphere_verts)
-    sphere_faces = hull.simplices
-
-    all_verts = []
-    all_faces = []
-    v_offset = 0
-
-    for p in range(num_particles):
-        cx = np.random.uniform(-bed_width_um/2, bed_width_um/2)
-        cy = np.random.uniform(-bed_width_um/2, bed_width_um/2)
-        cz = np.random.uniform(-30.0, 10.0)
-
-        p_verts = sphere_verts + np.array([cx, cy, cz])
-        all_verts.append(p_verts)
-        all_faces.append(sphere_faces + v_offset)
-        v_offset += len(p_verts)
-
-    sub_size = bed_width_um
-    sub_z = -35.0
-    sub_v = np.array([
-        [-sub_size, -sub_size, sub_z],
-        [ sub_size, -sub_size, sub_z],
-        [ sub_size,  sub_size, sub_z],
-        [-sub_size,  sub_size, sub_z]
-    ])
-    sub_f = np.array([[0, 1, 2], [0, 2, 3]]) + v_offset
-    all_verts.append(sub_v)
-    all_faces.append(sub_f)
-
-    mesh_points = np.vstack(all_verts).astype(np.float32)
-    mesh_indices = np.vstack(all_faces).flatten().astype(np.int32)
-    
-    return mesh_points, mesh_indices
+    raise NotImplementedError("Fabrication of powder bed via random np generator is disabled. Use proper LPBF DEM coupling.")
 
 @wp.kernel
 def laser_powder_raytrace(

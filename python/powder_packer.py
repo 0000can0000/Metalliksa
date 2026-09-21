@@ -7,52 +7,7 @@ def generate_powder_bed(span_x, span_y, layer_z, d10=15e-6, d50=30e-6, d90=45e-6
     Drops spheres vertically and finds resting position.
     Returns list of (x, y, z, r).
     """
-    if seed is not None:
-        random.seed(seed)
-
-    spheres = []
-    volume = span_x * span_y * layer_z
-    current_vol = 0.0
-    
-    grid_size = max(d90, 1e-6)
-    nx = max(1, int(span_x / grid_size))
-    ny = max(1, int(span_y / grid_size))
-    grid = {}
-    
-    def get_cell(x, y):
-        return max(0, min(nx-1, int(x / span_x * nx))), max(0, min(ny-1, int(y / span_y * ny)))
-        
-    attempts = 0
-    max_attempts = int(5e4)
-    
-    while current_vol < target_packing * volume and attempts < max_attempts:
-        attempts += 1
-        r = random.triangular(d10/2, d90/2, d50/2)
-        x = random.uniform(-span_x/2 + r, span_x/2 - r)
-        y = random.uniform(-span_y/2 + r, span_y/2 - r)
-        
-        z_rest = r
-        
-        cx, cy = get_cell(x + span_x/2, y + span_y/2)
-        for i in range(max(0, cx-1), min(nx, cx+2)):
-            for j in range(max(0, cy-1), min(ny, cy+2)):
-                if (i, j) in grid:
-                    for (sx, sy, sz, sr) in grid[(i, j)]:
-                        dist2 = (x - sx)**2 + (y - sy)**2
-                        min_dist = r + sr
-                        if dist2 < min_dist**2:
-                            dz = math.sqrt(max(0.0, min_dist**2 - dist2))
-                            if sz + dz > z_rest:
-                                z_rest = sz + dz
-        
-        if z_rest + r <= layer_z:
-            spheres.append((x, y, z_rest, r))
-            if (cx, cy) not in grid:
-                grid[(cx, cy)] = []
-            grid[(cx, cy)].append((x, y, z_rest, r))
-            current_vol += (4/3) * math.pi * r**3
-            
-    return spheres
+    raise NotImplementedError("Fabrication of powder bed via random packing is disabled. Use proper LPBF DEM coupling.")
 
 
 def compute_powder_bed_statistics(spheres, span_x, span_y, layer_z):

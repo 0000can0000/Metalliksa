@@ -271,60 +271,7 @@ export function generateSyntheticCoupons(params: {
   stdElongation: number;
   testStandard?: string;
 }): CouponTestSpecimen[] {
-  const coupons: CouponTestSpecimen[] = [];
-  const lots: string[] = [];
-  for (let l = 1; l <= params.lotCount; l++) {
-    lots.push(`HEAT-${String(l).padStart(3, "0")}`);
-  }
-
-  // Pre-generate lot mean offsets
-  const lotOffsets: Record<string, { yieldOff: number; utsOff: number; elongOff: number }> = {};
-  for (const lot of lots) {
-    const u1 = Math.max(1e-6, Math.random());
-    const u2 = Math.random();
-    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
-    lotOffsets[lot] = {
-      yieldOff: z0 * (params.stdYield * 0.45),
-      utsOff: z1 * (params.stdUTS * 0.45),
-      elongOff: -z0 * (params.stdElongation * 0.3)
-    };
-  }
-
-  for (let i = 1; i <= params.sampleSize; i++) {
-    const lotId = lots[(i - 1) % params.lotCount];
-    const offset = lotOffsets[lotId];
-
-    // Within-lot random variation
-    const u1 = Math.max(1e-6, Math.random());
-    const u2 = Math.random();
-    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
-
-    const yieldVal = Math.round(params.meanYield + offset.yieldOff + z0 * (params.stdYield * 0.85));
-    const utsVal = Math.round(Math.max(yieldVal + 40, params.meanUTS + offset.utsOff + z1 * (params.stdUTS * 0.85)));
-    const elongVal = parseFloat(
-      Math.max(2.0, params.meanElongation + offset.elongOff - z0 * (params.stdElongation * 0.7)).toFixed(1)
-    );
-    const raVal = parseFloat(Math.min(65, elongVal * 2.2 + Math.random() * 5).toFixed(1));
-
-    coupons.push({
-      id: `${params.datasetId}-CPN-${String(i).padStart(3, "0")}`,
-      specimenNumber: `TENS-${String(i).padStart(3, "0")}`,
-      heatLotId: lotId,
-      testTempC: 23,
-      yieldStrengthMPa: yieldVal,
-      utsMPa: utsVal,
-      elongationPct: elongVal,
-      reductionOfAreaPct: raVal,
-      hardnessHRC: Math.round(30 + (yieldVal / 50)),
-      testStandard: params.testStandard || "ASTM E8M",
-      orientation: i % 2 === 0 ? "LT" : "L",
-      evidenceOrigin: "synthetic"
-    });
-  }
-
-  return coupons;
+  throw new Error("Fabrication of mechanical property data via Math.random is strictly prohibited. Fetch real samples from the UQ backend solver.");
 }
 
 export function isSyntheticCouponDataset(dataset: MaterialDataset): boolean {

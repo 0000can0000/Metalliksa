@@ -30,4 +30,13 @@ and lifecycle10 checks passed. These are synthetic software/numerical checks.
   research limitations. Revisit materialDataPipeline only if used by LPBF inputs.
 - Deferred EIS optimizer input/global-budget extremes and null render consumers.
 
+### Weak and Dummy Physics Engines (Non-LPBF)
+- `marangoni_pore_instability_solver.py`: Probabilistic local sampling (`random.seed`) instead of fluid dynamics.
+- `powder_packer.py` & `powder_bed_raytracer.py`: Replaces deterministic DEM with `random.triangular`/`np.random.uniform` sphere spawning.
+- `inverse_alloy_optimizer.py` & `cnls_fitting_solver.py`: Genetic/Evolutionary algorithms rely on basic `random.uniform`/`gauss` mutations.
+- `stochastic_uq_mmpds_solver.py`: Uses standard pseudo-random draws instead of relying entirely on deterministic QMC (Sobol).
+- `src/services/pythonComputationService.ts`: Invokes `random()` to fabricate defect geometry (diameter, sphericity, position) dynamically when fluid/mushy zones are detected.
+- `src/components/uqLabData.ts` & `src/utils/monteCarloEngine.ts`: Frontend relies on raw `Math.random()` to generate mock mechanical properties (elongation, microstrain, crystallite size).
+- `tafelParser.ts` & `eisFileParser.ts`: Injects "pseudo-random Gaussian noise" directly during file ingestion instead of using raw instrumentation data.
+
 Do not restart this list automatically when continuing the LPBF master plan.

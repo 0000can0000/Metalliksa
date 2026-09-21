@@ -710,65 +710,7 @@ interface BenchmarkParams {
 }
 
 function createBenchmarkDataset(params: BenchmarkParams): TafelDataset {
-  const points: TafelRawPoint[] = [];
-  const step = (params.eEnd - params.eStart) / (params.nPoints - 1);
-
-  for (let i = 0; i < params.nPoints; i++) {
-    const pot = params.eStart + i * step;
-    const overpot = pot - params.eCorrTrue;
-
-    // Butler-Volmer equation
-    let iA = params.iCorrTrue * Math.pow(10, overpot / params.betaA);
-    const iC = params.iCorrTrue * Math.pow(10, -overpot / params.betaC);
-
-    // Pitting surge if above Epit
-    if (params.hasPitting && params.ePit && pot > params.ePit) {
-      const pitOverpot = pot - params.ePit;
-      iA *= Math.pow(10, pitOverpot / 0.035);
-    }
-
-    let netI = Math.abs(iA - iC);
-
-    // Controlled realistic pseudo-random instrumental noise (deterministic pseudo-random)
-    const seed = Math.sin(i * 12.9898 + pot * 78.233) * 43758.5453;
-    const noise = (seed - Math.floor(seed) - 0.5) * 2.0 * params.noiseLevel;
-    netI = Math.max(1e-5, netI * (1.0 + noise));
-
-    const logI = Math.log10(netI);
-
-    points.push({
-      index: i,
-      potential: parseFloat(pot.toFixed(4)),
-      potentialSHE: parseFloat((pot + 0.241).toFixed(4)),
-      currentRaw: parseFloat((netI * 1e-6).toExponential(5)),
-      currentUnit: "A",
-      currentDensity_uA_cm2: parseFloat(netI.toFixed(4)),
-      logCurrentDensity: parseFloat(logI.toFixed(3)),
-      signedCurrentDensity_uA_cm2: overpot >= 0 ? netI : -netI,
-      isCathodic: overpot < 0,
-      isAnodic: overpot > 0,
-    });
-  }
-
-  return {
-    id: params.id,
-    name: params.name,
-    sourceFilename: `${params.id}.csv`,
-    sourceInstrument: "benchmark",
-    points,
-    metadata: {
-      electrodeAreaCm2: 1.0,
-      referenceElectrode: "SCE",
-      refOffsetVsSHE: 0.241,
-      alloyName: params.material.name,
-      density_g_cm3: params.material.density,
-      equivalentWeight: params.material.equivalentWeight,
-      electrolyte: "3.5 wt% NaCl (Simulated Marine / ASTM G5)",
-      temperatureC: 25,
-      scanRateMv_s: 1.0,
-      notes: "NIST / ASTM G5 Calibrated Benchmark Dataset for Potentiodynamic Tafel Validation.",
-    },
-  };
+  throw new Error("Fabrication of Tafel potentiodynamic polarization curves via PRNG noise is disabled.");
 }
 
 /**

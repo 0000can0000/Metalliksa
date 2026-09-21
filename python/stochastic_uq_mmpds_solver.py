@@ -413,20 +413,12 @@ def solve_stochastic_uq(params: dict) -> dict:
         sobol_gen = SobolSequenceGenerator(dimension=total_dims, scramble=scramble, seed=seed)
         qmc_points = sobol_gen.generate(N_samples)
         sobol_cd2 = compute_centered_l2_discrepancy(qmc_points, max_eval=min(150, N_samples))
-
-        # Benchmark pseudo-random set for objective comparison
-        prng = random.Random(seed)
-        pseudo_benchmark = [[prng.random() for _ in range(total_dims)] for _ in range(min(150, N_samples))]
-        pseudo_cd2 = compute_centered_l2_discrepancy(pseudo_benchmark, max_eval=min(150, N_samples))
-
-        discrepancy_reduction_pct = round(((pseudo_cd2 - sobol_cd2) / pseudo_cd2) * 100.0, 1) if pseudo_cd2 > 0 else None
-    else:
-        sampling_method = "pseudo_mc"
-        prng = random.Random(seed)
-        qmc_points = [[prng.random() for _ in range(total_dims)] for _ in range(N_samples)]
-        pseudo_cd2 = compute_centered_l2_discrepancy(qmc_points, max_eval=min(150, N_samples))
-        sobol_cd2 = pseudo_cd2
+        
+        # Disabled pseudo benchmark comparison to strictly enforce Sobol QMC
+        pseudo_cd2 = 0
         discrepancy_reduction_pct = 0.0
+    else:
+        raise ValueError("Standard Pseudo-Random Monte Carlo is disabled. Enforcing QMC/Sobol determinism. Pass samplingMethod='sobol_qmc'.")
 
     yield_list = []
     uts_list = []
@@ -614,8 +606,8 @@ def solve_stochastic_uq(params: dict) -> dict:
     ]
     M_saltelli = min(350, max(150, N_samples // 6))
     k_factors = len(sensitivity_factors)
-    sensitivity_rng = random.Random(seed + 101)
-    saltelli_pts = [[sensitivity_rng.random() for _ in range(2 * k_factors)] for _ in range(M_saltelli)]
+    saltelli_sobol = SobolSequenceGenerator(dimension=2 * k_factors, scramble=scramble, seed=seed + 101)
+    saltelli_pts = saltelli_sobol.generate(M_saltelli)
 
     def eval_factor_vector(vec):
         c_draw = {

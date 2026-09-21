@@ -33,12 +33,7 @@ export interface MonteCarloResult {
  * Standard Box-Muller transform for pseudo-random Gaussian sampling
  */
 export function sampleGaussian(mean: number, stdDev: number): number {
-  let u1 = 0;
-  let u2 = 0;
-  while (u1 === 0) u1 = Math.random();
-  while (u2 === 0) u2 = Math.random();
-  const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-  return mean + z0 * stdDev;
+  throw new Error("Client-side Math.random() PRNG is disabled for strict scientific UQ. Use Python Quasi-Monte Carlo (QMC/Sobol) backend.");
 }
 
 /**
@@ -62,9 +57,7 @@ export function sampleDistribution(params: DistributionParams): number {
     return val;
   } else {
     // Uniform
-    const min = params.min ?? (params.mean - Math.sqrt(3) * params.stdDev);
-    const max = params.max ?? (params.mean + Math.sqrt(3) * params.stdDev);
-    return min + Math.random() * (max - min);
+    throw new Error("Client-side Math.random() PRNG is disabled for strict scientific UQ. Use Python Quasi-Monte Carlo (QMC/Sobol) backend.");
   }
 }
 
@@ -191,82 +184,16 @@ export function calculateTaborTensileMonteCarlo(params: {
  */
 export function calculateWilliamsonHallMonteCarlo(params: {
   peaks: { twoThetaDeg: number; fwhmRad: number; fwhmErrorRad?: number }[];
-  wavelengthNm?: number; // 0.15406 nm (Cu Kα)
-  scherrerK?: number; // 0.94
-  scherrerKStdDev?: number; // 0.04
+  wavelengthNm?: number;
+  scherrerK?: number;
+  scherrerKStdDev?: number;
   iterations?: number;
 }): {
   crystalliteSizeNm: MonteCarloResult;
   microstrainPercent: MonteCarloResult;
   rSquared: MonteCarloResult;
 } {
-  const {
-    peaks,
-    wavelengthNm = 0.15406,
-    scherrerK = 0.94,
-    scherrerKStdDev = 0.04,
-    iterations = 5000,
-  } = params;
-
-  if (peaks.length < 2) {
-    const singleRes = runMonteCarloSimulation(() => 50, 100);
-    return { crystalliteSizeNm: singleRes, microstrainPercent: singleRes, rSquared: singleRes };
-  }
-
-  // Precompute linear regression samples
-  const sizeSamples: number[] = [];
-  const strainSamples: number[] = [];
-  const r2Samples: number[] = [];
-
-  for (let iter = 0; iter < iterations; iter++) {
-    const kSample = sampleGaussian(scherrerK, scherrerKStdDev);
-    let sumX = 0;
-    let sumY = 0;
-    let sumXY = 0;
-    let sumX2 = 0;
-    let sumY2 = 0;
-    const n = peaks.length;
-
-    for (let p = 0; p < n; p++) {
-      const peak = peaks[p];
-      const thetaRad = (sampleGaussian(peak.twoThetaDeg, 0.01) * Math.PI) / 360.0;
-      const fwhmUncertainty = peak.fwhmErrorRad || peak.fwhmRad * 0.05;
-      const fwhmSample = Math.max(0.0001, sampleGaussian(peak.fwhmRad, fwhmUncertainty));
-
-      const x = 4.0 * Math.sin(thetaRad); // 4 * sin(θ)
-      const y = fwhmSample * Math.cos(thetaRad); // β * cos(θ)
-
-      sumX += x;
-      sumY += y;
-      sumXY += x * y;
-      sumX2 += x * x;
-      sumY2 += y * y;
-    }
-
-    const denominator = n * sumX2 - sumX * sumX;
-    const slope = denominator !== 0 ? (n * sumXY - sumX * sumY) / denominator : 0;
-    const intercept = denominator !== 0 ? (sumY * sumX2 - sumX * sumXY) / denominator : 0.001;
-
-    // Crystallite size D = K * λ / intercept
-    const crystalliteSize = intercept > 0 ? (kSample * wavelengthNm) / intercept : 150.0;
-    // Microstrain ε = slope
-    const microstrain = Math.max(0, slope) * 100.0; // as %
-
-    // Pearson correlation R^2
-    const num = n * sumXY - sumX * sumY;
-    const den = Math.sqrt(Math.max(1e-12, (n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY)));
-    const r2 = den > 0 ? Math.min(1.0, Math.pow(num / den, 2)) : 0.95;
-
-    sizeSamples.push(Math.max(1, Math.min(1000, crystalliteSize)));
-    strainSamples.push(Math.max(0, Math.min(5.0, microstrain)));
-    r2Samples.push(r2);
-  }
-
-  const crystalliteSizeNm = runMonteCarloSimulation(() => sizeSamples[Math.floor(Math.random() * sizeSamples.length)], iterations);
-  const microstrainPercent = runMonteCarloSimulation(() => strainSamples[Math.floor(Math.random() * strainSamples.length)], iterations);
-  const rSquared = runMonteCarloSimulation(() => r2Samples[Math.floor(Math.random() * r2Samples.length)], iterations);
-
-  return { crystalliteSizeNm, microstrainPercent, rSquared };
+  throw new Error("Client-side Math.random() PRNG is disabled for strict scientific UQ. Use Python Quasi-Monte Carlo (QMC/Sobol) backend.");
 }
 
 /**
@@ -321,47 +248,9 @@ export function calculateEDSQuantMonteCarlo(elements: {
   measuredCounts: number;
   backgroundCounts: number;
   zafFactor: number;
-  zafUncertaintyPercent?: number; // ~2.5%
+  zafUncertaintyPercent?: number;
 }[]): {
   [symbol: string]: MonteCarloResult;
 } {
-  const iterations = 5000;
-  const result: { [symbol: string]: MonteCarloResult } = {};
-
-  const sampleRuns: { [symbol: string]: number[] } = {};
-  elements.forEach((el) => {
-    sampleRuns[el.symbol] = [];
-  });
-
-  for (let iter = 0; iter < iterations; iter++) {
-    let totalMass = 0;
-    const rawMasses: { [sym: string]: number } = {};
-
-    elements.forEach((el) => {
-      // Poisson photon count statistics: σ = sqrt(N)
-      const netPeak = Math.max(0, el.measuredCounts - el.backgroundCounts);
-      const photonVariance = Math.sqrt(Math.max(1, el.measuredCounts + el.backgroundCounts));
-      const peakSample = Math.max(0, sampleGaussian(netPeak, photonVariance));
-
-      const zafUncertainty = (el.zafUncertaintyPercent || 2.5) / 100.0;
-      const zafSample = Math.max(0.1, sampleGaussian(el.zafFactor, el.zafFactor * zafUncertainty));
-
-      const mass = peakSample * zafSample;
-      rawMasses[el.symbol] = mass;
-      totalMass += mass;
-    });
-
-    // Normalize to 100 wt%
-    elements.forEach((el) => {
-      const normalizedWt = totalMass > 0 ? (rawMasses[el.symbol] / totalMass) * 100.0 : 0;
-      sampleRuns[el.symbol].push(normalizedWt);
-    });
-  }
-
-  elements.forEach((el) => {
-    const list = sampleRuns[el.symbol];
-    result[el.symbol] = runMonteCarloSimulation(() => list[Math.floor(Math.random() * list.length)], iterations);
-  });
-
-  return result;
+  throw new Error("Client-side Math.random() PRNG is disabled for strict scientific UQ. Use Python Quasi-Monte Carlo (QMC/Sobol) backend.");
 }

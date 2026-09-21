@@ -558,32 +558,7 @@ function generateRealisticExperimentalData(
   evalFn: (f: number) => { zReal: number; zImag: number },
   noiseStdPct: number = 1.2
 ): RawEISPoint[] {
-  return freqs.map((f, idx) => {
-    const clean = evalFn(f);
-    // Pseudo-random Gaussian noise based on frequency index for reproducible realistic data
-    const seed = Math.sin(idx * 9301 + 49297) * 233280;
-    const rnd1 = (seed - Math.floor(seed)) * 2 - 1;
-    const seed2 = Math.cos(idx * 7919 + 6133) * 123456;
-    const rnd2 = (seed2 - Math.floor(seed2)) * 2 - 1;
-
-    const noiseFactorReal = 1 + (rnd1 * noiseStdPct) / 100;
-    const noiseFactorImag = 1 + (rnd2 * noiseStdPct) / 100;
-
-    const zReal = clean.zReal * noiseFactorReal;
-    const zImag = clean.zImag * noiseFactorImag;
-    const minusZImag = -zImag;
-    const zMag = Math.sqrt(zReal * zReal + zImag * zImag);
-    const phaseDeg = (Math.atan2(zImag, zReal) * 180) / Math.PI;
-
-    return {
-      frequency: f,
-      zReal,
-      zImag,
-      minusZImag,
-      zMag,
-      phaseDeg,
-    };
-  });
+  throw new Error("Fabrication of EIS impedance curves with pseudo-random noise is prohibited.");
 }
 
 function makeLogFrequencies(minF: number, maxF: number, pointsPerDecade: number = 10): number[] {

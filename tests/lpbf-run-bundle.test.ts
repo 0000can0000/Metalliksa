@@ -1,0 +1,143 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, unlinkSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { test, type TestContext } from 'node:test';
+import { LpbfRunRepository } from '../server/lpbfRunRepository';
+import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
+import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
+import { importRun } from '../server/lpbfRunImport';
+import { backupRunBundle, restoreRunBundle, verifyRunBundle } from '../server/lpbfRunBundle';
+
+const sha = (value: string) => createHash('sha256').update(value).digest('hex');
+async function fixture(t: TestContext) {
+  const root = mkdtempSync(path.join(tmpdir(), 'lpbf-run-bundle-'));
+  const runs = new LpbfRunRepository(path.join(root, 'runs.sqlite'));
+  const sources = new LpbfSourceRepository(path.join(root, 'sources.sqlite'));
+  t.after(() => { runs.close(); sources.close(); rmSync(root, { recursive: true, force: true }); });
+  const runStore = new LpbfArtifactStore(path.join(root, 'run-store'));
+  const sourceStore = new LpbfArtifactStore(path.join(root, 'source-store'));
+  const input = path.join(root, 'input'); mkdirSync(input);
+  writeFileSync(path.join(input, 'raw'), 'raw');
+  const sourceRef = { relativePath: 'raw', sha256: sha('raw'), byteSize: 3, sourceUrl: 'https://example.org/raw' };
+  const source = { schemaVersion: 1, datasetId: 'synthetic', materialId: 'in718', processScope: 'unknown',
+    source: { url: 'https://example.org/source', citation: 'Synthetic test only', version: '1', terms: null, termsMissingReason: 'Unknown' },
+    artifacts: [sourceRef], sourceContext: { conversion: null } };
+  await sourceStore.putFile(input, 'raw', sourceRef);
+  const v1 = sources.save(source, 0); source.source.version = '2'; sources.save(source, 1);
+  const job = path.join(root, 'job'); mkdirSync(job); mkdirSync(path.join(job, 'case'));
+  writeFileSync(path.join(job, 'case/empty'), ''); writeFileSync(path.join(job, 'peak-field.npz'), 'abc');
+  const result = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
+    fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
+    settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
+    material: { name: 'Synthetic', quality: 'synthetic', source: 'Unit test only' },
+    label: 'Screening', regime: 'test', mainRisk: 'test', recommendation: 'test', riskScope: 'test',
+    metrics: { width_um: 0, depth_um: 0, length_um: 0 }, assumptions: ['Synthetic only'],
+    analyticalComparison: { goldak: { width_um: 0, depth_um: 0, length_um: 0 } },
+    provenance: { executionRuntime: null },
+    artifacts: [{ path: 'case/empty', size_bytes: 0, sha256: sha('') }, { path: 'peak-field.npz', size_bytes: 3, sha256: sha('abc') }] };
+  const capture = { schemaVersion: 1, jobId: 'a'.repeat(32), resultJson: JSON.stringify(result),
+    inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material), contractStatus: 'legacy-unbound' };
+  writeFileSync(path.join(job, 'result.json'), capture.resultJson);
+  const link = { datasetId: 'synthetic', revision: 1, documentSha256: v1.documentSha256 };
+  const record = await importRun(runs, runStore, capture, [link], sources, job);
+  const bundle = path.join(root, 'bundle');
+  const backup = () => backupRunBundle(runs, runStore, sources, sourceStore, bundle);
+  return { root, runs, sources, runStore, sourceStore, record, sourceRef, bundle, backup };
+}
+
+test('full bundle independently restores exact run and historical source revision with all bytes', async t => {
+  const f = await fixture(t), manifest = await f.backup();
+  assert.equal(manifest.runCount, 1); assert.equal(manifest.artifactCount, 2);
+  assert.equal(manifest.sourceLinkCount, 1);
+  writeFileSync((await f.runStore.verify({ sha256: sha('abc'), byteSize: 3 })).path, 'bad');
+  writeFileSync((await f.sourceStore.verify(f.sourceRef)).path, 'bad');
+  const destination = path.join(f.root, 'restored'); await restoreRunBundle(f.bundle, destination);
+  const runs = new LpbfRunRepository(path.join(destination, 'runs.sqlite'), { readOnly: true });
+  const sources = new LpbfSourceRepository(path.join(destination, 'sources/metadata.sqlite'), { readOnly: true });
+  try {
+    assert.deepEqual(runs.get(f.record.document.runId), f.record);
+    assert.equal(sources.current('synthetic')!.revision, 2);
+    assert.equal(sources.revision('synthetic', 1)!.documentSha256, f.record.document.sources[0].documentSha256);
+    assert.equal(sources.revision('synthetic', 1)!.evidenceStatus, 'unreviewed-source-archive');
+    assert.equal(sources.current('synthetic')!.document.sourceContext!.conversion, null);
+  } finally { runs.close(); sources.close(); }
+  const store = new LpbfArtifactStore(path.join(destination, 'artifacts'), { readOnly: true });
+  assert.equal(readFileSync((await store.verify({ sha256: sha('abc'), byteSize: 3 })).path, 'utf8'), 'abc');
+  await store.verify({ sha256: sha(''), byteSize: 0 });
+  const before = readFileSync(path.join(destination, 'bundle.json'));
+  await assert.rejects(restoreRunBundle(f.bundle, destination), /exist/i);
+  assert.deepEqual(readFileSync(path.join(destination, 'bundle.json')), before);
+});
+
+test('missing or corrupted run/source objects prevent restore before destination creation', async t => {
+  for (const which of ['run', 'source'] as const) for (const missing of [false, true]) {
+    const f = await fixture(t); await f.backup();
+    const store = new LpbfArtifactStore(path.join(f.bundle, which === 'run' ? 'artifacts' : 'sources/artifacts'), { readOnly: true });
+    const object = await store.verify(which === 'run' ? { sha256: sha('abc'), byteSize: 3 } : f.sourceRef);
+    if (missing) unlinkSync(object.path); else writeFileSync(object.path, 'bad');
+    const destination = path.join(f.root, 'restored');
+    await assert.rejects(restoreRunBundle(f.bundle, destination)); assert.equal(existsSync(destination), false);
+  }
+});
+
+test('backup failures leave no top-level completion and preserve live data', async t => {
+  for (const which of ['run', 'source', 'link'] as const) {
+    const f = await fixture(t);
+    if (which === 'link') {
+      const d = structuredClone(f.record.document); d.runId = d.capture.jobId = 'b'.repeat(32);
+      d.sources[0].documentSha256 = sha('wrong'); f.runs.save(d);
+    } else {
+      const store = which === 'run' ? f.runStore : f.sourceStore;
+      writeFileSync((await store.verify(which === 'run' ? { sha256: sha('abc'), byteSize: 3 } : f.sourceRef)).path, 'bad');
+    }
+    await assert.rejects(f.backup()); assert.equal(existsSync(path.join(f.bundle, 'bundle.json')), false);
+    assert.deepEqual(f.runs.get(f.record.document.runId), f.record);
+  }
+});
+
+test('both SQLite snapshots reject sidecars; metadata and completion hashes/counts are checked', async t => {
+  for (const file of ['runs.sqlite-wal', 'runs.sqlite-shm', 'runs.sqlite-journal',
+    'sources/metadata.sqlite-wal', 'sources/metadata.sqlite-shm', 'sources/metadata.sqlite-journal',
+    'runs.sqlite', 'sources/metadata.sqlite', 'sources/bundle.json', 'bundle.json']) {
+    const f = await fixture(t); await f.backup();
+    if (file === 'bundle.json') {
+      const m = JSON.parse(readFileSync(path.join(f.bundle, file), 'utf8')); m.runCount++;
+      writeFileSync(path.join(f.bundle, file), JSON.stringify(m));
+    } else writeFileSync(path.join(f.bundle, file), 'bad');
+    await assert.rejects(verifyRunBundle(f.bundle));
+  }
+});
+
+test('linked roots and nested source directories are rejected', async t => {
+  const f = await fixture(t); await f.backup();
+  const alias = path.join(f.root, 'alias'); symlinkSync(f.bundle, alias, 'junction');
+  await assert.rejects(verifyRunBundle(alias), /link/i);
+  await assert.rejects(backupRunBundle(f.runs, f.runStore, f.sources, f.sourceStore, path.join(alias, 'new')), /link/i);
+  const f2 = await fixture(t); mkdirSync(f2.bundle);
+  symlinkSync(path.join(f.bundle, 'sources'), path.join(f2.bundle, 'sources'), 'junction');
+  writeFileSync(path.join(f2.bundle, 'runs.sqlite'), readFileSync(path.join(f.bundle, 'runs.sqlite')));
+  writeFileSync(path.join(f2.bundle, 'bundle.json'), readFileSync(path.join(f.bundle, 'bundle.json')));
+  await assert.rejects(verifyRunBundle(f2.bundle), /link/i);
+});
+
+test('run snapshot precedes source snapshot; later runs stay out and historical links stay exact', async t => {
+  const f = await fixture(t), original = f.sources.backupMetadata.bind(f.sources);
+  f.sources.backupMetadata = async directory => {
+    assert.equal(existsSync(path.join(f.bundle, 'runs.sqlite')), true);
+    const late = structuredClone(f.record.document); late.runId = late.capture.jobId = 'b'.repeat(32);
+    f.runs.save(late);
+    const source = f.sources.current('synthetic')!.document; source.source.version = '3';
+    f.sources.save(source, 2);
+    return original(directory);
+  };
+  const manifest = await f.backup(); assert.equal(manifest.runCount, 1);
+  assert.equal([...f.runs.allRuns()].length, 2);
+  await verifyRunBundle(f.bundle);
+  const snapshot = new LpbfSourceRepository(path.join(f.bundle, 'sources/metadata.sqlite'), { readOnly: true });
+  try {
+    assert.equal(snapshot.current('synthetic')!.revision, 3);
+    assert.equal(snapshot.revision('synthetic', 1)!.documentSha256, f.record.document.sources[0].documentSha256);
+  } finally { snapshot.close(); }
+});

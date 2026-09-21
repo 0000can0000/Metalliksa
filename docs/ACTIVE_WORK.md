@@ -1,4 +1,14 @@
-# Current owner — 01a0c36f-7006-7eb3-992d-73265a0a354d, 2026-09-21
+# Current owner — 01a0c399-42df-72b0-9872-1010354f2d9a, 2026-09-21
+
+Continues LOCAL b8b1f7f after source01a0c383 stopped writing. Owns
+server/lpbfRunBundle.ts, tests/lpbf-run-bundle.test.ts, its narrow plan and
+checkpoint docs/parent STATUS.md. First acceptance: full immutable run + source
+snapshot/bytes, exact historical links, exclusive destination, completion last,
+isolated verified restore. Existing source-only bundle preserved. No agents,
+live migration, push or installs. All eleven external dirty paths remain unowned.
+Phase0 OPEN; continue API/UI and shared physics after this package.
+
+# Previous owner — 01a0c36f-7006-7eb3-992d-73265a0a354d, 2026-09-21
 
 Continues clean application HEAD2ce1abc in the same LOCAL checkout. Predecessor
 stopped writes after dispatch. Owns bounded current LPBF engine/core evidence map,

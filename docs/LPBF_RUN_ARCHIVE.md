@@ -33,7 +33,40 @@ Directories are application-owned; hostile concurrent filesystem writers are
 outside this portable filesystem isolation boundary. No automatic deletion or
 live migration. Metadata backup opens in a new directory, with SQLite DELETE
 journal mode, and explicitly excludes artifact bytes and source repositories.
-Full run+source bundle, restore API and history UI are the next persistence gates.
+Full run+source bundles are now available through trusted internal functions in
+`server/lpbfRunBundle.ts`; HTTP/API and history UI remain separate gates.
+
+## Portable full bundle
+
+`backupRunBundle(runs, runStore, sources, sourceStore, newDirectory)` snapshots
+runs first, then nests an existing source-only bundle under `sources/`. This
+includes ALL revisions/bytes in the source snapshot, a deliberate superset of
+the exact revisions referenced by runs. Original revision numbers, row hashes,
+timestamps, input/material/result strings and evidence states are preserved.
+Run artifacts use a separate content-addressed store under `artifacts/`.
+
+Every run link must resolve to the exact historical source document SHA256.
+All referenced run/source bytes and snapshot hashes are checked before the
+top-level completion manifest is written. The manifest binds runs.sqlite and
+the nested source manifest, which binds its metadata and source bytes. SQLite
+WAL/SHM/journal sidecars and linked paths are rejected. An incomplete directory
+is retained on failure without top-level completion; existing data is never
+overwritten or deleted. Hashes provide integrity, not authenticity/signatures.
+
+`verifyRunBundle` rechecks these conditions; `restoreRunBundle` verifies the
+input before creating its exclusive destination, then copies and checks the
+destination before completion. This is internal isolated restore, not a live
+application migration or an HTTP filesystem API. Hostile concurrent filesystem
+writers remain outside the application's owned-directory isolation boundary.
+
+Fresh package evidence: six bundle tests plus existing run/source/artifact tests
+33PASS, strict targeted TypeScript and app lint PASS. Snapshot ordering test adds
+a later live run during source backup: excluded from frozen runs, while newer
+source revisions do not replace historical links. Source-only bundle unchanged.
+Actual prior CPU run66artifacts + NIST3payloads550398609bytes/two revisions backed
+up and restored in `.runtime/phase0-audit/run-bundle-pilot-01a0c399/report.json`.
+Result bytes unchanged; the pilot association to NISTrevision1 is explicitly a
+storage test, not a matched experiment, numerical rerun or calibration claim.
 
 ## Verification, 2026-09-21
 

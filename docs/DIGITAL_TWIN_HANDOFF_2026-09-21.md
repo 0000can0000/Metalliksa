@@ -1,5 +1,14 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+Owner01a0c399 continues LOCAL b8b1f7f. Fullrun+source bundle implemented and
+verified: LPBF_RUN_ARCHIVE and 2026-09-21-lpbf-run-bundle plan ledger. Six new
+tests/combined33PASS, strictTS/lintPASS. Actual66file CPU run+NIST550398609bytes
+two revisions isolated backup/restorePASS; result bytes unchanged, link only
+storage association (not experiment). Next bounded run archive API/UI with
+trusted Node/WSL root mapping, completed job IDs and current-input identity.
+No live migration/push/install/agents; all eleven external dirty paths preserved.
+Phase0 OPEN; shared physics seams/scientific audit continue after persistence.
+
 EXACT CHECKPOINT:5ee6fae run archive, adfdcca evidence repair; final docs commit
 is next gitlog entry. User explicitly said "Bağlam arttı yeni yere geç".
 Source01a0c383 stops writes on successor dispatch; same LOCAL checkout. Test3197

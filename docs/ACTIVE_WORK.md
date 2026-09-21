@@ -1,4 +1,14 @@
-# Current owner — 01a0c349-747d-7e52-bbf7-8e87df3211f7, 2026-09-21
+# Current owner — 01a0c35a-2c97-7352-8d90-87ae9e0403b3, 2026-09-21
+
+Continues clean 77fb27f in the same LOCAL checkout; predecessor stopped writes.
+Owns source archive UI/service/tests, LpbfEngineeringWorkspace integration and
+checkpoint documents. Acceptance: source conditions/unknowns, hash-bound preview
+and import, revision-bound fresh integrity, visible failures, stale-response
+protection and actual browser/keyboard checks. Preserve activeSpecimen inputs.
+Phase0 OPEN; shared LPBF core/database remains the overall objective.
+CBM generation18Sep stale/untracked in scope; exact source fallback used.
+
+# Previous owner — 01a0c349-747d-7e52-bbf7-8e87df3211f7, 2026-09-21
 
 Continues shared LOCAL checkout from clean cda8c12; source01a0c339 stopped writes.
 Owns server/lpbfArtifactStore.ts, server/lpbfSourceImport.ts, related focused tests,

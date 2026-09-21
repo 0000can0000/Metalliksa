@@ -1,5 +1,20 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+LATEST UI PACKAGE (owner01a0c35a-2c97-7352-8d90-87ae9e0403b3): source archive panel
+added to Experimental Comparison, with source terms/conditions/unknown measurements,
+hash-bound preview/import and revision/hash/time-bound byte verification. The client
+refreshes current metadata after operations and rejects concurrent revision drift.
+useInputBoundTask plus keyed source component discards stale/unmounted responses.
+Shared source types moved to src/types/lpbfSource.ts; repository reexports them.
+No activeSpecimen or measured width/depth mutation.5new client tests (red→green),
+full166unit/lint/strictTS/buildPASS. Real compiled UI+source router browser3196:
+Enter preview/import/verify3IN718files550398609bytes PASS; injected503 removes prior
+success;20s late preview discarded across stage navigation; Tab/visual checkPASS.
+Local Graft bounded6files refreshed in .runtime/graft-source-ui; CBM18Sep stale.
+Next: IN718 HDF5 attribute/calibration review and common-core/Phase0 gates.
+Phase0 OPEN, Phase1 not accepted. No installations or push in this UI package.
+Historical FIRST NEXT UI instruction below is now complete.
+
 LATEST PACKAGE: bounded local source API now connected to server.ts BEFORE global
 large-body parser. GET /api/lpbf/sources lists allowlisted NIST catalog; GET /:id
 returns current metadata; POST /:id/preview {} reads all source bytes without

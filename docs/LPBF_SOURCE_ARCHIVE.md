@@ -27,9 +27,27 @@ failures return503 without filesystem paths and preserve existing revisions.
 is ignored by Git. Catalog/current/preview do not initialize an absent archive.
 The local server is not a multi-user authorization system.
 
-There is no source archive UI or HTTP backup/restore endpoint yet. Programmatic
-backup/restore below is available; simulation/qualification inputs are not changed
-automatically by importing raw source files.
+The Experimental Comparison stage includes a source archive panel. It displays
+source conditions, terms, unknown measurements, original file counts/bytes and
+hashes. Preview enables an import bound to the returned hash and expected revision.
+Fresh verification shows its exact revision, document hash and UTC check time.
+Metadata reads do not imply verified bytes; no action upgrades scientific evidence.
+Changing source or leaving the comparison stage discards pending UI replies;
+aborting HTTP does not cancel an import already running on the server. Reload
+after returning to inspect what was actually stored. Each new attempt clears prior
+success, and revision drift during an operation is a visible error.
+
+Simulation/qualification inputs are not changed by importing raw source files.
+There is no HTTP backup/restore endpoint yet; programmatic backup/restore below
+is available.
+
+UI verification (2026-09-21):5 client regressions, full166unit, lint, strict client/
+repository/test TypeScript and build PASS. Actual browser with compiled application
+and real source router on127.0.0.1:3196: keyboard preview/import/verify of3IN718
+files/550398609bytes; revision1/hash/time visible; injected503 clears old success;
+20-second delayed preview discarded after leaving/reopening comparison. Tab order
+and visual layout checked. Active specimen280W/940mm/s and empty width/depth fields
+preserved. Isolated store `.runtime/lpbf-source-ui-01a0c35a`; no live migration.
 
 API verification:5 focused regressions/full161unitPASS; lint, strict API TypeScript
 and production build PASS (existing Vite large-chunk warning). Real production

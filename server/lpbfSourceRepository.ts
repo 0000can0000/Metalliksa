@@ -5,24 +5,8 @@ import path from 'node:path';
 import { DatabaseSync, backup } from 'node:sqlite';
 import { artifactRelativePath } from './lpbfArtifactStore';
 
-type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
-export interface LpbfSourceDocument {
-  schemaVersion: 1;
-  datasetId: string;
-  materialId: 'ti6al4v' | 'ss316l' | 'alsi10mg' | 'in718';
-  processScope: 'bare-plate' | 'powder-bed' | 'unknown';
-  source: { url: string; citation: string; version: string; terms: string | null; termsMissingReason: string | null };
-  artifacts: { relativePath: string; sha256: string; byteSize: number; sourceUrl: string }[];
-  sourceContext: { [key: string]: Json } | null;
-}
-export interface LpbfSourceRevision {
-  revision: number;
-  createdAt: string;
-  document: LpbfSourceDocument;
-  documentSha256: string;
-  evidenceStatus: 'unreviewed-source-archive';
-  artifactIntegrity: 'not-verified';
-}
+import type { LpbfSourceDocument, LpbfSourceRevision } from '../src/types/lpbfSource';
+export type { LpbfSourceDocument, LpbfSourceRevision } from '../src/types/lpbfSource';
 
 const MAX_BYTES = 1024 * 1024;
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');

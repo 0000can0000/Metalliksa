@@ -1,5 +1,12 @@
 # Active Work
 
+Checkpoint ad5adf5: current package complete (lint PASS, unit122, build PASS,
+browser software checks). Final server PID31408 absent and3191/5191 have no
+listeners. Fresh successor will inherit on dispatch; source01a0c133 will stop
+writing then. First pending scope: Python CNLS numerical/short-input contracts,
+shared fitting consumers and synthetic EIS provenance, after inspecting/claiming.
+See CURRENT CONTINUATION; historical ownership below is superseded on transfer.
+
 Continuation task 01a0c133-a81d-7f93-9174-d85ad5b1e979 owns the shared LOCAL
 checkout from clean HEAD 6600806 on 2026-09-21; source 01a0c11f stopped writing.
 Current package: the twelve component paths in lint-continuation-baseline.txt,

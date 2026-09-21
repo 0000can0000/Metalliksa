@@ -1,4 +1,107 @@
-# CURRENT CONTINUATION — checkpoint after cd24cb0 and f2229c5
+# CURRENT CONTINUATION — checkpoint after ad5adf5
+
+Read parent ../STATUS.md FIRST. User explicitly authorized continuing until done
+while away, automatic fresh-task handoff when context becomes limited, and
+"hep statuse kaydetmeyi ve ordan da devam etmeyi unutma". Preserve this authority.
+No context percentage is exposed; never pretend it was measured. This section
+supersedes ALL historical sections below. Do not reopen completed packages.
+
+## Ownership and verified checkpoint
+
+- Same shared LOCAL C:/Users/can02/Projects/metalliksaa/Metalliksa-1, main.
+  Parent workspace is a separate dirty repo; do not stage its unrelated files.
+  No worktree, no push, local commits authorized. No new subagents unless asked.
+- Source task01a0c133-a81d-7f93-9174-d85ad5b1e979 stops writing upon dispatch.
+  Check actual git status/index/log and ACTIVE_WORK, then inherit ownership.
+  Current code commit ad5adf5; clean application tree/index before this handoff
+  documentation commit. Earlier cd24cb0/f2229c5/8157c18 remain intact.
+- New package fixes all observed TypeScript lint failures using real contracts.
+  lintPASS, unit122/122PASS, buildPASS25.61s (chunk warnings). Logs under
+  .runtime/phase0-audit/{lint,unit,build}-contracts-final.txt.
+- Candidate pipeline now uses CandidateAlloySolution names/composition/metrics,
+  no1050MPa/etc fallback; missing/nonfinite reject and zero retained. Existing
+  derived kinetic/XRD/hardness assumptions not validated by this repair.
+- Heat treatment requires explicit scenario precipitate fraction0–0.35; blank
+  or invalid hides results; zero yields0 precipitation gain. No nonexistent
+  Scheil f_solid_at_pinch or default0.18. YS/UTS fields corrected. Remaining
+  empirical multipliers/porosity/spacings disclosed, not scientific validation.
+- EDS dead modal replaced by reference-spot chemistry→Alloy Builder transfer.
+  No grain8.5 fabricated; uploaded raw spectrum disables preset-chemistry send.
+  Other EDS fake fallback/report/standards claims remain to audit.
+- Recharts point payload selection, chart schemas, thermal geometry width,
+  timer/ref types, numeric label, candidate cost/misfit/stress fields fixed.
+- Actual browser exposed CNLS crash: Python emits reducedChiSquare but no
+  chiSquare. New src/utils/pythonCnlsReport.ts validates/map fields, derives
+  RMSE from actual residuals and chiSquare=reduced*DOF, missing rejects, zero
+  retained, convergence absent=false (display not confirmed). Circuit builder
+  uses it for local/global fit, clears report on retry, no HTTP solver fallback.
+  Other fitting consumers are NOT yet repaired; late result/input identity
+  behavior of builder/Plotly also remains unaudited.
+- Browser actual components tests/contracts-browser.html: heat empty/0/0.2/0.5,
+  EDS Enter transfers spotNi53.4/Cr19.3/etc, scatter point opens TI64-GONG-LOF-01,
+  keyboard closes detail, inverse transfer modal carries real candidate, four
+  classic charts render/screenshot checked. Actual API→CPU Python local fit
+  displayed reducedχ²1.14e3,R²0,80iters,convergence NOT confirmed. Test-only503
+  and partial report clear old result and show errors. These are software checks,
+  not scientific/experimental verification. EDS uploaded-spectrum flow and the
+  dormant standalone embedded simulator were not browser-tested.
+
+## Immediate next package (inspect, claim, implement, verify)
+
+1. python/cnls_fitting_solver.py numerical contract. Source run_cnls_fit roughly
+   1070–1435: residual exp-calc, Jacobian is derivative of that residual, but
+   trial update ADDS solve(JTJ,JTr), apparently wrong Gauss-Newton sign. Confirm
+   with analytic R / R-C fixture before changing. Actual browser local fit stayed
+   at initial parameters after80iterations. Do not merely improve metrics.
+   Also num_adj==0 returns fabricated perfect0/1 before comparing observations;
+   max_iter0 risks unbound jt_j; convergence omitted; covariance failure becomes
+   zeros, R² clipping and fallback quality claims need review. Seed global DE.
+2. Same module perform_lin_kk_stationarity_test len<5 returns isStationaryTrue,
+   driftScore95,zero metrics (still). Replace with explicit unavailable/error
+   consistent with consumers. Current fitted-circuit residuals are NOT independent
+   K-K validation; don't endorse stationarity/ASTM claims. Normal equations with
+   clipped Voigt resistances need scientific review/appropriate stable solver.
+3. CNLSFittingStudio.tsx and src/utils/cnlsOptimizer.ts runAsyncAutoFit still have
+   0.001/0.05/0.99/100ms invented defaults. Reuse/strengthen new normalizer as
+   appropriate; real input/bounds/row matching and missing convergence must remain
+   honest. Builder/Plotly need input identity/late reply audit. Existing helper
+   usePythonAnalysis already protects previous two EIS studios; do not redo them.
+4. eisFileParser built-in spectra are synthetic circuits/noise but metadata and
+   other consumers still claim laboratory experiments/instruments. Preserve
+   synthetic examples with accurate provenance/exports; audit SOH/DRT/Tafel
+   unsupported interpretations. New broader candidates: EDSSpectrumLab AI error
+   catch fakes a report/compliance, HeatTreatment multipliers and pipeline
+   derived profiles. They are recorded scopes, not complete science audits.
+5. Then prior outstanding material authority/unknown-alloy fallback and missing
+   transientGPU route. Bound compute/materials/budget and use existing persistent
+   queue cancellation; aborting HTTP does not cancel solver. AIOrchestratorPanel
+   falsely completed optional agents remains open.
+6. Phase0 acceptance still OPEN: WSL outside sandbox, representative thermal
+   wall-time/RAM/VRAM/artifact profile, raw hashes/source terms, isolated Node
+   SQLite transaction+backup/restore ADR, mapping and dependent detailed plan.
+   Do not accept dependent phases early or claim all fake output removed.
+
+## Environments / discovery / cleanup
+
+- CPU .runtime/lpbf-win-py312/Scripts/python.exe; scientific
+  .runtime/scientific-win-py312-cu128/Scripts/python.exe. Both3.12. System Warp1.17
+  but NumPy/SciPy exceed repo ranges; scientific lacks Warp. py-3 selects3.14.
+  No installs, training or model artifact generation this task.
+- Recall empty. CBM project C-Users-can02-Projects-metalliksaa-Metalliksa-1,
+  gen2026-09-18T15:50:24Z, stale/not_tracked coverage; direct source read. Graph
+  run_cnls_fit edges include false name matches (SPPARKS etc); don't trust those.
+  Local Graft ask refreshed16files. Skills read: recall; Superpowers debugging,
+  verification, TDD and writing-good-tests; computer-use.
+- Browser via cua_repl only. It supplies docs on first getState/getTab. Tests are
+  dev-only real components; transport faults exist only in harness. A Vite reload
+  DID NOT refresh code with DISABLE_HMR=true; restart owned server to clear cache.
+- Test servers3191/5191 are closed: first PID12976 and descendants, replacement
+ 34520 and descendants stopped; final31408 already absent at cleanup; no listeners.
+  HMR24678 belongs elsewhere, never touched. Process lists in contracts-owned-*.json.
+- Node spawn EPERM required scoped escalation (approved). No auto-review rejection.
+  git status warns unreadable .pytest_cache but reports no tracked/untracked diff.
+
+# Historical checkpoint after cd24cb0 and f2229c5 — superseded
 
 Read parent ../STATUS.md FIRST. User explicitly authorized continuous work while
 away, automatic fresh-task continuation before context fills, and reminded:

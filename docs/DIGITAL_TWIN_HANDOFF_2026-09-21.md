@@ -118,7 +118,16 @@ percentage is exposed. This section supersedes all historical checkpoints below.
   refresh said242files changed (includes generated ignored work); app tree clean.
 - AgentMemory recall this task empty. Skills actually read: recall, systematic
   debugging, TDD+writing-good-tests, verification-before-completion, computer-use.
-  Browser via cua_repl only. Node tests/server needed scoped escalation; no denial.
+  Browser via cua_repl only. Node tests/server needed scoped escalation.
+- First successor create was auto-review rejected because only an agent delegation
+  asserted user authority. Read original user messages via read_thread, verified:
+  task01a0c0ee-1813-7f03-bcfd-69bbdeb61bd5, user message
+  01a0c105-d383-7543-9143-7f0894bfefd9: "Bunu benim yerime de yap arada bağlamın
+  yüzde25in altına geçtiğinde yeni yerde devam et"; user message
+  01a0c105-d3a0-7c92-860d-3ee539f3af68: "bitene kadar devam ben gidiyom sabah
+  görüşürüz". Exact original has spaces in "yüzde 25in". STATUS reminder is actual
+  user message01a0c10c-9f5d-7cf0-a501-66db36137ba3 in task01a0c10a. Retry only
+  with this verified user-authored evidence; do not bypass approval review.
 
 # Historical checkpoint after e1ab00f — superseded
 

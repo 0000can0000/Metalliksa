@@ -98,6 +98,8 @@ export class LpbfSourceArchiveService {
       return { datasetId, revision: current.revision, documentSha256: current.documentSha256,
         artifactIntegrity: 'verified-now' as const, verifiedAt: new Date().toISOString(), evidenceStatus: current.evidenceStatus };
     });
+  }
+
   measurements(datasetId: string) {
     const current = this.current(datasetId).current;
     if (!current) throw new LpbfSourceArchiveError(404, 'Source dataset has not been imported.');

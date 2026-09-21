@@ -5,7 +5,9 @@ import type { CircuitTopology } from '../src/components/EquivalentCircuitBuilder
 import type { ExperimentalEISDataset } from '../src/types/eisData';
 import { runAsyncAutoFit } from '../src/utils/cnlsOptimizer';
 
-const topology: CircuitTopology = { id: 'fixture', name: 'Synthetic resistor', description: '', category: 'custom', cdcNotation: 'R', branches: [] };
+const topology: CircuitTopology = { id: 'fixture', name: 'Synthetic resistor', description: '', category: 'custom', cdcNotation: 'R', branches: [
+  { id: 'b1', name: 'Series', connection: 'series', elements: [{ id: 'r1', name: 'R1', label: 'Resistance', type: 'R', value: 3, unit: 'Ω', isFixed: false }] },
+] };
 const dataset: ExperimentalEISDataset = { id: 'fixture', name: 'Synthetic', source: 'csv', description: '', points: [{frequency:10, zReal:2, minusZImag:0, zImag:0, zMag:2, phaseDeg:0}] };
 const response = {
   success: true, reducedChiSquare: 0, rSquared: 0, iterations: 0, computeTimeMs: 0,
@@ -14,6 +16,12 @@ const response = {
   kramersKronig: { isValid: false, score: 0, meanResidualPct: 0, maxResidualPct: 0, assessment: 'Synthetic fixture' },
 };
 const inputParams = [{ branchId: 'b1', elementId: 'r1', field: 'value' as const, lowerBound: 0, upperBound: 10 }];
+
+test('fitted topology used by preview and Apply contains returned values without mutating initial input', () => {
+  const report = normalizePythonCnlsReport(response, topology, dataset, 'unit', inputParams);
+  assert.equal(report.topology.branches[0].elements[0].value, 2);
+  assert.equal(topology.branches[0].elements[0].value, 3);
+});
 
 test('Python CNLS normalization preserves zero metrics, calculates RMSE and does not invent convergence', () => {
   const report = normalizePythonCnlsReport(response, topology, dataset, 'modulus', inputParams);

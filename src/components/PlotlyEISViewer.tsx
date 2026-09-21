@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useInputBoundTask } from '../hooks/useInputBoundTask';
+import { requestPythonAnalysis } from '../services/pythonAnalysis';
 import Plotly from "plotly.js-dist-min";
 import {
   Activity,
@@ -53,75 +55,36 @@ export function PlotlyEISViewer({
   const [plotMode, setPlotMode] = useState<"nyquist" | "bode" | "3d" | "residuals">("nyquist");
   const [isOrthonormal, setIsOrthonormal] = useState<boolean>(true);
   const [showFrequencyLabels, setShowFrequencyLabels] = useState<boolean>(true);
-  const [isSimulatingPy, setIsSimulatingPy] = useState<boolean>(false);
-  const [pyLatencyMs, setPyLatencyMs] = useState<number | null>(null);
-  const [pyMetrics, setPyMetrics] = useState<PythonSimulationMetrics | null>(null);
-  const [pyPoints, setPyPoints] = useState<any[] | null>(null);
+  const body = JSON.stringify({ action: 'simulate', topology, minFreq, maxFreq, pointsPerDecade });
+  const simulation = useInputBoundTask<{ points: any[]; metrics: PythonSimulationMetrics; latency: number }>(body);
+  const pyPoints = simulation.data?.points ?? null;
+  const pyMetrics = simulation.data?.metrics ?? null;
+  const pyLatencyMs = simulation.data?.latency ?? null;
+  const isSimulatingPy = !simulation.data && !simulation.error;
 
-  // Debounce ref for Python simulation request
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Real-time Python Spectra Simulation API call
-  const triggerPythonSimulation = useCallback(async (currentTopology: CircuitTopology) => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setIsSimulatingPy(true);
-    const t0 = performance.now();
-
-    try {
-      const response = await fetch("/api/python/cnls-fit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          action: "simulate",
-          topology: currentTopology,
-          minFreq,
-          maxFreq,
-          pointsPerDecade,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const t1 = performance.now();
-        setPyLatencyMs(Math.round(t1 - t0));
-        if (result.points && Array.isArray(result.points)) {
-          setPyPoints(result.points);
-          if (result.metrics) {
-            setPyMetrics(result.metrics);
-          }
-        }
-      }
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        console.warn("Python simulation error, using client fallback:", err);
-      }
-    } finally {
-      setIsSimulatingPy(false);
-    }
-  }, [minFreq, maxFreq, pointsPerDecade]);
-
-  // Trigger Python simulation on topology or frequency change with 120ms debounce
+  // Input identity hides stale points immediately, including during debounce.
   useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      triggerPythonSimulation(topology);
-    }, 120);
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+    const request = simulation.begin('simulation');
+    const timer = setTimeout(async () => {
+      const start = performance.now();
+      try {
+        const result = await requestPythonAnalysis('/api/python/cnls-fit', body, request.signal);
+        const pointFields = ['frequency', 'zReal', 'minusZImag', 'zMag', 'phaseDeg'];
+        const metricFields = ['rSolution', 'rTotal', 'polarizationResistance', 'fPeakHz', 'tauPeakMs', 'maxMinusZImag', 'minPhaseDeg'];
+        if (!Array.isArray(result.points) || !result.points.length
+          || !result.points.every(p => p && pointFields.every(k => typeof p[k] === 'number' && Number.isFinite(p[k])) && p.frequency > 0)
+          || !result.metrics || !metricFields.every(k => typeof result.metrics[k] === 'number' && Number.isFinite(result.metrics[k]))) {
+          throw new Error('Python simulation returned incomplete or non-finite points/metrics.');
+        }
+        request.publish({ points: result.points, metrics: result.metrics as PythonSimulationMetrics, latency: Math.round(performance.now() - start) });
+      } catch (error) {
+        request.fail(error);
+      } finally {
+        request.finish();
       }
-    };
-  }, [topology, triggerPythonSimulation]);
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [body]);
 
   // Render or update Plotly Graph
   useEffect(() => {
@@ -490,7 +453,7 @@ export function PlotlyEISViewer({
     (currentContainer as any).on?.("plotly_click", handlePlotlyClick);
 
     return () => {
-      // cleanup click listener if needed
+      (currentContainer as any).removeListener?.("plotly_click", handlePlotlyClick);
     };
   }, [
     plotMode,
@@ -506,13 +469,17 @@ export function PlotlyEISViewer({
 
   // Handle Window Resize
   useEffect(() => {
+    const container = containerRef.current;
     const handleResize = () => {
       if (containerRef.current) {
         Plotly.Plots.resize(containerRef.current);
       }
     };
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (container) Plotly.purge(container);
+    };
   }, []);
 
   return (
@@ -611,7 +578,7 @@ export function PlotlyEISViewer({
               </span>
             ) : (
               <span className="text-emerald-300 font-bold">
-                {pyLatencyMs !== null ? `${pyLatencyMs} ms` : "Ready"}
+                {pyLatencyMs !== null ? `${pyLatencyMs} ms` : "Unavailable"}
               </span>
             )}
           </div>
@@ -619,6 +586,7 @@ export function PlotlyEISViewer({
       </div>
 
       {/* Main Plotly Canvas Container */}
+      {simulation.error && <p role="alert" className="text-xs text-rose-300">{simulation.error}</p>}
       <div className="w-full h-[400px] min-h-[400px] rounded-xl overflow-hidden relative">
         <div ref={containerRef} className="w-full h-full" />
       </div>

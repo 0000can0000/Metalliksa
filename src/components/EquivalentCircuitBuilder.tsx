@@ -1,3 +1,5 @@
+import { useInputBoundTask } from "../hooks/useInputBoundTask";
+import { requestPythonAnalysis } from "../services/pythonAnalysis";
 import { ResponsiveContainer } from './VisibleResponsiveContainer';
 import { normalizePythonCnlsReport } from '../utils/pythonCnlsReport';
 import React, { useState, useMemo, useCallback, useRef } from "react";
@@ -629,19 +631,17 @@ export function EquivalentCircuitBuilder() {
   const [activeDataset, setActiveDataset] = useState<ExperimentalEISDataset>(EXPERIMENTAL_BENCHMARKS[0]);
   const [weighting, setWeighting] = useState<WeightingMethod>("modulus");
   const [maxIterations, setMaxIterations] = useState<number>(80);
-  const [isFitting, setIsFitting] = useState<boolean>(false);
-  const [isAutoFitting, setIsAutoFitting] = useState<boolean>(false);
-  const [autoFitSummary, setAutoFitSummary] = useState<{
-    engine: string;
-    computeTimeMs: number;
-    reducedChiSquare: number;
-    rSquared: number;
-    iterations: number;
-  } | null>(null);
-  const [fitReport, setFitReport] = useState<CNLSFitReport | null>(null);
-  const [drtCurveData, setDrtCurveData] = useState<any>(null);
-  const [fitError, setFitError] = useState<string | null>(null);
-  const [appliedFitSuccess, setAppliedFitSuccess] = useState(false);
+  const fitTask = useInputBoundTask<{ report: CNLSFitReport; drtCurve: any; global: boolean }>(
+    JSON.stringify([activeTopology, activeDataset, weighting, maxIterations]));
+  const fitReport = fitTask.data?.report ?? null;
+  const drtCurveData = fitTask.data?.drtCurve ?? null;
+  const fitError = fitTask.error;
+  const isFitting = fitTask.pending === "local";
+  const isAutoFitting = fitTask.pending === "global";
+  const autoFitSummary = fitTask.data?.global && fitReport ? {
+    computeTimeMs: fitReport.executionTimeMs, reducedChiSquare: fitReport.reducedChiSquare,
+    rSquared: fitReport.rSquared,
+  } : null;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -726,7 +726,7 @@ export function EquivalentCircuitBuilder() {
       // Find closest model frequency point
       const omega = 2 * Math.PI * pt.frequency;
       let zTotal: ComplexNumber = { re: 0, im: 0 };
-      for (const branch of activeTopology.branches) {
+      for (const branch of (fitReport?.topology ?? activeTopology).branches) {
         zTotal = complexAdd(zTotal, calculateBranchImpedance(branch, omega));
       }
       const modelMinusZImag = -zTotal.im;
@@ -886,8 +886,6 @@ export function EquivalentCircuitBuilder() {
     setActiveTopology(JSON.parse(JSON.stringify(preset)));
     setSelectedBranchId(preset.branches[0]?.id || "");
     setSelectedElementId(null);
-    setFitReport(null);
-    setFitError(null);
   };
 
   // Update Element Parameters
@@ -937,218 +935,63 @@ export function EquivalentCircuitBuilder() {
   // AUTOMATED PARAMETER FITTING WITH PYTHON BACKEND
   // =========================================================================
 
-  // One-Click Global Differential Evolution Auto-Fit
-  const handleRunAutoFit = async () => {
-    setIsAutoFitting(true);
-    setFitError(null);
-    setFitReport(null);
-    setAutoFitSummary(null);
-    setAppliedFitSuccess(false);
-
+  const runFit = async (global: boolean) => {
+    const request = fitTask.begin(global ? "global" : "local");
     try {
       const initialParams = extractAdjustableParameters(activeTopology);
-
-      const response = await fetch("/api/python/cnls-autofit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "auto_fit",
-          topologyId: activeTopology.id,
-          topology: activeTopology,
-          points: activeDataset.points,
-          parameters: initialParams,
-          weighting,
-          maxGenerations: Math.max(60, maxIterations),
-          populationSize: 40,
-          polishLM: true,
-        }),
-      });
-
-      let report: CNLSFitReport;
-      if (response.ok) {
-        const pythonResult = await response.json();
-        if (pythonResult.error) {
-          throw new Error(pythonResult.error);
-        }
-        report = normalizePythonCnlsReport(pythonResult, activeTopology, activeDataset, weighting, initialParams);
-      } else {
-        throw new Error(`Python CNLS unavailable (HTTP ${response.status})`);
-      }
-
-      setFitReport(report);
-      setAutoFitSummary({
-        engine: "CPython 3.10 (Global Differential Evolution + LM)",
-        computeTimeMs: report.executionTimeMs,
-        reducedChiSquare: report.reducedChiSquare,
-        rSquared: report.rSquared,
-        iterations: report.iterations,
-      });
-
-      // Automatically apply globally optimized parameters to the current drag-and-drop circuit model
-      if (report.parameters && report.parameters.length > 0) {
-        setActiveTopology((prev) => {
-          const updatedTopology = JSON.parse(JSON.stringify(prev)) as CircuitTopology;
-          for (const branch of updatedTopology.branches) {
-            for (const el of branch.elements) {
-              const valParam = report.parameters.find((p) => p.elementId === el.id && p.field === "value");
-              if (valParam) {
-                el.value = valParam.fittedValue;
-              }
-              const expParam = report.parameters.find((p) => p.elementId === el.id && p.field === "exponent");
-              if (expParam) {
-                el.exponent = expParam.fittedValue;
-              }
-            }
-          }
-          return updatedTopology;
-        });
-        setAppliedFitSuccess(true);
-        setTimeout(() => setAppliedFitSuccess(false), 4000);
-      }
-
-      // Background DRT deconvolution
+      const result = await requestPythonAnalysis(global ? "/api/python/cnls-autofit" : "/api/python/cnls-fit",
+        JSON.stringify({
+          action: global ? "auto_fit" : "fit", topologyId: activeTopology.id,
+          topology: activeTopology, points: activeDataset.points, parameters: initialParams, weighting,
+          ...(global ? { maxGenerations: Math.max(60, maxIterations), populationSize: 40, polishLM: true }
+            : { maxIterations }),
+        }), request.signal);
+      if (!request.isCurrent()) return;
+      const report = normalizePythonCnlsReport(result, activeTopology, activeDataset, weighting, initialParams);
+      request.publish({ report, drtCurve: null, global });
       try {
-        const freqs = activeDataset.points.map((p) => p.frequency);
-        const zReal = activeDataset.points.map((p) => p.zReal);
-        const zImag = activeDataset.points.map((p) => p.zImag);
-
-        const drtRes = await fetch("/api/python/battery-corrosion-eis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "drt",
-            frequencies: freqs,
-            zReal,
-            zImag,
-            lambdaReg: 1e-3,
-            numTau: 50,
-          }),
-        });
-        if (drtRes.ok) {
-          const drtData = await drtRes.json();
-          if (drtData && drtData.drtCurve) {
-            setDrtCurveData(drtData.drtCurve);
-          }
-        }
-      } catch (drtErr) {
-        console.warn("Background DRT failed:", drtErr);
+        const drt = await requestPythonAnalysis("/api/python/battery-corrosion-eis", JSON.stringify({
+          action: "drt", frequencies: activeDataset.points.map(p => p.frequency),
+          zReal: activeDataset.points.map(p => p.zReal), zImag: activeDataset.points.map(p => p.zImag),
+          lambdaReg: 1e-3, numTau: 50,
+        }), request.signal);
+        if (drt.drtCurve) request.publish({ report, drtCurve: drt.drtCurve, global });
+      } catch (error) {
+        if (request.isCurrent()) console.warn("DRT unavailable:", error);
       }
-    } catch (err: any) {
-      setFitError(err.message || "Failed to execute Global Differential Evolution Auto-Fit.");
+    } catch (error) {
+      request.fail(error);
     } finally {
-      setIsAutoFitting(false);
+      request.finish();
     }
   };
-
-  const handleRunPythonFit = async () => {
-    setIsFitting(true);
-    setFitError(null);
-    setFitReport(null);
-    setAutoFitSummary(null);
-    setAppliedFitSuccess(false);
-
-    try {
-      const initialParams = extractAdjustableParameters(activeTopology);
-
-      // Call Python CNLS Fitting API
-      const response = await fetch("/api/python/cnls-fit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topologyId: activeTopology.id,
-          topology: activeTopology,
-          points: activeDataset.points,
-          parameters: initialParams,
-          weighting,
-          maxIterations,
-        }),
-      });
-
-      let report: CNLSFitReport;
-      if (response.ok) {
-        const pythonResult = await response.json();
-        if (pythonResult.error) {
-          throw new Error(pythonResult.error);
-        }
-        report = normalizePythonCnlsReport(pythonResult, activeTopology, activeDataset, weighting, initialParams);
-      } else {
-        throw new Error(`Python CNLS unavailable (HTTP ${response.status})`);
-      }
-
-      setFitReport(report);
-
-      // Trigger parallel DRT deconvolution
-      try {
-        const freqs = activeDataset.points.map((p) => p.frequency);
-        const zReal = activeDataset.points.map((p) => p.zReal);
-        const zImag = activeDataset.points.map((p) => p.zImag);
-
-        const drtRes = await fetch("/api/python/battery-corrosion-eis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "drt",
-            frequencies: freqs,
-            zReal,
-            zImag,
-            lambdaReg: 1e-3,
-            numTau: 50,
-          }),
-        });
-        if (drtRes.ok) {
-          const drtData = await drtRes.json();
-          if (drtData && drtData.drtCurve) {
-            setDrtCurveData(drtData.drtCurve);
-          }
-        }
-      } catch (drtErr) {
-        console.warn("Background DRT failed:", drtErr);
-      }
-    } catch (err: any) {
-      setFitError(err.message || "Failed to execute Python CNLS optimizer.");
-    } finally {
-      setIsFitting(false);
-    }
-  };
+  const handleRunAutoFit = () => runFit(true);
+  const handleRunPythonFit = () => runFit(false);
 
   // Apply Fitted Values directly to the Drag-and-Drop Circuit
   const handleApplyFittedParameters = () => {
     if (!fitReport || !fitReport.parameters) return;
 
-    setActiveTopology((prev) => {
-      const updatedTopology = JSON.parse(JSON.stringify(prev)) as CircuitTopology;
-      for (const branch of updatedTopology.branches) {
-        for (const el of branch.elements) {
-          const valParam = fitReport.parameters.find((p) => p.elementId === el.id && p.field === "value");
-          if (valParam) {
-            el.value = valParam.fittedValue;
-          }
-          const expParam = fitReport.parameters.find((p) => p.elementId === el.id && p.field === "exponent");
-          if (expParam) {
-            el.exponent = expParam.fittedValue;
-          }
-        }
-      }
-      return updatedTopology;
-    });
-
-    setAppliedFitSuccess(true);
-    setTimeout(() => setAppliedFitSuccess(false), 3500);
+    setActiveTopology(fitReport.topology);
   };
 
   // File Upload Handler
   const handleFileUpload = (file: File) => {
+    const request = fitTask.begin('upload');
     const reader = new FileReader();
+    request.signal.addEventListener('abort', () => reader.abort(), { once: true });
+    reader.onerror = () => request.fail(new Error('Failed to read EIS file.'));
     reader.onload = (e) => {
+      if (!request.isCurrent()) return;
       try {
         const text = e.target?.result as string;
         if (!text) return;
         const parsed = parseEISFile(text, file.name);
         setActiveDataset(parsed);
-        setFitReport(null);
-        setFitError(null);
       } catch (err: any) {
-        alert(`Failed to parse EIS file: ${err.message}`);
+        request.fail(new Error(`Failed to parse EIS file: ${err.message}`));
+      } finally {
+        request.finish();
       }
     };
     reader.readAsText(file);
@@ -1771,7 +1614,7 @@ export function EquivalentCircuitBuilder() {
 
             {visualizerEngine === "plotly" ? (
               <PlotlyEISViewer
-                topology={activeTopology}
+                topology={fitReport?.topology ?? activeTopology}
                 minFreq={minFreq}
                 maxFreq={maxFreq}
                 pointsPerDecade={15}
@@ -1972,8 +1815,6 @@ export function EquivalentCircuitBuilder() {
                     const found = EXPERIMENTAL_BENCHMARKS.find((b) => b.id === e.target.value);
                     if (found) {
                       setActiveDataset(found);
-                      setFitReport(null);
-                      setFitError(null);
                     }
                   }}
                   className="w-full bg-[#050810] border border-[#1e2d46] rounded-xl px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-400"
@@ -2088,7 +1929,7 @@ export function EquivalentCircuitBuilder() {
                   <div>R² Score: <strong className="text-emerald-300 font-mono">{(autoFitSummary.rSquared == null ? "Unavailable" : autoFitSummary.rSquared.toFixed(4))}</strong></div>
                 </div>
                 <div className="text-[10px] text-slate-400 pt-0.5">
-                  Parameters globally estimated &amp; applied to drag-and-drop circuit topology.
+                  Review the result, then apply fitted parameters to the circuit.
                 </div>
               </div>
             )}
@@ -2161,11 +2002,7 @@ export function EquivalentCircuitBuilder() {
                   <span>Apply Fitted Parameters to Circuit Modeler</span>
                 </button>
 
-                {appliedFitSuccess && (
-                  <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs font-mono text-center font-bold animate-pulse">
-                    Circuit elements updated with optimal fitted parameters!
-                  </div>
-                )}
+
               </div>
             )}
           </div>

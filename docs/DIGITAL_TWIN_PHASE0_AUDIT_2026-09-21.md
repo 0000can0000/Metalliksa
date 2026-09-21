@@ -7,6 +7,36 @@ Gemini ownership is unknown. See ACTIVE_WORK.md for this task's scope.
 
 **Phase 0 is open. No later phase or experimental qualification is accepted.**
 
+## 2026-09-21 — EIS request identity and fitted topology
+
+- Studio/Builder fit and DRT share an input-bound attempt; topology, observation,
+  parameter, weighting or iteration changes discard old data/errors/pending state.
+  Retry/unmount invalidate replies even when transport ignores abort. FileReader
+  completion is guarded too. HTTP abort is not Python compute cancellation.
+- Results no longer silently rewrite initial guesses or globally apply to Builder.
+  Explicit Apply uses a fitted topology copy. A newly found normalizer error was
+  reproduced independently: returned R2 report previously retained initial R3 in
+  topology; regression failed, then passed without modifying the initial object.
+- Plotly clears previous curves/metrics during debounce, rejects late replies and
+  incomplete/nonfinite simulation reports, exposes errors, removes click listeners
+  and purges its plot on unmount. Preview now uses actual fitted topology.
+- Fresh `npm run test:unit`:126/126 PASS; `npm run lint`:PASS;
+  `npm run build`:PASS23.28s (existing chunk-size warnings). Logs:
+  `.runtime/phase0-audit/identity-{unit,lint,build}-final.txt`.
+- Browser `tests/contracts-browser.html`, real Node3193→PythonIPC5193 with explicit
+  CPU Python3.12: before fix, held local fit overwrote edited Rs9 with0.02874 and
+  falsely displayed current convergence. After fix Rs9 survives; no Apply/report.
+  Held DRT after edits stays empty. Changed workspace prop resets the session.
+  Studio Enter Apply emits actual Rs0.028743577/C0.238972388; initial guesses stay
+  unchanged. Builder Enter Apply updates circuit, invalidating outstanding DRT.
+  Held global fit after dataset change produces no summary/Apply. Partial global
+  response shows error. Held Plotly reply cannot overwrite a new HTTP503 error;
+  old metrics remain absent. Screenshot checked. Shared hook browser self-test:
+  10 PASS (input/retry/late error/finally/A-B-A/unmount/zero). These are software
+  checks using synthetic inputs, not experimental qualification.
+- Remaining: explicit client-JS fitting, SyntheticNoise wrappers/provenance,
+  incomplete static ASTM/K-K labels, legacy LinKK numerics and broader Phase0.
+
 ## 2026-09-21 continuation: CNLS numerical and result contracts
 
 - Source HEAD4f76eca inherited clean. Sign repair committed b5c83c3 after failing

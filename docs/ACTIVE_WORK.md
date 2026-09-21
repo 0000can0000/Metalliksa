@@ -1,3 +1,19 @@
+# Current owner — 01a0c15d, 2026-09-21
+
+Inherited clean LOCAL main HEAD792e6b7; source01a0c148 stopped on dispatch.
+Owns CNLSFittingStudio, EquivalentCircuitBuilder, PlotlyEISViewer, a focused
+request lifecycle helper if needed, tests/contracts-browser.tsx and checkpoint
+documents/parent STATUS. Acceptance: changed inputs/retries/unmount reject late
+fit and DRT results; accepted fits do not silently rewrite newer inputs; Python
+simulation never displays old points as current. Held real-response browser
+regression plus lint/unit/build. No push/install/worktree or Gemini assignment.
+Phase0 remains OPEN. Historical ownership below is superseded.
+
+Package verified: unit126/lint/buildPASS,10 hook browser assertions, real held
+fit/DRT/simulation regressions PASS. Additional owned paths pythonCnlsReport and
+its test: fitted report topology corrected (R3→R2 red/green). Details in Phase0
+audit. Next scope: explicit client-JS solver and SyntheticNoise consumers.
+
 # Successor dispatch checkpoint
 
 Code e1ab00f complete; browser serverPID17488 and descendants stopped;

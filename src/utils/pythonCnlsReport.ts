@@ -64,8 +64,16 @@ export function normalizePythonCnlsReport(
   const reducedChiSquare = number(report.reducedChiSquare);
   const dof = Math.max(1, 2 * residuals.length - parameters.filter(p => !p.isFixed).length);
   const residualSS = residuals.reduce((sum, p) => sum + (p.calcZReal - p.expZReal) ** 2 + (p.calcMinusZImag - p.expMinusZImag) ** 2, 0);
+  // The report owns a fitted copy. Apply/preview must not return the initial model.
+  const fittedTopology: CircuitTopology = JSON.parse(JSON.stringify(topology));
+  for (const parameter of parameters) {
+    const element = fittedTopology.branches.find(b => b.id === parameter.branchId)
+      ?.elements.find(e => e.id === parameter.elementId);
+    if (!element) throw new Error('CNLS parameter does not match the requested topology branch');
+    element[parameter.field] = parameter.fittedValue;
+  }
   return {
-    topology, dataset, weighting, parameters, residuals,
+    topology: fittedTopology, dataset, weighting, parameters, residuals,
     chiSquare: reducedChiSquare * dof, reducedChiSquare,
     rmse: Math.sqrt(residualSS / (2 * residuals.length)),
     rSquared: nullableNumber(report.rSquared), iterations: number(report.iterations),

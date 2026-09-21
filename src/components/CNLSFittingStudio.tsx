@@ -1,6 +1,8 @@
+import { useInputBoundTask } from "../hooks/useInputBoundTask";
+import { requestPythonAnalysis } from "../services/pythonAnalysis";
 import { normalizePythonCnlsReport } from "../utils/pythonCnlsReport";
 import { ResponsiveContainer } from './VisibleResponsiveContainer';
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Activity,
   Upload,
@@ -75,7 +77,11 @@ interface CNLSFittingStudioProps {
   onClose?: () => void;
 }
 
-export function CNLSFittingStudio({
+export function CNLSFittingStudio(props: CNLSFittingStudioProps) {
+  return <CNLSFittingSession key={JSON.stringify(props.currentTopology)} {...props} />;
+}
+
+function CNLSFittingSession({
   currentTopology,
   onApplyTopology,
   onClose,
@@ -100,11 +106,13 @@ export function CNLSFittingStudio({
   const [weighting, setWeighting] = useState<WeightingMethod>("modulus");
   const [maxIterations, setMaxIterations] = useState<number>(80);
   const [executionEngine, setExecutionEngine] = useState<"python_hpc" | "client_js">("python_hpc");
-  const [fitReport, setFitReport] = useState<CNLSFitReport | null>(null);
-  const [drtResult, setDrtResult] = useState<any>(null);
-  const [isFitting, setIsFitting] = useState<boolean>(false);
-  const [isAutoFitting, setIsAutoFitting] = useState<boolean>(false);
-  const [fitError, setFitError] = useState<string | null>(null);
+  const fitTask = useInputBoundTask<{ report: CNLSFitReport; drt: any }>(
+    JSON.stringify([selectedTopology, activeDataset, editableParams, weighting, maxIterations, executionEngine]));
+  const fitReport = fitTask.data?.report ?? null;
+  const drtResult = fitTask.data?.drt ?? null;
+  const fitError = fitTask.error;
+  const isFitting = fitTask.pending === "local";
+  const isAutoFitting = fitTask.pending === "global";
 
   // UI Tabs & Views
   const [activeChartTab, setActiveChartTab] = useState<
@@ -113,6 +121,9 @@ export function CNLSFittingStudio({
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
   const [appliedNotification, setAppliedNotification] = useState<boolean>(false);
+
+  const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (appliedTimer.current) clearTimeout(appliedTimer.current); }, []);
 
   // File upload drag & drop ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,8 +135,6 @@ export function CNLSFittingStudio({
     setSelectedTopology(topo);
     const newParams = extractAdjustableParameters(topo);
     setEditableParams(newParams);
-    setFitReport(null);
-    setFitError(null);
   };
 
   // Handle parameter value change in table
@@ -173,204 +182,61 @@ export function CNLSFittingStudio({
     );
   };
 
-  // Execute Global Differential Evolution Auto-Fit via Python Backend
-  const handleRunAutoFit = async () => {
-    setIsAutoFitting(true);
-    setFitError(null);
-    setFitReport(null);
-    setDrtResult(null);
-
+  // Results remain separate from editable initial guesses until explicitly applied.
+  const runFit = async (global: boolean) => {
+    const request = fitTask.begin(global ? "global" : "local");
+    setAppliedNotification(false);
     try {
-      const response = await fetch("/api/python/cnls-autofit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "auto_fit",
-          topologyId: selectedTopology.id,
-          topology: selectedTopology,
-          points: activeDataset.points,
-          parameters: editableParams,
-          weighting,
-          maxGenerations: Math.max(60, maxIterations),
-          populationSize: 40,
-          polishLM: true,
-        }),
-      });
-
-      let report: CNLSFitReport;
-      if (response.ok) {
-        const pythonResult = await response.json();
-        if (pythonResult.error) {
-          throw new Error(pythonResult.error);
-        }
-        report = normalizePythonCnlsReport(pythonResult, selectedTopology, activeDataset, weighting, editableParams);
-      } else {
-        throw new Error(`Python CNLS returned HTTP ${response.status}`);
-      }
-
-      setFitReport(report);
-
-      // Update editable parameters with fitted results
-      setEditableParams((prev) =>
-        prev.map((p) => {
-          const fitParam = report.parameters.find(
-            (rp) => rp.elementId === p.elementId && rp.field === p.field
-          );
-          if (fitParam) {
-            return { ...p, value: fitParam.fittedValue };
-          }
-          return p;
-        })
-      );
-
-      // Trigger background DRT
+      const report = !global && executionEngine === "client_js"
+        ? runCNLSFit(selectedTopology, activeDataset, editableParams, weighting, maxIterations)
+        : normalizePythonCnlsReport(await requestPythonAnalysis(
+          global ? "/api/python/cnls-autofit" : "/api/python/cnls-fit",
+          JSON.stringify({
+            action: global ? "auto_fit" : "fit",
+            topologyId: selectedTopology.id, topology: selectedTopology,
+            points: activeDataset.points, parameters: editableParams, weighting,
+            ...(global ? { maxGenerations: Math.max(60, maxIterations), populationSize: 40, polishLM: true }
+              : { maxIterations }),
+          }), request.signal), selectedTopology, activeDataset, weighting, editableParams);
+      if (!request.isCurrent()) return;
+      request.publish({ report, drt: null });
       try {
-        const freqs = activeDataset.points.map((pt) => pt.frequency);
-        const zReal = activeDataset.points.map((pt) => pt.zReal);
-        const zImag = activeDataset.points.map((pt) => pt.zImag);
-
-        const drtRes = await fetch("/api/python/battery-corrosion-eis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "drt",
-            frequencies: freqs,
-            zReal,
-            zImag,
-            lambdaReg: 1e-3,
-            numTau: 50,
-          }),
-        });
-
-        if (drtRes.ok) {
-          const drtData = await drtRes.json();
-          if (drtData && drtData.drtCurve) {
-            setDrtResult(drtData);
-          }
-        }
-      } catch (drtErr) {
-        console.warn("Background DRT deconvolution failed:", drtErr);
+        const drt = await requestPythonAnalysis("/api/python/battery-corrosion-eis", JSON.stringify({
+          action: "drt", frequencies: activeDataset.points.map(p => p.frequency),
+          zReal: activeDataset.points.map(p => p.zReal), zImag: activeDataset.points.map(p => p.zImag),
+          lambdaReg: 1e-3, numTau: 50,
+        }), request.signal);
+        if (drt.drtCurve) request.publish({ report, drt });
+      } catch (error) {
+        if (request.isCurrent()) console.warn("DRT unavailable:", error);
       }
-    } catch (err: any) {
-      setFitError(err.message || "Global Differential Evolution Auto-Fit failed.");
+    } catch (error) {
+      request.fail(error);
     } finally {
-      setIsAutoFitting(false);
+      request.finish();
     }
   };
-
-  // Execute CNLS Optimization & DRT Deconvolution
-  const handleRunFit = async () => {
-    setIsFitting(true);
-    setFitError(null);
-    setFitReport(null);
-    setDrtResult(null);
-
-    try {
-      let report: CNLSFitReport;
-
-      if (executionEngine === "python_hpc") {
-        try {
-          const response = await fetch("/api/python/cnls-fit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              topologyId: selectedTopology.id,
-              topology: selectedTopology,
-              points: activeDataset.points,
-              parameters: editableParams,
-              weighting,
-              maxIterations,
-            }),
-          });
-
-          if (response.ok) {
-            const pythonResult = await response.json();
-            if (pythonResult.error) {
-              throw new Error(pythonResult.error);
-            }
-            report = normalizePythonCnlsReport(pythonResult, selectedTopology, activeDataset, weighting, editableParams);
-          } else {
-            throw new Error("Python backend returned non-200");
-          }
-        } catch (pyErr) {
-          throw pyErr;
-        }
-      } else {
-        report = runCNLSFit(
-          selectedTopology,
-          activeDataset,
-          editableParams,
-          weighting,
-          maxIterations
-        );
-        report.engineUsed = "Client JavaScript Engine (In-Browser)";
-      }
-
-      setFitReport(report);
-
-      // Update editable parameters with fitted results
-      setEditableParams((prev) =>
-        prev.map((p) => {
-          const fitParam = report.parameters.find(
-            (rp) => rp.elementId === p.elementId && rp.field === p.field
-          );
-          if (fitParam) {
-            return { ...p, value: fitParam.fittedValue };
-          }
-          return p;
-        })
-      );
-
-      // 2. Run DRT Deconvolution in parallel via Python Solver
-      try {
-        const freqs = activeDataset.points.map((pt) => pt.frequency);
-        const zReal = activeDataset.points.map((pt) => pt.zReal);
-        const zImag = activeDataset.points.map((pt) => pt.zImag);
-
-        const drtRes = await fetch("/api/python/battery-corrosion-eis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "drt",
-            frequencies: freqs,
-            zReal: zReal,
-            zImag: zImag,
-            lambdaReg: 1e-3,
-            numTau: 50,
-          }),
-        });
-
-        if (drtRes.ok) {
-          const drtData = await drtRes.json();
-          if (drtData && drtData.drtCurve) {
-            setDrtResult(drtData);
-            report.drt = drtData;
-          }
-        }
-      } catch (drtErr) {
-        console.warn("DRT calculation background error:", drtErr);
-      }
-    } catch (err: any) {
-      setFitError(err.message || "An error occurred during CNLS fitting.");
-    } finally {
-      setIsFitting(false);
-    }
-  };
+  const handleRunAutoFit = () => runFit(true);
+  const handleRunFit = () => runFit(false);
 
   // File Upload Handler
   const handleFileUpload = (file: File) => {
+    const request = fitTask.begin('upload');
     const reader = new FileReader();
+    request.signal.addEventListener('abort', () => reader.abort(), { once: true });
+    reader.onerror = () => request.fail(new Error('Failed to read EIS file.'));
     reader.onload = (e) => {
+      if (!request.isCurrent()) return;
       try {
         const text = e.target?.result as string;
         if (!text) return;
         const parsed = parseEISFile(text, file.name);
         setActiveDataset(parsed);
-        setFitReport(null);
-        setFitError(null);
         setIsImportModalOpen(false);
       } catch (err: any) {
-        alert(`Failed to parse EIS file: ${err.message}`);
+        request.fail(new Error(`Failed to parse EIS file: ${err.message}`));
+      } finally {
+        request.finish();
       }
     };
     reader.readAsText(file);
@@ -382,8 +248,6 @@ export function CNLSFittingStudio({
       if (!manualPasteText.trim()) return;
       const parsed = parseEISFile(manualPasteText, manualFilename);
       setActiveDataset(parsed);
-      setFitReport(null);
-      setFitError(null);
       setIsImportModalOpen(false);
       setManualPasteText("");
     } catch (err: any) {
@@ -394,9 +258,10 @@ export function CNLSFittingStudio({
   // Apply fitted model to workspace
   const handleApplyToWorkspace = () => {
     if (!fitReport) return;
-    onApplyTopology(fitReport.topology);
     setAppliedNotification(true);
-    setTimeout(() => setAppliedNotification(false), 2500);
+    if (appliedTimer.current) clearTimeout(appliedTimer.current);
+    appliedTimer.current = setTimeout(() => setAppliedNotification(false), 2500);
+    onApplyTopology(fitReport.topology);
   };
 
   // Format Scientific Notation nicely
@@ -500,8 +365,6 @@ export function CNLSFittingStudio({
                 const selected = EXPERIMENTAL_BENCHMARKS.find((b) => b.id === e.target.value);
                 if (selected) {
                   setActiveDataset(selected);
-                  setFitReport(null);
-                  setFitError(null);
                 }
               }}
               className="bg-transparent text-xs text-slate-200 focus:outline-none max-w-[200px] truncate"
@@ -1078,7 +941,7 @@ export function CNLSFittingStudio({
             <div className="min-h-[360px] w-full pt-2">
               {(activeChartTab as string) === "plotly" && (
                 <PlotlyEISViewer
-                  topology={selectedTopology}
+                  topology={fitReport?.topology ?? applyParametersToTopology(selectedTopology, editableParams)}
                   experimentalDataset={activeDataset}
                   fitReport={fitReport}
                   className="w-full"
@@ -1495,7 +1358,6 @@ export function CNLSFittingStudio({
                     initialDataset={activeDataset}
                     onApplyDeembeddedDataset={(correctedDs) => {
                       setActiveDataset(correctedDs);
-                      setFitReport(null);
                     }}
                   />
                 </div>

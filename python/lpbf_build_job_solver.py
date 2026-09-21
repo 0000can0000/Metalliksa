@@ -30,6 +30,8 @@ from nist_ambench_2018_02 import coverage_for_alloy, run_ambench_validation
 from stl_slicer_build_time_solver import solve_slicer
 from lpbf_part_porosity_aggregator import aggregate_part_porosity
 from lpbf_scanner_kinematics import calculate_scanner_kinematics
+from lpbf_solidification_microstructure import compute_solidification_microstructure
+from kinetics_ttt_cct_solver import solve_phase_transformation_kinetics
 
 # Hatch/layer used with literature-box mid P–v when LoF is the dominant gate.
 # Matches src/utils/lpbfDemoVectors.ts printable demos (inputs only).
@@ -533,6 +535,11 @@ def solve_lpbf_build_job(data):
         "thermal": thermal,
         "slicer": slicer,
         "kinematics": calculate_scanner_kinematics(speed, max(50.0, float(stripe_width_mm * 1000.0))),
+        "microstructure": compute_solidification_microstructure(data, data.get("material", {}), None),
+        "kinetics": solve_phase_transformation_kinetics(
+            alloy_name={"in718": "Inconel 718", "ti6al4v": "Ti-6Al-4V"}.get(alloy_id, "AISI 4140"),
+            cooling_rate_c_s=thermal.get("solidificationKinetics", {}).get("coolingRate_K_s", 1e5)
+        ),
         "porosity": aggregate_part_porosity(
             uq_block.pop("defectSamples", []) if uq_block else [thermal.get("geometricDefectScreen", {})]
         ),

@@ -627,6 +627,41 @@ export const IndustrialLPBFDecisionLab: React.FC<Props> = ({ onOpenSlicer, onOpe
         </div>
       )}
 
+      {(job?.microstructure || job?.kinetics) && (
+        <div className="rounded-2xl border border-teal-500/30 bg-[#090e18] p-3.5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {job?.microstructure && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-teal-400" />
+                <h3 className="text-xs font-bold text-white">Solidification Microstructure</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Metric label="PDAS (µm)" value={job.microstructure.PDAS_um?.toFixed(2) ?? "—"} hint="Hunt-Lu 1996" />
+                <Metric label="SDAS (µm)" value={job.microstructure.SDAS_um?.toFixed(2) ?? "—"} hint="Kirkwood 1985" />
+                <Metric label="Morphology" value={job.microstructure.morphology ?? "—"} hint={`G/R = ${(job.microstructure.G_K_m / Math.max(1e-9, job.microstructure.R_m_s)).toExponential(1)}`} />
+                <Metric label="Cooling Rate" value={job.microstructure.coolingRate_K_s?.toExponential(1) ?? "—"} hint="K/s" />
+              </div>
+              <p className="text-[9px] text-slate-500 mt-1">{job.microstructure.disclaimer}</p>
+            </div>
+          )}
+          {job?.kinetics && job?.kinetics.calphadVsKineticsGap && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-rose-400" />
+                <h3 className="text-xs font-bold text-white">Phase Transformation Kinetics</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Metric label="Primary Phase" value={job.kinetics.cctContinuousCoolingMap?.[0]?.primaryMicrostructure ?? "—"} hint="From CCT map" />
+                <Metric label="Martensite" value={`${job.kinetics.calphadVsKineticsGap.kineticRealityAtSelectedCooling.predictedMartensite_pct}%`} hint="Metastable fraction" />
+                <Metric label="Hardness (HRC)" value={String(job.kinetics.cctContinuousCoolingMap?.[0]?.predictedHardness_HRC ?? "—")} hint="Predicted at RT" />
+                <Metric label="Hardness (HV)" value={String(job.kinetics.cctContinuousCoolingMap?.[0]?.predictedHardness_HV ?? "—")} hint="Predicted at RT" />
+              </div>
+              <p className="text-[9px] text-slate-500 mt-1">{job.kinetics.calphadVsKineticsGap.kineticRealityAtSelectedCooling.verdict}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {job?.assumptions && job.assumptions.length > 0 && (
         <div className="rounded-2xl border border-[#1e2d46] bg-[#090e18] p-3.5 space-y-2">
           <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">

@@ -19,11 +19,9 @@ def generate_case(p, m, folder):
     folder = Path(folder); (folder/"system").mkdir(parents=True, exist_ok=True)
     (folder/"constant").mkdir(exist_ok=True)
     segments, end = scan_segments(p)
-    radius = p["beamDiameter_um"]*.5e-6
-    span = p["trackLength_um"]*1e-6+(p["tracks"]-1)*p["hatch_um"]*1e-6+6*radius
-    nxy = math.ceil(span/(p["mesh_um"]*1e-6)); dx = span/nxy
-    bottom = -math.ceil(max(300e-6, 4*radius)/dx)*dx
-    nz = math.ceil((-bottom+p["layers"]*p["layer_um"]*1e-6)/dx)
+    from lpbf_core_physics import calculate_mesh_domain
+    domain = calculate_mesh_domain(p)
+    radius, span, nxy, nz, dx, bottom = domain["radius"], domain["span"], domain["nxy"], domain["nz"], domain["dx"], -domain["substrate_depth"]
     if nxy*nxy*nz > 600000: raise ValueError("OpenFOAM thermal cell budget exceeded")
     z = bottom+(np.arange(nz)+.5)*dx
     counts = [int(np.sum(z < layer*p["layer_um"]*1e-6)) for layer in range(int(p["layers"])+1)]

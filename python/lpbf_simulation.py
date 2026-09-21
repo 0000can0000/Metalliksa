@@ -209,12 +209,9 @@ def liquidus_crossing_sums(old, new, active, dx, dt, liquidus):
 def transient(p, m, report=lambda *args: None, artifact_dir=None):
     segments, end = scan_segments(p)
     dx_requested = p["mesh_um"]*1e-6
-    radius = p["beamDiameter_um"]*0.5e-6  # 1/e^2 intensity radius
-    span = p["trackLength_um"]*1e-6+(p["tracks"]-1)*p["hatch_um"]*1e-6+6*radius
-    nxy = int(math.ceil(span/dx_requested))
-    dx = span/nxy
-    substrate = math.ceil(max(300e-6, 4*radius)/dx)*dx
-    nz = int(math.ceil((substrate+p["layers"]*p["layer_um"]*1e-6)/dx))
+    from lpbf_core_physics import calculate_mesh_domain
+    domain = calculate_mesh_domain(p)
+    radius, span, nxy, nz, dx, substrate = (domain[k] for k in ("radius", "span", "nxy", "nz", "dx", "substrate_depth"))
     if nxy*nxy*nz > 600000:
         raise ValueError("Mesh exceeds 600000-cell reference solver limit; reduce domain or use coarser mesh")
     axis = (np.arange(nxy)+.5)*dx-span/2

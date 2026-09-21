@@ -11,6 +11,7 @@ import { researchRouter } from "./routes/research.ts";
 import { orchestratorRouter } from "./routes/orchestrator.ts";
 import { createResearchRegistryRouter } from "./routes/researchRegistry.ts";
 import { createLpbfSourcesRouter } from "./routes/lpbfSources.ts";
+import { createLpbfRunsRouter } from "./routes/lpbfRuns.ts";
 import { processOrchestrationMiddleware } from "./server/processOrchestrator.ts";
 import {
   AIRGAP_ALLOWED_LOCAL,
@@ -39,6 +40,7 @@ const PORT = Number.isInteger(configuredPort) && configuredPort >= 1 && configur
 // Registry payloads have a smaller limit and must run before the global parser.
 app.use(createResearchRegistryRouter());
 app.use(createLpbfSourcesRouter());
+app.use(createLpbfRunsRouter());
 
 // Body parsing with generous payload capacity for base64 micrograph scans & CAD models
 app.use(express.json({ limit: "50mb" }));

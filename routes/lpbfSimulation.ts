@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { lpbfWorker } from "../server/lpbfWorkerBridge";
 
 export const lpbfSimulationRouter = Router();
@@ -42,7 +42,7 @@ for (const [method, route, rpc] of [
   });
 }
 
-lpbfSimulationRouter.get("/api/lpbf/jobs/:id/artifacts/:name", async (req,res) => {
+lpbfSimulationRouter.get("/api/lpbf/jobs/:id/artifacts/:name", async (req: Request, res: Response) => {
   try {
     const data = await lpbfWorker.request("artifact", { id:req.params.id, name:req.params.name }) as {content:string;type:string};
     res.setHeader("Content-Type",data.type);

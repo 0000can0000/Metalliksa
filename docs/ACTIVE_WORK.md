@@ -7,6 +7,10 @@ snapshot/bytes, exact historical links, exclusive destination, completion last,
 isolated verified restore. Existing source-only bundle preserved. No agents,
 live migration, push or installs. All eleven external dirty paths remain unowned.
 Phase0 OPEN; continue API/UI and shared physics after this package.
+Bundle complete d7dc7e4. Now also owns server/lpbfArchivePaths.ts,
+server/lpbfRunArchiveService.ts, routes/lpbfRuns.ts, narrow bridge/worker/server
+integration, focused API/path/capture tests and .gitignore. No external paths
+adopted. API plan 2026-09-21-lpbf-run-api.md defines current acceptance.
 
 # Previous owner — 01a0c36f-7006-7eb3-992d-73265a0a354d, 2026-09-21
 

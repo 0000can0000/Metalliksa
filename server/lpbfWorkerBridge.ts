@@ -2,6 +2,7 @@ import { spawn, ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { getHostPython, loadPythonEnvironment, lpbfWorkerCommand } from "./pythonRuntime.ts";
+import { archiveJobRoot } from './lpbfArchivePaths';
 
 /** A single WSL worker owns the queue. Requests never become shell text. */
 class LpbfWorkerBridge {
@@ -68,6 +69,12 @@ class LpbfWorkerBridge {
   async request(method: string, payload: unknown = null) {
     await this.start();
     return this.send(method, payload);
+  }
+
+  async captureForArchive(jobId: string) {
+    if (!/^[a-f0-9]{32}$/.test(jobId)) throw new Error('Invalid job id');
+    const reply = await this.request('archive-capture', jobId) as { capture: unknown; root: string; platform: string };
+    return { capture: reply.capture, root: path.join(archiveJobRoot(reply.root, reply.platform, process.platform), jobId) };
   }
 }
 

@@ -121,6 +121,10 @@ class Queue:
                 raise ValueError('Only completed jobs can be captured')
             return capture_run(self.root/job, job)
 
+    def archive_capture(self, job):
+        # Internal RPC only: Node maps this root; HTTP never supplies a path.
+        return dict(capture=self.capture(job), root=str(self.root.absolute()), platform=sys.platform)
+
     def artifact(self, payload):
         state = self.get(payload["id"])
         name = payload.get("name")
@@ -308,6 +312,7 @@ def main():
             elif method == "submit": data = queue.submit(request["payload"])
             elif method == "artifact": data = queue.artifact(request["payload"])
             elif method == "capture": data = queue.capture(request["payload"])
+            elif method == "archive-capture": data = queue.archive_capture(request["payload"])
             elif method == "get": data = queue.get(request["payload"])
             elif method == "cancel": data = queue.cancel(request["payload"])
             elif method == "solidification-microstructure":   # Phase 8

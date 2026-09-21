@@ -16,6 +16,19 @@ null measurement conversion preserved. Bundle snapshots no longer create WAL/SHM
 sidecar-bearing bundles rejected. Docs LPBF_SOURCE_ARCHIVE/PROOF record limits.
 Next package: a bounded source archive API and UI integration, then HDF5 review and
 shared-core gates. Source archive is not a complete simulation/experiment backup.
+Storage commit ca3fb07 clean. API package owns server/lpbfSourceCatalog.ts,
+server/lpbfSourceArchiveService.ts, routes/lpbfSources.ts, server.ts, .gitignore
+and tests/lpbf-source-api.test.ts. Approved local catalog only; no client paths,
+URLs or source metadata accepted. Preview binds document hash and expected revision;
+import revalidates all bytes. Fresh integrity checks remain separate from science.
+API package complete:5new tests/full161unitPASS, lint/strict API TS/build PASS.
+Actual production server3195+IPC5195 smoke imported3IN718 files, verified current
+bytes, retained null conversion and rejected stale revision409. Owned server40016
+and descendants41112/30868/console hosts stopped; both ports have no listeners.
+Evidence `.runtime/phase0-audit/source-api-smoke-01a0c349.json`. No UI changes yet.
+Next owner should add source archive panel to LpbfEngineeringWorkspace comparison
+stage with current-input-bound async state; do not turn raw signal into measurements.
+Source01a0c349 stops writing after successor dispatch; no overlapping work assumed.
 
 # Previous owner — 01a0c339-7e60-7573-b548-4fd5e6cbef44, 2026-09-21
 

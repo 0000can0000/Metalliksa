@@ -1,7 +1,41 @@
 # LPBF source archive storage
 
 The server storage modules preserve source metadata and original files separately.
-They do not yet replace the live application store or include simulation runs.
+They provide an isolated source archive, without migrating the existing application
+store or including simulation runs.
+
+## Local application API
+
+The catalog currently exposes only `nist-mds2-2716` from the configured local
+`data/benchmark/nist-amb2022-03` archive. No downloads occur. Missing or corrupt
+files produce an unavailable response; no substitute data is generated.
+
+| Method and path | Contract |
+| --- | --- |
+| GET `/api/lpbf/sources` | Catalog IDs/titles, no host filesystem paths |
+| GET `/api/lpbf/sources/:datasetId` | Current immutable metadata or null; bytes not checked |
+| POST `/api/lpbf/sources/:datasetId/preview` | Body `{}`; validate all source files without storage writes; return document SHA256 and expectedRevision |
+| POST `/api/lpbf/sources/:datasetId/import` | Body `{documentSha256, expectedRevision}` from preview; revalidate metadata identity and all files before publication |
+| POST `/api/lpbf/sources/:datasetId/verify` | Body `{}`; fresh archived-byte check bound to returned revision/hash/time |
+
+POST requires JSON, a same-origin browser request and at most16KiB. Unknown fields,
+client paths/URLs/documents and unknown catalog IDs are rejected. One costly archive
+operation runs per service instance; concurrent operations or stale previews return
+409. Repository CAS also protects writers from separate processes. Storage/integrity
+failures return503 without filesystem paths and preserve existing revisions.
+`METALLIKSA_LPBF_SOURCE_ROOT` selects a server-owned directory; default `.lpbf-sources`
+is ignored by Git. Catalog/current/preview do not initialize an absent archive.
+The local server is not a multi-user authorization system.
+
+There is no source archive UI or HTTP backup/restore endpoint yet. Programmatic
+backup/restore below is available; simulation/qualification inputs are not changed
+automatically by importing raw source files.
+
+API verification:5 focused regressions/full161unitPASS; lint, strict API TypeScript
+and production build PASS (existing Vite large-chunk warning). Real production
+server3195→local isolated archive imported3IN718 files/550398609bytes; fresh verify
+returned revision1/document hash and stale import returned409. Report:
+`.runtime/phase0-audit/source-api-smoke-01a0c349.json`. Test server/IPC stopped.
 
 - `LpbfArtifactStore`: streams files through SHA256/size verification using a 1 MiB
   buffer. Objects live at `objects/<first-two-hash-characters>/<sha256>`. Private

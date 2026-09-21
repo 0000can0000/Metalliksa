@@ -25,3 +25,6 @@ graft/.graph/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Local LPBF source archive bytes and SQLite metadata
+.lpbf-sources/

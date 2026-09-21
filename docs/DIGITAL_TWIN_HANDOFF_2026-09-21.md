@@ -1,5 +1,32 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+LATEST PACKAGE: bounded local source API now connected to server.ts BEFORE global
+large-body parser. GET /api/lpbf/sources lists allowlisted NIST catalog; GET /:id
+returns current metadata; POST /:id/preview {} reads all source bytes without
+creating storage, returns document/documentSha256/expectedRevision; POST /:id/import
+{documentSha256,expectedRevision} rejects metadata/revision drift and rechecks bytes;
+POST /:id/verify {} checks stored bytes and returns exact revision/hash/time.
+HTTP does not accept client paths, URLs or source documents.16KiB/JSON/same-origin,
+single expensive operation per service;409 conflicts, sanitized503 storage errors.
+Default .lpbf-sources ignored; METALLIKSA_LPBF_SOURCE_ROOT overrides server-side.
+server/lpbfSourceCatalog.ts validates manifest/context identities and README hash.
+server/lpbfSourceArchiveService.ts, routes/lpbfSources.ts, tests/lpbf-source-api.test.ts.
+5new tests/full161unitPASS; app lint/strictAPI_TS/production build PASS. Vite existing
+large-chunk warning. Real production3195 smoke:3files550398609bytes imported, current
+byte verificationPASS, null temperature conversion retained, stale import409.
+Report `.runtime/phase0-audit/source-api-smoke-01a0c349.json`; isolated data at
+`.runtime/lpbf-source-http-01a0c349`. Owned40016+Python41112/30868+console hosts stopped;
+3195/5195 listener check empty. No browser/UI change or legacy migration.
+
+FIRST NEXT PACKAGE: UI source archive panel in LpbfEngineeringWorkspace comparison
+stage (current source around line97), using the above API. Show source terms, material,
+bare-plate scope, artifact count/size, missing measurement fields, preview/import and
+fresh byte check with exact revision. Input-bound stale-response protection, failure
+states and real browser+keyboard checks required. Do not populate measured width,
+depth or temperature from unreviewed raw camera signal; do not alter activeSpecimen
+process implicitly. No UI code written yet. Then HDF5 measurement review/common
+physics core/remaining Phase0 gates. Whole objective is not finished by these packages.
+
 CURRENT OWNER01a0c349-747d-7e52-bbf7-8e87df3211f7. Storage package now complete:
 lpbfArtifactStore/import/bundle plus source repository integration,14new tests,
 full156unitPASS, strictTS PASS. Actual IN7183files550398609bytes round-trip PASS.
@@ -10,7 +37,7 @@ artifact bytes copied into new bundle directories. Restore verifies before creat
 destination; snapshot DELETE journal mode and rejection of SQLite sidecars prevent
 unhashed WAL state. ctime hard-link race fixed by retaining hash/size/mtime checks.
 See LPBF_SOURCE_ARCHIVE.md/PROOF. No live API/UI or legacy migration yet.
-NEXT: bounded API/UI source archive workflow; HDF5 measurement review/common core
+NEXT: UI source archive workflow; HDF5 measurement review/common core
 and Phase0 remain OPEN. Historical NEXT artifact-storage instruction below is done.
 
 LATEST CHECKPOINT: source metadata repository implemented and verified (next git

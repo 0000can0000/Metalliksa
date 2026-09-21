@@ -37,6 +37,33 @@ console.log("PASS: LPBF runtime contract rejects invalid, nonfinite and false-va
 
 // Synthetic transport fixtures; no experimental or numerical validation claim.
 const completed = (patch: Record<string, unknown>) => ({ ...base, status: "completed", result: { ...result, ...patch } });
+// Hash binding is verified in Python; this client checks shape and model identity.
+const coreContract = {
+  schemaVersion: 1, modelId: 'analytical-conduction-screening-v1', actualBackend: 'analytical',
+  requestedBackend: 'auto', effectiveMode: 'screening', solverId: 'rosenthal+goldak',
+  inputSha256: 'a'.repeat(64), materialSha256: 'b'.repeat(64), evidenceClass: 'unvalidated-model',
+  units: { power: 'W', speed: 'mm/s', length: 'um', preheat: 'degC', temperature: 'K', internalLength: 'm', time: 's', energy: 'J', beamDiameter: '1/e2-intensity' },
+  resolvedPhysics: { conduction: true, transient: false, latentHeat: false, momentum: false, freeSurface: false, evaporation: false },
+};
+const bound = (c: unknown) => completed({settings: {backend: 'auto'}, solver: {id: 'rosenthal+goldak', version: 'enthalpy-fv-6'}, coreContract: c});
+assert.doesNotThrow(() => parseSimulationJob(bound(coreContract)));
+for (const bad of [null, {}, {...coreContract, schemaVersion: 2}, {...coreContract, actualBackend: 'cuda:0'},
+  {...coreContract, materialSha256: 'missing'}, {...coreContract, modelId: 'unknown'},
+  {...coreContract, requestedBackend: 'reference'}, {...coreContract, effectiveMode: 'standard'},
+  {...coreContract, solverId: 'enthalpy-fv-6'}, {...coreContract, evidenceClass: 'validated'},
+  {...coreContract, units: {...coreContract.units, temperature: 'degC'}},
+  {...coreContract, resolvedPhysics: {...coreContract.resolvedPhysics, latentHeat: true}},
+  {...coreContract, resolvedPhysics: {...coreContract.resolvedPhysics, momentum: true}},
+  {...coreContract, extraField: true},
+]) assert.throws(() => parseSimulationJob(bound(bad)), /core contract/);
+for (const [actualBackend, solverId] of [['numpy-reference', 'enthalpy-fv-6'], ['openfoam-thermal', 'metalliksaThermal-OpenFOAM14-6']]) {
+  const c = {...coreContract, actualBackend, solverId, modelId: 'stationary-enthalpy-conduction-v1', effectiveMode: 'standard',
+    resolvedPhysics: {...coreContract.resolvedPhysics, transient: true, latentHeat: true}};
+  const r = {...thermal, solver: {id: solverId, version: 'enthalpy-fv-6'}, settings: {backend: 'auto'}, coreContract: c};
+  assert.doesNotThrow(() => parseSimulationJob({...base, status: 'completed', result: r}));
+  const opposite = actualBackend === 'numpy-reference' ? 'openfoam-thermal' : 'reference';
+  assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {...r, settings: {backend: opposite}, coreContract: {...c, requestedBackend: opposite}}}), /core contract/);
+}
 for (const effectiveMode of [undefined, null, "standrad", "high-fidelity", ["screening"]]) {
   assert.throws(() => parseSimulationJob(completed({ effectiveMode })), /execution mode/);
 }

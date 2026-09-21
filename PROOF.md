@@ -1,3 +1,19 @@
+## 2026-09-21 — Shared result identity, software/numerical compatibility
+
+New coreContract v1 binds complete resolved input/material snapshots to allowlisted
+model/backend/units/physics, preserving unvalidated evidence. Python8PASS includes
+actual Queue restore rejection and cache nonreuse after property modification.
+Client rejects malformed model contracts; it does not recompute Python hashes.
+Fresh WSL54PASS/no skips (core8,engineering26,source8,peak5,overlap7), including
+actual OpenFOAM tests. Windows core8PASS; engineering25PASS/1skip,source7PASS/1skip.
+Pre/post40W reference case has identical six numerical sections and64artifact
+SHA256s; actual saved Python result parses unchanged in TypeScript. No numerical
+model/evidence upgrade. New tests observed RED before GREEN. StrictTS/targeted
+parser6PASS; final lint/buildPASS. Overall unit initially167PASS, latest147PASS/
+3FAIL from concurrent unowned UQ edits (uq-coupon-csv/uq-empirical/uq-presentation,
+uqLabData import-time throw). These failures remain recorded, not attributed to
+LPBF changes or silently repaired. Phase0 stays OPEN.
+
 ## 2026-09-21 — Bounded melting CPU resource profile
 
 Fresh NumPy reference `enthalpy-fv-6`, Windows Python3.12.10/NumPy2.2.6,

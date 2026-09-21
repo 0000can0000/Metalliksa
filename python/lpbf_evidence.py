@@ -3,6 +3,7 @@ import csv
 import hashlib
 import math
 from pathlib import Path
+from lpbf_core_contract import enforce_core_contract
 
 PROCESS_KEYS = ("material", "power_W", "speed_mm_s", "beamDiameter_um", "preheat_C",
                 "layer_um", "hatch_um", "tracks", "layers", "trackLength_um", "strategy",
@@ -101,6 +102,7 @@ def enforce_thermal_balances(result):
     Closure is recomputed from extensive quantities, never trusted from a badge.
     This verifies stationary accounting, not a gas interface or fluid continuity.
     """
+    enforce_core_contract(result)
     if result.get("effectiveMode") not in ("standard", "calibration"):
         return
     for name, keys, tolerance in (

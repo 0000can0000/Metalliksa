@@ -17,7 +17,20 @@ export interface ResourceEstimate {
   minimumEstimatedSteps: number; workingMemoryEstimate_MB: number; runs: number;
   cellBudget: number; exceedsCellBudget: boolean; runtimeEstimate: string; note: string;
 }
+const CORE_UNITS = { power: 'W', speed: 'mm/s', length: 'um', preheat: 'degC', temperature: 'K', internalLength: 'm', time: 's', energy: 'J', beamDiameter: '1/e2-intensity' } as const;
+export interface CoreContract {
+  schemaVersion: 1;
+  modelId: 'analytical-conduction-screening-v1' | 'stationary-enthalpy-conduction-v1';
+  actualBackend: 'analytical' | 'numpy-reference' | 'openfoam-thermal';
+  requestedBackend: 'auto' | 'reference' | 'openfoam-thermal';
+  effectiveMode: 'screening' | 'standard' | 'calibration';
+  solverId: string; inputSha256: string; materialSha256: string;
+  units: typeof CORE_UNITS;
+  resolvedPhysics: { conduction: true; transient: boolean; latentHeat: boolean; momentum: false; freeSurface: false; evaporation: false };
+  evidenceClass: 'unvalidated-model';
+}
 export interface SimulationResult {
+  coreContract?: CoreContract;
   numericalDiagnostics?: {
     meltPoolExtraction?: string;
     overlapExtraction?: string;
@@ -76,6 +89,40 @@ export interface SimulationCapabilities {
   limitation: string; materials: { name: string; quality: string; available: boolean; note: string }[];
 }
 function object(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
+function literalFields(value: unknown, expected: Record<string, unknown>): boolean {
+  return object(value) && Object.keys(value).length === Object.keys(expected).length
+    && Object.entries(expected).every(([key, item]) => value[key] === item);
+}
+function checkCoreContract(result: Record<string, unknown>): void {
+  if (result.coreContract === undefined) return; // Preserve legacy absence without inventing a binding.
+  const c = result.coreContract;
+  const fail = () => { throw new Error('Invalid LPBF core contract'); };
+  if (!object(c) || !object(result.settings) || !object(result.solver)) return fail();
+  const requested = result.settings.backend;
+  const mode = result.effectiveMode;
+  const solver = result.solver.id;
+  let backend: CoreContract['actualBackend'];
+  let transient: boolean;
+  if (mode === 'screening' && solver === 'rosenthal+goldak') {
+    backend = 'analytical'; transient = false;
+  } else if ((mode === 'standard' || mode === 'calibration')
+    && (solver === 'enthalpy-fv-6' || solver === 'metalliksaThermal-OpenFOAM14-6')) {
+    backend = solver === 'enthalpy-fv-6' ? 'numpy-reference' : 'openfoam-thermal';
+    transient = true;
+    if (requested !== 'auto' && requested !== (backend === 'numpy-reference' ? 'reference' : 'openfoam-thermal')) return fail();
+  } else return fail();
+  if (typeof requested !== 'string' || !['auto', 'reference', 'openfoam-thermal'].includes(requested)) return fail();
+  // Structural check only. Python verifies these hashes against full resolved snapshots.
+  if (![c.inputSha256, c.materialSha256].every(v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v))) return fail();
+  if (!literalFields(c.units, CORE_UNITS) || !literalFields(c.resolvedPhysics, {
+    conduction: true, transient, latentHeat: transient, momentum: false, freeSurface: false, evaporation: false,
+  }) || !literalFields(c, {
+    schemaVersion: 1, modelId: transient ? 'stationary-enthalpy-conduction-v1' : 'analytical-conduction-screening-v1',
+    actualBackend: backend, requestedBackend: requested, effectiveMode: mode, solverId: solver,
+    inputSha256: c.inputSha256, materialSha256: c.materialSha256, units: c.units,
+    resolvedPhysics: c.resolvedPhysics, evidenceClass: 'unvalidated-model',
+  })) return fail();
+}
 function finiteTree(value: unknown): boolean {
   if (typeof value === "number") return Number.isFinite(value);
   if (Array.isArray(value)) return value.every(finiteTree);
@@ -110,6 +157,7 @@ export function parseSimulationJob(value: unknown): SimulationJob {
       || !["label", "regime", "mainRisk", "recommendation", "riskScope"].every(k => typeof r[k] === "string")
       || !Array.isArray(r.assumptions) || !r.assumptions.every(a => typeof a === "string")
       || !object(r.analyticalComparison) || !Object.values(r.analyticalComparison).every(dimensions)) throw new Error("Invalid LPBF result contract");
+    checkCoreContract(r);
     if (r.thermalHistory !== undefined && (!Array.isArray(r.thermalHistory) || !r.thermalHistory.every((h, index, history) => object(h) && typeof h.time_s === "number" && h.time_s >= 0 && typeof h.peak_K === "number" && h.peak_K > 0
       && (index === 0 || h.time_s > history[index - 1].time_s)))) throw new Error("Invalid thermal history");
     if (!object(r.metrics) || Object.values(r.metrics).some(v => typeof v === "number" && v < 0)) throw new Error("Negative physical result");
@@ -151,11 +199,12 @@ export function parseSimulationJob(value: unknown): SimulationJob {
     }
     if (r.geometricDefectScreen !== undefined) {
       const d = r.geometricDefectScreen;
+      const loss = object(d) ? d.lackOfFusion : undefined;
       if (!object(d) || d.modelId !== "elliptic-overlap-screening-v1" || typeof d.scope !== "string" || typeof d.status !== "string"
-        || !Array.isArray(d.limitations) || !d.limitations.every(v => typeof v === "string") || !object(d.lackOfFusion)
-        || typeof d.lackOfFusion.status !== "string" || !(d.lackOfFusion.reason === null || typeof d.lackOfFusion.reason === "string")
-        || !(d.lackOfFusion.riskScreened === null || typeof d.lackOfFusion.riskScreened === "boolean")
-        || !["ellipseIndex", "signedMargin", "overlapDepth_um", "maximumHatch_um"].every(k => d.lackOfFusion[k] === null || typeof d.lackOfFusion[k] === "number")) throw new Error("Invalid geometric defect screening");
+        || !Array.isArray(d.limitations) || !d.limitations.every(v => typeof v === "string") || !object(loss)
+        || typeof loss.status !== "string" || !(loss.reason === null || typeof loss.reason === "string")
+        || !(loss.riskScreened === null || typeof loss.riskScreened === "boolean")
+        || !["ellipseIndex", "signedMargin", "overlapDepth_um", "maximumHatch_um"].every(k => loss[k] === null || typeof loss[k] === "number")) throw new Error("Invalid geometric defect screening");
     }
     if (r.fieldPreviews !== undefined && (!Array.isArray(r.fieldPreviews) || !r.fieldPreviews.every(a => a === "temperature-slice.svg" || a === "phase-slice.svg"))) throw new Error("Invalid field preview");
     if (r.measurementComparison !== undefined && (!object(r.measurementComparison) || !Object.values(r.measurementComparison).every(c => object(c)

@@ -11,6 +11,7 @@ import datetime
 from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material, property_at, enthalpy_table
+from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
@@ -445,6 +446,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     result["confidenceReason"] = f"{m['quality']} material data and unresolved flow; no independent experimental validation."
     if any(isinstance(v,(int,float)) and (not math.isfinite(v) or v < 0) for v in g.values()):
         raise ValueError("Nonfinite or negative physical result")
+    result["coreContract"] = build_core_contract(p, m, result["solver"]["id"], result["effectiveMode"])
     enforce_thermal_balances(result)
     write_artifacts(result, artifact_dir)
     json.dumps(result, allow_nan=False)

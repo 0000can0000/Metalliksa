@@ -1,5 +1,33 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+LATEST: coreContract v1 implemented; commit is next application git log entry.
+New Python lpbf_core_contract.py binds resolved settings/material SHA256, actual
+backend/model/units/physics. run attaches it; enforce_thermal_balances verifies
+it on publication/Queue restore. True legacy absence remains unmodified; null or
+forged contracts fail. TypeScript parses optional contract and model consistency;
+it does NOT recompute Python canonical hashes. Python compact sorted ASCII JSON
+hashing is versioned, not universal cross-language canonicalization. Spec:
+LPBF_SHARED_CORE_CONTRACT.md; completed plan ledger in superpowers/plans/.
+Fresh Python8PASS; Windows engineering25+1skip/source7+1skip. FRESH WSL
+8core+26engineering+8source+5peak+7overlap=54PASS/no skips including actualOpenFOAM.
+40W parity six numerical sections+all64solver artifact SHA256s exact; real JSON
+passes TS consumer. Targeted TSstrict/parser6PASS; final lint/buildPASS37.97s.
+Full unit initially167PASS, but later concurrent UQ edits cause147PASS/3FAIL:
+uq-coupon-csv, uq-empirical, uq-presentation crash on uqLabData import-time throw.
+UNOWNED DIRTY PATHS, do not overwrite/stage: docs/SECONDARY_MODULE_BACKLOG.md,
+src/components/uqLabData.ts, src/services/pythonComputationService.ts,
+src/utils/monteCarloEngine.ts. No clean/full-green tree claim. Owned app changes
+will be committed separately. No owned server; test processes all completed.
+FIRST NEXT: inspect source repository revision/get/hash and worker output/artifact
+boundaries; write then implement bounded immutable simulation-run repository and
+dry-run capture linked to exact source revisions. Reuse artifact store and existing
+queue; no live migration/secondqueue. Worker artifact manifest includes more than
+public artifact endpoint (e.g. peak-field.npz, OpenFOAM case); plan full capture
+without client filesystem paths. Input/material SHA v1 must be verified in Python,
+not assumed to match JSON.stringify numbers. Keep source science unreviewed.
+Then run bundle/restore/API/UI incrementally with acceptance checks. Phase0 OPEN;
+no laterphase acceptance. Explicit sharedcore+database objective continues.
+
 Owner01a0c36f claimed clean2ce1abc. Bounded16entry LPBF wiring/core audit and
 fresh melting40W CPU profiles complete: `LPBF_CORE_BASELINE_2026-09-21.md`.
 40/20um mesh peaks2119.81/2803.31K, wall2.317/4.893s, peakRAM~245MB.

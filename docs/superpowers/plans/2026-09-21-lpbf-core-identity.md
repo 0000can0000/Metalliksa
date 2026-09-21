@@ -13,6 +13,37 @@ remain authoritative. The TypeScript response type documents the optional field.
 
 **Spec:** `docs/LPBF_SHARED_CORE_CONTRACT.md`.
 
+## Execution ledger — owner01a0c36f
+
+Baseline b9567c6. Task1 and Task2 implemented together as one interface package;
+current application git log records its final commit. Preflight: Python keys,
+allowlisted models and units match the TypeScript consumer; no numeric adapter
+duplication. Ruling: preserve the expressly requested shared LOCAL checkout and
+use this ledger/standard commands instead of shell-helper worktree automation.
+No subagents; no external changes reverted. Self-review only.
+
+Task1 RED:10 assertion failures plus absent module; missing bindings and changed
+inputs not rejected. GREEN:7 then8tests after real Queue restore/cache test.
+Current Windows engineering25PASS/1skip, source7PASS/1skip. Current WSL
+8core+26engineering+8source+5peak+7overlap=54PASS, no skips.40W pre/post parity:
+six numerical sections and all64artifact SHA256s identical. Real Python result
+passes TypeScript parser unchanged. Logs `.runtime/phase0-audit/core-*01a0c36f*`.
+
+Task2 RED: missing expected exception for malformed contract (after Node spawn
+EPERM was removed with scoped permission). GREEN focused parser/diagnostics6PASS.
+Strict targeted TS initially found existing lackOfFusion narrowing loss in a
+callback; introduced a stable local reference, unchanged logic; strictTS nowPASS.
+Full unit initially167PASS, lint/buildPASS. OTHER writer later edited UQ/import
+paths: latest full150tests=147PASS/3FAIL, named uq-coupon-csv, uq-empirical,
+uq-presentation (uqLabData import-time throw). Those paths are preserved and not
+part of this commit. Latest lint/buildPASS37.97s (existing chunk warning).
+Ruling: deliver bounded LPBF package with explicit shared-tree failure; do not
+overwrite concurrent unrelated UQ work to manufacture a green overall result.
+
+Remaining goal: run/experiment persistence and shared physics extraction; Phase0
+still OPEN. The steps below record the implemented task design; execution results
+above are authoritative about actual passes and the remaining integration issue.
+
 ## Global constraints
 
 - Phase0 OPEN; no later-phase or experimental acceptance.

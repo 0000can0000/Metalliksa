@@ -4,6 +4,15 @@ This is the incremental design following `LPBF_CORE_BASELINE_2026-09-21.md`.
 The authorized goal is shared LPBF physics/data integration. Phase0 stays open;
 this contract does not qualify a model, accept later phases or enable old GPU CFD.
 
+Implemented first deliverable: `python/lpbf_core_contract.py`, attached by `run`
+and checked by the evidence boundary on new/restored results. Client checks
+structure/model consistency, not cryptographic SHA binding. Python8PASS;
+WSL core/engineering/source/peak/overlap54PASS with actual OpenFOAM and no skips.
+Prechange40W numerical sections and64artifact hashes are unchanged.
+This is a consistency binding, not a signature or protection against a party
+rewriting both data and hashes. Genuine legacy absence is intentionally accepted;
+the future run importer must label it explicitly and never silently upgrade it.
+
 ## First deliverable: bound thermal result identity
 
 Add optional `coreContract` to existing schemaVersion1 results without changing

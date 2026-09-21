@@ -8,6 +8,23 @@ frozen numerical acceptance thresholds. Phase0 remains OPEN. No installation,
 push, live migration or secondary-module work. Graph generation18Sep is stale;
 task-directed coverage and direct source fallback are required.
 
+Completed baseline/planning commit b9567c6. Now owns and completes
+python/lpbf_core_contract.py, test_lpbf_core_contract.py, lpbf_simulation.py,
+lpbf_evidence.py, src/services/lpbfSimulationService.ts and lpbf-contract.test.ts.
+New results carry v1 input/material/model/backend identity; legacy absence remains
+legacy. Python8PASS, current WSL core+engineering/source/peak/overlap54PASS no
+skips, real result client parse and all64prechange artifact hashes identical.
+Initial full167unitPASS. Subsequently OTHER writer changed
+docs/SECONDARY_MODULE_BACKLOG.md, src/components/uqLabData.ts,
+src/services/pythonComputationService.ts, src/utils/monteCarloEngine.ts.
+These four paths are NOT ours; preserved/unstaged. Latest full suite147PASS/3FAIL:
+uq-coupon-csv, uq-empirical, uq-presentation crash on the new UQ import-time throw.
+Final lint/strict targeted TS/build PASS; focused parser6PASS. Do not describe
+the shared tree as clean/full-green. No owned server/process remains.
+Next bounded package: durable simulation-run records bound to exact source
+revisions; inspect existing repository/worker snapshots and design its own plan.
+Source stops writing after successor dispatch; successor claims its real task ID.
+
 # Previous owner — 01a0c35a-2c97-7352-8d90-87ae9e0403b3, 2026-09-21
 
 Packages complete:661153a source UI; b0bd0bd HDF5 metadata review. Fresh WSL

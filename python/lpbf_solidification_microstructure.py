@@ -95,8 +95,8 @@ def _rosenthal_screening(params: Dict[str, Any], material: Dict[str, Any]) -> Di
 
     Returns dict with keys: G_K_m, R_m_s, coolingRate_K_s
     """
-    P   = float(params.get("power_W", 200.0))
-    v   = float(params.get("speed_mm_s", 800.0)) * 1e-3   # m/s
+    P   = float(params.get("laserPower_W", params.get("power_W", 200.0)))
+    v   = float(params.get("scanSpeed_mm_s", params.get("scanSpeed_mms", params.get("speed_mm_s", 800.0)))) * 1e-3   # m/s
     absorb = float(material.get("absorptivity", 0.35))
     k   = float(material.get("k_WmK", 15.0))              # thermal conductivity W/(m·K)
     T_liq = float(material.get("liquidus_K", 1700.0))

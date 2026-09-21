@@ -1,0 +1,72 @@
+{
+  "benchmark": "Phase 7 Microstructure & Kinetics",
+  "date": "2026-09-21",
+  "runs": [
+    {
+      "condition": "Ti-6Al-4V 200W 1000mm/s",
+      "G_K_m": 10000.0,
+      "R_m_s": 0.707107,
+      "coolingRate_K_s": 7071.07,
+      "PDAS_um": 0.872,
+      "SDAS_um": 3.461,
+      "morphology": "equiaxed",
+      "martensite_pct": 99.0,
+      "compute_time_ms": 2285.78
+    },
+    {
+      "condition": "Ti-6Al-4V 250W 1200mm/s",
+      "G_K_m": 10000.0,
+      "R_m_s": 0.848528,
+      "coolingRate_K_s": 8485.28,
+      "PDAS_um": 0.834,
+      "SDAS_um": 3.259,
+      "morphology": "equiaxed",
+      "martensite_pct": 99.0,
+      "compute_time_ms": 1096.55
+    },
+    {
+      "condition": "Ti-6Al-4V 300W 500mm/s",
+      "G_K_m": 10000.0,
+      "R_m_s": 0.353553,
+      "coolingRate_K_s": 3535.53,
+      "PDAS_um": 1.037,
+      "SDAS_um": 4.351,
+      "morphology": "equiaxed",
+      "martensite_pct": 99.0,
+      "compute_time_ms": 1322.95
+    },
+    {
+      "condition": "Inconel 718 220W 900mm/s",
+      "G_K_m": 10000.0,
+      "R_m_s": 0.636396,
+      "coolingRate_K_s": 6363.96,
+      "PDAS_um": 0.896,
+      "SDAS_um": 3.584,
+      "morphology": "equiaxed",
+      "martensite_pct": 0.0,
+      "compute_time_ms": 1306.61
+    },
+    {
+      "condition": "Inconel 718 285W 960mm/s",
+      "G_K_m": 10000.0,
+      "R_m_s": 0.678823,
+      "coolingRate_K_s": 6788.23,
+      "PDAS_um": 0.881,
+      "SDAS_um": 3.508,
+      "morphology": "equiaxed",
+      "martensite_pct": 0.0,
+      "compute_time_ms": 1289.11
+    },
+    {
+      "condition": "Inconel 718 150W 1500mm/s",
+      "G_K_m": 10000.0,
+      "R_m_s": 1.06066,
+      "coolingRate_K_s": 10606.6,
+      "PDAS_um": 0.788,
+      "SDAS_um": 3.028,
+      "morphology": "equiaxed",
+      "martensite_pct": 0.6,
+      "compute_time_ms": 1404.31
+    }
+  ]
+}

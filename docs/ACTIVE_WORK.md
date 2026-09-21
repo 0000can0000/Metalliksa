@@ -1,3 +1,10 @@
+# Latest architecture decision — shared LPBF core authorized
+
+User explicitly reversed the earlier restriction: "Yok yok ortak çekirdek yapalım".
+Build the shared LPBF core and database integration; defer secondary modules.
+Final in-flight repair64e7cca (Python0159cdf), app tree clean. Existing model-specific
+assumptions and validation evidence must remain explicit.
+
 # Current owner — 01a0c326-5fad-7fb1-8c28-47770538592d, 2026-09-21
 
 USER PRIORITY UPDATE: LPBF engines and database first. Secondary module work is

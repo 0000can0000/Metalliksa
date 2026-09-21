@@ -5,8 +5,9 @@ Keep secondary modules available, but do not make their complete repair a gate
 for LPBF progress. Investigate them only if a concrete dependency affects LPBF.
 The user proposed splitting the application. Immediate organization is two work
 streams; separate repositories or deployments have not been implemented.
-The user explicitly forbids merging engines. LPBF solvers and secondary engines
-retain separate implementations, identities, assumptions, results and tests.
+Latest user decision reverses the earlier prohibition: build a shared LPBF core.
+Keep model identities, assumptions and tests explicit. Secondary modules remain
+deferred; their integration into the LPBF core is not a current requirement.
 
 ## Completed checkpoint before reprioritization
 

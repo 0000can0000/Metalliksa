@@ -1,9 +1,11 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
-EXPLICIT USER CONSTRAINT: do not merge engines. Preserve independent LPBF solvers
-and secondary-module engines, their model identities, assumptions, I/O and tests.
-Shared data/database adapters are allowed; no combined solver implementation.
-This supersedes historical common-thermal-core wording in the master plan.
+LATEST USER DECISION: build a shared LPBF core. The user explicitly reversed the
+previous restriction with "Yok yok ortak çekirdek yapalım". The earlier prohibition
+is superseded. LPBF engines/shared core/database remain the priority; secondary
+modules stay deferred. Preserve model identities, assumptions and individual
+validation evidence within the shared architecture. Final repair commit64e7cca;
+Python0159cdf. Application tree clean at that checkpoint.
 
 User21Sep explicitly reprioritized: stop spending effort on secondary modules;
 primary target is LPBF engines and their database. Proposed application split is

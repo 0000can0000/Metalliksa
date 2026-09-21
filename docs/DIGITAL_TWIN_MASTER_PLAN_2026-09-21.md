@@ -7,12 +7,12 @@ netleştirdi. EIS/EDS ve diğer yan araştırma modüllerinin genel onarımı er
 bu işler LPBF fazlarının kabul kapısı değildir. Ortak malzeme/veri kodu LPBF'yi
 doğrudan etkiliyorsa gerekli dar kapsamda incelenir.
 
-**Motorları birleştirme:** Kullanıcının açık ek talebi. LPBF çözücüleri ve yan
-modül motorları bağımsız kalır; tek birleşik solver oluşturulmaz. Ortak veritabanı
-ve veri alışverişi motor birleştirmesi anlamına gelmez. Her motorun model kimliği,
-varsayımları, girdileri, çıktıları ve doğrulama testleri ayrı korunur. Aşağıdaki
-eski “ortak termal çekirdek” ifadeleri bu kararla sınırlanmıştır: yalnız ortak
-veri sözleşmesi ve bağımsız çözücü adaptörleri; hesap motorlarını birleştirme yok.
+**Son kullanıcı kararı — ortak çekirdek yapılacak:** Kullanıcı önce ortak
+çekirdeği istemedi, ardından açıkça «Yok yok ortak çekirdek yapalım» diyerek
+kararını değiştirdi. Son talep geçerlidir. LPBF motorları için ortak çekirdek ve
+veritabanı entegrasyonu uygulanacak; model kimlikleri, fiziksel varsayımlar ve
+modele özgü doğrulama testleri korunacak. Yan araştırma modülleri ertelenmiş
+kalmaktadır. Önceki motor birleştirme/ortak çekirdek yasağı geçersizdir.
 
 Ürün iki çalışma alanı olarak ele alınacak: LPBF üretim/simülasyon çekirdeği ve
 ikincil araştırma araçları. İki ayrı uygulama/repo/dağıtım henüz oluşturulmadı.

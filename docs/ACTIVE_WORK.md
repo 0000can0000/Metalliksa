@@ -1,3 +1,11 @@
+# Current owner retained — successor NOT created
+
+Two create_thread calls were auto-review rejected. Original user messages were
+retrieved before retry, but review still requires direct approval in this task.
+Approval question pending; do not bypass/retry without it. Source01a0c15d retains
+ownership. d4db76d code verified; clean app tree before docs-only checkpoint.
+Phase0 remains OPEN; exact next work is CURRENT CONTINUATION. No running server.
+
 # Successor dispatch checkpoint after d4db76d
 
 Identity/fitted-topology package complete;126unit/lint/build/10browser hook checks

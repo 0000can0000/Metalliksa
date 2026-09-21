@@ -116,16 +116,21 @@ def run_bayesian_optimization(alloy_id, param_bounds=None, n_iter=20, n_warmup=5
 
     def _obj(params):
         try:
-            th=calculate_meltpool_physics(thermal_mat,
-                float(params['laserPower_W']),float(params['scanSpeed_mms']),
-                beam_diameter_um=80.0,preheat_C=80.0,
-                layer_um=float(params['layer_um']),hatch_um=float(params['hatch_um']),
-                wavelength='IR_1064nm')
+            th=calculate_meltpool_physics(
+                material_name=resolved,
+                laser_power_W=float(params['laserPower_W']),
+                scan_speed_mm_s=float(params['scanSpeed_mms']),
+                beam_diameter_um=80.0,
+                preheat_temp_C=80.0,
+                layer_thickness_um=float(params['layer_um']),
+                hatch_spacing_um=float(params['hatch_um']),
+                laser_wavelength='IR_1064nm')
             vd=compose_verdict(th,resolved)
             vs=verdict_score(vd['verdict'])
             prod=(float(params['scanSpeed_mms'])*float(params['hatch_um']))/(v_max*h_max)
             return float(vs)*float(prod),vd['verdict']
-        except Exception: return 0.0,'error'
+        except Exception as e:
+            return 0.0, str(e)
 
     opt=BayesianProcessOptimizer(resolved,lambda p:_obj(p)[0],
                                   param_bounds=param_bounds,n_warmup=n_warmup,seed=seed)

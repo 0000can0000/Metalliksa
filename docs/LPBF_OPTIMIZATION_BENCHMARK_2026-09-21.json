@@ -1,0 +1,67 @@
+{
+  "benchmark": "Phase 8 Sensitivity and Optimization",
+  "date": "2026-09-21",
+  "total_time_ms": 46685.12,
+  "Inconel 718": {
+    "bestParams": {
+      "laserPower_W": 409.58,
+      "scanSpeed_mms": 989.98,
+      "hatch_um": 180.2,
+      "layer_um": 61.84
+    },
+    "bestScore": 0.0,
+    "convergence_trajectory": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "Ti-6Al-4V": {
+    "bestParams": {
+      "laserPower_W": 372.94,
+      "scanSpeed_mms": 296.88,
+      "hatch_um": 90.85,
+      "layer_um": 31.06
+    },
+    "bestScore": 0.0,
+    "convergence_trajectory": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

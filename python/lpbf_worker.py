@@ -29,6 +29,7 @@ from lpbf_multilaser_plume import ShieldGasFlow, PlumeParameters, MultiLaserPlum
 from lpbf_optical_tomography import OpticalTomographySimulator
 from lpbf_powder_dem_compaction import PowderCompactionEngine
 from lpbf_support_optimization import SupportStructureOptimizer
+from lpbf_bayesian_optimizer import run_bayesian_optimization
 from lpbf_thermal_accumulation import AlloyThermalProperties, HatchProcessConfig, MultiTrackThermalEngine
 from lpbf_thermomechanical import analyze_distortion
 from lpbf_toolpath_kinematics import LPBFToolpathParser, GalvanometerKinematicsEngine, ScannerProfile
@@ -554,6 +555,15 @@ def main():
                     "mechanical_area_m2": opt.calculate_mechanical_requirement(area_m2)
                 }
 
+            elif method == "bayesian-optimizer":
+                payload = request["payload"]
+                data = run_bayesian_optimization(
+                    alloy_id=payload.get("alloyId", "in718"),
+                    param_bounds=payload.get("paramBounds"),
+                    n_iter=payload.get("nIterations", 20),
+                    n_warmup=payload.get("nWarmup", 5),
+                    seed=payload.get("seed", 42)
+                )
             elif method == "transient-enthalpy-fdm":         # Phase 21
                 payload = request["payload"]
                 solver = TransientEnthalpyFDMSolver(
@@ -638,3 +648,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

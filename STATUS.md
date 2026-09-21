@@ -1,7 +1,5 @@
-## 2026-09-21 - Faz 7 Tamamlandı: İleri Fizik Doğrulaması (Mikroyapı ve Kinetik)
-- Python'da 	est_phase7_microstructure_validation.py test dosyası eklenerek Hunt-Lu, Kirkwood, ve Hunt Morfolojisi parametrelerinin fiziksel sınırları (, R$) ile JMAK soğuma simülasyonları doğrulandı.
-- enchmark_phase7_microstructure.py scripti eklenerek IN718 ve Ti-6Al-4V için farklı proses koşullarında oluşan mikroyapı ve martenzit dönüşümleri docs/LPBF_MICROSTRUCTURE_BENCHMARK_2026-09-21.json olarak kanıt havuzuna aktarıldı.
-- METALLURGY_VALIDATION.md dokümanına Mikroyapı (Bölüm 5) ve Faz Kinetiği (Bölüm 6) fiziksel temelleri (JMAK, Scheil Additivity, Koistinen-Marburger) eklendi.
-- Backend'de lazer gücü ve hız parametresi okuma hataları düzeltildi.
-- Tüm doğrulama testleri (pytest) geçiyor.
-- Sonraki adım: Faz 8 (Hassasiyet ve Optimizasyon - UQ / Belirsizlik Analizi)
+## 2026-09-21 - Faz 8 Tamamlandı: Hassasiyet ve Optimizasyon
+- Backend'de yer alan lpbf_bayesian_optimizer.py modülü server/lpbfWorkerBridge.ts ve lpbf_worker.py üzerinden API endpointi olarak dışarıya açıldı.
+- Bayesian Optimizer'ın dış sınır ve anlamsız (keyhole/lack-of-fusion) parametrelerde 0 skoru vererek hatalı bölgeden uzaklaştığını doğrulayan referans solver testleri (	est_phase8_optimization.py) yazıldı.
+- IN718 ve Ti-6Al-4V için optimum proses penceresi parametrelerinin arayışı yapılarak docs/LPBF_OPTIMIZATION_BENCHMARK_2026-09-21.json çıktı dosyası üretildi.
+- Sistemdeki tüm Python (pytest, 	est:lpbf, 	est:meltpool) ve TypeScript (	est:unit) birim testleri koşturularak sistem bütünlüğü garanti altına alındı.

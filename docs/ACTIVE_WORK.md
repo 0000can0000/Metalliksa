@@ -1,4 +1,23 @@
-# Current owner — 01a0c339-7e60-7573-b548-4fd5e6cbef44, 2026-09-21
+# Current owner — 01a0c349-747d-7e52-bbf7-8e87df3211f7, 2026-09-21
+
+Continues shared LOCAL checkout from clean cda8c12; source01a0c339 stopped writes.
+Owns server/lpbfArtifactStore.ts, server/lpbfSourceImport.ts, related focused tests,
+repository integration and checkpoint documents/parent STATUS.md. First acceptance:
+streaming hash/size verification, contained regular files, exclusive immutable
+publication, owned staging cleanup, all bytes verified before metadata publication,
+and bytes+metadata backup/restore. Preserve unreviewed scientific evidence. Phase0
+OPEN; no live migration or secondary modules. CBM18Sep lacks these files; direct
+source fallback. Plan: artifact store → import → bundle → actual IN718 pilot.
+
+Storage package complete:14 new regressions/full156unitPASS, strict TS PASS.
+Actual IN718 three files550398609bytes imported/backed up/restored; portable report
+`.runtime/lpbf-source-archive-portable-01a0c349/report.json`. SHA identity unchanged,
+null measurement conversion preserved. Bundle snapshots no longer create WAL/SHM;
+sidecar-bearing bundles rejected. Docs LPBF_SOURCE_ARCHIVE/PROOF record limits.
+Next package: a bounded source archive API and UI integration, then HDF5 review and
+shared-core gates. Source archive is not a complete simulation/experiment backup.
+
+# Previous owner — 01a0c339-7e60-7573-b548-4fd5e6cbef44, 2026-09-21
 
 Continuation started from clean application HEAD affdaec. Source01a0c326 stops
 writing after dispatch. First package owns python/lpbf_worker.py,

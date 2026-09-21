@@ -1,3 +1,19 @@
+## 2026-09-21 — Source archive byte integrity and portable backup (software evidence)
+
+IN718 nist-mds2-2716, archived manifest/source-context,3 files/550398609bytes.
+Streaming dry-run → import → independent SQLite+bytes backup → restore PASS;
+documentSHA cbf30982263b00f485f5380de0b0bf2293d73807a14159e14a4aaa470400be75.
+Null temperature conversion and unreviewed-source-archive status preserved.
+Final portable pilot report `.runtime/lpbf-source-archive-portable-01a0c349/report.json`.
+SHA of its backup metadata5b4969e05db42e26c591f9ff17b52b863e742aeeb56cd743964598f0fb4d2f8a.
+Acceptance: every byte hash/size matches, no partial metadata publication, all
+historical revisions and independent artifact copies restore into a new directory.
+Full unit156PASS; strict server/new-test TS PASS. Regression caught and repaired
+hard-link ctime false positives and WAL/SHM state outside the metadata hash.
+This is storage/software evidence only. Local acquisition hashes are not publisher
+signatures; no HDF5 measurement review, calibrated temperatures, scientific phase
+acceptance, complete simulation backup, UI integration or legacy migration claimed.
+
 ## 2026-09-21 — CPU reference audit and material boundary
 
 Application code2a118ee, CPU Python3.12. Engineering26 tests:25PASS,1OpenFOAM

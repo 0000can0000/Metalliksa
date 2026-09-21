@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync, backup } from 'node:sqlite';
+import { artifactRelativePath } from './lpbfArtifactStore';
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export interface LpbfSourceDocument {
@@ -69,6 +70,7 @@ function documentJson(raw: unknown): string {
   for (const artifact of value.artifacts) {
     keys(artifact, ['relativePath', 'sha256', 'byteSize', 'sourceUrl']);
     const name = artifact.relativePath;
+    artifactRelativePath(name);
     if (!text(name) || name.length > 512 || /[\\:\x00-\x1f]/.test(name)
       || name.split('/').some(part => !part || part === '.' || part === '..') || paths.has(name.toLowerCase())) throw new Error('Invalid or duplicate artifact path');
     paths.add(name.toLowerCase());
@@ -78,6 +80,11 @@ function documentJson(raw: unknown): string {
   }
   if (value.sourceContext !== null && (typeof value.sourceContext !== 'object' || Array.isArray(value.sourceContext))) throw new Error('Source context must be an object or null');
   return serialized;
+}
+
+/** Validate and detach caller-owned data before asynchronous import work. */
+export function validateSourceDocument(raw: unknown): LpbfSourceDocument {
+  return JSON.parse(documentJson(raw)) as LpbfSourceDocument;
 }
 
 function decode(row: any): LpbfSourceRevision {
@@ -98,11 +105,12 @@ export class LpbfSourceRepository {
   private backingUp = false;
 
   /** Explicit path only: constructing this repository never migrates a legacy store. */
-  constructor(readonly filename: string) {
-    this.db = new DatabaseSync(filename);
+  constructor(readonly filename: string, options: { readOnly?: boolean } = {}) {
+    this.db = new DatabaseSync(filename, { readOnly: options.readOnly ?? false });
     try {
       const version = this.db.prepare('PRAGMA user_version').get()!.user_version;
       if (version === 0) {
+        if (options.readOnly) throw new Error('Unrecognized read-only database');
         if (this.db.prepare("SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").get()) throw new Error('Unrecognized existing database');
         this.db.exec(`BEGIN IMMEDIATE;
           CREATE TABLE lpbf_source_revisions (
@@ -114,7 +122,9 @@ export class LpbfSourceRepository {
           PRAGMA user_version=1; COMMIT;`);
       } else if (version !== 1) throw new Error('Unsupported LPBF source database version');
       if (this.db.prepare('SELECT kind FROM lpbf_metadata').get()?.kind !== 'metalliksa-lpbf-sources-v1') throw new Error('Unrecognized database identity');
-      this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=250;');
+      if (options.readOnly) {
+        if (this.db.prepare('PRAGMA integrity_check').get()!.integrity_check !== 'ok') throw new Error('Metadata integrity check failed');
+      } else this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=250;');
     } catch (error) { this.db.close(); throw error; }
   }
 
@@ -140,6 +150,11 @@ export class LpbfSourceRepository {
     identifier(datasetId);
     if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid history pagination');
     return this.db.prepare('SELECT * FROM lpbf_source_revisions WHERE dataset_id=? ORDER BY revision LIMIT ? OFFSET ?').all(datasetId, limit, offset).map(decode);
+  }
+
+  /** Stream every historical revision from a fixed backup snapshot. */
+  *allRevisions(): Generator<LpbfSourceRevision> {
+    for (const row of this.db.prepare('SELECT * FROM lpbf_source_revisions ORDER BY dataset_id, revision').iterate()) yield decode(row);
   }
 
   save(raw: unknown, expectedRevision: number): LpbfSourceRevision {
@@ -169,8 +184,11 @@ export class LpbfSourceRepository {
     const filename = path.join(directory, 'metadata.sqlite');
     try {
       await backup(this.db, filename);
-      const restored = new DatabaseSync(filename, { readOnly: true });
+      const restored = new DatabaseSync(filename);
       try {
+        // Only the newly created backup is changed. A portable snapshot must not
+        // depend on (or create on read) unhashed WAL/SHM sidecar state.
+        restored.exec('PRAGMA journal_mode=DELETE');
         if (restored.prepare('PRAGMA integrity_check').get()!.integrity_check !== 'ok') throw new Error('Backup integrity check failed');
         for (const row of restored.prepare('SELECT * FROM lpbf_source_revisions').iterate()) decode(row);
       } finally { restored.close(); }

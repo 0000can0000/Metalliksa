@@ -1,5 +1,18 @@
 # CURRENT CONTINUATION — LPBF engines and database FIRST
 
+CURRENT OWNER01a0c349-747d-7e52-bbf7-8e87df3211f7. Storage package now complete:
+lpbfArtifactStore/import/bundle plus source repository integration,14new tests,
+full156unitPASS, strictTS PASS. Actual IN7183files550398609bytes round-trip PASS.
+Portable pilot `.runtime/lpbf-source-archive-portable-01a0c349/report.json`.
+Streaming SHA/size, junction/path checks, exclusive publication, private staging
+cleanup, dry-run and all-bytes-before-metadata import; SQLite snapshot+all historical
+artifact bytes copied into new bundle directories. Restore verifies before creating
+destination; snapshot DELETE journal mode and rejection of SQLite sidecars prevent
+unhashed WAL state. ctime hard-link race fixed by retaining hash/size/mtime checks.
+See LPBF_SOURCE_ARCHIVE.md/PROOF. No live API/UI or legacy migration yet.
+NEXT: bounded API/UI source archive workflow; HDF5 measurement review/common core
+and Phase0 remain OPEN. Historical NEXT artifact-storage instruction below is done.
+
 LATEST CHECKPOINT: source metadata repository implemented and verified (next git
 log identifies commit). `server/lpbfSourceRepository.ts` uses node:sqlite with
 immutable revisions, expected-revision conflicts, bounded finite JSON validation,

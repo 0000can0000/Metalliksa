@@ -106,7 +106,7 @@ export class LpbfRunRepository {
       if (this.db.prepare('SELECT kind FROM lpbf_metadata').get()?.kind !== 'metalliksa-lpbf-runs-v1') throw new Error('Invalid run database identity');
       if (options.readOnly) {
         if (this.db.prepare('PRAGMA integrity_check').get()!.integrity_check !== 'ok') throw new Error('Run database integrity failed');
-      } else this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=250;');
+      } else this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=250; PRAGMA max_page_count=262144;');
     } catch (error) { this.db.close(); throw error; }
   }
   close() {

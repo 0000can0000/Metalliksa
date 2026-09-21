@@ -8,6 +8,9 @@ export function createLpbfSourcesRouter(service = new LpbfSourceArchiveService()
   router.use(prefix, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      if (process.env.METALLIKSA_READ_ONLY === 'true') {
+        res.status(403).json({ error: 'Application is in read-only mode. Write operations are disabled.' }); return;
+      }
       const origin = req.get('origin');
       if (req.get('sec-fetch-site') === 'cross-site' || (origin !== undefined && origin !== `${req.protocol}://${req.get('host')}`)) {
         res.status(403).json({ error: 'Source archive requests must originate from this application.' }); return;

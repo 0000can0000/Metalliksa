@@ -1996,6 +1996,10 @@ export interface PythonLpbfBuildJobResult {
   murakami?: PythonLpbfMurakamiBlock | null;
   qualification?: PythonLpbfQualificationBlock | null;
   cache?: PythonLpbfCacheMeta | null;
+  porosity?: any;
+  kinematics?: any;
+  microstructure?: any;
+  kinetics?: any;
 }
 
 export interface PythonLPBFResult {

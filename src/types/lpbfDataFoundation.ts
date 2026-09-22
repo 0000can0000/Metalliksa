@@ -194,6 +194,17 @@ export const ALLOY_THERMAL_PROPERTIES: Record<LPBFAlloyId, AlloyThermalConstants
     lofVedThreshold_J_mm3: 52,
     keyholeVedThreshold_J_mm3: 125,
   },
+  in625: {
+    meltingPoint_C: 1350,
+    density_kg_m3: 8440,
+    specificHeat_J_kgK: 410,
+    thermalConductivity_W_mK: 9.8,
+    thermalDiffusivity_m2_s: 2.83e-6,
+    enthalpyOfMelting_hs_J_m3: 2.4e9,
+    defaultAbsorptivity: 0.35,
+    lofVedThreshold_J_mm3: 50,
+    keyholeVedThreshold_J_mm3: 110,
+  },
 };
 
 /**

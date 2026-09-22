@@ -1,6 +1,12 @@
 # Metalliksa roadmap
 
-This is the current product roadmap. It separates implemented research capabilities from the remaining evidence, integration, and production-readiness work. A completed phase is an implementation milestone, not a claim of experimental qualification.
+> **Important Navigation Note:** 
+> Metalliksa operates on two distinct, parallel roadmaps to separate physical simulation features from commercial and engineering readiness.
+> 
+> 1. **Physics & Features Roadmap (This Document):** Tracks the technical implementation of physical solvers, simulation models, and algorithms across 21 implementation milestones (Phases 1-21).
+> 2. **Engineering & Pilot Roadmap (UI & Code):** Tracks strict software, quality, and pilot qualification gates (Tasks A01-H02 / Gates K0-K4) needed for industrial usage. This is managed in `src/data/engineeringRoadmap.ts` and visible in the application's Engineering Roadmap UI panel.
+> 
+> *A completed phase in this document is an algorithmic implementation milestone, not a claim of experimental qualification or production readiness (which belongs to the Engineering Roadmap).*
 
 ## Current position
 

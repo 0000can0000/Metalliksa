@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import numpy as np
-from lpbf_material_registry import enthalpy_table, property_at
+from lpbf_core_physics import enthalpy_table, property_at, calculate_mesh_domain
 from lpbf_evidence import thermal_audits
 from lpbf_peak import PeakMeltTracker, PEAK_EXTRACTION
 
@@ -19,7 +19,6 @@ def generate_case(p, m, folder):
     folder = Path(folder); (folder/"system").mkdir(parents=True, exist_ok=True)
     (folder/"constant").mkdir(exist_ok=True)
     segments, end = scan_segments(p)
-    from lpbf_core_physics import calculate_mesh_domain
     domain = calculate_mesh_domain(p)
     radius, span, nxy, nz, dx, bottom = domain["radius"], domain["span"], domain["nxy"], domain["nz"], domain["dx"], -domain["substrate_depth"]
     if nxy*nxy*nz > 600000: raise ValueError("OpenFOAM thermal cell budget exceeded")

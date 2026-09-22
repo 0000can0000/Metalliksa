@@ -87,6 +87,15 @@ compare operator/units/model identity. Do not replace analytical specialist laws
 with transient laws under an unchanged model ID. Their material adapters may
 reuse data while keeping explicit property temperature/optical conventions.
 
+Extraction checkpoint (2026-09-22): `lpbf_core_physics.py` now exposes the shared
+`property_at`, `enthalpy_table`, and mesh-domain API. The transient reference
+solver, OpenFOAM adapter, and evidence audit consume those shared entry points;
+the material registry retains its legacy function exports for compatibility.
+Implementations and numerical operators are unchanged in this API-routing slice.
+Verification: engineering26PASS/1OpenFOAM-skip, heat-source7PASS/1skip, and
+core-contract8PASS on Windows Python3.12. Compiled OpenFOAM execution remains
+unavailable in this environment; the independent reference/parity tests ran.
+
 GPU candidate is a thermal-only implementation of the same stationary reference
 contract. Require explicit device, no silent fallback, equal scenario/material/
 source/boundaries, timestep/mesh studies, energy closure and CPU comparisons

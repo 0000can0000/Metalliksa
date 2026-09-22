@@ -11,6 +11,12 @@
 - `Inconel 625` için desteklenmeyen surrogate hesaplamayı engelleyen Python regresyonu eklendi.
 - Doğrulama: TypeScript lint PASS; izole Python solver sözleşme testi PASS. Tam `test_lpbf_build_job.py` Windows ortamında çıktı vermediği için tamamlanmadan durduruldu.
 
+## 2026-09-22 - Ortak LPBF Fizik API'si
+- Build-job Python Phase 5 hızlı suite'i PASS; desteklenmeyen alaşım kimliği regresyonu dahil.
+- Malzeme özellik interpolasyonu, entalpi tablosu ve mesh-domain çağrıları `lpbf_core_physics.py` ortak giriş noktası altında toplandı. Transient solver, OpenFOAM adaptörü ve kanıt denetimi bu API'yi kullanıyor; eski registry dışa aktarımları uyumluluk için kaldı.
+- Doğrulama: engineering 26 PASS / 1 OpenFOAM atlandı; heat-source 7 PASS / 1 atlandı; core-contract 8 PASS. Derlenmiş OpenFOAM çalıştırması mevcut ortamda yok. Sayısal kontroller başarılı.
+- Sıradaki adım: ortak core içindeki scan schedule ve cell-integrated source sınırını parity fixture'larıyla çıkarmak; solver kimliklerini ve frozen eşikleri korumak.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

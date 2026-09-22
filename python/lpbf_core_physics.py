@@ -1,5 +1,7 @@
 import math
 import numpy as np
+from lpbf_material_registry import property_at as _registry_property_at
+from lpbf_material_registry import enthalpy_table as _registry_enthalpy_table
 
 def calculate_mesh_domain(p):
     """Calculates the 3D computational domain size and discretization (SI units)."""
@@ -19,7 +21,16 @@ def calculate_mesh_domain(p):
         "dx": dx,
         "substrate_depth": substrate_depth
     }
-from lpbf_material_registry import property_at, enthalpy_table
+
+
+def property_at(material, temperature, column):
+    """Shared LPBF material-property interpolation boundary (temperature in K)."""
+    return _registry_property_at(material, temperature, column)
+
+
+def enthalpy_table(material):
+    """Shared LPBF enthalpy boundary; preserves the versioned registry law."""
+    return _registry_enthalpy_table(material)
 
 def evaluate_material_properties(m, T):
     """

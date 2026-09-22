@@ -10,7 +10,9 @@ import math
 import datetime
 from pathlib import Path
 import numpy as np
-from lpbf_material_registry import material, property_at, enthalpy_table
+from lpbf_material_registry import material
+from lpbf_core_physics import property_at, enthalpy_table
+from lpbf_core_physics import calculate_mesh_domain
 from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
@@ -209,7 +211,6 @@ def liquidus_crossing_sums(old, new, active, dx, dt, liquidus):
 def transient(p, m, report=lambda *args: None, artifact_dir=None):
     segments, end = scan_segments(p)
     dx_requested = p["mesh_um"]*1e-6
-    from lpbf_core_physics import calculate_mesh_domain
     domain = calculate_mesh_domain(p)
     radius, span, nxy, nz, dx, substrate = (domain[k] for k in ("radius", "span", "nxy", "nz", "dx", "substrate_depth"))
     if nxy*nxy*nz > 600000:

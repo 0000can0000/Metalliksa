@@ -74,7 +74,7 @@ def resource_estimate(p, m):
 
 def thermal_audits(coords, volumes, p, m, liquid_fraction):
     import numpy as np
-    from lpbf_material_registry import property_at
+    from lpbf_core_physics import property_at
     if (not np.isfinite(coords).all() or not np.isfinite(volumes).all()
             or np.any(volumes <= 0) or not np.isfinite(liquid_fraction).all()
             or np.any(liquid_fraction < 0) or np.any(liquid_fraction > 1)):

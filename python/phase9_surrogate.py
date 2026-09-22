@@ -22,10 +22,12 @@ def _get_model_path(alloy_name: str) -> Path:
 
 def generate_synthetic_data(alloy_name: str, num_samples: int = 100):
     """Generates training data using the baseline physical solver."""
-    print(f"[{alloy_name}] Generating {num_samples} synthetic data points...")
+    import pandas as pd
+    
+    print(f"[{alloy_name}] Generating {num_samples} dynamic synthetic data points (varying T0)...")
     data = []
     
-    # Bounding boxes for random sampling
+    # 1. Generate dynamic points (for T0 sensitivity)
     p_range = (100, 500)
     v_range = (400, 2000)
     t_preheat_range = (25, 200)
@@ -57,10 +59,33 @@ def generate_synthetic_data(alloy_name: str, num_samples: int = 100):
                     "W": w, "D": d, "L": l
                 })
         except Exception as e:
-            print(f"Error for P={P}, V={V}: {e}")
+            # print(f"Error for P={P}, V={V}: {e}")
             continue
             
-    print(f"[{alloy_name}] Successfully generated {len(data)} valid points.")
+    # 2. Load comprehensive dataset points (Phase 15 / ML Data generation)
+    csv_path = Path("../data/synthetic_process_map.csv")
+    if csv_path.exists():
+        print(f"[{alloy_name}] Loading comprehensive data from {csv_path}...")
+        df = pd.read_csv(csv_path)
+        # Map nomenclature if necessary
+        query_mat = "Inconel 718" if alloy_name.upper() == "IN718" else alloy_name
+        df_alloy = df[df["Material"] == query_mat]
+        
+        if not df_alloy.empty:
+            # We only need unique P, V combinations for the meltpool geometries
+            df_unique = df_alloy.drop_duplicates(subset=["Power_W", "Speed_mm_s"])
+            for _, row in df_unique.iterrows():
+                data.append({
+                    "P": row["Power_W"],
+                    "V": row["Speed_mm_s"],
+                    "T0": 25.0, # Dataset used T0=25.0
+                    "W": row["Width_um"],
+                    "D": row["Depth_um"],
+                    "L": row["Length_um"]
+                })
+            print(f"[{alloy_name}] Added {len(df_unique)} dense points from comprehensive process map.")
+
+    print(f"[{alloy_name}] Successfully aggregated {len(data)} valid points.")
     return data
 
 def train_surrogate(alloy_name: str, num_samples: int = 200):

@@ -70,8 +70,12 @@ export const IndustrialCertificationLab: React.FC = () => {
               className="w-full bg-slate-900 text-white border border-slate-700 rounded-md p-2"
             >
               <option value="IN718">Inconel 718</option>
+              <option value="Inconel 625">Inconel 625</option>
               <option value="Ti6Al4V">Ti-6Al-4V</option>
               <option value="AlSi10Mg">AlSi10Mg</option>
+              <option value="316L SS">316L Stainless Steel</option>
+              <option value="CoCrMo">CoCrMo (Cobalt-Chrome)</option>
+              <option value="Hastelloy X">Hastelloy X</option>
             </select>
           </div>
         </div>

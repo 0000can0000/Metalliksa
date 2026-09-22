@@ -33,9 +33,14 @@ export const IndustrialCertificationLab: React.FC = () => {
           <ShieldCheck className="text-emerald-400 w-8 h-8" />
           Endüstriyel Sertifikasyon & Yapay Zeka Yorulma Ömrü (Faz 9 & 10)
         </h2>
-        <p className="text-slate-400 mb-6">
+        <p className="text-slate-400 mb-4">
           Faz 9 (Meta-Model) ve Faz 10 (Gumbel Uç Değer & Murakami) kullanılarak milisaniyeler içinde üretim kalitesi ve yorulma sınırı (Fatigue Limit) tahmini.
         </p>
+        <div className="mb-6 flex items-center gap-2">
+          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/30">
+            Powered by Phase 15 Hybrid Dataset (1296 Dense Physical Points)
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">

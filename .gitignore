@@ -28,3 +28,4 @@ graft/.graph/
 
 # Local LPBF source archive bytes and SQLite metadata
 .lpbf-sources/
+.lpbf-surrogates/

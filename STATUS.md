@@ -1,11 +1,24 @@
-## 2026-09-22 - Faz 9 Tamamlandı: Vekil Modeller (AI Meta-Modelleri ve Hata Bütçesi)
-- Faz 5-7 GPU/Analitik motorları kullanılarak sentetik "Process Map" verisi (Lazer gücü, Hız, Ön Isıtma vb.) üreten ve bu veriyi makine öğrenmesiyle (Random Forest Regressor) eğiten `phase9_surrogate.py` entegre edildi.
-- Grup bazlı ayrılmış değerlendirme yapıldı ve modelin sınırları dışına (Out-of-Distribution) çıkıldığında sistemin anında "Confidence: 0.0" (Hata Bütçesi) vererek kullanıcıyı uyarması sağlandı.
-- Testler (`test_phase9_surrogate.py`) %100 kapsama ile çalıştırıldı ve in-distribution (eğitim sınırları içi) parametrelerde saniyenin binde biri (1 ms) sürede >%80 güvenle fiziksel tahminler yapıldığı kanıtlandı.
-- Sonraki adım: Faz 10 (Endüstriyel Adaptasyon ve Yorulma Ömrü / Fatigue Life).
+# Metalliksa Proje Durumu (STATUS)
 
-## 2026-09-21 - Faz 8 Tamamlandı: Hassasiyet ve Optimizasyon
-- Backend'de yer alan lpbf_bayesian_optimizer.py modülü server/lpbfWorkerBridge.ts ve lpbf_worker.py üzerinden API endpointi olarak dışarıya açıldı.
-- Bayesian Optimizer'ın dış sınır ve anlamsız (keyhole/lack-of-fusion) parametrelerde 0 skoru vererek hatalı bölgeden uzaklaştığını doğrulayan referans solver testleri (	est_phase8_optimization.py) yazıldı.
-- IN718 ve Ti-6Al-4V için optimum proses penceresi parametrelerinin arayışı yapılarak docs/LPBF_OPTIMIZATION_BENCHMARK_2026-09-21.json çıktı dosyası üretildi.
-- Sistemdeki tüm Python (pytest, 	est:lpbf, 	est:meltpool) ve TypeScript (	est:unit) birim testleri koşturularak sistem bütünlüğü garanti altına alındı.
+*Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
+
+## 📌 Genel İlerleme Özeti
+- **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
+- **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.
+
+---
+
+## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi
+- Metalliksa kurallarına (sadece fiziksel temelli veriler) uygun olarak Ti-6Al-4V ve IN718 için grid-search tabanlı 1296 kombinasyonluk bir process map (`data/synthetic_process_map.csv`) üretildi (`python/generate_ml_dataset.py`).
+- Faz 9 Surrogate Modeli, bu genişletilmiş fizik-tabanlı CSV verisini algılayıp rastgele verilerle birleştirerek hibrit, çok daha yoğun ve yüksek doğruluklu (OOD korumalı) bir eğitim süreci yürütecek şekilde güncellendi.
+- **Sıradaki Adım (Production Readiness):** Geriye kalan "End-to-End CAD/Process Contract" (Faz 14 sonrası entegrasyonlar) veya Mekanik Tahmin Modellerinin (PINN ONNX) web için derlenmesi üzerinden ilerlemek.
+
+## 2026-09-22 - Faz 14 UI ve STL Araçları
+- Uygulama arayüzüne 3D Voxelization (hacimsel ayrıklaştırma) ve STL işleme araçları (Faz 14) entegre edildi. Git geçmişinde `feat: Add Phase 14 voxelization, STL tools and update UI` ile sabitlendi.
+
+## 2026-09-21 - Faz 9 & 10 Arayüz Entegrasyonları
+- AI Meta-Modelleri (Faz 9) ve Gumbel/Murakami Yorulma Ömrü (Fatigue - Faz 10) endpointleri, React UI tarafına bağlandı (`85f41b4`).
+- Grup bazlı ayrılmış değerlendirme yapıldı ve modelin sınırları dışına (Out-of-Distribution) çıkıldığında sistemin anında "Confidence: 0.0" uyarısı vermesi sağlandı.
+
+## 2026-09-21 - Faz 8 Hassasiyet ve Optimizasyon
+- Backend'de yer alan `lpbf_bayesian_optimizer.py` modülü `server/lpbfWorkerBridge.ts` ve API üzerinden dışarıya açıldı. Optimum proses penceresi parametrelerinin arayışı yapılarak referans belgeler üretildi.

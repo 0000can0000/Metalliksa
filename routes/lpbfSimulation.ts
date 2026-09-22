@@ -18,6 +18,7 @@ for (const [method, route, rpc] of [
   ["delete", "/api/lpbf/jobs/:id", "cancel"],
   ["post", "/api/python/lpbf-solidification-microstructure", "solidification-microstructure"],
   ["post", "/api/python/lpbf-thermomechanical-distortion", "thermomechanical-distortion"],
+  ["post", "/api/python/lpbf-industrial-fatigue", "industrial-fatigue"],
   ["post", "/api/python/lpbf-experimental-validation", "experimental-validation"],
   ["post", "/api/python/lpbf-modulus-fno", "modulus-fno"],
   ["post", "/api/python/lpbf-toolpath-kinematics", "toolpath-kinematics"],
@@ -36,7 +37,7 @@ for (const [method, route, rpc] of [
   lpbfSimulationRouter[method](route, async (req, res) => {
     try {
       if (rpc === "submit" && Buffer.byteLength(JSON.stringify(req.body)) > 50000000) return res.status(413).json({ error: "Simulation input too large" });
-      const passBody = ["submit", "estimate", "solidification-microstructure", "thermomechanical-distortion", "experimental-validation", "modulus-fno", "toolpath-kinematics", "fatigue-fracture", "stl-voxelize", "adaptive-feedforward", "multilaser-plume", "powder-dem-compaction", "optical-tomography", "support-optimization", "transient-enthalpy-fdm", "thermal-accumulation", "keyhole-raytracing", "bayesian-optimizer"].includes(rpc);
+      const passBody = ["submit", "estimate", "solidification-microstructure", "thermomechanical-distortion", "industrial-fatigue", "experimental-validation", "modulus-fno", "toolpath-kinematics", "fatigue-fracture", "stl-voxelize", "adaptive-feedforward", "multilaser-plume", "powder-dem-compaction", "optical-tomography", "support-optimization", "transient-enthalpy-fdm", "thermal-accumulation", "keyhole-raytracing", "bayesian-optimizer"].includes(rpc);
       const data = await lpbfWorker.request(rpc, passBody ? req.body : ("id" in req.params ? req.params.id : null));
       res.status(rpc === "submit" ? 202 : 200).json(data);
     } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Simulation request failed" }); }

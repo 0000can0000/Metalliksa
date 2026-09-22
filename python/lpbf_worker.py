@@ -344,8 +344,17 @@ def main():
                 payload = request["payload"]
                 p = payload.get("params", {})
                 m = payload.get("material", {})
-                cfd = payload.get("cfdResult", None)
-                data = analyze_distortion(p, m, cfd)
+                from lpbf_thermomechanical import analyze_distortion
+                data = analyze_distortion(p, m)
+            elif method == "industrial-fatigue":              # Phase 10 (New)
+                payload = request["payload"]
+                from phase10_industrial import run_industrial_fatigue_analysis
+                alloy = payload.get("alloy", "IN718")
+                power = float(payload.get("power_W", 300))
+                speed = float(payload.get("speed_mms", 1000))
+                layer = float(payload.get("layer_um", 30.0))
+                hatch = float(payload.get("hatch_um", 100.0))
+                data = run_industrial_fatigue_analysis(alloy, power, speed, layer, hatch)
             elif method == "experimental-validation":         # Phase 10
                 payload = request["payload"]
                 p = payload.get("params", {})

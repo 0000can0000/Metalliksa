@@ -27,6 +27,7 @@ const ThermomechanicalDistortionLab = lazy(() => import("./components/Thermomech
 const ExperimentalValidationLab = lazy(() => import("./components/ExperimentalValidationLab").then(m => ({ default: m.ExperimentalValidationLab }))); // Phase 10
 const ModulusFNOLab = lazy(() => import("./components/ModulusFNOLab").then(m => ({ default: m.ModulusFNOLab }))); // Phase 11
 const LpbfToolpathStudioLab = lazy(() => import("./components/LpbfToolpathStudioLab").then(m => ({ default: m.LpbfToolpathStudioLab }))); // Phase 12
+const ToolpathThermalMapLab = lazy(() => import("./components/ToolpathThermalMapLab").then(m => ({ default: m.ToolpathThermalMapLab }))); // Phase 12+17
 const IndustrialCertificationLab = lazy(() => import("./components/IndustrialCertificationLab").then(m => ({ default: m.IndustrialCertificationLab }))); // Phase 9 & 10
 const MurakamiFatigueLab = lazy(() => import("./components/MurakamiFatigueLab").then(m => ({ default: m.MurakamiFatigueLab }))); // Phase 13
 const LpbfDefectTwinLab = lazy(() => import("./components/LpbfDefectTwinLab").then(m => ({ default: m.LpbfDefectTwinLab }))); // Phase 14
@@ -124,6 +125,7 @@ export default function App() {
       case 'experimental-validation': return <ExperimentalValidationLab />; // Phase 10
       case 'modulus-fno-lab': return <ModulusFNOLab />; // Phase 11
       case 'toolpath-studio': return <LpbfToolpathStudioLab />; // Phase 12
+      case 'toolpath-thermal-map': return <ToolpathThermalMapLab />; // Phase 12+17
       case 'industrial-certification': return <IndustrialCertificationLab />; // Phase 9 & 10
       case 'murakami-fatigue': return <MurakamiFatigueLab />; // Phase 13
       case 'defect-twin': return <LpbfDefectTwinLab />; // Phase 14

@@ -418,6 +418,18 @@ def main():
                     "kitagawa_takahashi_curve": kt_curve,
                     "paris_crack_growth": paris_res
                 }
+            elif method == "toolpath-thermal-map":            # Option 1 Toolpath 3D Viz
+                payload = request["payload"]
+                from lpbf_toolpath_thermal_api import generate_toolpath_thermal_map
+                alloy = payload.get("alloy", "IN718")
+                power = float(payload.get("power_W", 250))
+                speed = float(payload.get("speed_mms", 1000))
+                strategy = payload.get("strategy", "chessboard")
+                hatch = float(payload.get("hatch_um", 100))
+                angle = float(payload.get("angle_deg", 45))
+                island = float(payload.get("island_size_mm", 5.0))
+                data = generate_toolpath_thermal_map(alloy, power, speed, strategy, hatch, angle, island)
+
             elif method == "stl-voxelize":                    # Phase 14
                 payload = request["payload"]
                 stl_text = payload.get("stlContent", "")

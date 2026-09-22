@@ -4,17 +4,54 @@ import {
 } from 'recharts';
 import { pythonComputationService } from '../services/pythonComputationService';
 
-const SAMPLE_GCODE = `; Standard LPBF Meander Hatch with Corner Delays
-G0 X0.0 Y0.0
-M3 S300
-G1 X20.0 Y0.0 F60000
-G1 X20.0 Y0.2 F60000
-G1 X0.0 Y0.2 F60000
-G1 X0.0 Y0.4 F60000
-G1 X20.0 Y0.4 F60000
+const SAMPLE_GCODE = `; MetalliX Thin Wall Lattice Cross-Section (Phase 14 -> Phase 12)
+; This geometry forces severe galvo mirror deceleration at sharp corners.
+; Toggle "Skywriting" to see how the kinematic energy spikes (Hotspots) are mitigated.
+
+; --- X-Aligned Lattice Walls ---
+G0 X-7.5 Y-7.5
+M3 S280
+G1 X7.5 Y-7.5 F60000
 M5
-G0 X0.0 Y0.0
-`;
+G0 X-7.5 Y-3.75
+M3 S280
+G1 X7.5 Y-3.75 F60000
+M5
+G0 X-7.5 Y0.0
+M3 S280
+G1 X7.5 Y0.0 F60000
+M5
+G0 X-7.5 Y3.75
+M3 S280
+G1 X7.5 Y3.75 F60000
+M5
+G0 X-7.5 Y7.5
+M3 S280
+G1 X7.5 Y7.5 F60000
+M5
+
+; --- Y-Aligned Lattice Walls (Crossing the X walls) ---
+G0 X-7.5 Y-7.5
+M3 S280
+G1 X-7.5 Y7.5 F60000
+M5
+G0 X-3.75 Y-7.5
+M3 S280
+G1 X-3.75 Y7.5 F60000
+M5
+G0 X0.0 Y-7.5
+M3 S280
+G1 X0.0 Y7.5 F60000
+M5
+G0 X3.75 Y-7.5
+M3 S280
+G1 X3.75 Y7.5 F60000
+M5
+G0 X7.5 Y-7.5
+M3 S280
+G1 X7.5 Y7.5 F60000
+M5
+G0 X0.0 Y0.0`;
 
 export const LpbfToolpathStudioLab: React.FC = () => {
   const [toolpathText, setToolpathText] = useState(SAMPLE_GCODE);

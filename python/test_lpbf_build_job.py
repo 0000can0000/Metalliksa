@@ -232,6 +232,15 @@ def main():
         g["id"] == "downskin" and g["status"] == "fail" for g in ds["verdict"]["gates"]
     ), ds["verdict"]
 
+    unsupported = run_job({"alloyId": "Inconel 625", "bypassCache": True})
+    assert unsupported["success"] is False
+    assert "Unsupported LPBF alloy identity" in unsupported["error"]
+    assert "No surrogate alloy" in unsupported["error"]
+
+    omitted_alloy = run_job({"bypassCache": True})
+    assert omitted_alloy["success"] is True
+    assert omitted_alloy["alloyId"] == "in718"
+
     if not SLOW:
         print("PASS: solve_lpbf_build_job Phase 5 fast (cache, lazy UQ/NIST, Murakami paste)")
         print("HINT: re-run with --slow for UQ + NIST AM-Bench coverage")

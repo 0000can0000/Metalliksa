@@ -337,7 +337,19 @@ def solve_lpbf_build_job(data):
                 cached["thermal"]["computeTimeMs"] = cached["computeTimeMs"]
             return cached
 
-    alloy_id = resolve_alloy_id(data.get("alloyId") or "in718") or "in718"
+    requested_alloy = data.get("alloyId")
+    if requested_alloy is None or not str(requested_alloy).strip():
+        alloy_id = "in718"
+    else:
+        alloy_id = resolve_alloy_id(requested_alloy)
+        if alloy_id is None:
+            return {
+                "success": False,
+                "error": (
+                    f"Unsupported LPBF alloy identity: {requested_alloy!r}. "
+                    "No surrogate alloy was submitted."
+                ),
+            }
     mats = ALLOY_MATERIALS[alloy_id]
     thermal_mat = data.get("thermalMaterial") or mats["thermal"]
     slicer_mat = data.get("slicerMaterial") or mats["slicer"]

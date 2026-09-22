@@ -6,6 +6,11 @@
 - **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
 - **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.
 
+## 2026-09-22 - Build-job Alaşım Kimliği Güvenlik Onarımı
+- Build-job solver artık açıkça gönderilen desteklenmeyen `alloyId` değerlerini IN718'e sessizce düşürmek yerine hata ile reddediyor; alaşım belirtilmemesi durumundaki geriye dönük IN718 varsayılanı korunuyor.
+- `Inconel 625` için desteklenmeyen surrogate hesaplamayı engelleyen Python regresyonu eklendi.
+- Doğrulama: TypeScript lint PASS; izole Python solver sözleşme testi PASS. Tam `test_lpbf_build_job.py` Windows ortamında çıktı vermediği için tamamlanmadan durduruldu.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

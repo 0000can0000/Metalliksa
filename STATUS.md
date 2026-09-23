@@ -64,6 +64,15 @@
 - Çıplak levha CPU modu ve +X iz ortası ever-liquidus W/D termal kesit operatörü (`f4e5ba0`) 13 ilgili testte PASS (1 platform SKIP); 3 ağ/3 zaman pilotunda enerji kapısı geçti, W/D yakınsaması `inconclusive`. NIST 10 mm izi, gerçek ışın profili ve dört optik kesit ortalaması çözülemediği için deney karşılaştırması `unavailable`; P4/P5 bilimsel kabulü açık.
 - Sıradaki somut adım: GPU kuyruk adapterini ve bundle UI'sini entegre etmek; IN625 kaynak/model veri kapısını sonuçlandırmak; sonra birleşik sayısal/tarayıcı kontrolleriyle P4–P9 bitiş kararı vermek. Dış belge değişiklikleri korunuyor; EIS/EDS kapsam dışı.
 
+## 2026-09-23 - LPBF Goal Kaynak ve GPU Kuyruk Entegrasyonu
+
+- Sunucu-yerel run bundle arayüzü (`2c5b78f`) ve IN625 erime aralığıyla sınırlı entalpi taraması (`a221466`) eklendi. IN625 tam transient ve build-job desteği hâlâ kapalı; doğrudan melt-pool hesabındaki bilinmeyen malzemenin IN718'e sessiz düşmesi `3fe675a` ile giderildi.
+- Ayrı `gpu-thermal-pilot` iş türü mevcut kuyruğa bağlandı (`98c33aa`). Açık `cuda:0` ile gerçek RTX 4060 kuyruk sonucu CPU paritesi PASS: son alan L2 bağıl farkı `2.10e-9`, azami bağıl fark `3.10e-9`, erime hacmi farkı sıfır. Python kuyruk/parite/worker 7 PASS; HTTP 1 PASS. Bu yalnız sınırlı tek iz, tek katman, toz katmanlı sayısal pilottur; kaynak integrali CPU'da, termal evrim CUDA'dadır. Arşiv yakalama ve üretim/deney geçerliliği unavailable.
+- NIST AMB2022-03 optik Table 4'ün yedi koşulu yerel transkripsiyon olarak exact byte/SHA manifestiyle kaynak kataloğuna alındı (`34bd387`). Yayıncı ham dosyası/PDF olarak etiketlenmiyor. Kaynak önizleme/içe aktarma HTTP, bozuk hash ve eski revizyon testleri dâhil 5 odaklı test PASS; TypeScript lint PASS; ajan Chrome klavye görünümünü doğruladı. Kaynak kullanım şartları bilinmiyor olarak gösteriliyor. Ölçümle model kıyası ayrı kapıda açık.
+- NIST optik karşılaştırma kapısı (`dffa0e5`) exact kaynak revizyonu/document SHA, yerel Tablo 4 içeriği, 10 mm +X çıplak levha, gerçek D4σ profil kanıtı, altı kesitlik optik operatör ve bağımsız 3+3 yakınsama olmadan sayısal hata üretmiyor. Beş Python testi PASS; gerçek 200 µm bare-plate pilotu `unavailable`, `errors:null`. Sentetik pozitif şema yalnız kapı mantığını sınar, deneysel başarı kanıtı değildir. Arşiv/API bağlantısı sürüyor.
+- Yeni gerçek IN718 yakınsama denemesinde 60 W, üç ağ [45,30,20] µm ve üç zaman [4e-7,2e-7,1e-7] s: enerji kapanışı azami yaklaşık `3.03e-14`, fakat kaba ağda erime yok ve zaman boyunca ayrık W/D aynı. Dolayısıyla P4 `inconclusive`; NIST karşılaştırması da henüz `unavailable`.
+- Sıradaki somut adım: GPU pilotu ayrı UI türüyle sunmak; kaynak revizyonuna bağlı NIST karşılaştırma raporunu entegre etmek; ardından P2/P4/P7 bilimsel kapıları ile birleşik P8/P9 kontrolünü sürdürmek. Dış dosya değişiklikleri korunuyor.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

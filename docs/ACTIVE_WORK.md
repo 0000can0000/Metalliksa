@@ -21,6 +21,11 @@ post-projection divergence gates at 9^3 (15 iterations) and 17^3 (35
 iterations), and exercise zero/nonzero Neumann compatibility, disconnected
 components, exhaustion, and numerical failure. CUDA execution/performance is
 unverified on this host; do not claim GPU-device verification.
+Commit `11334ff` records this pressure-solver repair. Phase 21 also fixed integer
+array conduction silently truncating fractional face fluxes; its focused suite
+passes 6 tests, with commit pending integration. GPU alloy expansion remains
+closed: current same-physics CUDA parity covers IN718 only, and IN625 lacks a
+complete source-backed transient property/optical/flow input set.
 IN625 P7 remains partial: the 273.15–1623.15 K route is explicitly
 unvalidated literature-model screening; source validity span and material /
 process state are not established.
@@ -40,9 +45,10 @@ selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
 non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
-Next: audit remaining Phase 22 constitutive assumptions and CPU transient
-whole-cell surface treatment; preserve the GPU execution gap and P7 source-data
-gap as open gates. P5 feasibility audit shows the current 3 mm track
+Next: audit remaining Phase 22 constitutive assumptions; design the independent
+heterogeneous-conductivity CPU manufactured case with mixed thermal boundaries;
+preserve the GPU execution gap and P7 source-data gap as open gates. P5
+feasibility audit shows the current 3 mm track
 bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate
 4.18M/32.32M/258.27M cells at 20/10/5 µm because the domain is square. No 10 mm
 solve was run. After the pressure operator, scope a narrow-band/moving-frame

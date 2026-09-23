@@ -1005,3 +1005,26 @@ Other physics limitations remain open: Phase 22 free-surface Marangoni/recoil
 relations are heuristic, the CPU transient uses a whole-cell surface
 representation, and no experimental validation is claimed. Frozen P4 remains
 failed and NIST P5 remains unavailable.
+
+## 2026-09-24 — Phase 21 conduction dtype preservation
+
+In `python/lpbf_transient_enthalpy_fdm.py`, `_conduction_rate` now casts the
+temperature and conductivity fields to floating point before allocating and
+accumulating face-flux rates. Previously, an integer temperature array caused
+`zeros_like` to create an integer rate field, silently truncating fractional
+conduction updates. A focused regression uses integer-valued inputs and checks
+floating output, nonzero signed fluxes, and zero net internal flux. The focused
+Phase 21 physics and solver suite passed **6 tests**. This fixes dtype handling;
+it does not extend the stationary 2D model into a moving-source 3D melt-pool
+solver.
+
+The separate CPU reference transient audit found no new demonstrable
+conservation or boundary defect in the reviewed operators. Its next independent
+physics gate is a manufactured heterogeneous-conductivity conduction case with
+mixed isothermal and convective-radiative boundaries, checking operator
+symmetry, net boundary flux, and timestep convergence.
+
+GPU alloy scope was audited without code changes. The existing CUDA path's
+measured parity is limited to its current Inconel 718 case; it does not qualify
+another alloy. IN625 still lacks a complete source-backed transient table and
+optical/flow inputs, so no new GPU alloy capability was enabled.

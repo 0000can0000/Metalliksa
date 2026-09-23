@@ -33,6 +33,11 @@ def _enthalpy_from_temperature(temperature, rho, cp, latent_heat, solidus, liqui
 
 def _conduction_rate(temperature, conductivity, dx, dz):
     """Conservative two-dimensional face fluxes with adiabatic outer faces."""
+    # Thermal state and material properties are physical floating-point fields.
+    # Preserve that dtype even if a caller supplies integer-valued temperatures;
+    # otherwise zeros_like would silently truncate every face-flux update.
+    temperature = np.asarray(temperature, dtype=float)
+    conductivity = np.asarray(conductivity, dtype=float)
     rate = np.zeros_like(temperature)
     face_x = 2 * conductivity[:, :-1] * conductivity[:, 1:] / (
         conductivity[:, :-1] + conductivity[:, 1:]

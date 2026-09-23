@@ -39,6 +39,15 @@ class TestTransientEnthalpyPhysics(unittest.TestCase):
         self.assertGreater(rate[1, 0], 0.0)
         self.assertEqual(rate[1, 1], 0.0)
 
+    def test_conduction_rate_keeps_fractional_flux_for_integer_temperature_input(self):
+        temperature = np.array([[901, 300], [300, 300]], dtype=int)
+        conductivity = np.full_like(temperature, 20)
+        rate = _conduction_rate(temperature, conductivity, 1.0, 1.0)
+        self.assertTrue(np.issubdtype(rate.dtype, np.floating))
+        self.assertLess(rate[0, 0], 0.0)
+        self.assertGreater(rate[0, 1], 0.0)
+        self.assertAlmostEqual(float(rate.sum()), 0.0)
+
     def test_screening_result_does_not_claim_physical_accuracy(self):
         result = TransientEnthalpyFDMSolver(nx=8, nz=5, dx=5e-6, dz=5e-6).solve_meltpool_cross_section(
             power_W=1.0, speed_m_s=0.8, T_preheat_K=300.0, rho=4420.0,

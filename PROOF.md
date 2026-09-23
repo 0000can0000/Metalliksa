@@ -1054,10 +1054,11 @@ still `estimated-legacy`, and the result explicitly remains
 This establishes numerical parity for that exact estimated snapshot only; it
 does not open the source-backed alloy acceptance gate or qualify IN625.
 
-Unresolved Phase 22 model issue: the recoil law still drives both explicit
-surface recession and a separate momentum impulse; their mass/kinematic
-coupling has not been established. This update does not validate the interface
-model or claim experimental agreement.
+At this checkpoint the recoil law still drove both explicit surface recession
+and a separate momentum impulse; their mass/kinematic coupling had not been
+established. The follow-on correction and evidence are recorded below. This
+checkpoint did not validate the interface model or claim experimental
+agreement.
 
 ## 2026-09-24 — Opt-in rectangular bare-plate corridor
 
@@ -1078,8 +1079,71 @@ passed, 1 existing Linux/OpenFOAM-only test skipped**. Together: **16 passed,
 rectangular geometry/scan endpoints, the 600,000-cell refusal, resource shape,
 square-default parity, and energy closure on a bounded corridor case.
 
-This is geometry/resource support only. It does not yet emit the six per-track
-records at exactly 4.9 and 6.0 mm, use a NIST-equivalent etched-section
-operator, establish corridor-width sensitivity, or provide the measured beam
-profile and independent 3+3 convergence evidence. P5 remains `unavailable`;
-the rectangular option is not exposed through the TypeScript UI.
+That feasibility commit provided geometry/resource support only. Its follow-on
+section operator is recorded below and currently emits two locations for one
+simulated line; it does not provide the six records for three experimental
+lines or a NIST-equivalent etched-section operator. Corridor-width sensitivity,
+the measured beam profile, and independent 3+3 convergence evidence are also
+still absent. P5 remains `unavailable`; the rectangular option is not exposed
+through the TypeScript UI.
+
+## 2026-09-24 — P5 thermal-proxy section coordinates
+
+Commit `7e5437e14c55bb650df1d7534aa89dd3aa1e70b4` adds the versioned
+`bare-plate-corridor-accepted-peak-x-linear-section-v1` observation operator
+for the opt-in rectangular bare-plate route. It emits distinct thermal-proxy
+records at x=4.9 mm and x=6.0 mm relative to the +X scan start. Locations at
+cell centers use the corresponding plane; off-grid locations linearly
+interpolate two independently accumulated accepted-step peak-temperature
+fields, then locate cell-center liquidus crossings for width/depth. Requests
+outside the simulated scan/domain return `unsupported` without extrapolation.
+Each record explicitly represents one simulated scan line, not an experimental
+repeat. Disabling observation extraction preserves discretization, accepted
+history, and energy output.
+
+`python -m unittest test_lpbf_bare_plate`: **11/11 PASS**; `py_compile` and
+targeted `git diff --check` PASS. No 10 mm thermal solve ran and no NIST
+comparison is emitted. P5 remains `unavailable` pending matched beam profile,
+three experimental line identities, corridor-width sensitivity, and an
+independent 3+3 qualification.
+
+## 2026-09-24 — IN625 P7 source boundary
+
+The Sabau et al. 2020 source supplies a useful bounded literature model, but
+does not identify a chemistry/heat/lot matched IN625 stock, JMatPro inputs or
+version, declared property-validity span, or quantified Cp/k uncertainty.
+Therefore the current 273.15–1623.15 K implementation window is not a
+source-certified validity interval, and P7 remains partial.
+
+The NIST Zhang et al. 2019 powder study reports inverse-model effective
+conductivity for IN625 powder from 100–500 °C. It is a powder-bed property,
+not bulk plate conductivity; the inspected article does not identify a powder
+lot that matches the AMB2018-02 plate. The current GPU material path has no
+unsintered-powder state, so this dataset was not routed into the alloy model.
+NIST identifies AMB2018-02 targets as bare IN625 plates and links a substrate
+certificate, but the description provides no thermophysical curves. The
+certificate is the next material-identity source to inspect; no new alloy
+acceptance follows from this audit.
+
+Sources: [Sabau et al. (2020)](https://doi.org/10.1007/s11663-020-01808-w),
+[Zhang et al. (2019), NIST powder study](https://doi.org/10.1016/j.jmapro.2019.09.012),
+[NIST AMB2018-02 description](https://www.nist.gov/ambench/amb2018-02-description),
+[AMB2018-02 substrate certificate](https://s3.amazonaws.com/nist-midas/1889/AMB2018-02_SubstrateMaterialCertification.pdf).
+
+## 2026-09-24 — Phase 22 recoil and surface kinematics
+
+Commit `3ff4c9e` removes the independent `sqrt(2 P_recoil/rho)` height
+depression. Recoil remains in the momentum equation once; after velocity
+projection, a height-graph kinematic condition updates the interface from
+projected U/V/W and subtracts evaporation recession using the same
+Hertz–Knudsen-like mass flux as the enthalpy cooling term. The upper free
+surface is classified as a zero-pressure neighbor for the projection instead
+of a closed wall, so the projected normal velocity can reach the interface.
+
+The localized regression verifies that recoil-generated projected W survives
+projection and drives surface height in the same step, with evaporation
+contributing once. Focused Warp CPU regression: **1/1 PASS**; complete
+`python/test_lpbf_transient_3d_gpu.py`: **24/24 PASS**; `git diff --check`
+PASS. CUDA execution was not tested. This repairs the update coupling in the
+height-graph solver; it does not model interface breakup/reformation, resolved
+plume dynamics, or experimental agreement.

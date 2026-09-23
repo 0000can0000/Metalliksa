@@ -32,6 +32,11 @@ lacks a complete source-backed transient property/optical/flow input set.
 IN625 P7 remains partial: the 273.15–1623.15 K route is explicitly
 unvalidated literature-model screening; source validity span and material /
 process state are not established.
+The NIST 2019 IN625 powder conductivity source is inverse-derived for powder
+only (100–500 °C), has no matched AMB2018-02 lot, and cannot be routed into the
+current no-powder-state GPU material path. NIST's AMB2018-02 plate certificate
+is the next identity source to inspect; it does not itself provide property
+curves. Do not elevate P7 without matched properties and validity/uncertainty.
 CPU transient whole-cell surface geometry remains a documented cut-cell
 limitation, not a repaired defect. The separate
 preregistered 75 W 3+3 contour report is `4110e73`, SHA-256
@@ -48,16 +53,20 @@ selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
 non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
-Next: build the versioned six-record 4.9/6.0 mm section operator for each
-separate track, then measure corridor-width sensitivity and plan an affordable
-independent 3+3. Preserve the Phase 22 Warp-CUDA execution gap and P7 source
-data gate. P5
-feasibility audit shows the current 3 mm track
-bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate
-4.18M/32.32M/258.27M cells at 20/10/5 µm because the domain is square. No 10 mm
-solve was run. After the pressure operator, scope a narrow-band/moving-frame
-bare-plate model that records the 4.9 and 6.0 mm sections for three repeats;
-keep the 67 µm ideal-Gaussian case separate from the measured-profile gate.
+The versioned section operator is now committed as `7e5437e`; it emits separate
+4.9/6.0 mm thermal-proxy records for one simulated line, with no extrapolation.
+Next: measure corridor-width sensitivity, then plan an affordable independent
+3+3 with three separately identified simulated/experimental lines. Keep P5
+unavailable until the matched beam profile and line identities are present.
+The original 3 mm track bound rejected the NIST 10 mm baseline; the square
+domain estimates were 4.18M/32.32M/258.27M cells at 20/10/5 µm. The rectangular
+corridor reduces this to 205,200/1,556,975/12,123,933 estimated cells, still
+exceeding the 600,000-cell guard at 10/5 µm. No 10 mm solve ran. Preserve the
+67 µm ideal-Gaussian case as a separate exploratory condition from the
+measured-profile gate. Phase 22 recoil/interface kinematics are now coupled by
+post-projection height-graph motion (`3ff4c9e`; Warp CPU 24/24), but CUDA
+execution, interface breakup/reformation, and plume dynamics remain unverified
+or out of scope. Preserve the P7 source-data gate.
 Root alone changes checkpoint documents.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is

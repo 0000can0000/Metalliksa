@@ -29,10 +29,11 @@ DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm
                 dwell_s=0.0002, cooling_s=0.0005, scanAngle_deg=0., layerRotation_deg=67.,
                 strategy="meander", stripeWidth_um=500., islandSize_um=200., packingFraction=0.55, powderConductivityRatio=0.12,
                 convection_W_m2K=20., timeout_s=300., study="none", backend="auto",
-                surfaceMode="powder-layer", sourcePenetration_um=None)
+                surfaceMode="powder-layer", sourcePenetration_um=None,
+                barePlateGeometry="square")
 BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 500),
               preheat_C=(0, 1200), layer_um=(10, 150), hatch_um=(10, 1000), mesh_um=(5, 80),
-              maxDt_s=(1e-9, 1e-4), trackLength_um=(100, 3000), tracks=(1, 8), layers=(1, 5),
+              maxDt_s=(1e-9, 1e-4), trackLength_um=(100, 10000), tracks=(1, 8), layers=(1, 5),
               dwell_s=(0, .1), cooling_s=(0, .1), scanAngle_deg=(-360, 360),
               layerRotation_deg=(-360, 360), packingFraction=(.2, 1),
               stripeWidth_um=(20,3000), islandSize_um=(50,3000),
@@ -51,10 +52,17 @@ def validate(raw):
             raise ValueError(f"{k} must be finite in [{lo}, {hi}]")
         if k in ("tracks", "layers") and int(p[k]) != p[k]:
             raise ValueError(f"{k} must be integer")
+    if p["trackLength_um"] > 3000 and not (
+            p["surfaceMode"] == "bare-plate" and p["barePlateGeometry"] == "rectangular-corridor"):
+        raise ValueError("trackLength_um above 3000 is supported only by the opt-in bare-plate rectangular-corridor geometry")
     if p["mode"] not in ("screening", "standard", "high-fidelity", "calibration") or p["strategy"] not in ("meander", "unidirectional", "stripe", "island") or p["study"] not in ("none", "mesh", "timestep"):
         raise ValueError("Unknown mode, strategy or study")
     if p["surfaceMode"] not in ("powder-layer", "bare-plate"):
         raise ValueError("Unknown LPBF surface mode")
+    if p["barePlateGeometry"] not in ("square", "rectangular-corridor"):
+        raise ValueError("barePlateGeometry must be 'square' or 'rectangular-corridor'")
+    if p["barePlateGeometry"] == "rectangular-corridor" and p["surfaceMode"] != "bare-plate":
+        raise ValueError("rectangular-corridor geometry is only supported for bare-plate mode")
     if p["surfaceMode"] == "bare-plate":
         penetration = p["sourcePenetration_um"]
         if (p["mode"] != "standard" or p["backend"] != "reference" or p["layers"] != 1
@@ -194,17 +202,20 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     absorbed_power_W = thermal_inputs["absorbed_power_W"]
     dx_requested = p["mesh_um"]*1e-6
     domain = calculate_mesh_domain(p)
-    radius, span, nxy, nz, dx, substrate = (domain[k] for k in ("radius", "span", "nxy", "nz", "dx", "substrate_depth"))
-    if nxy*nxy*nz > 600000:
-        raise ValueError("Mesh exceeds 600000-cell reference solver limit; reduce domain or use coarser mesh")
-    axis = (np.arange(nxy)+.5)*dx-span/2
+    radius, span, nx, ny, nz, dx, substrate = (domain[k] for k in ("radius", "span", "nx", "ny", "nz", "dx", "substrate_depth"))
+    cell_count = nx*ny*nz
+    if cell_count > 600000:
+        geometry = "rectangular corridor" if p["barePlateGeometry"] == "rectangular-corridor" else "square"
+        raise ValueError(f"{geometry.capitalize()} mesh requires {cell_count:,} cells, above the 600000-cell reference solver limit; reduce the scan length or use a coarser mesh")
+    axis = (np.arange(nx)+.5)*dx-span/2
+    axis_y = (np.arange(ny)+.5)*dx-ny*dx/2
     z = (np.arange(nz)+.5)*dx-substrate
     bare = p["surfaceMode"] == "bare-plate"
     if not bare:
         layer_counts = [int(np.sum(z < layer*layer_m)) for layer in range(int(p["layers"])+1)]
         if any(b <= a for a,b in zip(layer_counts,layer_counts[1:])):
             raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
-    x, y, zz = np.meshgrid(axis, axis, z, indexing="ij")
+    x, y, zz = np.meshgrid(axis, axis_y, z, indexing="ij")
     t0 = thermal_inputs["preheat_K"]
     T = np.full(x.shape, t0)
     tt, hh = enthalpy_table(m)
@@ -214,7 +225,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     H = np.zeros_like(T)
     ever = np.zeros_like(T, dtype=bool)
     midpoint_plane = int(np.argmin(np.abs(axis))) if bare else None
-    midpoint_temperature_max = np.full((nxy, nz), t0) if bare else None
+    midpoint_temperature_max = np.full((ny, nz), t0) if bare else None
     remelt = np.zeros_like(ever)
     previous_melt = np.zeros_like(ever)
     energy_in = energy_out = 0.
@@ -259,7 +270,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         dt, source, rate, capture, retries = source_limited_step(
             axis, z, dx, seg, time, dt, surface, radius,
             p["sourcePenetration_um"]*1e-6 if bare else layer_m,
-            absorbed_power_W, rate, rho*cp)
+            absorbed_power_W, rate, rho*cp, axis_y=axis_y)
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
         max_increment = max(max_increment, float(np.max(dt*np.abs(rate)/(rho*cp))))
@@ -295,7 +306,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             overlap_tracker.observe(T, surface, active_layer, active_track)
         if sampled:
             recorder.record(time, T, surface)
-            history.append(dict(time_s=time, peak_K=float(T.max()), center_K=float(T[nxy//2, nxy//2, top_index]),
+            history.append(dict(time_s=time, peak_K=float(T.max()), center_K=float(T[nx//2, ny//2, top_index]),
                                 storedEnergy_J=float(H.sum())*dx**3, inputEnergy_J=energy_in, lossEnergy_J=energy_out))
             report(time/end, f"step={step} t={time:.7g}s peak={T.max():.1f}K cells={T.size}")
             next_sample = time+end/60
@@ -321,9 +332,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
                 peakInterpolatedMeltPool=interpolated_peak,
                 fieldOverlapDiagnostics=overlap_metrics,
-                midTrackCrossSection=midtrack_bare_plate_section(axis, z, ever, dx) if bare else None,
+                midTrackCrossSection=midtrack_bare_plate_section(axis, z, ever, dx, axis_y=axis_y) if bare else None,
                 midTrackInterpolatedCrossSection=interpolated_midtrack_bare_plate_section(
-                    axis, z, midpoint_temperature_max, dx, m["liquidus_K"], axis[midpoint_plane]
+                    axis_y, z, midpoint_temperature_max, dx, m["liquidus_K"], axis[midpoint_plane]
                 ) if bare else None,
                 numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID if overlap_metrics else None, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,

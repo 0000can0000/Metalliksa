@@ -48,9 +48,10 @@ selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
 non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
-Next: finish the opt-in rectangular bare-plate corridor implementation and
-verify its energy/resource/geometry contracts; preserve the Phase 22 CUDA
-execution gap and P7 source-data gap as open gates. P5
+Next: build the versioned six-record 4.9/6.0 mm section operator for each
+separate track, then measure corridor-width sensitivity and plan an affordable
+independent 3+3. Preserve the Phase 22 Warp-CUDA execution gap and P7 source
+data gate. P5
 feasibility audit shows the current 3 mm track
 bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate
 4.18M/32.32M/258.27M cells at 20/10/5 µm because the domain is square. No 10 mm

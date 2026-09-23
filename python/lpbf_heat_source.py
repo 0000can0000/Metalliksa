@@ -9,10 +9,11 @@ from lpbf_core_physics import (SOURCE_INTEGRATION, GAUSS_NODES, _evaluate,
                                gaussian_interval, cell_weights, integrated_source)
 
 
-def source_limited_step(axis, z, dx, segment, time, dt, surface, radius, penetration, power, passive_rate, capacity):
+def source_limited_step(axis, z, dx, segment, time, dt, surface, radius, penetration, power, passive_rate, capacity, axis_y=None):
     """Reintegrate the moving source whenever its sensible-increment cap cuts dt."""
     for retries in range(12):
-        source, capture = integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetration, power)
+        source, capture = integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetration, power,
+                                           axis_y=axis_y)
         rate = passive_rate+source
         allowed = float(np.min(25.*capacity/np.maximum(np.abs(rate), 1e-30)))
         if allowed >= dt*(1-1e-12):

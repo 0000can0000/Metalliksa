@@ -24,18 +24,20 @@ def gaussian_interval(lower, upper, center, radius):
     return np.where(b > a, np.maximum(value, 0.), 0.)
 
 
-def cell_weights(axis, z, dx, position, surface, radius, penetration):
+def cell_weights(axis, z, dx, position, surface, radius, penetration, axis_y=None):
     """Unnormalized probability mass; z is clipped, mass cells are not cut cells."""
+    axis_y = axis if axis_y is None else np.asarray(axis_y)
     gx = gaussian_interval(axis-dx/2, axis+dx/2, position[0], radius)
-    gy = gaussian_interval(axis-dx/2, axis+dx/2, position[1], radius)
+    gy = gaussian_interval(axis_y-dx/2, axis_y+dx/2, position[1], radius)
     gz = gaussian_interval(z-dx/2, np.minimum(z+dx/2, surface), surface, penetration)
     gz = np.where(z < surface, gz, 0.)
     return gx[:, None, None]*gy[None, :, None]*gz[None, None, :]
 
 
-def integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetration, power):
+def integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetration, power, axis_y=None):
     """Time-averaged volumetric power [W/m³] and minimum captured half-space mass."""
-    source = np.zeros((len(axis), len(axis), len(z)))
+    axis_y = axis if axis_y is None else np.asarray(axis_y)
+    source = np.zeros((len(axis), len(axis_y), len(z)))
     if segment is None:
         return source, 1.
     if dt <= 0 or time < segment["start_s"]-1e-13 or time+dt > segment["end_s"]+1e-13:
@@ -45,7 +47,7 @@ def integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetrati
     for node in GAUSS_NODES:
         fraction = np.clip((time+node*dt-segment["start_s"])/(segment["end_s"]-segment["start_s"]), 0., 1.)
         position = start+fraction*(stop-start)
-        weights = cell_weights(axis, z, dx, position, surface, radius, penetration)
+        weights = cell_weights(axis, z, dx, position, surface, radius, penetration, axis_y)
         total = float(weights.sum())
         if not math.isfinite(total) or total <= 0:
             raise ValueError("Gaussian source is outside the represented active domain")
@@ -58,8 +60,25 @@ def calculate_mesh_domain(p):
     radius = p["beamDiameter_um"] * 0.5e-6
     dx_requested = p["mesh_um"] * 1e-6
     span = p["trackLength_um"] * 1e-6 + (p["tracks"] - 1) * p["hatch_um"] * 1e-6 + 6 * radius
-    nxy = int(math.ceil(span / dx_requested))
-    dx = span / nxy
+    rectangular_corridor = (p.get("surfaceMode", "powder-layer") == "bare-plate"
+                            and p.get("barePlateGeometry", "square") == "rectangular-corridor")
+    if rectangular_corridor:
+        # One +X track: preserve the full scan history and use a fixed, centered
+        # transverse frame extending six beam radii on either side. This is
+        # deliberately wider than the source normalization support so nearby
+        # insulated lateral boundaries do not pinch the fixed-frame corridor.
+        span_y = 12 * radius
+        nx = int(math.ceil(span / dx_requested))
+        dx = span / nx
+        ny = int(math.ceil(span_y / dx))
+        if ny % 2 == 0:
+            ny += 1  # keep y=0 on a cell center for the centered single-track source
+        nxy = nx  # compatibility alias for the legacy square-domain field
+    else:
+        nxy = int(math.ceil(span / dx_requested))
+        dx = span / nxy
+        nx = ny = nxy
+        span_y = span
     substrate_depth = math.ceil(max(300e-6, 4 * radius) / dx) * dx
     height = 0. if p.get("surfaceMode", "powder-layer") == "bare-plate" else p["layers"] * p["layer_um"] * 1e-6
     nz = int(math.ceil((substrate_depth + height) / dx))
@@ -67,6 +86,10 @@ def calculate_mesh_domain(p):
     return {
         "radius": radius,
         "span": span,
+        "span_x": span,
+        "span_y": span_y,
+        "nx": nx,
+        "ny": ny,
         "nxy": nxy,
         "nz": nz,
         "dx": dx,

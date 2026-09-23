@@ -5,6 +5,8 @@ import unittest
 import numpy as np
 
 from lpbf_peak import midtrack_bare_plate_section
+from lpbf_core_physics import calculate_mesh_domain, scan_segments
+from lpbf_evidence import resource_estimate
 from lpbf_simulation import run, validate
 
 
@@ -59,6 +61,50 @@ class BarePlate(unittest.TestCase):
         self.assertEqual(original["metrics"], explicit["metrics"])
         self.assertEqual(original["energyBalance"], explicit["energyBalance"])
         self.assertIsNone(original["midTrackCrossSection"])
+
+    def test_rectangular_corridor_geometry_preserves_full_scan_and_energy(self):
+        rectangular = {**CASE, "barePlateGeometry": "rectangular-corridor",
+                       "trackLength_um": 600, "maxDt_s": 1e-6}
+        result = run(rectangular)
+        self.assertAlmostEqual(result["scanPath"][0]["start"][0], -300e-6)
+        self.assertAlmostEqual(result["scanPath"][0]["end"][0], 300e-6)
+        self.assertEqual(result["scanPath"][0]["start"][1], 0.0)
+        self.assertEqual(result["scanPath"][0]["end"][1], 0.0)
+        domain = calculate_mesh_domain(validate(rectangular)[0])
+        self.assertGreater(domain["nx"], domain["ny"])
+        self.assertEqual(result["discretization"]["cells"], domain["nx"]*domain["ny"]*domain["nz"])
+        self.assertLess(result["energyBalance"]["relativeError"], .01)
+        self.assertEqual(result["midTrackCrossSection"]["status"], "thermal-proxy")
+
+    def test_rectangular_corridor_10mm_estimates_and_refuses_oversized_fine_meshes(self):
+        p, m = validate({**CASE, "barePlateGeometry": "rectangular-corridor",
+                         "trackLength_um": 10000, "mesh_um": 20})
+        estimate = resource_estimate(p, m)
+        self.assertLess(estimate["cells"], 600000)
+        for mesh_um in (10, 5):
+            p, m = validate({**CASE, "barePlateGeometry": "rectangular-corridor",
+                             "trackLength_um": 10000, "mesh_um": mesh_um})
+            estimate = resource_estimate(p, m)
+            domain = calculate_mesh_domain(p)
+            self.assertEqual(estimate["shape"], [domain["nx"], domain["ny"], domain["nz"]])
+            self.assertEqual(estimate["cells"], domain["nx"]*domain["ny"]*domain["nz"])
+            self.assertGreater(estimate["cells"], 600000)
+            segments, _ = scan_segments(p)
+            self.assertAlmostEqual(abs(segments[0]["end"][0]-segments[0]["start"][0]), .01)
+            with self.assertRaisesRegex(ValueError, r"requires [\d,]+ cells, above the 600000-cell"):
+                run({**CASE, "barePlateGeometry": "rectangular-corridor",
+                     "trackLength_um": 10000, "mesh_um": mesh_um})
+
+    def test_bare_plate_square_default_is_unchanged_by_explicit_square(self):
+        implicit = run(CASE)
+        explicit = run({**CASE, "barePlateGeometry": "square"})
+        self.assertEqual(implicit["metrics"], explicit["metrics"])
+        self.assertEqual(implicit["energyBalance"], explicit["energyBalance"])
+        self.assertEqual(implicit["discretization"], explicit["discretization"])
+
+    def test_10mm_track_requires_rectangular_bare_plate_opt_in(self):
+        with self.assertRaisesRegex(ValueError, "only by the opt-in bare-plate rectangular-corridor"):
+            validate({"trackLength_um": 10000})
 
     def test_separate_three_level_studies_keep_frozen_targets(self):
         mesh = run({**CASE, "mesh_um": 30, "maxDt_s": 1e-7, "study": "mesh"})

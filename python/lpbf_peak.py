@@ -6,7 +6,7 @@ import numpy as np
 PEAK_EXTRACTION = "accepted-step-molten-volume-v1"
 
 
-def midtrack_bare_plate_section(axis, z, ever_molten, dx):
+def midtrack_bare_plate_section(axis, z, ever_molten, dx, axis_y=None):
     """Cell-supported W/D at the plane nearest a +X track's midpoint.
 
     NIST AMB2022-03 optical W is the widest cross-section extent, and D is the
@@ -14,8 +14,11 @@ def midtrack_bare_plate_section(axis, z, ever_molten, dx):
     are a thermal proxy for the etched boundary, not an experimental contour.
     """
     axis, z, ever_molten = np.asarray(axis), np.asarray(z), np.asarray(ever_molten)
-    if (axis.ndim != 1 or z.ndim != 1 or ever_molten.shape != (len(axis), len(axis), len(z))
-            or not np.isfinite(axis).all() or not np.isfinite(z).all() or not np.isfinite(dx) or dx <= 0):
+    axis_y = axis if axis_y is None else np.asarray(axis_y)
+    if (axis.ndim != 1 or axis_y.ndim != 1 or z.ndim != 1
+            or ever_molten.shape != (len(axis), len(axis_y), len(z))
+            or not np.isfinite(axis).all() or not np.isfinite(axis_y).all()
+            or not np.isfinite(z).all() or not np.isfinite(dx) or dx <= 0):
         raise ValueError("Invalid bare-plate midpoint section grid")
     plane = int(np.argmin(np.abs(axis)))
     if abs(axis[plane]) > dx/2 + 1e-12:
@@ -30,7 +33,7 @@ def midtrack_bare_plate_section(axis, z, ever_molten, dx):
                   width_um=0., depth_um=0.,
                   evidenceScope="Numerical thermal proxy; no etched-boundary or experimental validation")
     if len(iy):
-        result["width_um"] = float((axis[iy].max()-axis[iy].min()+dx)*1e6)
+        result["width_um"] = float((axis_y[iy].max()-axis_y[iy].min()+dx)*1e6)
         result["depth_um"] = float(max(0., -z[iz].min()+dx/2)*1e6)
     return result
 

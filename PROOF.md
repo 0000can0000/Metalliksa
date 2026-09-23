@@ -1058,3 +1058,28 @@ Unresolved Phase 22 model issue: the recoil law still drives both explicit
 surface recession and a separate momentum impulse; their mass/kinematic
 coupling has not been established. This update does not validate the interface
 model or claim experimental agreement.
+
+## 2026-09-24 — Opt-in rectangular bare-plate corridor
+
+The reference solver now accepts `barePlateGeometry="rectangular-corridor"`
+only for the explicit single-track +X bare-plate route. It keeps the full scan
+history in X and uses a centered transverse corridor of twelve beam radii;
+the default square geometry and powder-layer path remain unchanged. The actual
+`nx × ny × nz` count is used by the solver resource guard and UI/resource
+estimate. A 10 mm case with an 80 µm beam is estimated at 205,200 cells at
+20 µm, 1,556,975 at 10 µm, and 12,123,933 at 5 µm. The 600,000-cell guard
+therefore permits the coarse estimate but rejects the finer two before field
+allocation. These are cell-count estimates, not measured runtime or a 10 mm
+solve; no 10 mm thermal solution was run.
+
+`test_lpbf_bare_plate.py`: **9/9 passed**. `test_lpbf_heat_source.py`: **7
+passed, 1 existing Linux/OpenFOAM-only test skipped**. Together: **16 passed,
+1 skipped** (the separate engineering suite is unaffected). Checks include
+rectangular geometry/scan endpoints, the 600,000-cell refusal, resource shape,
+square-default parity, and energy closure on a bounded corridor case.
+
+This is geometry/resource support only. It does not yet emit the six per-track
+records at exactly 4.9 and 6.0 mm, use a NIST-equivalent etched-section
+operator, establish corridor-width sensitivity, or provide the measured beam
+profile and independent 3+3 convergence evidence. P5 remains `unavailable`;
+the rectangular option is not exposed through the TypeScript UI.

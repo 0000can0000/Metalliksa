@@ -17,13 +17,18 @@ preregistered 75 W 3+3 contour report is `4110e73`, SHA-256
 All six solves completed with energy PASS, contour mesh width PASS, contour
 mesh depth and both time metrics inconclusive; total 75 W contour/discrete
 status is inconclusive. The frozen 80 W P4 result remains failed. P5 remains
-unavailable. Next: assess peak-time selection and the observation operator
-against field/analytic evidence, then decide whether an independently
-preregistered new P4 study is warranted; do not relax frozen criteria.
+unavailable. The preregistered peak-selection diagnostic repeat is complete in
+`docs/LPBF_P4_PEAK_SELECTION_DIAGNOSTIC_75W_2026-09-24.json`, SHA-256
+`bb7241cd328842517b8a0ad232c1cf160f0238ec459bbf66967ccc464b0ae4e`; it remains
+inconclusive with unchanged criteria. Peak ties shrink from 416 endpoints at
+20 µm to 11 at 10 µm and 1 at 5 µm; the 10 µm timestep refinement shifts the
+selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
+non-monotonic. Peak selection is a plausible contributor to mesh-depth
+non-monotonicity, not a proven cause. The global cell-center contour remains a
+numerical proxy without surface extrapolation or NIST section equivalence.
 Next: implement and test the Phase 22 pressure-projection operator on a small
-manufactured CPU Warp field; then rerun the preregistered 75 W diagnostic with
-the newly recorded peak-step/plateau fields. Root alone changes checkpoint
-documents.
+manufactured CPU Warp field; scope any P5-matched section operator separately.
+Root alone changes checkpoint documents.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is
 `docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json`: all six completed, energy

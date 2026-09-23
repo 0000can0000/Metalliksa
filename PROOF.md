@@ -868,3 +868,34 @@ this verification. Pressure projection remains unresolved: its centered
 divergence/gradient is not the operator represented by its nearest-neighbor
 Jacobi stencil. The CPU whole-cell surface representation also remains a known
 geometry limitation. No phase-level scientific validation is claimed.
+
+## 2026-09-24 — P4 peak-selection diagnostic repeat
+
+Before rerunning, `docs/LPBF_P4_PEAK_SELECTION_DIAGNOSTIC_PROTOCOL_2026-09-24.md`
+froze diagnostic-only additions to the existing 75 W scenario and resolution
+axes. The original energy, 5% finest-pair, and monotonic-convergence criteria
+were unchanged. The repeated six-solve report is
+`docs/LPBF_P4_PEAK_SELECTION_DIAGNOSTIC_75W_2026-09-24.json`, SHA-256
+`bb7241cd328842517b8a0ad232c1cf160f0238ec459bbf66967ccc464b0ae4e`. This is
+not an independent acceptance study and does not supersede the original 75 W
+report or the failed frozen 80 W P4 gate.
+
+All six solves completed with energy closure below the frozen 1% limit. Both
+discrete and contour assessments remain `inconclusive`. The tracker chooses the
+earliest accepted endpoint with the maximum count of active cells at or above
+liquidus. Across 20/10/5 µm mesh levels the selected times were 161.950,
+177.417, and 168.667 µs, with respectively 416, 11, and 1 equal-maximum
+endpoints (tied windows span about 20.717, 0.500, and 0 µs). At 10 µm mesh,
+1e-7/5e-8/2.5e-8 s timestep limits selected 177.467/177.417/177.367 µs with
+6/11/24 equal maxima. Peak selection is resolution-sensitive and plausibly
+contributes to the non-monotonic mesh-depth result, but this does not prove
+causation.
+
+The cell-center liquidus contour uses the same selected peak field and does not
+extrapolate to the physical surface. Its global projected W/D is a numerical
+proxy, not a measured cross-section. On the time axis, W/D changes stay below
+0.004% but reverse direction, so the frozen trend check correctly remains
+inconclusive. Focused regressions: 18 PASS / 1 expected Windows OpenFOAM skip.
+No GPU execution or NIST residual was produced. P5 remains unavailable pending
+the matched 10 mm bare-plate condition, suitable beam input, and source-matched
+optical section operator.

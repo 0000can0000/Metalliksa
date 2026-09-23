@@ -255,3 +255,13 @@ def compare_nist_in718_optical_geometry(result, table4, source_binding, expected
         "model_um": section[f"{quantity}_um"],
     } for quantity in ("width", "depth")}
     return report
+
+
+if __name__ == "__main__":
+    import sys
+
+    request = json.load(sys.stdin)
+    print(json.dumps(compare_nist_in718_optical_geometry(
+        request["result"], request["table4"], request["sourceBinding"],
+        request["expectedSourceBinding"], request["caseNumber"]),
+        allow_nan=False, separators=(",", ":")))

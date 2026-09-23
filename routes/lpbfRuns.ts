@@ -1,8 +1,10 @@
 import express, { Router, type ErrorRequestHandler, type RequestHandler } from 'express';
 import { LpbfRunArchiveError, LpbfRunArchiveService } from '../server/lpbfRunArchiveService';
 import { LpbfRunBundleService } from '../server/lpbfRunBundleService';
+import { LpbfNistComparisonService } from '../server/lpbfNistComparisonService';
 
-export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bundles = new LpbfRunBundleService()): Router {
+export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bundles = new LpbfRunBundleService(),
+  comparison = new LpbfNistComparisonService()): Router {
   const router = Router();
   const prefix = '/api/lpbf/runs';
   
@@ -41,6 +43,13 @@ export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bund
   router.post(`${prefix}/bundles/export`, handle(req => { emptyBody(req); return bundles.export(); }));
   router.post(`${prefix}/bundles/:bundleId/verify`, handle(req => { emptyBody(req); return bundles.verify(req.params.bundleId); }));
   router.post(`${prefix}/bundles/:bundleId/restore`, handle(req => { emptyBody(req); return bundles.restore(req.params.bundleId); }));
+  router.post(`${prefix}/:runId/nist-comparison`, handle(req => {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
+      || Object.keys(req.body).length !== 1 || typeof req.body.caseNumber !== 'string') {
+      throw new LpbfRunArchiveError(400, 'Only a Table 4 caseNumber is accepted.');
+    }
+    return comparison.compare(req.params.runId, req.body.caseNumber);
+  }));
   
   router.post(`${prefix}/preview`, handle(req => {
     if (!req.body || typeof req.body.jobId !== 'string' || !Array.isArray(req.body.sources)) {

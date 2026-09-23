@@ -262,6 +262,6 @@ if __name__ == "__main__":
 
     request = json.load(sys.stdin)
     print(json.dumps(compare_nist_in718_optical_geometry(
-        request["result"], request["table4"], request["sourceBinding"],
+        json.loads(request["resultJson"]), json.loads(request["table4Json"]), request["sourceBinding"],
         request["expectedSourceBinding"], request["caseNumber"]),
         allow_nan=False, separators=(",", ":")))

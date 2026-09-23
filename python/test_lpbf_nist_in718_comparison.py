@@ -3,6 +3,8 @@
 import copy
 import json
 from pathlib import Path
+import subprocess
+import sys
 import unittest
 
 from lpbf_core_contract import build_core_contract
@@ -170,6 +172,18 @@ class In718NistOpticalComparison(unittest.TestCase):
         self.assertAlmostEqual(report["errors"]["width"]["signed_um"], 3.7)
         self.assertAlmostEqual(report["errors"]["depth"]["absolute_um"], 10.3)
         self.assertEqual(report["errors"]["width"]["publishedStdDev_um"], 2.9)
+
+    def test_cli_preserves_python_json_number_lexemes(self):
+        request = {"resultJson": json.dumps(synthetic_result(), allow_nan=False),
+                   "table4Json": TABLE_PATH.read_text(encoding="utf-8"),
+                   "sourceBinding": source_binding(),
+                   "expectedSourceBinding": source_binding(), "caseNumber": "0"}
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name("lpbf_nist_in718_comparison.py"))],
+            input=json.dumps(request), text=True, capture_output=True, check=True)
+        report = json.loads(completed.stdout)
+        self.assertEqual(report["status"], "comparable-screening")
+        self.assertEqual(report["reasons"], [])
 
 
 if __name__ == "__main__":

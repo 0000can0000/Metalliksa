@@ -100,7 +100,7 @@ export class LpbfNistComparisonService {
       || artifact.sourceUrl !== RESULTS_URL) {
       return unavailable(caseNumber, ['Archived Table 4 source identity or fixed transcription artifact differs from the reviewed local revision.']);
     }
-    let table4;
+    let table4Json: string;
     try {
       const sourceStore = new LpbfArtifactStore(path.join(this.sourceRoot, 'artifacts'), { readOnly: true });
       const verified = await sourceStore.verify(artifact);
@@ -108,7 +108,7 @@ export class LpbfNistComparisonService {
       if (bytes.length !== TABLE_BYTES || createHash('sha256').update(bytes).digest('hex') !== TABLE_SHA256) {
         throw new Error('Table 4 bytes changed after verification');
       }
-      table4 = JSON.parse(bytes.toString('utf8'));
+      table4Json = bytes.toString('utf8');
     } catch {
       return unavailable(caseNumber, ['Archived Table 4 transcription bytes are missing or fail the fixed SHA-256 check.']);
     }
@@ -128,7 +128,10 @@ export class LpbfNistComparisonService {
     const sourceBinding = { datasetId: DATASET_ID, sourceDatasetId: PUBLISHER_ID,
       artifactSha256: TABLE_SHA256, revision: link.revision, documentSha256: link.documentSha256 };
     try {
-      const report = await pythonCompare(this.pythonFile, { result, table4, sourceBinding,
+      // Keep the archived JSON number lexemes intact: JavaScript round-tripping 285.0
+      // into 285 changes the Python-canonical material and Table 4 content hashes.
+      const report = await pythonCompare(this.pythonFile, { resultJson: record.document.capture.resultJson,
+        table4Json, sourceBinding,
         expectedSourceBinding: sourceBinding, caseNumber });
       if (!report || typeof report !== 'object' || (report as any).schemaVersion !== 1
         || !['unavailable', 'comparable-screening'].includes((report as any).status)

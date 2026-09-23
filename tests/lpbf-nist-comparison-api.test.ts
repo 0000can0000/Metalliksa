@@ -62,11 +62,23 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
       contractStatus: (bound ? 'core-v1-bound' : 'legacy-unbound') as 'core-v1-bound' | 'legacy-unbound' };
     runs.save({ schemaVersion: 1, runId, capture, sources: sourcesForRun });
   }
-  const boundId = 'a'.repeat(32), legacyId = 'b'.repeat(32), staleId = 'c'.repeat(32), unlinkedId = 'd'.repeat(32);
+  const boundId = 'a'.repeat(32), legacyId = 'b'.repeat(32), staleId = 'c'.repeat(32);
+  const unlinkedId = 'd'.repeat(32), floatId = 'e'.repeat(32);
   saveRun(boundId, [exactLink], true);
   saveRun(legacyId, [exactLink], false);
   saveRun(staleId, [{ ...exactLink, documentSha256: sha('stale') }], true);
   saveRun(unlinkedId, [], true);
+  // These are Python-canonical snapshot bytes: JSON.parse/JSON.stringify changes
+  // floatValue:1.0 to 1 and invalidates both the material revision and core hash.
+  const materialJson = '{"floatValue":1.0,"materialId":"in718","materialIdentitySchemaVersion":1,"materialRevisionSha256":"1cb5d6833bedd0a8eb9e29606cf0c08b78c4f391f0e89c97c405b8f3e255dba7","name":"Synthetic","provenanceClass":"estimated-legacy","quality":"synthetic","source":"Unit test only"}';
+  const floatResult = { ...baseResult, material: JSON.parse(materialJson),
+    coreContract: { ...core, materialSha256: '8888b3f9c97a37d2a8f72dc2192aa49e3556950d31c10579cabfe8bb58ac835b' } };
+  const floatResultJson = JSON.stringify(floatResult).replace('"floatValue":1', '"floatValue":1.0');
+  assert.match(floatResultJson, /"floatValue":1\.0/);
+  runs.save({ schemaVersion: 1, runId: floatId,
+    capture: { schemaVersion: 1, jobId: floatId, resultJson: floatResultJson,
+      inputJson: JSON.stringify(baseResult.settings), materialJson, contractStatus: 'core-v1-bound' },
+    sources: [exactLink] });
   runs.close(); sources.close();
 
   const app = express();
@@ -91,6 +103,12 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
   assert.equal(valid.body.sourceBinding.documentSha256, exactLink.documentSha256);
   assert.equal(valid.body.sourceBinding.artifactSha256, artifact.sha256);
   assert.match(valid.body.reasons.join(' '), /standard CPU transient core/i);
+  assert.doesNotMatch(valid.body.reasons.join(' '), /Table 4 parameter rows differ/i);
+  const withFloat = await post(floatId, { caseNumber: '0' });
+  assert.equal(withFloat.status, 200); assert.equal(withFloat.body.status, 'unavailable');
+  assert.equal(withFloat.body.errors, null);
+  assert.doesNotMatch(withFloat.body.reasons.join(' '), /Table 4 parameter rows differ|material revision identity mismatch|core contract identity mismatch/i);
+  assert.match(withFloat.body.reasons.join(' '), /standard CPU transient core/i);
   const legacy = await post(legacyId, { caseNumber: '0' });
   assert.equal(legacy.status, 200); assert.equal(legacy.body.errors, null);
   assert.match(legacy.body.reasons.join(' '), /legacy/i);

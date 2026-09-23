@@ -1,5 +1,6 @@
 """Numerical verification only. Synthetic fixtures are never experimental truth."""
 import copy
+import hashlib
 import json
 import math
 import os
@@ -86,6 +87,42 @@ class Verification(unittest.TestCase):
                 self.assertEqual(m["quality"], "estimated")
             else:
                 with self.assertRaises(ValueError): material(item["name"])
+
+    def test_material_revision_identity_is_deterministic_and_provenance_labeled(self):
+        aliases = (("Ti-6Al-4V", "Ti64", "ti6al4v"),
+                   ("316L Stainless Steel", "SS316L", "ss316l"),
+                   ("AlSi10Mg", "ALSI10MG", "alsi10mg"),
+                   ("Inconel 718", "IN718", "in718"))
+        for canonical, alias, alloy_id in aliases:
+            with self.subTest(alloy=alloy_id):
+                first, second = material(canonical), material(alias)
+                self.assertEqual(first["materialId"], alloy_id)
+                self.assertEqual(second["materialId"], alloy_id)
+                self.assertEqual(first["materialRevisionSha256"], second["materialRevisionSha256"])
+                self.assertEqual(first["materialRevisionSha256"], material(canonical)["materialRevisionSha256"])
+                self.assertEqual(first["materialIdentitySchemaVersion"], 1)
+                self.assertEqual(first["provenanceClass"], "estimated-legacy")
+                snapshot = dict(first)
+                digest = snapshot.pop("materialRevisionSha256")
+                encoded = json.dumps(snapshot, sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=True, allow_nan=False).encode("utf-8")
+                self.assertEqual(digest, hashlib.sha256(encoded).hexdigest())
+
+    def test_supplied_material_revision_changes_with_source_and_is_unverified(self):
+        supplied = copy.deepcopy(material("Inconel 718"))
+        for key in ("materialId", "provenanceClass", "materialIdentitySchemaVersion", "materialRevisionSha256"):
+            supplied.pop(key)
+        supplied["source"] = "Unit-test source record"
+        first = material("Inconel 718", supplied)
+        repeated = material("IN718", supplied)
+        changed = copy.deepcopy(supplied)
+        changed["source"] = "Different unit-test source record"
+        revised = material("Inconel 718", changed)
+        self.assertEqual(first["materialId"], "in718")
+        self.assertEqual(first["materialRevisionSha256"], repeated["materialRevisionSha256"])
+        self.assertNotEqual(first["materialRevisionSha256"], revised["materialRevisionSha256"])
+        self.assertEqual(first["provenanceClass"], "user-supplied-unverified")
+        self.assertEqual(first["quality"], "user-supplied-unverified")
 
     def test_supplied_data_for_additional_alloy(self):
         # Synthetic table exercises schema only; explicitly marked synthetic source.

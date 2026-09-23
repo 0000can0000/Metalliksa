@@ -26,6 +26,12 @@
 - Doğrulama: Windows Python 3.12'de core-contract + engineering + heat-source toplam 40 PASS / 2 Linux/OpenFOAM SKIP. Ubuntu 22.04 WSL'de OpenFOAM 14 parity testi ve ısı-kaynağı grubu 8/8 PASS.
 - Commit: `2a53597` (`codex/lpbf-shared-core`). Sıradaki somut adım: ortak material authority ve SI/material adapter sınırını kaynak/caller kapsamıyla planlamak.
 
+## 2026-09-23 - LPBF Malzeme Revizyon Kimliği
+- Ortak registry'nin yeni malzeme snapshot'ları alaşım kimliği, açık provenance sınıfı, kimlik şema sürümü ve özellik içeriğinden türetilen SHA-256 revizyon özeti taşıyor. Mevcut `coreContract` tam malzeme nesnesini zaten bağlıyor; eski hash'siz kayıtlar okunabilir kalıyor.
+- Hash içerik bütünlüğü/kimliği sağlar, bilimsel doğrulama veya kaynak güvenilirliği sağlamaz. Legacy özellikler `estimated-legacy`, kullanıcı tabloları `user-supplied-unverified` olarak etiketleniyor. Tedarik edilmiş snapshot'lardaki kimlik metadata'sı yeniden hesaplanıyor ve güvenilmiyor.
+- Doğrulama: Windows Python 3.12'de core-contract + engineering + heat-source 44 PASS / 2 platforma özel SKIP. OpenFOAM 14 bağımsız parity testi Ubuntu 22.04 WSL'de PASS.
+- Sıradaki somut adım: material authority ve SI/material adapter sınırını kaynak/caller kapsamıyla planlamak; EIS/EDS kapsam dışı kalıyor.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

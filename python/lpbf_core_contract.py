@@ -12,10 +12,32 @@ def _encoded(value):
                       ensure_ascii=True, allow_nan=False).encode('utf-8')
 
 
+def _verify_material_revision(material):
+    if 'materialRevisionSha256' not in material:
+        return  # Legacy snapshots predate the additive material identity.
+    if (type(material.get('materialIdentitySchemaVersion')) is not int
+            or material['materialIdentitySchemaVersion'] != 1
+            or not isinstance(material.get('materialId'), str)
+            or not material['materialId'].strip()
+            or material.get('provenanceClass') not in (
+                'estimated-legacy', 'user-supplied-unverified')
+            or not isinstance(material.get('materialRevisionSha256'), str)):
+        raise ValueError('LPBF material revision identity is invalid')
+    snapshot = {key: value for key, value in material.items()
+                if key != 'materialRevisionSha256'}
+    try:
+        expected = hashlib.sha256(_encoded(snapshot)).hexdigest()
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError('LPBF material revision snapshot is not finite JSON') from error
+    if expected != material['materialRevisionSha256']:
+        raise ValueError('LPBF material revision identity mismatch')
+
+
 def build_core_contract(settings, material, solver_id, effective_mode):
     """Bind resolved inputs and material to an allowlisted executed model."""
     if not isinstance(settings, dict) or not isinstance(material, dict):
         raise ValueError('LPBF core contract requires resolved settings and material')
+    _verify_material_revision(material)
     requested = settings.get('backend')
     if requested not in ('auto', 'reference', 'openfoam-thermal'):
         raise ValueError('LPBF core contract has unknown requested backend')

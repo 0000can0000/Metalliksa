@@ -41,6 +41,22 @@ class CoreContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'core contract'):
                     enforce_thermal_balances(r)
 
+    def test_material_revision_binding_detects_changed_snapshot(self):
+        r = copy.deepcopy(self.thermal)
+        r['material']['source'] += '; modified after resolution'
+        with self.assertRaisesRegex(ValueError, 'material revision'):
+            enforce_thermal_balances(r)
+
+    def test_legacy_material_without_revision_binding_remains_supported(self):
+        from lpbf_core_contract import build_core_contract
+        r = copy.deepcopy(self.thermal)
+        for key in ('materialId', 'provenanceClass', 'materialIdentitySchemaVersion',
+                    'materialRevisionSha256'):
+            r['material'].pop(key)
+        r['coreContract'] = build_core_contract(r['settings'], r['material'],
+                                                r['solver']['id'], r['effectiveMode'])
+        enforce_thermal_balances(r)
+
     def test_present_invalid_contract_is_not_legacy(self):
         for contract in (None, {}, {'schemaVersion': True}, {'schemaVersion': 999}):
             with self.subTest(contract=contract):

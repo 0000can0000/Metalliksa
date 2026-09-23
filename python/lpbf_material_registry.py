@@ -4,6 +4,8 @@ Legacy solid/liquid values are retained, not promoted to measured curves.
 Interpolation is an explicitly estimated constitutive law, not new literature data.
 Additional alloy identities accept user-supplied, sourced property tables.
 """
+import hashlib
+import json
 import math
 import numpy as np
 from four_alloy_materials import four_alloy_thermophysical_db, resolve_alloy_id, THERMAL_NAME
@@ -17,6 +19,43 @@ NAMES = ["Ti-6Al-4V", "316L Stainless Steel", "AlSi10Mg", "Inconel 718",
          "AlSi7Mg", "CuCrZr", "Ti-5553"]
 
 
+def _require_json_value(value, path="material", active=None):
+    """Reject Python-only values before they can enter a persisted identity."""
+    if active is None:
+        active = set()
+    if value is None or isinstance(value, (str, bool, int)):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"Invalid non-finite JSON number at {path}")
+        return
+    if isinstance(value, list):
+        identity = id(value)
+        if identity in active:
+            raise ValueError(f"Invalid cyclic JSON value at {path}")
+        active.add(identity)
+        try:
+            for index, item in enumerate(value):
+                _require_json_value(item, f"{path}[{index}]", active)
+        finally:
+            active.remove(identity)
+        return
+    if isinstance(value, dict):
+        identity = id(value)
+        if identity in active:
+            raise ValueError(f"Invalid cyclic JSON value at {path}")
+        active.add(identity)
+        try:
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise ValueError(f"Invalid non-string JSON object key at {path}")
+                _require_json_value(item, f"{path}.{key}", active)
+        finally:
+            active.remove(identity)
+        return
+    raise ValueError(f"Invalid non-JSON value at {path}")
+
+
 def catalog():
     return [{"name": n, "quality": "estimated" if n in LEGACY else "missing",
              "available": n in LEGACY,
@@ -26,6 +65,8 @@ def catalog():
 
 
 def material(name, supplied=None):
+    if not isinstance(name, str):
+        raise ValueError("Material identity must be a string")
     aid = resolve_alloy_id(name)
     name = THERMAL_NAME[aid] if aid else name
     if name not in NAMES:
@@ -33,12 +74,18 @@ def material(name, supplied=None):
     if supplied is not None:
         if not isinstance(supplied, dict):
             raise ValueError("Material properties must be an object")
+        _require_json_value(supplied)
         allowed = {"source", "solidus_K", "liquidus_K", "boiling_K", "latentHeat_J_kg", "absorptivity", "emissivity",
                    "dGamma_dT", "table", "name", "version", "quality", "physicalMeltingPoint_K", "phaseRegularization_K",
-                   "temperatureCoverage_K", "uncertaintyNote"}
+                   "temperatureCoverage_K", "uncertaintyNote", "materialId", "provenanceClass",
+                   "materialIdentitySchemaVersion", "materialRevisionSha256"}
         if set(supplied)-allowed:
             raise ValueError("Unknown material property fields")
         m = dict(supplied)
+        # Supplied properties are re-identified for the requested alloy below;
+        # never trust identity metadata copied from an earlier snapshot.
+        for key in ("materialId", "provenanceClass", "materialIdentitySchemaVersion", "materialRevisionSha256"):
+            m.pop(key, None)
         if not isinstance(m.get("source"), str) or not m["source"].strip():
             raise ValueError("A property-table source is required")
         m["quality"] = "user-supplied-unverified"
@@ -83,6 +130,16 @@ def material(name, supplied=None):
         raise ValueError("Surface tension slope outside model bounds")
     m.update(name=name, version=VERSION, table=a.tolist(), temperatureCoverage_K=[float(a[0,0]),float(a[-1,0])],
              uncertaintyNote="Property uncertainties not quantified; source string does not establish validation.")
+    m["materialId"] = aid if aid else f"registry:{name}"
+    m["provenanceClass"] = "estimated-legacy" if supplied is None else "user-supplied-unverified"
+    m["materialIdentitySchemaVersion"] = 1
+    _require_json_value(m)
+    try:
+        identity_payload = json.dumps(m, sort_keys=True, separators=(",", ":"),
+                                      ensure_ascii=True, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise ValueError(f"Material snapshot is not valid JSON: {exc}") from exc
+    m["materialRevisionSha256"] = hashlib.sha256(identity_payload).hexdigest()
     return m
 
 

@@ -99,6 +99,17 @@ heat-source suites passed 40 of 42 tests on Windows Python3.12; two
 OpenFOAM/Linux-only cases were skipped there. OpenFOAM 14 reference parity and
 all eight heat-source tests passed on Ubuntu 22.04 WSL with the compiled worker.
 
+Material snapshots now add `materialId`, `provenanceClass`,
+`materialIdentitySchemaVersion`, and `materialRevisionSha256`. The revision
+digest covers the complete normalized material snapshot before the digest field
+is added. `coreContract.materialSha256` continues to bind that complete object.
+Supplied property objects have their identity metadata discarded and recomputed
+for the requested alloy. Legacy snapshots without a revision digest remain
+accepted. These hashes identify content; they do not establish source integrity,
+experimental provenance, or scientific validation. Legacy estimates are marked
+`estimated-legacy`; supplied tables are `user-supplied-unverified`; the result
+contract remains `evidenceClass='unvalidated-model'`.
+
 GPU candidate is a thermal-only implementation of the same stationary reference
 contract. Require explicit device, no silent fallback, equal scenario/material/
 source/boundaries, timestep/mesh studies, energy closure and CPU comparisons

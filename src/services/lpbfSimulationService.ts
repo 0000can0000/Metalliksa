@@ -87,6 +87,7 @@ export interface SimulationJob {
 export interface SimulationCapabilities {
   openfoamVersion: string | null; openfoamThermal: boolean; freeSurfaceSolver: boolean; platform: string;
   limitation: string; materials: { name: string; quality: string; available: boolean; note: string }[];
+  cudaThermalPilot?: { selection: string; availability: 'checked-on-submit'; cpuAlternative: string; evidenceScope: string };
 }
 function object(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function literalFields(value: unknown, expected: Record<string, unknown>): boolean {
@@ -236,4 +237,194 @@ export const simulationApi = {
   async submit(input: SimulationInput) { return parseSimulationJob(await request("/api/lpbf/jobs", { method: "POST", body: JSON.stringify(input) })); },
   async get(id: string) { return parseSimulationJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`)); },
   async cancel(id: string) { return parseSimulationJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`, { method: "DELETE" })); },
+};
+
+
+/** Separate CUDA pilot contract. It must never be parsed as a standard CPU job. */
+export interface GpuPilotInput extends Omit<SimulationInput, 'backend' | 'mode' | 'study' | 'tracks' | 'layers' | 'measurements'> {
+  jobType: 'gpu-thermal-pilot';
+  backend: `cuda:${number}`;
+  mode: 'standard';
+  surfaceMode: 'powder-layer';
+  study: 'none';
+  tracks: 1;
+  layers: 1;
+}
+const GPU_PILOT_OPTIONAL_FIELDS = [
+  'mesh_um', 'maxDt_s', 'stripeWidth_um', 'islandSize_um', 'scanAngle_deg', 'layerRotation_deg',
+  'dwell_s', 'trackLength_um', 'cooling_s', 'timeout_s', 'packingFraction',
+  'powderConductivityRatio', 'convection_W_m2K', 'absorptivity', 'emissivity',
+] as const;
+
+/** Build only fields accepted by the CPU reference validator, even from older runtime inputs. */
+export function buildGpuPilotInput(input: SimulationInput, settings: Partial<SimulationInput>,
+  device: `cuda:${number}`, material: string, strategy: SimulationInput['strategy'], properties?: unknown): GpuPilotInput {
+  const merged = { ...input, ...settings };
+  const optional = Object.fromEntries(GPU_PILOT_OPTIONAL_FIELDS
+    .filter(key => merged[key] !== undefined).map(key => [key, merged[key]])) as Partial<GpuPilotInput>;
+  return {
+    ...optional, material, power_W: input.power_W, speed_mm_s: input.speed_mm_s,
+    beamDiameter_um: input.beamDiameter_um, preheat_C: input.preheat_C,
+    layer_um: input.layer_um, hatch_um: input.hatch_um, strategy,
+    ...(properties !== undefined ? { properties } : {}),
+    jobType: 'gpu-thermal-pilot', backend: device, mode: 'standard',
+    surfaceMode: 'powder-layer', study: 'none', tracks: 1, layers: 1,
+  };
+}
+export type GpuPilotStatus = 'pass' | 'failed' | 'inconclusive';
+export interface GpuPilotComparison {
+  status: GpuPilotStatus;
+  cpu?: number; gpu?: number; relativeDifference?: number;
+  absoluteDifference_um?: number; relativeRiseL2?: number; relativeRiseMax?: number;
+  reason?: string;
+}
+export interface GpuPilotResult {
+  schemaVersion: 1; jobType: 'gpu-thermal-pilot';
+  requestedMode: 'standard'; effectiveMode: 'gpu-pilot';
+  validationStatus: 'unvalidated'; productionReady: false; label: string;
+  settings: GpuPilotInput;
+  solver: { id: 'enthalpy-fv-6-cuda-pilot-1'; modelId: 'stationary-enthalpy-conduction-v1';
+    actualBackend: string; thermalEvolutionDevice: string; sourceIntegrationDevice: 'cpu';
+    sourceTimestepLimiterDevice: 'cpu'; dtype: 'float64' };
+  material: { name: string; materialId: string; materialRevisionSha256: string; version: string };
+  metrics: { width_um: number; depth_um: number; length_um: number; volume_um3: number; peakTemperature_K: number };
+  energyBalance: { input_J: number; losses_J: number; stored_J: number; relativeError: number };
+  discretization: { cells: number; mesh_m: number; minimumDt_s: number; maximumDt_s: number; meanDt_s: number; steps: number };
+  gpuPilot: { status: GpuPilotStatus; scope: string; experimentalValidation: false;
+    targets: { integralRelativeMax: number; widthDepthAbsoluteCellsMax: number;
+      fieldRiseL2RelativeMax: number; fieldRiseMaxRelativeMax: number; peakMeltVolumeRelativeMax: number; source: string };
+    cpu: { solver: { id: string }; coreContract: { modelId: 'stationary-enthalpy-conduction-v1'; actualBackend: 'numpy-reference' };
+      material: { materialRevisionSha256: string }; discretization: { cells: number; steps: number; mesh_m: number } };
+    comparisons: Record<string, GpuPilotComparison> };
+  provenance: { inputHash: string; implementationHash: string; materialVersion: string; createdAt: string;
+    deviceEvidence: { selected: string; name: string; computeCapability: number[];
+      torch: string; cudaRuntime: string; thermalEvolution: string; sourceIntegration: 'cpu'; synchronizedAfterSolve: true };
+    runtime_s?: number };
+  artifacts: [];
+}
+export interface GpuPilotJob {
+  id: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timed_out';
+  requestSummary: { jobType: 'gpu-thermal-pilot'; backend: string; mode: string; material: string };
+  progress: number; log: string; error: string | null;
+  cacheHit?: boolean; deduplicated?: boolean;
+  result?: GpuPilotResult;
+}
+
+const GPU_COMPARISON_KEYS = ['finalSampling', 'finalTemperatureField', 'peakTemperature_K',
+  'input_J', 'losses_J', 'stored_J', 'width_um', 'depth_um', 'length_um', 'volume_um3'] as const;
+const gpuStatus = (value: unknown): value is GpuPilotStatus =>
+  value === 'pass' || value === 'failed' || value === 'inconclusive';
+
+export function parseGpuPilotJob(value: unknown): GpuPilotJob {
+  if (!object(value) || !finiteTree(value) || typeof value.id !== 'string' || !/^[a-f0-9]{32}$/.test(value.id)
+    || !['queued', 'running', 'completed', 'failed', 'cancelled', 'timed_out'].includes(String(value.status))
+    || typeof value.progress !== 'number' || value.progress < 0 || value.progress > 1
+    || typeof value.log !== 'string' || !(value.error === null || typeof value.error === 'string')
+    || !object(value.requestSummary) || value.requestSummary.jobType !== 'gpu-thermal-pilot'
+    || typeof value.requestSummary.backend !== 'string' || !/^cuda:[0-9]+$/.test(value.requestSummary.backend)
+    || typeof value.requestSummary.mode !== 'string' || typeof value.requestSummary.material !== 'string') {
+    throw new Error('Invalid CUDA pilot job response');
+  }
+  if (value.status !== 'completed') {
+    if (value.result !== undefined) throw new Error('Unfinished CUDA pilot job must not contain a result');
+    return value as unknown as GpuPilotJob;
+  }
+  const r = value.result;
+  if (!object(r) || r.schemaVersion !== 1 || r.jobType !== 'gpu-thermal-pilot'
+    || r.requestedMode !== 'standard' || r.effectiveMode !== 'gpu-pilot'
+    || r.validationStatus !== 'unvalidated' || r.productionReady !== false
+    || typeof r.label !== 'string' || !object(r.settings) || r.settings.jobType !== 'gpu-thermal-pilot'
+    || r.settings.backend !== value.requestSummary.backend || r.settings.mode !== 'standard'
+    || r.settings.study !== 'none' || r.settings.surfaceMode !== 'powder-layer'
+    || r.settings.tracks !== 1 || r.settings.layers !== 1
+    || !object(r.solver) || r.solver.id !== 'enthalpy-fv-6-cuda-pilot-1'
+    || r.solver.modelId !== 'stationary-enthalpy-conduction-v1'
+    || r.solver.actualBackend !== r.settings.backend
+    || r.solver.thermalEvolutionDevice !== r.settings.backend
+    || r.solver.sourceIntegrationDevice !== 'cpu' || r.solver.sourceTimestepLimiterDevice !== 'cpu'
+    || r.solver.dtype !== 'float64' || !object(r.material)
+    || typeof r.material.name !== 'string' || typeof r.material.materialId !== 'string'
+    || typeof r.material.materialRevisionSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(r.material.materialRevisionSha256)
+    || !object(r.metrics) || !dimensions(r.metrics) || typeof r.metrics.volume_um3 !== 'number'
+    || r.metrics.volume_um3 < 0 || typeof r.metrics.peakTemperature_K !== 'number' || r.metrics.peakTemperature_K <= 0
+    || !object(r.discretization) || !Number.isSafeInteger(r.discretization.cells) || Number(r.discretization.cells) <= 0
+    || !Number.isSafeInteger(r.discretization.steps) || Number(r.discretization.steps) <= 0
+    || typeof r.discretization.mesh_m !== 'number' || r.discretization.mesh_m <= 0
+    || !object(r.provenance) || !object(r.provenance.deviceEvidence)
+    || r.provenance.deviceEvidence.selected !== r.settings.backend
+    || r.provenance.deviceEvidence.thermalEvolution !== r.settings.backend
+    || r.provenance.deviceEvidence.sourceIntegration !== 'cpu'
+    || r.provenance.deviceEvidence.synchronizedAfterSolve !== true
+    || typeof r.provenance.deviceEvidence.name !== 'string' || !r.provenance.deviceEvidence.name.trim()
+    || !object(r.gpuPilot) || r.gpuPilot.experimentalValidation !== false
+    || !gpuStatus(r.gpuPilot.status) || !object(r.gpuPilot.cpu)
+    || !object(r.gpuPilot.cpu.coreContract)
+    || r.gpuPilot.cpu.coreContract.modelId !== r.solver.modelId
+    || r.gpuPilot.cpu.coreContract.actualBackend !== 'numpy-reference'
+    || !object(r.gpuPilot.cpu.material)
+    || r.gpuPilot.cpu.material.materialRevisionSha256 !== r.material.materialRevisionSha256
+    || !object(r.gpuPilot.targets) || !object(r.gpuPilot.comparisons)
+    || !Array.isArray(r.artifacts) || r.artifacts.length !== 0) {
+    throw new Error('Invalid CUDA pilot result identity');
+  }
+  checkClosure(r.energyBalance, ['input_J', 'losses_J', 'stored_J'], .01);
+  const comparisons = r.gpuPilot.comparisons as Record<string, unknown>;
+  if (!GPU_COMPARISON_KEYS.every(key => {
+    const item = comparisons[key];
+    return object(item) && gpuStatus(item.status);
+  })) {
+    throw new Error('Incomplete CUDA pilot parity report');
+  }
+  const statuses = GPU_COMPARISON_KEYS.map(key => (comparisons[key] as Record<string, unknown>).status);
+  const status = statuses.includes('failed') ? 'failed' : statuses.includes('inconclusive') ? 'inconclusive' : 'pass';
+  if (status !== r.gpuPilot.status) throw new Error('CUDA pilot parity status mismatch');
+  const targets = r.gpuPilot.targets;
+  if (targets.integralRelativeMax !== .01 || targets.widthDepthAbsoluteCellsMax !== 1
+    || targets.fieldRiseL2RelativeMax !== .01 || targets.fieldRiseMaxRelativeMax !== .01
+    || targets.peakMeltVolumeRelativeMax !== .01
+    || targets.source !== 'docs/DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md#11') {
+    throw new Error('CUDA pilot frozen parity targets changed');
+  }
+  if (status === 'pass') {
+    const field = comparisons.finalTemperatureField as Record<string, unknown>;
+    if (typeof field.relativeRiseL2 !== 'number' || field.relativeRiseL2 < 0
+      || typeof field.relativeRiseMax !== 'number' || field.relativeRiseMax < 0
+      || field.relativeRiseL2 > targets.fieldRiseL2RelativeMax
+      || field.relativeRiseMax > targets.fieldRiseMaxRelativeMax) {
+      throw new Error('CUDA pilot field parity exceeds target');
+    }
+    for (const key of ['peakTemperature_K', 'input_J', 'losses_J', 'stored_J']) {
+      const item = comparisons[key] as Record<string, unknown>;
+      if (typeof item.cpu !== 'number' || typeof item.gpu !== 'number'
+        || Math.abs(item.cpu-item.gpu)/Math.max(Math.abs(item.cpu), 1e-30) > targets.integralRelativeMax) {
+        throw new Error('CUDA pilot integral parity exceeds target');
+      }
+    }
+    for (const key of ['width_um', 'depth_um', 'length_um']) {
+      const item = comparisons[key] as Record<string, unknown>;
+      if (typeof item.cpu !== 'number' || typeof item.gpu !== 'number'
+        || Math.abs(item.cpu-item.gpu) > targets.widthDepthAbsoluteCellsMax * Number(r.discretization.mesh_m) * 1e6) {
+        throw new Error('CUDA pilot geometry parity exceeds target');
+      }
+    }
+    const volume = comparisons.volume_um3 as Record<string, unknown>;
+    if (typeof volume.cpu !== 'number' || typeof volume.gpu !== 'number'
+      || Math.abs(volume.cpu-volume.gpu)/Math.max(volume.cpu, 1e-30) > targets.peakMeltVolumeRelativeMax) {
+      throw new Error('CUDA pilot melt-volume parity exceeds target');
+    }
+  }
+  return value as unknown as GpuPilotJob;
+}
+
+export const gpuPilotApi = {
+  async submit(input: GpuPilotInput) {
+    return parseGpuPilotJob(await request('/api/lpbf/jobs', { method: 'POST', body: JSON.stringify(input) }));
+  },
+  async get(id: string) {
+    return parseGpuPilotJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`));
+  },
+  async cancel(id: string) {
+    return parseGpuPilotJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+  },
 };

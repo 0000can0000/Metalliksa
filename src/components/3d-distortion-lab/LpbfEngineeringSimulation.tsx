@@ -4,7 +4,7 @@ import { LpbfPhysicsDiagnostics } from "./LpbfPhysicsDiagnostics";
 import { ResolvedThermalViewer } from "./ResolvedThermalViewer";
 import React, { useEffect, useRef, useState } from "react";
 import { LpbfJobArchiver } from "../LpbfRunArchivePanel";
-import { simulationApi, SimulationInput, SimulationJob, SimulationMode, SimulationCapabilities, ResourceEstimate, SimulationResult } from "../../services/lpbfSimulationService";
+import { simulationApi, gpuPilotApi, buildGpuPilotInput, type GpuPilotJob, SimulationInput, SimulationJob, SimulationMode, SimulationCapabilities, ResourceEstimate, SimulationResult } from "../../services/lpbfSimulationService";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 
 import { LPBF_ENGINEERING_DEFAULTS as defaults, resumeEngineeringJob, useEngineeringField, useLpbfEngineeringStore } from "../../store/useLpbfEngineeringStore";
@@ -133,6 +133,101 @@ const parseMeasurementPayload = (raw: string, nextInput: SimulationInput, strate
   }
 };
 
+const GPU_PILOT_STORAGE_KEY = "metalliksa.lpbf.gpu-pilot.job.v1";
+
+function GpuThermalPilotPanel({input, settings, material, properties, strategy, caps, blocked}: {
+  input: SimulationInput; settings: Partial<SimulationInput>; material: string;
+  properties: string; strategy: SimulationInput["strategy"];
+  caps?: SimulationCapabilities; blocked: boolean;
+}) {
+  const [device, setDevice] = useState("cuda:0");
+  const [job, setJob] = useState<GpuPilotJob>();
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const active = job?.status === "queued" || job?.status === "running";
+  const result = job?.status === "completed" ? job.result : undefined;
+  useEffect(() => {
+    let live = true;
+    let saved = "";
+    try { saved = localStorage.getItem(GPU_PILOT_STORAGE_KEY) || ""; } catch { /* Storage may be disabled. */ }
+    if (/^[a-f0-9]{32}$/.test(saved)) {
+      gpuPilotApi.get(saved).then(next => { if (live) { setJob(next); setDevice(next.requestSummary.backend); } })
+        .catch(e => { if (live) setError(`Saved CUDA pilot unavailable: ${e instanceof Error ? e.message : "Worker connection failed"}`); });
+    }
+    return () => { live = false; };
+  }, []);
+  useEffect(() => {
+    if (!job || !active) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const next = await gpuPilotApi.get(job.id);
+        if (!live) return;
+        setJob(next); setError("");
+        if (next.status === "queued" || next.status === "running") timer = setTimeout(poll, 1500);
+      } catch (e) {
+        if (!live) return;
+        setError(e instanceof Error ? e.message : "CUDA pilot polling failed");
+        timer = setTimeout(poll, 3000);
+      }
+    };
+    timer = setTimeout(poll, 1500);
+    return () => { live = false; clearTimeout(timer); };
+  }, [job?.id, job?.status]);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitting || active) return;
+    setSubmitting(true); setError("");
+    try {
+      if (!/^cuda:[0-9]+$/.test(device)) throw new Error("Select an explicit cuda:N device.");
+      const pilot = buildGpuPilotInput(input, settings, device as `cuda:${number}`,
+        material, strategy, properties.trim() ? JSON.parse(properties) : undefined);
+      const next = await gpuPilotApi.submit(pilot);
+      setJob(next);
+      try { localStorage.setItem(GPU_PILOT_STORAGE_KEY, next.id); } catch { /* Live job remains visible. */ }
+    } catch (e) { setError(e instanceof Error ? e.message : "CUDA pilot submission failed"); }
+    finally { setSubmitting(false); }
+  };
+  const cancel = async () => {
+    if (!job || !active || cancelling) return;
+    setCancelling(true);
+    try { setJob(await gpuPilotApi.cancel(job.id)); }
+    catch (e) { setError(e instanceof Error ? e.message : "CUDA pilot cancellation failed"); }
+    finally { setCancelling(false); }
+  };
+  const parity = result?.gpuPilot;
+  const evidence = result?.provenance.deviceEvidence;
+  const comparisons = parity?.comparisons;
+  return <section className={surface} aria-label="CUDA thermal parity pilot">
+    <h4 className="font-medium">CUDA thermal parity pilot</h4>
+    <p className="mt-2 text-sm text-slate-300">Explicit CUDA device · one powder-layer track and one layer · standard enthalpy conduction · no convergence study or measurements. Current mesh, time and process values are used. Device availability is checked when submitted.</p>
+    <p className="mt-2 text-xs text-amber-200">Numerical CPU/GPU parity only. Experimental validation and qualification are unavailable. CPU alternative: Reference enthalpy FV above. GPU pilot archiving is unavailable.</p>
+    <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
+      <label className="text-sm">CUDA device<input aria-label="CUDA device" className={inputClass} value={device} onChange={e=>setDevice(e.target.value)} pattern="cuda:[0-9]+" aria-invalid={!/^cuda:[0-9]+$/.test(device)} aria-describedby="cuda-pilot-help" required/></label>
+      <button type="submit" disabled={blocked||submitting||active||!/^cuda:[0-9]+$/.test(device)} className="rounded-lg border border-sky-400/50 bg-sky-950/50 px-4 py-2.5 text-sm disabled:opacity-40">{submitting?"Submitting…":"Run CUDA parity pilot"}</button>
+      {active&&<button type="button" disabled={cancelling} onClick={cancel} className="rounded-lg border border-slate-500 px-4 py-2.5 text-sm disabled:opacity-40">{cancelling?"Cancelling…":"Cancel CUDA pilot"}</button>}
+    </form>
+    <p id="cuda-pilot-help" className="mt-2 text-xs text-slate-400">{caps?.cudaThermalPilot?.availability === "checked-on-submit" ? "The worker checks the selected CUDA device at submission." : "CUDA availability is not known until submission."} No CPU fallback is used.</p>
+    {error&&<p role="alert" className="mt-3 rounded-lg border border-red-400/40 p-3 text-sm text-red-200">{error}</p>}
+    {job&&<p role="status" className="mt-3 text-sm">CUDA job {job.id} · {job.status}{job.cacheHit?" · cached":""}</p>}
+    {job?.error&&<p role="alert" className="mt-2 text-sm text-red-200">{job.error}</p>}
+    {result&&<div className="mt-4 space-y-3 text-sm">
+      <p>CPU/GPU parity: <strong>{parity?.status}</strong> · {parity?.scope} · experimental validation: unavailable.</p>
+      <p>Executed device: {evidence?.name} ({evidence?.selected}) · thermal evolution {result.solver.thermalEvolutionDevice} · source integration {result.solver.sourceIntegrationDevice} · {result.solver.dtype}.</p>
+      <p>Model: {result.solver.modelId} · material {result.material.name} ({result.material.materialId}) · revision <span className="font-mono break-all">{result.material.materialRevisionSha256}</span>.</p>
+      <p>GPU W/D/L: {fmt(result.metrics.width_um)} / {fmt(result.metrics.depth_um)} / {fmt(result.metrics.length_um)} µm · peak {fmt(result.metrics.peakTemperature_K)} K · energy closure {fmt(result.energyBalance.relativeError*100)}%.</p>
+      <p>CPU reference: {parity?.cpu.solver.id} / {parity?.cpu.coreContract.actualBackend}. Final 3D field L2 {fmt(comparisons?.finalTemperatureField.relativeRiseL2)}; max {fmt(comparisons?.finalTemperatureField.relativeRiseMax)}. Frozen field targets ≤ {fmt(parity?.targets.fieldRiseL2RelativeMax)} / {fmt(parity?.targets.fieldRiseMaxRelativeMax)}.</p>
+      <details className="border-t border-slate-700/50 pt-2"><summary className="cursor-pointer">CPU/GPU comparison and device evidence</summary>
+        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-xs"><caption className="sr-only">CUDA pilot numerical parity checks</caption><thead><tr><th scope="col">Quantity</th><th scope="col">CPU</th><th scope="col">GPU</th><th scope="col">Difference</th><th scope="col">Status</th></tr></thead><tbody>{Object.entries(comparisons||{}).map(([key,c])=><tr key={key} className="border-t border-slate-700/40"><th scope="row" className="py-2 pr-2 font-normal">{key}</th><td>{fmt(c.cpu)}</td><td>{fmt(c.gpu)}</td><td>{fmt(c.relativeDifference ?? c.absoluteDifference_um ?? c.relativeRiseL2)}</td><td>{c.status}</td></tr>)}</tbody></table></div>
+        <p className="mt-3 text-xs text-slate-400">PyTorch {evidence?.torch} · CUDA runtime {evidence?.cudaRuntime} · compute capability {evidence?.computeCapability.join(".")} · synchronized after solve: {evidence?.synchronizedAfterSolve?"yes":"no"}.</p>
+        <p className="mt-2 text-xs text-slate-400">Input {result.provenance.inputHash} · implementation {result.provenance.implementationHash}.</p>
+      </details>
+    </div>}
+  </section>;
+}
+
 export function LpbfEngineeringSimulation({input:providedInput}:{input:SimulationInput}) {
   const sharedSpecimen=useMaterialSpecimenStore(s=>s.activeSpecimen);
   const process=sharedSpecimen.lpbf;
@@ -255,6 +350,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
 
   return <section aria-label="LPBF engineering simulation" className="min-w-0 rounded-3xl border border-slate-700/60 bg-[#090f1b] p-4 md:p-7 space-y-6 text-slate-200 font-sans [&_button]:transition-colors [&_button]:duration-150 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-sky-300 [&_button:focus-visible]:outline-offset-4 [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-sky-300 [&_summary]:rounded-md [&_summary]:py-2 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-sky-300 motion-reduce:[&_*]:transition-none">
     <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-[10px] tracking-[.3em] uppercase text-slate-400">Metalliksa / Advanced manufacturing</p><h3 className="text-3xl font-medium tracking-tight mt-2">LPBF <span className="text-slate-400">/</span> Melt Pool</h3><p className="mt-2 text-sm text-slate-400">Thermal response, process screening and traceable evidence.</p></div><Badge tone={caps?.openfoamThermal?"active":"neutral"}>{caps?caps.openfoamThermal?"OpenFOAM thermal worker available":"Reference worker · OpenFOAM unavailable":"Connecting to worker…"}</Badge></header>
+    <GpuThermalPilotPanel input={input} settings={settings} material={material||input.material} properties={properties} strategy={resolvedStrategy} caps={caps} blocked={busy||active||missingMaterial||invalidControls||invalidProcess}/>
     <ResultHeader job={job} material={material||input.material} availability={caps?`${caps.openfoamVersion||"Unavailable"} · free-surface ${caps.freeSurfaceSolver?"reported available":"unavailable"}`:"Checking…"} stale={resultSignature!==signature} elapsed={elapsed} cancel={cancel} cancelling={cancelling}/>
     {active&&submittedSignature!==signature&&<p role="status" className="text-sm text-amber-200">Inputs changed — the running job uses submitted settings. Local changes apply to the next run.</p>}
     {(error||job?.error)&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200 whitespace-pre-wrap">{error||job?.error}</p>}

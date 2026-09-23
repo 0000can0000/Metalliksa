@@ -2,11 +2,14 @@
 
 The common cell-integrated moving source is evaluated on the host and transferred
 to CUDA. Conduction, enthalpy update, constitutive interpolation and melt state
-run on CUDA in float64. This bounded pilot is not a registered worker backend.
+run on CUDA in float64. Queue integration uses a separate, explicit pilot job type.
 """
 
 import math
 import re
+import hashlib
+import json
+import datetime
 from unittest.mock import patch
 
 import numpy as np
@@ -14,7 +17,7 @@ import numpy as np
 from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs
 from lpbf_heat_source import source_limited_step
 from lpbf_peak import PeakMeltTracker
-from lpbf_simulation import validate, run as cpu_run
+from lpbf_simulation import validate, fingerprint, run as cpu_run
 from lpbf_material_registry import enthalpy_table, property_at
 
 
@@ -28,6 +31,7 @@ PARITY_TARGETS = {"integralRelativeMax": .01, "widthDepthAbsoluteCellsMax": 1.0,
                   "fieldRiseL2RelativeMax": .01, "fieldRiseMaxRelativeMax": .01,
                   "peakMeltVolumeRelativeMax": .01,
                   "source": "docs/DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md#11"}
+PILOT_JOB_TYPE = "gpu-thermal-pilot"
 
 
 def require_cuda(device):
@@ -40,6 +44,26 @@ def require_cuda(device):
     if not torch.cuda.is_available() or int(device[5:]) >= torch.cuda.device_count():
         raise RuntimeError(f"CUDA device {device} unavailable; no CPU fallback")
     return torch, torch.device(device)
+
+
+def validate_pilot_request(raw):
+    """Resolve an explicit CUDA queue request to the unchanged CPU physics input."""
+    if not isinstance(raw, dict) or raw.get("jobType") != PILOT_JOB_TYPE:
+        raise ValueError("Explicit gpu-thermal-pilot jobType required")
+    device = raw.get("backend")
+    # Check before accepting; execution checks again if the device disappears.
+    require_cuda(device)
+    reference = {k: v for k, v in raw.items() if k != "jobType"}
+    reference["backend"] = "reference"
+    p, material = validate(reference)
+    if (p["mode"] != "standard" or p["study"] != "none" or p["tracks"] != 1
+            or p["layers"] != 1 or p["surfaceMode"] != "powder-layer"
+            or p.get("measurements")):
+        raise ValueError("CUDA pilot requires one powder-layer track, one layer, standard mode, no study or measurements")
+    domain = calculate_mesh_domain(p)
+    if domain["nxy"]**2 * domain["nz"] > MAX_CELLS:
+        raise ValueError("CUDA pilot cell budget exceeded")
+    return {**p, "backend": device, "jobType": PILOT_JOB_TYPE}, material
 
 
 def _interp(torch, values, xp, fp):
@@ -284,3 +308,127 @@ def compare_with_cpu(raw, device="cuda:0"):
             "gpu": gpu, "cpu": {"solver": cpu["solver"], "coreContract": cpu["coreContract"],
                          "material": {k: cpu["material"][k] for k in ("name", "materialId", "materialRevisionSha256", "version")},
                          "discretization": cpu["discretization"]}, "comparisons": comparisons}
+
+
+def run_queued_pilot(raw):
+    """Execute a queue-selected CUDA pilot while retaining separate CPU evidence."""
+    request, material = validate_pilot_request(raw)
+    device = request["backend"]
+    reference = {k: v for k, v in request.items() if k != "jobType"}
+    reference["backend"] = "reference"
+    parity = compare_with_cpu(reference, device)
+    gpu = parity["gpu"]
+    torch, cuda = require_cuda(device)
+    torch.cuda.synchronize(cuda)
+    properties = torch.cuda.get_device_properties(cuda)
+    result = {
+        "schemaVersion": 1, "jobType": PILOT_JOB_TYPE,
+        "requestedMode": "standard", "effectiveMode": "gpu-pilot",
+        "solver": gpu["solver"], "settings": request, "material": material,
+        "metrics": gpu["metrics"], "energyBalance": gpu["energyBalance"],
+        "discretization": gpu["discretization"], "peakExtraction": gpu["peakExtraction"],
+        "gpuPilot": {k: v for k, v in parity.items() if k != "gpu"},
+        "validationStatus": "unvalidated", "productionReady": False,
+        "label": "Unvalidated CUDA thermal parity pilot",
+        "confidence": "low", "artifacts": [],
+        "provenance": {
+            "inputHash": hashlib.sha256(json.dumps(request, sort_keys=True, allow_nan=False).encode()).hexdigest(),
+            "implementationHash": fingerprint(request, material),
+            "materialVersion": material["version"],
+            "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "deviceEvidence": {
+                "selected": device, "name": properties.name,
+                "computeCapability": list(torch.cuda.get_device_capability(cuda)),
+                "torch": torch.__version__, "cudaRuntime": torch.version.cuda,
+                "thermalEvolution": device, "sourceIntegration": "cpu",
+                "synchronizedAfterSolve": True,
+            },
+        },
+    }
+    enforce_gpu_pilot_result(result)
+    json.dumps(result, allow_nan=False)
+    return result
+
+
+def enforce_gpu_pilot_result(result):
+    """Fail closed on queue restore without claiming the CPU core contract."""
+    if not isinstance(result, dict) or result.get("jobType") != PILOT_JOB_TYPE:
+        raise ValueError("Not a CUDA thermal pilot result")
+    solver, settings = result.get("solver", {}), result.get("settings", {})
+    pilot, evidence = result.get("gpuPilot", {}), result.get("provenance", {}).get("deviceEvidence", {})
+    device = settings.get("backend")
+    if (not isinstance(device, str) or not re.fullmatch(r"cuda:[0-9]+", device)
+            or result.get("effectiveMode") != "gpu-pilot"
+            or result.get("validationStatus") != "unvalidated"
+            or result.get("productionReady") is not False
+            or result.get("artifacts") != []
+            or solver.get("id") != GPU_SOLVER_ID or solver.get("modelId") != MODEL_ID
+            or solver.get("actualBackend") != device
+            or solver.get("thermalEvolutionDevice") != device
+            or solver.get("sourceIntegrationDevice") != "cpu"
+            or evidence.get("selected") != device
+            or evidence.get("thermalEvolution") != device
+            or evidence.get("sourceIntegration") != "cpu"
+            or evidence.get("synchronizedAfterSolve") is not True
+            or pilot.get("experimentalValidation") is not False
+            or pilot.get("cpu", {}).get("coreContract", {}).get("modelId") != MODEL_ID
+            or pilot.get("cpu", {}).get("coreContract", {}).get("actualBackend") != "numpy-reference"
+            or pilot.get("cpu", {}).get("material", {}).get("materialRevisionSha256")
+                != result.get("material", {}).get("materialRevisionSha256")):
+        raise ValueError("CUDA pilot identity or CPU parity binding failed")
+    energy = result.get("energyBalance", {})
+    values = [energy.get(k) for k in ("input_J", "losses_J", "stored_J")]
+    if (any(type(v) not in (int, float) or not math.isfinite(v) or v < 0 for v in values)
+            or values[0] <= 0):
+        raise ValueError("CUDA pilot energy accounting invalid")
+    error = abs(values[0]-values[1]-values[2])/values[0]
+    if (error > PARITY_TARGETS["integralRelativeMax"]
+            or not math.isclose(error, energy.get("relativeError", float("nan")), abs_tol=1e-10)):
+        raise ValueError("CUDA pilot energy closure failed")
+    comparisons = pilot.get("comparisons", {})
+    expected = ("finalSampling", "finalTemperatureField", "peakTemperature_K",
+                "input_J", "losses_J", "stored_J", "width_um", "depth_um",
+                "length_um", "volume_um3")
+    if any(comparisons.get(key, {}).get("status") not in ("pass", "failed", "inconclusive")
+           for key in expected):
+        raise ValueError("CUDA pilot parity report incomplete")
+    statuses = [comparisons[key]["status"] for key in expected]
+    status = "failed" if "failed" in statuses else "inconclusive" if "inconclusive" in statuses else "pass"
+    if pilot.get("status") != status or pilot.get("targets") != PARITY_TARGETS:
+        raise ValueError("CUDA pilot parity status or frozen targets changed")
+    if result.get("provenance", {}).get("inputHash") != hashlib.sha256(
+            json.dumps(settings, sort_keys=True, allow_nan=False).encode()).hexdigest():
+        raise ValueError("CUDA pilot input binding changed")
+    if status == "pass":
+        sampling = comparisons["finalSampling"]
+        cpu_disc, gpu_disc = pilot["cpu"]["discretization"], result["discretization"]
+        if (sampling["cpuSteps"] != sampling["gpuSteps"]
+                or sampling["cpuSteps"] != cpu_disc["steps"]
+                or sampling["gpuSteps"] != gpu_disc["steps"]
+                or sampling["cellCount"] != cpu_disc["cells"] or sampling["cellCount"] != gpu_disc["cells"]
+                or not math.isclose(sampling["cpuFinalTime_s"], sampling["cpuFrameTime_s"], rel_tol=1e-12, abs_tol=1e-14)
+                or not math.isclose(sampling["cpuFinalTime_s"], sampling["gpuFinalTime_s"], rel_tol=1e-12, abs_tol=1e-14)
+                or not math.isclose(sampling["cpuFinalTime_s"], sampling["expectedEnd_s"], rel_tol=1e-12, abs_tol=1e-14)):
+            raise ValueError("CUDA pilot final sampling report conflicts with discretization")
+        field = comparisons["finalTemperatureField"]
+        if (field["relativeRiseL2"] > PARITY_TARGETS["fieldRiseL2RelativeMax"]
+                or field["relativeRiseMax"] > PARITY_TARGETS["fieldRiseMaxRelativeMax"]):
+            raise ValueError("CUDA pilot final-field parity exceeds frozen targets")
+        for key in ("peakTemperature_K", "input_J", "losses_J", "stored_J"):
+            item = comparisons[key]
+            actual = abs(item["cpu"]-item["gpu"])/max(abs(item["cpu"]), 1e-30)
+            if (not math.isfinite(actual) or actual > PARITY_TARGETS["integralRelativeMax"]
+                    or not math.isclose(actual, item["relativeDifference"], abs_tol=1e-10)):
+                raise ValueError("CUDA pilot integral parity report changed")
+        cell_um = gpu_disc["mesh_m"]*1e6
+        for key in ("width_um", "depth_um", "length_um"):
+            item = comparisons[key]
+            actual = abs(item["cpu"]-item["gpu"])
+            if (not math.isfinite(actual) or actual > PARITY_TARGETS["widthDepthAbsoluteCellsMax"]*cell_um
+                    or not math.isclose(actual, item["absoluteDifference_um"], abs_tol=1e-10)):
+                raise ValueError("CUDA pilot geometry parity report changed")
+        volume = comparisons["volume_um3"]
+        actual = abs(volume["cpu"]-volume["gpu"])/max(volume["cpu"], 1e-30)
+        if (not math.isfinite(actual) or actual > PARITY_TARGETS["peakMeltVolumeRelativeMax"]
+                or not math.isclose(actual, volume["relativeDifference"], abs_tol=1e-10)):
+            raise ValueError("CUDA pilot melt-volume parity report changed")

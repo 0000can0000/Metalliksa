@@ -29,7 +29,6 @@ from lpbf_multilaser_plume import ShieldGasFlow, PlumeParameters, MultiLaserPlum
 from lpbf_optical_tomography import OpticalTomographySimulator
 from lpbf_powder_dem_compaction import PowderCompactionEngine
 from lpbf_support_optimization import SupportStructureOptimizer
-from lpbf_bayesian_optimizer import run_bayesian_optimization
 from lpbf_thermal_accumulation import AlloyThermalProperties, HatchProcessConfig, MultiTrackThermalEngine
 from lpbf_thermomechanical import analyze_distortion
 from lpbf_toolpath_kinematics import LPBFToolpathParser, GalvanometerKinematicsEngine, ScannerProfile
@@ -53,6 +52,9 @@ def capabilities():
                 binaryHash=hashlib.sha256(BINARY.read_bytes()).hexdigest() if BINARY.is_file() else None,
                 freeSurfaceSolver=bool(version and (Path(__file__).parent/"openfoam/bin/metalliksaMeltPoolFoam").is_file()), platform=sys.platform,
                 thermalSolver=True, materials=catalog(),
+                cudaThermalPilot=dict(selection="jobType=gpu-thermal-pilot; backend=cuda:N",
+                    availability="checked-on-submit", cpuAlternative="backend=reference",
+                    evidenceScope="same-model numerical parity only"),
                 limitation="No qualified LPBF free-surface CFD solver. High-Fidelity requests return explicitly labelled analytical screening.")
 
 
@@ -105,11 +107,15 @@ class Queue:
             raise ValueError("Job not found")
         out = dict(row)
         settings = json.loads((self.root/job/"input.json").read_text())
-        out["requestSummary"] = {k:settings.get(k) for k in ("mode","backend","material")}
+        out["requestSummary"] = {k:settings.get(k) for k in ("jobType","mode","backend","material")}
         if out["status"] == "completed":
             try:
                 out["result"] = json.loads((self.root/job/"result.json").read_text())
-                enforce_thermal_balances(out["result"])
+                if settings.get("jobType") == "gpu-thermal-pilot":
+                    from lpbf_gpu_thermal import enforce_gpu_pilot_result
+                    enforce_gpu_pilot_result(out["result"])
+                else:
+                    enforce_thermal_balances(out["result"])
             except (OSError, ValueError) as error:
                 out.pop("result", None)
                 out.update(status="failed", error=f"Saved result integrity failed: {error}")
@@ -118,8 +124,11 @@ class Queue:
 
     def capture(self, job):
         with self.lock:
-            if self.get(job)['status'] != 'completed':
+            state = self.get(job)
+            if state['status'] != 'completed':
                 raise ValueError('Only completed jobs can be captured')
+            if state['result'].get('jobType') == 'gpu-thermal-pilot':
+                raise ValueError('CUDA pilot archive unavailable until the run-document contract supports its distinct backend')
             return capture_run(self.root/job, job)
 
     def archive_capture(self, job):
@@ -145,6 +154,9 @@ class Queue:
         job_type = raw.get("jobType")
         if job_type == "build-job":
             p, m = raw, raw
+        elif job_type == "gpu-thermal-pilot":
+            from lpbf_gpu_thermal import validate_pilot_request
+            p, m = validate_pilot_request(raw)
         else:
             p, m = validate(raw)
         # A rebuilt binary must invalidate a long-lived worker's cache identity.
@@ -251,7 +263,11 @@ class Queue:
                         return
                     if child.returncode == 0 and (folder/"result.json").exists():
                         result = json.loads((folder/"result.json").read_text())
-                        enforce_thermal_balances(result)
+                        if params.get("jobType") == "gpu-thermal-pilot":
+                            from lpbf_gpu_thermal import enforce_gpu_pilot_result
+                            enforce_gpu_pilot_result(result)
+                        else:
+                            enforce_thermal_balances(result)
                         self.finish_running(job, status="completed", progress=1., log=final_log)
                     else:
                         self.finish_running(job, status="failed", error=final_log[-4000:] or f"Solver exit {child.returncode}", log=final_log)
@@ -280,7 +296,10 @@ def main():
             input_data = json.loads((folder/"input.json").read_text())
             job_type = input_data.get("jobType")
 
-            if job_type == "build-job":
+            if job_type == "gpu-thermal-pilot":
+                from lpbf_gpu_thermal import run_queued_pilot
+                result = run_queued_pilot(input_data)
+            elif job_type == "build-job":
                 from lpbf_build_job_solver import solve_lpbf_build_job
                 result = solve_lpbf_build_job(input_data)
                 if "provenance" not in result:
@@ -581,6 +600,7 @@ def main():
 
             elif method == "bayesian-optimizer":
                 payload = request["payload"]
+                from lpbf_bayesian_optimizer import run_bayesian_optimization
                 data = run_bayesian_optimization(
                     alloy_id=payload.get("alloyId", "in718"),
                     param_bounds=payload.get("paramBounds"),

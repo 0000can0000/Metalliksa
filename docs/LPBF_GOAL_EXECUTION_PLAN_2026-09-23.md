@@ -43,6 +43,16 @@ tersi, sınır akısı ve zaman adımı kusurlarını düzeltti (`69fae9a`). Bu 
 hareketsiz 2B kaynak geometrisi gerçek LPBF eriyik havuzu için yeterli olmadığı
 için sonuç tarama olarak etiketlenir. 3B referans P4 kapısı bağımsızdır.
 
+Kullanıcı P10'u çekirdek motorlara genişletmeyi ayrıca yetkilendirdi. Phase 22
+Warp solver'ında metal-hava yanal yüz akısı metal hücre maskesiyle kapatıldı;
+zaman entegrasyonu son aralığı kırpar ve sıfır süreli iz için adım çalıştırmaz.
+Warp CPU regresyonları bu iki yerel düzeltmeyi kapsar. Aynı motordaki basınç
+projeksiyonu henüz kabul edilmedi: merkezî diverjans/gradyan çifti 7-noktalı
+Jacobi Laplasyeniyle tutarsızdır ve checkerboard modu bırakabilir. Eşlenik
+ayrık D/G operatörü, sınır maskeleriyle uyumlu Poisson çözümü ve ön/son diverjans
+artakalanı testi P10'un açık işidir. CPU transient motorunun yüzey kesmesi de
+tam hücre yaklaşımını kullanır; cut-cell kütle/iletim düzeltmesi ayrı kapsamdır.
+
 ## IN718 geometri karşılaştırmasının ön protokolü
 
 P5 için aday gözlem, NIST AMB2022-03'ün çıplak IN718 levhada yedi tek iz

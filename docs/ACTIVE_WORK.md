@@ -4,7 +4,14 @@ Root owns integration and `STATUS.md`/`PROOF.md` on
 `codex/lpbf-buildjob-material-identity`; no push. All current subagents have
 finished. The official NIST workbook audit is `ef303e7`. Phase 21 stationary
 2D screening physics repairs are `69fae9a` and `bf34aef` (6 focused Python
-tests PASS); P10 was added to the active plan in `04e0ea4`. The separate
+tests PASS); P10 was added to the active plan in `04e0ea4`. This turn repaired
+two Phase 22 Warp defects: metal-to-air lateral conduction at a stepped free
+surface and final-step overshoot beyond the requested duration. Warp CPU plus
+peak-selection regressions: 8 PASS / 1 SKIP. The collocated pressure projection
+operator mismatch remains open; design review recommends a paired discrete
+divergence/gradient and matched Poisson stencil before any projection claim.
+CPU transient whole-cell surface geometry remains a documented cut-cell
+limitation, not a repaired defect. The separate
 preregistered 75 W 3+3 contour report is `4110e73`, SHA-256
 `b9cff92e01378a58ac4ed17333c21ad591a956dfc6e32ddd2dda8a219026b866`.
 All six solves completed with energy PASS, contour mesh width PASS, contour
@@ -13,7 +20,10 @@ status is inconclusive. The frozen 80 W P4 result remains failed. P5 remains
 unavailable. Next: assess peak-time selection and the observation operator
 against field/analytic evidence, then decide whether an independently
 preregistered new P4 study is warranted; do not relax frozen criteria.
-Root alone changes checkpoint documents.
+Next: implement and test the Phase 22 pressure-projection operator on a small
+manufactured CPU Warp field; then rerun the preregistered 75 W diagnostic with
+the newly recorded peak-step/plateau fields. Root alone changes checkpoint
+documents.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is
 `docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json`: all six completed, energy

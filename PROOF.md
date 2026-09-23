@@ -853,3 +853,18 @@ a clearly labelled nominal-Gaussian screening input, but does not provide an
 exact measured profile artifact for the currently strict P5 gate. The archived
 Table 4 revision and its run binding are unchanged; no NIST model residual was
 calculated.
+
+## 2026-09-24 — Phase 22 core-physics regression
+
+`python/lpbf_transient_3d_gpu.py` now clips its last explicit time interval to
+the requested toolpath end and performs zero updates for a zero-duration path.
+The lateral thermal face coefficient is zero when the neighboring column's
+free surface places that cell in air. Warp CPU regressions check exact-duration
+step schedules, zero-duration no-heating behavior, no heat transfer from metal
+to ambient-reset air, and retained transfer between active metal cells. The
+combined Phase 22 and peak-selection focused suite passed 8 tests with 1 skip;
+the skip is the existing Windows-only OpenFOAM dispatch test. GPU execution was not available for
+this verification. Pressure projection remains unresolved: its centered
+divergence/gradient is not the operator represented by its nearest-neighbor
+Jacobi stencil. The CPU whole-cell surface representation also remains a known
+geometry limitation. No phase-level scientific validation is claimed.

@@ -9,6 +9,27 @@ import numpy as np
 
 wp.init()
 
+
+def _step_count(sim_time_s: float, nominal_dt_s: float) -> int:
+    """Number of forward-Euler intervals needed to reach the requested end time."""
+    if not math.isfinite(sim_time_s) or sim_time_s < 0:
+        raise ValueError("Simulation duration must be finite and nonnegative")
+    if not math.isfinite(nominal_dt_s) or nominal_dt_s <= 0:
+        raise ValueError("Time step must be finite and positive")
+    if sim_time_s == 0:
+        return 0
+    ratio = sim_time_s / nominal_dt_s
+    nearest = round(ratio)
+    if math.isclose(ratio, nearest, rel_tol=1e-12, abs_tol=1e-12):
+        ratio = float(nearest)
+    return int(math.ceil(ratio))
+
+
+def _step_size(sim_time_s: float, nominal_dt_s: float, step: int) -> float:
+    """Clip the last update so integration never continues beyond the toolpath."""
+    remaining = sim_time_s - step * nominal_dt_s
+    return max(0.0, min(nominal_dt_s, remaining))
+
 @wp.struct
 class LaserState:
     x: float
@@ -347,10 +368,18 @@ def enthalpy_3d_nonlinear_step_kernel(
         h_c_val = H[i, j, k]
         k_c = get_k(T_c, T_solidus, T_liquidus, k_solid, k_liquid)
         
-        k_xp = 0.5 * (k_c + get_k(T[i+1, j, k], T_solidus, T_liquidus, k_solid, k_liquid))
-        k_xm = 0.5 * (k_c + get_k(T[i-1, j, k], T_solidus, T_liquidus, k_solid, k_liquid))
-        k_yp = 0.5 * (k_c + get_k(T[i, j+1, k], T_solidus, T_liquidus, k_solid, k_liquid))
-        k_ym = 0.5 * (k_c + get_k(T[i, j-1, k], T_solidus, T_liquidus, k_solid, k_liquid))
+        k_xp = 0.0
+        if k <= int(Z_surf[i+1, j] / dz):
+            k_xp = 0.5 * (k_c + get_k(T[i+1, j, k], T_solidus, T_liquidus, k_solid, k_liquid))
+        k_xm = 0.0
+        if k <= int(Z_surf[i-1, j] / dz):
+            k_xm = 0.5 * (k_c + get_k(T[i-1, j, k], T_solidus, T_liquidus, k_solid, k_liquid))
+        k_yp = 0.0
+        if k <= int(Z_surf[i, j+1] / dz):
+            k_yp = 0.5 * (k_c + get_k(T[i, j+1, k], T_solidus, T_liquidus, k_solid, k_liquid))
+        k_ym = 0.0
+        if k <= int(Z_surf[i, j-1] / dz):
+            k_ym = 0.5 * (k_c + get_k(T[i, j-1, k], T_solidus, T_liquidus, k_solid, k_liquid))
         
         T_zp = T[i, j, k+1]
         if k == k_surf:
@@ -427,7 +456,7 @@ class TransientEnthalpy3DGPU:
         
         dx_min = min(self.dx, self.dy, self.dz)
         dt = 0.12 * (dx_min**2) / alpha_max # Reduced CFL for hydrodynamics stability
-        steps = int(sim_time_s / dt) + 1
+        steps = _step_count(sim_time_s, dt)
         
         print(f"[Phase 25 Multi-Track FDM + Marangoni] Toolpath Pts: {num_pts}. Duration: {sim_time_s*1e6:.1f}us. Steps: {steps}")
         
@@ -467,6 +496,7 @@ class TransientEnthalpy3DGPU:
         
         for step in range(steps):
             current_t = step * dt
+            step_dt = _step_size(sim_time_s, dt, step)
             
             # 1. Update Free Surface (Recoil depression)
             wp.launch(
@@ -474,7 +504,7 @@ class TransientEnthalpy3DGPU:
                 dim=(self.nx, self.ny),
                 inputs=[
                     Z_surf, Z_surf_new, T_arr,
-                    self.nx, self.ny, self.dz, dt,
+                    self.nx, self.ny, self.dz, step_dt,
                     P0, Lv, Rs, Tv, rho
                 ],
                 device=self.device
@@ -486,7 +516,7 @@ class TransientEnthalpy3DGPU:
                 dim=shape,
                 inputs=[
                     U, V, W, U_new, V_new, W_new, T_arr, Z_surf_new,
-                    self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, dt,
+                    self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt,
                     mu, rho, d_gamma_dT, beta, T_liquidus, T_solidus,
                     P0, Lv, Rs, Tv
                 ],
@@ -509,7 +539,7 @@ class TransientEnthalpy3DGPU:
                 wp.launch(
                     kernel=pressure_jacobi_kernel,
                     dim=shape,
-                    inputs=[P, P_new, Div, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, dt, rho, T_solidus],
+                    inputs=[P, P_new, Div, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt, rho, T_solidus],
                     device=self.device
                 )
                 P, P_new = P_new, P
@@ -518,7 +548,7 @@ class TransientEnthalpy3DGPU:
             wp.launch(
                 kernel=project_velocity_kernel,
                 dim=shape,
-                inputs=[U, V, W, P, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, dt, rho, T_solidus],
+                inputs=[U, V, W, P, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt, rho, T_solidus],
                 device=self.device
             )
             
@@ -530,7 +560,7 @@ class TransientEnthalpy3DGPU:
                     T_arr, H_arr, U, V, W, T_new, H_new, Z_surf_new,
                     self.nx, self.ny, self.nz,
                     self.dx, self.dy, self.dz,
-                    dt, current_t, rho, L_f, T_solidus, T_liquidus,
+                    step_dt, current_t, rho, L_f, T_solidus, T_liquidus,
                     tp_t, tp_x, tp_y, tp_p, num_pts,
                     30e-6, 0.4, 
                     10.0, 0.35, float(T_preheat_K),

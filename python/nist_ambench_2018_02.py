@@ -136,8 +136,11 @@ def compare_case_to_nist(pred_L: float, pred_W: float, pred_D: float, case: Dict
     }
 
 
-def run_ambench_validation(thermal_fn) -> Dict[str, Any]:
-    """thermal_fn(power_W, speed_mm_s, beam_um, prop_overrides) -> thermal dict."""
+def run_ambench_validation(thermal_fn, material_props=None) -> Dict[str, Any]:
+    """Compare IN625 bare-plate cases using one copied property set per run."""
+    # The caller may supply its hashed snapshot. Direct callers retain the
+    # original default, but all three cases use the same copied properties.
+    props = dict(IN625_VALIDATION_PROPS if material_props is None else material_props)
     cases_out = []
     mean_mapes = []
     for case in CBM_CASES:
@@ -145,7 +148,7 @@ def run_ambench_validation(thermal_fn) -> Dict[str, Any]:
             float(case["power_W"]),
             float(case["speed_mm_s"]),
             float(SOURCE["spotDiameter_um"]),
-            dict(IN625_VALIDATION_PROPS),
+            dict(props),
         )
         geo = th["meltPoolGeometry"]
         row = compare_case_to_nist(

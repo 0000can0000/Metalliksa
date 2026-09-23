@@ -15,9 +15,12 @@ from four_alloy_materials import (
     LITERATURE_PV_WINDOWS,
     evaluate_literature_pv,
     resolve_alloy_id,
-    thermal_props,
 )
 from lpbf_build_job_schema import LpbfBuildJobRequest
+from lpbf_build_job_material_snapshot import (
+    build_ambench_material_property_snapshot,
+    build_material_property_snapshot,
+)
 from lpbf_job_cache import build_cache_key, cache_get, cache_put
 from lpbf_screening_uq import apply_uq_prop_scales, run_screening_uq
 from lpbf_thermal_solver import calculate_meltpool_physics
@@ -26,7 +29,11 @@ from murakami_fatigue_screening import (
     evaluate_murakami_block,
     parse_defect_sqrt_areas_text,
 )
-from nist_ambench_2018_02 import coverage_for_alloy, run_ambench_validation
+from nist_ambench_2018_02 import (
+    IN625_VALIDATION_PROPS,
+    coverage_for_alloy,
+    run_ambench_validation,
+)
 from stl_slicer_build_time_solver import solve_slicer
 from lpbf_part_porosity_aggregator import aggregate_part_porosity
 from lpbf_scanner_kinematics import calculate_scanner_kinematics
@@ -362,16 +369,39 @@ def solve_lpbf_build_job(data):
     # canonical name to the underlying solver so the requested alloy controls it.
     thermal_mat = mats["thermal"]
     slicer_mat = mats["slicer"]
+    try:
+        material_snapshot, material_property_sha256 = build_material_property_snapshot(
+            alloy_id, thermal_mat, slicer_mat
+        )
+        ambench_snapshot, ambench_property_sha256 = (
+            build_ambench_material_property_snapshot(IN625_VALIDATION_PROPS)
+            if data.get("includeAmbench", False) else (None, None)
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        return {"success": False, "error": f"Invalid LPBF material properties: {e}"}
 
     bypass_cache = bool(data.get("bypassCache", False))
     cache_data = dict(data)
     cache_data["alloyId"] = alloy_id
     cache_data["thermalMaterial"] = thermal_mat
     cache_data["slicerMaterial"] = slicer_mat
-    cache_key = build_cache_key(cache_data)
+    cache_data["materialPropertySha256"] = material_property_sha256
+    cache_data["amBenchMaterialPropertySha256"] = ambench_property_sha256
+    try:
+        cache_key = build_cache_key(cache_data)
+    except (TypeError, ValueError) as e:
+        return {"success": False, "error": f"Invalid LPBF build-job cache input: {e}"}
     if not bypass_cache:
         cached = cache_get(cache_key)
-        if cached is not None:
+        if (
+            cached is not None
+            and cached.get("success") is True
+            and cached.get("alloyId") == alloy_id
+            and cached.get("materialPropertySha256") == material_property_sha256
+            and cached.get("materialPropertySnapshot") == material_snapshot
+            and cached.get("amBenchMaterialPropertySha256") == ambench_property_sha256
+            and cached.get("amBenchMaterialPropertySnapshot") == ambench_snapshot
+        ):
             cached["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
             if cached.get("thermal"):
                 cached["thermal"]["computeTimeMs"] = cached["computeTimeMs"]
@@ -408,11 +438,13 @@ def solve_lpbf_build_job(data):
         wavelength,
         incline_angle_deg=incline_deg,
         process_seed=process_seed,
+        prop_overrides=material_snapshot["thermal"],
     )
     slicer = solve_slicer(
         {
             "preset": data.get("preset", "nozzle"),
             "material": slicer_mat,
+            "_materialPropertiesSnapshot": material_snapshot["slicer"],
             "laserPower_W": power,
             "scanSpeed_mms": speed,
             "layerThickness_um": layer,
@@ -439,7 +471,7 @@ def solve_lpbf_build_job(data):
     enable_uq = bool(data.get("enableUq", False))
     uq_n = int(data.get("uqSamples", 96))
     if enable_uq:
-        base_props = thermal_props(thermal_mat) or {}
+        base_props = material_snapshot["thermal"]
 
         def _thermal_runner(p_w, beam_um, scale_overrides):
             concrete = apply_uq_prop_scales(base_props, scale_overrides)
@@ -454,7 +486,7 @@ def solve_lpbf_build_job(data):
                 wavelength,
                 incline_angle_deg=incline_deg,
                 process_seed=process_seed,
-                prop_overrides=concrete or None,
+                prop_overrides={**base_props, **concrete},
             )
 
         def _verdict_runner(th):
@@ -494,7 +526,9 @@ def solve_lpbf_build_job(data):
                 prop_overrides=overrides,
             )
 
-        ambench = run_ambench_validation(_amb_thermal)
+        ambench = run_ambench_validation(
+            _amb_thermal, material_props=ambench_snapshot["thermal"]
+        )
         ambench["alloyCoverage"] = coverage_for_alloy(alloy_id)
 
     # --- Faz 4b/c: Murakami + qualification template ---
@@ -559,6 +593,11 @@ def solve_lpbf_build_job(data):
         "modelId": "rosenthal-screening-v1",
         "assumptions": assumptions,
         "alloyId": alloy_id,
+        "materialPropertySchemaVersion": material_snapshot["schemaVersion"],
+        "materialPropertySha256": material_property_sha256,
+        "materialPropertySnapshot": material_snapshot,
+        "amBenchMaterialPropertySha256": ambench_property_sha256,
+        "amBenchMaterialPropertySnapshot": ambench_snapshot,
         "processSeed": process_seed,
         "scanStrategy": {
             "id": scan_strategy,

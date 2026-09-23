@@ -87,6 +87,9 @@ def main():
     assert "verdict" in ti["verdict"]
     assert ti["verdict"]["verdict"] in ("printable", "risky", "do-not-print")
     assert ti["thermal"]["meltPoolGeometry"]["width_um"] > 0
+    assert ti["materialPropertySchemaVersion"] == 1
+    assert len(ti["materialPropertySha256"]) == 64
+    assert ti["materialPropertySnapshot"]["alloyId"] == "ti6al4v"
     assert "gates" in ti["verdict"] and len(ti["verdict"]["gates"]) >= 7
 
     # Same-alloy aliases are accepted but normalized before solver invocation.
@@ -124,6 +127,7 @@ def main():
         )
     assert aliased_ti["success"]
     assert received_materials == {"thermal": "Ti-6Al-4V", "slicer": "Ti-6Al-4V ELI"}
+    assert aliased_ti["materialPropertySha256"] == ti["materialPropertySha256"]
 
     # Hash cache hit on identical request
     clear_cache()
@@ -151,6 +155,113 @@ def main():
     assert b["cache"]["hit"] is True
     assert b["verdict"]["verdict"] == a["verdict"]["verdict"]
     assert b["cache"]["stats"]["hits"] >= 1
+    assert b["materialPropertySha256"] == a["materialPropertySha256"]
+
+    # The effective thermal input is frozen once per request and changes cache identity.
+    from four_alloy_materials import _THERMAL
+
+    old_conductivity = _THERMAL["in718"]["thermal_conductivity_W_mK"]
+    try:
+        _THERMAL["in718"]["thermal_conductivity_W_mK"] = old_conductivity + 1.0
+        changed = run_job({"alloyId": "in718", "laserPower_W": 285,
+                           "scanSpeed_mm_s": 960, "beamDiameter_um": 80,
+                           "layerThickness_um": 40, "hatchSpacing_um": 110})
+        assert changed["cache"]["hit"] is False
+        assert changed["materialPropertySha256"] != a["materialPropertySha256"]
+        assert changed["materialPropertySnapshot"]["thermal"]["thermal_conductivity_W_mK"] == old_conductivity + 1.0
+        assert changed["thermal"]["processParameters"]["effectiveConductivity_W_mK"] != a["thermal"]["processParameters"]["effectiveConductivity_W_mK"]
+    finally:
+        _THERMAL["in718"]["thermal_conductivity_W_mK"] = old_conductivity
+
+    # A legacy or corrupted hit cannot bypass the current snapshot contract.
+    with patch.object(build_job_solver, "cache_get", return_value={
+        "success": True, "alloyId": "in718", "computeTimeMs": 1,
+    }):
+        stale = run_job({"alloyId": "in718", "laserPower_W": 285,
+                         "scanSpeed_mm_s": 960, "beamDiameter_um": 80,
+                         "layerThickness_um": 40, "hatchSpacing_um": 110})
+    assert stale["cache"]["hit"] is False
+    assert stale["materialPropertySha256"] == a["materialPropertySha256"]
+
+    from lpbf_job_cache import build_cache_key, mesh_fingerprint
+
+    mesh_a = [[[-1, 0, 0], [1, 0, 0], [0, 1, 1]]] * 9
+    mesh_b = [list(tri) for tri in mesh_a]
+    mesh_b[1] = [[-1, 0, 0], [1, 0, 0], [0, 2, 1]]
+    assert mesh_fingerprint(mesh_a) != mesh_fingerprint(mesh_b)
+    assert build_cache_key({"customTriangles": mesh_a}) != build_cache_key({"customTriangles": mesh_b})
+    assert build_cache_key({"recoatTimePerLayer_s": 9.0}) != build_cache_key({"recoatTimePerLayer_s": 12.0})
+
+    # UQ must carry the whole frozen base, even when a sample changes only one
+    # property and the live registry changes after the base solve.
+    observed_uq_properties = {}
+
+    def inspect_uq_thermal(*, thermal_runner, n_samples, **_kwargs):
+        original_cp = _THERMAL["in718"]["specific_heat_J_kgK"]
+        try:
+            _THERMAL["in718"]["specific_heat_J_kgK"] = original_cp + 100.0
+
+            def capture_uq_thermal(_name, *args, **kwargs):
+                observed_uq_properties.update(kwargs["prop_overrides"])
+                return a["thermal"]
+
+            with patch.object(build_job_solver, "calculate_meltpool_physics", capture_uq_thermal):
+                thermal_runner(285.0, 80.0, {"_uq_k_scale": 1.1})
+        finally:
+            _THERMAL["in718"]["specific_heat_J_kgK"] = original_cp
+        return {
+            "P_printable": 0.5, "normalizedEnthalpy": {},
+            "dominantUncertainty": "k", "nSamples": n_samples,
+            "bands": {"power_rel": 0.03, "absorptivity_rel": 0.15},
+            "defectSamples": [],
+        }
+
+    with patch.object(build_job_solver, "run_screening_uq", side_effect=inspect_uq_thermal):
+        uq_snapshot = run_job({"alloyId": "in718", "enableUq": True, "uqSamples": 8,
+                               "bypassCache": True})
+    assert uq_snapshot["success"] is True
+    assert observed_uq_properties["specific_heat_J_kgK"] == a["materialPropertySnapshot"]["thermal"]["specific_heat_J_kgK"]
+    assert observed_uq_properties["thermal_conductivity_W_mK"] == 1.1 * a["materialPropertySnapshot"]["thermal"]["thermal_conductivity_W_mK"]
+    assert set(a["materialPropertySnapshot"]["thermal"]).issubset(observed_uq_properties)
+
+    # AM-Bench uses an independent IN625 comparison snapshot, frozen across
+    # all cases, and only its own digest changes when those props change.
+    from nist_ambench_2018_02 import IN625_VALIDATION_PROPS, run_ambench_validation
+    from lpbf_build_job_material_snapshot import build_ambench_material_property_snapshot
+
+    comparison_snapshot, comparison_sha = build_ambench_material_property_snapshot(IN625_VALIDATION_PROPS)
+    comparison_calls = []
+
+    def capture_comparison(_power, _speed, _beam, props):
+        comparison_calls.append(props)
+        return {"meltPoolGeometry": {"length_um": 659.0, "width_um": 171.0, "depth_um": 151.0}}
+
+    run_ambench_validation(capture_comparison, material_props=comparison_snapshot["thermal"])
+    assert len(comparison_calls) == 3
+    assert all(props == comparison_snapshot["thermal"] for props in comparison_calls)
+
+    def stub_ambench(_thermal_runner, material_props=None):
+        assert material_props["base"] == "Ni"
+        return {"source": {"doi": "10.1007/s40192-020-00169-1"}, "cases": []}
+
+    comparison_input = {"alloyId": "Ti-6Al-4V", "includeAmbench": True}
+    clear_cache()
+    with patch.object(build_job_solver, "run_ambench_validation", side_effect=stub_ambench):
+        compared = run_job(comparison_input)
+        compared_alias = run_job({**comparison_input, "alloyId": "ti6al4v"})
+        original_k = IN625_VALIDATION_PROPS["thermal_conductivity_W_mK"]
+        try:
+            IN625_VALIDATION_PROPS["thermal_conductivity_W_mK"] = original_k + 1.0
+            compared_changed = run_job(comparison_input)
+        finally:
+            IN625_VALIDATION_PROPS["thermal_conductivity_W_mK"] = original_k
+    assert compared["cache"]["hit"] is False and compared_alias["cache"]["hit"] is True
+    assert compared["amBenchMaterialPropertySha256"] == comparison_sha
+    assert compared_alias["amBenchMaterialPropertySha256"] == comparison_sha
+    assert compared["amBenchMaterialPropertySnapshot"] == comparison_snapshot
+    assert compared_changed["cache"]["hit"] is False
+    assert compared_changed["materialPropertySha256"] == compared["materialPropertySha256"]
+    assert compared_changed["amBenchMaterialPropertySha256"] != comparison_sha
 
     # Murakami paste path + alloy HV default
     mur = run_job(
@@ -299,10 +410,18 @@ def main():
 
     # Equivalent alloy/material aliases should resolve to one cache identity.
     cache_keys = []
+    from lpbf_build_job_material_snapshot import build_material_property_snapshot
+    aliased_snapshot, aliased_sha = build_material_property_snapshot(
+        "ti6al4v", "Ti-6Al-4V", "Ti-6Al-4V ELI"
+    )
 
     def return_seeded_cache_entry(key):
         cache_keys.append(key)
-        return {"success": True, "alloyId": "ti6al4v", "computeTimeMs": 1}
+        return {
+            "success": True, "alloyId": "ti6al4v", "computeTimeMs": 1,
+            "materialPropertySha256": aliased_sha,
+            "materialPropertySnapshot": aliased_snapshot,
+        }
 
     with patch.object(build_job_solver, "cache_get", side_effect=return_seeded_cache_entry):
         alias_cache_a = build_job_solver.solve_lpbf_build_job(

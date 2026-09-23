@@ -286,7 +286,10 @@ def main():
                 if "provenance" not in result:
                     result["provenance"] = {}
                 result["settings"] = input_data
-                result["material"] = {"id": result.get("alloyId")}
+                result["material"] = {
+                    "id": result.get("alloyId"),
+                    "propertySha256": result.get("materialPropertySha256"),
+                }
                 from lpbf_evidence import write_artifacts
                 write_artifacts(result, folder)
             else:

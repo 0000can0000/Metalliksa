@@ -85,6 +85,44 @@ class GpuThermal(unittest.TestCase):
         self.assertEqual(result["comparisons"]["length_um"]["status"], "pass")
         self.assertFalse(result["experimentalValidation"])
 
+    def test_cuda_reference_parity_for_316l_registry_material(self):
+        """Check CUDA parity only for the existing estimated-legacy 316L snapshot."""
+        try:
+            import torch
+            available = torch.cuda.is_available()
+        except ImportError:
+            available = False
+        if not available:
+            self.skipTest("CUDA runtime unavailable; real 316L GPU parity unverified")
+
+        case = {**CASE, "material": "316L Stainless Steel"}
+        _, material = validate(case)
+        self.assertEqual(material["materialId"], "ss316l")
+        self.assertEqual(material["quality"], "estimated")
+        self.assertEqual(material["provenanceClass"], "estimated-legacy")
+
+        self.assertEqual(PARITY_TARGETS["integralRelativeMax"], .01)
+        self.assertEqual(PARITY_TARGETS["widthDepthAbsoluteCellsMax"], 1.)
+        self.assertEqual(PARITY_TARGETS["fieldRiseL2RelativeMax"], .01)
+        self.assertEqual(PARITY_TARGETS["fieldRiseMaxRelativeMax"], .01)
+        self.assertEqual(PARITY_TARGETS["peakMeltVolumeRelativeMax"], .01)
+        result = compare_with_cpu(case, "cuda:0")
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["scope"], "same-model CPU/GPU numerical parity only")
+        self.assertFalse(result["experimentalValidation"])
+        self.assertEqual(result["gpu"]["validationStatus"], "unvalidated")
+        self.assertFalse(result["gpu"]["productionReady"])
+        self.assertEqual(result["gpu"]["material"]["materialId"], "ss316l")
+        self.assertEqual(result["gpu"]["material"]["materialRevisionSha256"],
+                         material["materialRevisionSha256"])
+        self.assertEqual(result["gpu"]["solver"]["thermalEvolutionDevice"], "cuda:0")
+        self.assertEqual(result["gpu"]["solver"]["sourceIntegrationDevice"], "cpu")
+        self.assertLessEqual(result["gpu"]["energyBalance"]["relativeError"], .01)
+        self.assertEqual(result["comparisons"]["finalSampling"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["finalTemperatureField"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["volume_um3"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["length_um"]["status"], "pass")
+
 
 if __name__ == "__main__":
     unittest.main()

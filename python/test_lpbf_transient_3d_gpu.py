@@ -15,6 +15,7 @@ from lpbf_transient_3d_gpu import (
     _average_transverse_face_component,
     compute_divergence_kernel,
     enthalpy_3d_nonlinear_step_kernel,
+    keyhole_surface_kernel,
     launch_pressure_pcg,
     pressure_jacobi_kernel,
     project_velocity_kernel,
@@ -54,6 +55,67 @@ class Transient3DPhysicsContracts(unittest.TestCase):
     @staticmethod
     def _wp_array(values):
         return wp.array(np.asarray(values, dtype=np.float32), dtype=float, device="cpu")
+
+    def _run_surface_forces(self, center_temperature):
+        shape = (5, 5, 5)
+        dx = dy = dz = 1.0e-3
+        dt = 1.0e-6
+        temperature = np.full(shape, center_temperature, dtype=np.float32)
+        # A 100 K difference across 2 mm gives a known tangential gradient.
+        temperature[1, 2, 3] = center_temperature - 100.0
+        temperature[3, 2, 3] = center_temperature + 100.0
+        surface = np.full((shape[0], shape[1]), 3.5 * dz, dtype=np.float32)
+        fields = [wp.zeros(shape, dtype=float, device="cpu") for _ in range(6)]
+        wp.launch(
+            kernel=velocity_advection_forces_kernel, dim=shape,
+            inputs=[*fields[:3], *fields[3:], self._wp_array(temperature),
+                    self._wp_array(surface), *shape, dx, dy, dz, dt,
+                    0.005, 4420.0, -0.0003, 0.0,
+                    1928.0, 1878.0, 101325.0, 9.7e6, 173.93, 3533.0],
+            device="cpu",
+        )
+        wp.synchronize()
+        return fields[3].numpy()[2, 2, 3], fields[5].numpy()[2, 2, 3]
+
+    def test_recoil_surface_motion_starts_above_boiling(self):
+        shape = (5, 5, 5)
+        dz = 1.0e-5
+        surface = np.full((shape[0], shape[1]), 3.5 * dz, dtype=np.float32)
+
+        def update(temp):
+            new_surface = wp.zeros((shape[0], shape[1]), dtype=float, device="cpu")
+            wp.launch(
+                kernel=keyhole_surface_kernel, dim=(shape[0], shape[1]),
+                inputs=[self._wp_array(surface), new_surface,
+                        self._wp_array(np.full(shape, temp, dtype=np.float32)),
+                        *shape[:2], dz, 1.0e-7, 101325.0, 9.7e6, 173.93,
+                        3533.0, 4420.0],
+                device="cpu",
+            )
+            wp.synchronize()
+            return new_surface.numpy()[2, 2]
+
+        below_boiling = update(3500.0)
+        above_boiling = update(3600.0)
+        self.assertAlmostEqual(below_boiling, float(surface[2, 2]), delta=1e-10)
+        self.assertLess(above_boiling, float(surface[2, 2]))
+
+    def test_surface_force_temperature_regimes(self):
+        # Above solidus but below liquidus: no Marangoni or recoil boundary law.
+        u_below_liquidus, w_below_liquidus = self._run_surface_forces(1900.0)
+        self.assertAlmostEqual(u_below_liquidus, 0.0, delta=1e-7)
+        self.assertAlmostEqual(w_below_liquidus, 0.0, delta=1e-7)
+
+        # Liquidus-to-boiling interval: tangential Marangoni stress, no recoil.
+        u_marangoni, w_marangoni = self._run_surface_forces(2500.0)
+        self.assertLess(u_marangoni, 0.0)
+        self.assertAlmostEqual(w_marangoni, 0.0, delta=1e-7)
+
+        # Above boiling: recoil impulse is active and the sub-boiling Marangoni
+        # boundary assignment no longer overwrites the tangential predictor.
+        u_recoil, w_recoil = self._run_surface_forces(3600.0)
+        self.assertAlmostEqual(u_recoil, 0.0, delta=1e-7)
+        self.assertLess(w_recoil, 0.0)
 
     @staticmethod
     def _pressure_cell_class_host(temperature, surface, i, j, k, dz, solidus=1000.0):

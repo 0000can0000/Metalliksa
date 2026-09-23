@@ -1031,3 +1031,30 @@ GPU alloy scope was audited without code changes. The existing CUDA path's
 measured parity is limited to its current Inconel 718 case; it does not qualify
 another alloy. IN625 still lacks a complete source-backed transient table and
 optical/flow inputs, so no new GPU alloy capability was enabled.
+
+## 2026-09-24 — Phase 22 surface-force regimes and 316L CUDA parity
+
+The Phase 22 Warp surface kernels now apply Marangoni shear only from liquidus
+through boiling temperature, and apply recoil pressure / surface recession only
+above boiling. This follows Alphonso et al. (2023), Section 2.1.2–2.1.3, which
+places the surface-tension gradient in the liquidus-to-boiling fluid interval
+and describes recoil for melt overheated above boiling:
+https://doi.org/10.1016/j.jmapro.2023.03.040. Two focused CPU Warp regressions
+cover sub-liquidus, liquidus-to-boiling, and above-boiling behavior. The full
+Phase 22 CPU Warp suite passed **21/21**. The test process later reported the
+known Windows `WinError 5` while cleaning a temporary PCH directory; the test
+exit was successful. CUDA execution of these Warp kernels remains unverified.
+
+The CUDA thermal-pilot CPU/GPU parity test now also covers the existing 316L
+registry material snapshot while preserving all frozen parity thresholds and
+binding the material revision SHA. The direct `cuda:0` run passed; the targeted
+file passed **4/4** tests, including the existing IN718 run. The 316L record is
+still `estimated-legacy`, and the result explicitly remains
+`unvalidated`, `productionReady=false`, and `experimentalValidation=false`.
+This establishes numerical parity for that exact estimated snapshot only; it
+does not open the source-backed alloy acceptance gate or qualify IN625.
+
+Unresolved Phase 22 model issue: the recoil law still drives both explicit
+surface recession and a separate momentum impulse; their mass/kinematic
+coupling has not been established. This update does not validate the interface
+model or claim experimental agreement.

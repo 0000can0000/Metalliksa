@@ -9,8 +9,10 @@ field-peak/cache identity and Phase 22 face transport/projection contracts.
 The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
 tests; standalone build-job checks and TypeScript typecheck also pass. The
 TypeScript session behavior runner passed 11 focused tests in the elevated
-runner after the sandbox attempt failed with `spawn EPERM`. CUDA is unavailable
-in this Windows environment. The pressure stencil now pairs
+runner after the sandbox attempt failed with `spawn EPERM`. PyTorch CUDA is
+available on this host, though the explicit Phase 22 Warp tests still ran on
+CPU and do not establish CUDA execution for that solver. The pressure stencil
+pairs
 the face divergence, gradient, and Jacobi operator, but its fixed ten sweeps
 do not meet the 1e-3 relative divergence target on smooth manufactured fields
 (residual ratios 0.420619 at 9^3 and 0.793338 at 17^3); 300 sweeps still leave
@@ -19,13 +21,14 @@ device-reduction preconditioned conjugate gradient on the unchanged face-based
 operator. CPU Warp manufactured-field tests meet the 1e-3 measured linear and
 post-projection divergence gates at 9^3 (15 iterations) and 17^3 (35
 iterations), and exercise zero/nonzero Neumann compatibility, disconnected
-components, exhaustion, and numerical failure. CUDA execution/performance is
-unverified on this host; do not claim GPU-device verification.
+components, exhaustion, and numerical failure. CUDA execution/performance for
+Phase 22 remains unverified on this host.
 Commit `11334ff` records this pressure-solver repair. Commit `96eeca2` fixes
 integer array conduction silently truncating fractional face fluxes; its
-focused suite passes 6 tests. GPU alloy expansion remains
-closed: current same-physics CUDA parity covers IN718 only, and IN625 lacks a
-complete source-backed transient property/optical/flow input set.
+focused suite passes 6 tests. CUDA pilot parity tests now pass for IN718 and
+316L on `cuda:0`; 316L uses the existing `estimated-legacy` snapshot and this
+is numerical parity only, not source-backed alloy qualification. IN625 still
+lacks a complete source-backed transient property/optical/flow input set.
 IN625 P7 remains partial: the 273.15–1623.15 K route is explicitly
 unvalidated literature-model screening; source validity span and material /
 process state are not established.
@@ -45,7 +48,8 @@ selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
 non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
-Next: audit remaining Phase 22 constitutive assumptions; preserve the GPU
+Next: finish the opt-in rectangular bare-plate corridor implementation and
+verify its energy/resource/geometry contracts; preserve the Phase 22 CUDA
 execution gap and P7 source-data gap as open gates. P5
 feasibility audit shows the current 3 mm track
 bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate

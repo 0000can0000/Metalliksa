@@ -134,15 +134,18 @@ def keyhole_surface_kernel(
     if i > 0 and i < nx - 1 and j > 0 and j < ny - 1:
         k_surf = int(z_old / dz)
         T_surf = T[i, j, k_surf]
-        
-        P_sat = get_psat(T_surf, P0, Lv, Rs, Tv)
-        P_recoil = 0.54 * P_sat
-        
-        v_depress = wp.sqrt(2.0 * P_recoil / rho)
-        z_new = z_old - v_depress * dt
-        
-        if z_new < 2.0 * dz:
-            z_new = 2.0 * dz
+
+        # The simplified recoil law is activated only for a molten surface
+        # overheated above its boiling temperature (Alphonso et al., 2023).
+        if T_surf > Tv:
+            P_sat = get_psat(T_surf, P0, Lv, Rs, Tv)
+            P_recoil = 0.54 * P_sat
+
+            v_depress = wp.sqrt(2.0 * P_recoil / rho)
+            z_new = z_old - v_depress * dt
+
+            if z_new < 2.0 * dz:
+                z_new = 2.0 * dz
             
     Z_surf_new[i, j] = z_new
 
@@ -297,23 +300,26 @@ def velocity_advection_forces_kernel(
         
         # Free Surface Boundary Conditions (Marangoni & Recoil)
         if k == k_surf:
-            dT_dx = (T[i+1, j, k] - T[i-1, j, k]) / (2.0 * dx)
-            dT_dy = (T[i, j+1, k] - T[i, j-1, k]) / (2.0 * dy)
-            
-            # Marangoni Shear: tau = d_gamma/dT * grad(T) -> mu * du/dz = tau
-            # du = dz * (d_gamma_dT / mu) * dT_dx
-            u_marangoni = U[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dx
-            v_marangoni = V[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dy
-            
-            u_new_val = u_marangoni
-            v_new_val = v_marangoni
-            
-            # Recoil pressure acting as a downward momentum impulse for surface instability
-            P_sat = get_psat(T_c, P0, Lv, Rs, Tv)
-            P_recoil = 0.54 * P_sat
-            if P_recoil > 1e6: P_recoil = 1e6 # Clamp recoil pressure
-            w_recoil_impulse = - (P_recoil / rho) * (dt / dz)
-            w_new_val += w_recoil_impulse
+            # Tangential Marangoni stress is applied over the liquid interval
+            # from liquidus through boiling; hotter surfaces use the recoil law.
+            if T_c >= T_liquidus and T_c <= Tv:
+                dT_dx = (T[i+1, j, k] - T[i-1, j, k]) / (2.0 * dx)
+                dT_dy = (T[i, j+1, k] - T[i, j-1, k]) / (2.0 * dy)
+
+                # tau = d_gamma/dT * grad_s(T), mu * du_t/dn = tau.
+                u_marangoni = U[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dx
+                v_marangoni = V[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dy
+
+                u_new_val = u_marangoni
+                v_new_val = v_marangoni
+
+            # Recoil pressure acts normally only above the boiling temperature.
+            if T_c > Tv:
+                P_sat = get_psat(T_c, P0, Lv, Rs, Tv)
+                P_recoil = 0.54 * P_sat
+                if P_recoil > 1e6: P_recoil = 1e6 # Clamp recoil pressure
+                w_recoil_impulse = - (P_recoil / rho) * (dt / dz)
+                w_new_val += w_recoil_impulse
             
         # Hard clamp velocity for CFL stability
         max_vel = 5.0

@@ -40,14 +40,28 @@ gibi etiketlenmez.
 P5 için aday gözlem, NIST AMB2022-03'ün çıplak IN718 levhada yedi tek iz
 koşuluna ait optik kesit W/D ortalamalarıdır. Resmî sonuç belgesi Table 4 her
 koşulda altı ölçümün ortalamasını ve standart sapmasını verir. Kaynak ölçüm
-tanımı, iz ortasındaki kesitte başlangıç levha yüzeyinden en büyük derinliği
+tanımı, belirtilen kesitte başlangıç levha yüzeyinden en büyük derinliği
 ve kesitteki en büyük genişliği kullanır; model çıktısındaki başka bir genişlik
 tanımı bunun yerine geçmez. Birincil pilotta bu yedi koşula sonuçlara bakarak
 kalibrasyon yapılmayacak; hata ve ölçüm yayılımı koşul bazında raporlanacaktır.
 Sonradan kalibrasyon yapılırsa koşul grupları ve holdout ayrımı önceden ayrı
 bir protokol revizyonunda dondurulacaktır.
 
-Kıyas başlamadan modelin çıplak levha koşulunu, iz ortası ölçüm kesitini ve
+NIST yazarlarının sonraki [ölçüm yayını, s. 369 Tablo 4](https://link.springer.com/content/pdf/10.1007/s40192-024-00355-5.pdf)
+bu altı ölçümü koşul başına üç tekrar iz × iz başına iki kesit olarak açıklar.
+Challenge yöntemindeki P1–P4 kesilmiş levha parçası konumları, Tablo 4'ün
+koşul başına dört ölçümü olduğu şeklinde yorumlanmamalıdır. Yerel agregat
+transkripsiyon bireysel kesitleri veya görüntüleri içermez. Resmî NIST
+[ölçüm çalışma kitabı](https://data.nist.gov/od/ds/ark:/88434/mds2-2718/AMB2022-718-SH1-MeltPool_Cross-Section_Measurement_Results.xlsx)
+ayrı bayt kaynağı olarak arşivlendi (SHA-256
+`2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931`).
+BP1 levhasındaki yedi koşulun her birinde üç iz × iki kesit vardır; ölçüm
+konumları iz başlangıcından 4,9 ve 6,0 mm'dir. Bu 42 BP1 satırının örnek
+ortalaması ve standart sapması, yedi koşulun yerel Tablo 4 transkripsiyonunu
+0,1 µm yuvarlamada yeniden üretir; model/deney kıyası ayrı kapıda kalır.
+
+Kıyas başlamadan modelin çıplak levha koşulunu, 4,9 ve 6,0 mm'deki ölçüm
+kesitlerini ve
 kaynağın `D4σ` ışın tanımını karşılayabildiği gösterilmelidir. Mevcut katalogda
 yer alan 40 µm katman/110 µm hatch değerleri tek iz çıplak levha ölçümü değildir;
 bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas durumu

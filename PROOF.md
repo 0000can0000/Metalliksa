@@ -718,3 +718,67 @@ revision1, and all three archived artifacts were verified again. Document SHA256
 53a5171e1fdb0fedf5f25bc6160ab57fa835a2594940ef083e78b531d721bc2a.
 Report: .runtime/phase0-audit/hdf5-source-import-01a0c35a.json.
 This is source/provenance and software evidence. Phase0 remains open.
+
+## 2026-09-24 — LPBF goal integration, numerical and experimental gates
+
+**Software/byte integrity:** The live application imported and verified the
+locally transcribed NIST AMB2022-03 optical Table 4 as source revision 1, then
+archived IN718 run `e8e26ffea4784e6288f7ddab5839de01` with its exact source
+link. Server-local bundle `46c140da2e984c0ba00468eec09bdaf6` contained one
+run, 62 run artifacts and one source link; export, byte verification and isolated
+restore `1ac0729abd5a47928c80f2ed8bfe71ec` succeeded without changing the
+live archive. The run is a 200 µm powder-layer pilot and is not a NIST-matched
+10 mm bare-plate computation. NIST report status is `unavailable`, `errors:null`.
+The previously false Table 4/material-hash warnings caused by JSON number
+rewriting were repaired in `3f152d1`; seven genuine evidence gaps remain.
+The NIST authors' [2024 results paper, p. 369 Table 4](https://link.springer.com/content/pdf/10.1007/s40192-024-00355-5.pdf)
+identifies each case's six aggregate inputs as three tracks with two optical
+sections per track. The archived local transcription has only means and
+standard deviations, not individual sections or images.
+The separate [publisher workbook](https://data.nist.gov/od/ds/ark:/88434/mds2-2718/AMB2022-718-SH1-MeltPool_Cross-Section_Measurement_Results.xlsx)
+and [publisher SHA-256 sidecar](https://data.nist.gov/od/ds/ark:/88434/mds2-2718/AMB2022-718-SH1-MeltPool_Cross-Section_Measurement_Results.xlsx.sha256)
+are archived as dataset `nist-amb2022-03-optical-xlsx-official-v1`.
+The 25,811-byte workbook matches the published digest
+`2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931`.
+The source audit reads 42 BP1 rows: seven cases × three tracks × sections at
+4.9 and 6.0 mm from the track start. Their sample means and sample standard
+deviations reproduce every local Table 4 entry to 0.1 µm. This verifies the
+transcription against source rows, not a model prediction. The live app
+previewed two files / 25,875 bytes, imported workbook revision 1 with document
+SHA-256 `73293ca6c2a1929a2e244f806d6eb5900d4c739716f7f291e74c9bc12dc291b6`,
+and verified the archived bytes. The earlier transcription revision and run
+source binding remained intact. Source-audit/catalog code commit: `ef303e7`.
+
+**Numerical verification:** The explicit `cuda:0` bounded thermal pilot on an
+RTX 4060 passed its frozen same-model CPU/GPU comparison; the observed final
+3D field relative L2 error was 1.44e-8 in the live 316L job. This is a
+single-track numerical parity result, not GPU qualification over the full
+parameter domain. The separate CPU IN718 80 W report
+`docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json` has SHA-256
+`f396091b1d806e82f75cb888b78bafab808c0b189821badfde7c04bd9a74b5b9`.
+All three mesh and three timestep solves completed. Energy closure passed the
+frozen 1% target; the finest mesh depth changed 17.1875% against the frozen 5%
+target, width trend was unresolved at roundoff scale, and timestep geometry
+was inconclusive. Overall P4 status is `failed`; the added interpolated thermal
+contour is supplementary and is not used to change the frozen decision.
+A separate surface-aligned 80 W 3+3 experiment is recorded in
+`docs/LPBF_CPU_SURFACE_ALIGNED_80W_2026-09-24.json`, SHA-256
+`33dde8637cb90e7445cbf5bef364c8b5e8922adfcd0baa3ac423e0d36f9b84a2`.
+All six solves completed, the top face matched the 80 µm layer and the source
+capture fraction exceeded 0.999999999. Energy passed, but discrete W/D across
+the three meshes was 40/40, 40/40 and 60/50 µm; the finest-pair width/depth
+changes were 33.33%/20% and timestep geometry was inconclusive. The frozen
+overall P4 result remains `failed`; surface alignment alone did not resolve it.
+
+**Experimental validity:** No numerical W/D error against NIST Table 4 is
+reported. The current model lacks the measured beam-profile mapping, matched
+10 mm bare-plate run, source-matched etched optical section operator and passing 3+3
+numerical gate. IN625 is admitted only to bounded fusion-enthalpy screening,
+not full LPBF transient or build-job prediction. None of these software and
+numerical checks establish experimental validation.
+
+Final local checks at this checkpoint: TypeScript unit 232/232, lint PASS,
+production build PASS; official workbook Python 3/3 and combined bare-plate
+plus workbook 8/8 PASS. Earlier Windows LPBF Python 91 PASS/3 OpenFOAM SKIP;
+Ubuntu 22.04/OpenFOAM engineering 29/29 PASS. The large-chunk build warning
+remains.

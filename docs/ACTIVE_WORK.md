@@ -1,4 +1,41 @@
-# Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-23
+# Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
+
+Root owns integration and `STATUS.md`/`PROOF.md`. Committed evidence includes
+the surface-aligned report `57e22ba` and separate official NIST workbook/source
+audit package `ef303e7` on `codex/lpbf-buildjob-material-identity`; no push.
+P4/P5 read-only diagnosis, official source-route and row audits completed.
+Root alone changes checkpoint documents.
+
+P4 frozen 80 W IN718 3-mesh/3-timestep report is
+`docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json`: all six completed, energy
+PASS, mesh width inconclusive, mesh depth FAILED at 17.1875% finest-pair change,
+timestep geometry inconclusive, overall `failed`. No experimental validation.
+Roundoff-only width trend was repaired in `92a0e59`. P5 exact-source NIST Table 4
+comparison is correctly `unavailable`, errors null, with seven genuine missing
+conditions after the JSON-number fix `3f152d1`.
+The surface-aligned 80 W 3+3 diagnostic still failed P4: W/D mesh
+40/40 → 40/40 → 60/50 µm, finest width/depth changes 33.33%/20%, energy PASS,
+time geometry inconclusive. Source capture exceeded 0.999999999.
+The official NIST workbook/sidecar SHA is verified; all 42 BP1 source rows
+reproduce the seven local Table 4 aggregate rows at 0.1 µm. The new workbook
+source is a distinct dataset; the existing transcription and run link persist.
+
+P8 live browser flow: local Table 4 revision 1 imported/verified; IN718 30 W
+powder-layer short pilot archived as run `e8e26ffea4784e6288f7ddab5839de01`;
+bundle `46c140da2e984c0ba00468eec09bdaf6` exported/verified and restored as
+isolated copy `1ac0729abd5a47928c80f2ed8bfe71ec`. The run is intentionally
+not NIST condition-matched. P9 checks: Python 91 PASS/3 Windows OpenFOAM skips;
+Ubuntu/OpenFOAM engineering 29 PASS; latest TypeScript unit 232 PASS, lint and
+build PASS; new Python source audit 3 PASS. Browser tab 2 and local dev server
+session 29665 are live. Official workbook source preview/import/revision-1
+verify passed in the browser. Next action: commit the checkpoint documents,
+then investigate the P4 geometry failure without changing its frozen acceptance
+and scope a matched NIST optical operator for P5.
+
+External `docs/README.md`, `sonkayıtlar/LOG.md`, and
+`docs/SCIENTIFIC_RESEARCH_VISION.md` remain unowned. Preserve them.
+
+# Previous LPBF handoff — 2026-09-23
 
 Latest 2026-09-23 handoff: root committed the explicit GPU queue pilot
 (`98c33aa`) and NIST optical Table 4 local-transcription archive (`34bd387`).

@@ -1,0 +1,146 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { test, type TestContext } from 'node:test';
+import express from 'express';
+import { createLpbfRunsRouter } from '../routes/lpbfRuns';
+import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
+import { LpbfRunArchiveService } from '../server/lpbfRunArchiveService';
+import { LpbfRunBundleService } from '../server/lpbfRunBundleService';
+import { importRun } from '../server/lpbfRunImport';
+import { LpbfRunRepository } from '../server/lpbfRunRepository';
+import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
+
+const sha = (value: string) => createHash('sha256').update(value).digest('hex');
+
+async function fixture(t: TestContext) {
+  const root = mkdtempSync(path.join(tmpdir(), 'lpbf-run-bundle-api-'));
+  const runRoot = path.join(root, 'live-runs'), sourceRoot = path.join(root, 'live-sources');
+  const bundleRoot = path.join(root, 'bundles');
+  mkdirSync(runRoot); mkdirSync(sourceRoot);
+  const runs = new LpbfRunRepository(path.join(runRoot, 'runs.sqlite'));
+  const sources = new LpbfSourceRepository(path.join(sourceRoot, 'metadata.sqlite'));
+  t.after(() => { runs.close(); sources.close(); rmSync(root, { recursive: true, force: true }); });
+  const runStore = new LpbfArtifactStore(path.join(runRoot, 'artifacts'));
+  const sourceStore = new LpbfArtifactStore(path.join(sourceRoot, 'artifacts'));
+  const input = path.join(root, 'input'); mkdirSync(input);
+  writeFileSync(path.join(input, 'raw'), 'raw');
+  const sourceRef = { relativePath: 'raw', sha256: sha('raw'), byteSize: 3, sourceUrl: 'https://example.org/raw' };
+  const source = { schemaVersion: 1, datasetId: 'synthetic', materialId: 'in718', processScope: 'unknown',
+    source: { url: 'https://example.org/source', citation: 'Synthetic test only', version: '1', terms: null, termsMissingReason: 'Unknown' },
+    artifacts: [sourceRef], sourceContext: { conversion: null } };
+  await sourceStore.putFile(input, 'raw', sourceRef);
+  const revision = sources.save(source, 0);
+  source.source.version = '2'; sources.save(source, 1);
+  const job = path.join(root, 'job'); mkdirSync(job);
+  writeFileSync(path.join(job, 'field.bin'), 'abc');
+  const result = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
+    fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
+    settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
+    material: { name: 'Synthetic', quality: 'synthetic', source: 'Unit test only' },
+    label: 'Screening', regime: 'test', mainRisk: 'test', recommendation: 'test', riskScope: 'test',
+    metrics: { width_um: 0, depth_um: 0, length_um: 0 }, assumptions: ['Synthetic only'],
+    analyticalComparison: { goldak: { width_um: 0, depth_um: 0, length_um: 0 } },
+    provenance: { executionRuntime: null }, artifacts: [{ path: 'field.bin', size_bytes: 3, sha256: sha('abc') }] };
+  const capture = { schemaVersion: 1, jobId: 'a'.repeat(32), resultJson: JSON.stringify(result),
+    inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material), contractStatus: 'legacy-unbound' };
+  writeFileSync(path.join(job, 'result.json'), capture.resultJson);
+  const record = await importRun(runs, runStore, capture,
+    [{ datasetId: 'synthetic', revision: 1, documentSha256: revision.documentSha256 }], sources, job);
+
+  const bundles = new LpbfRunBundleService(runRoot, sourceRoot, bundleRoot);
+  const app = express(); app.use(createLpbfRunsRouter(new LpbfRunArchiveService(runRoot, sourceRoot), bundles));
+  const server = app.listen(0, '127.0.0.1');
+  t.after(() => server.close());
+  await new Promise<void>(resolve => server.once('listening', resolve));
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  const endpoint = `http://127.0.0.1:${address.port}/api/lpbf/runs/bundles`;
+  const post = async (action: string, body: unknown = {}, headers: Record<string, string> = {}) => {
+    const response = await fetch(`${endpoint}/${action}`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+    return { status: response.status, body: await response.json() };
+  };
+  return { root, runRoot, sourceRoot, bundleRoot, runs, sources, runStore, sourceStore,
+    record, sourceRef, bundles, post };
+}
+
+test('HTTP export, verify and isolated restore preserve live bytes and historical links', async t => {
+  const f = await fixture(t);
+  const beforeRuns = readFileSync(path.join(f.runRoot, 'runs.sqlite'));
+  const beforeSources = readFileSync(path.join(f.sourceRoot, 'metadata.sqlite'));
+  const exported = await f.post('export');
+  assert.equal(exported.status, 200);
+  assert.match(exported.body.bundleId, /^[0-9a-f]{32}$/);
+  assert.equal(exported.body.storage, 'server-local-directory');
+  assert.equal(exported.body.manifest.runCount, 1);
+  assert.equal(exported.body.manifest.sourceLinkCount, 1);
+  assert.equal(JSON.stringify(exported.body).includes(f.root), false);
+  const bundleId = exported.body.bundleId as string;
+  assert.equal((await f.post(`${bundleId}/verify`)).body.verified, true);
+  const restored = await f.post(`${bundleId}/restore`);
+  assert.equal(restored.status, 200);
+  assert.equal(restored.body.verified, true);
+  assert.match(restored.body.restoreId, /^[0-9a-f]{32}$/);
+  assert.equal(JSON.stringify(restored.body).includes(f.root), false);
+  const restoredRoot = path.join(f.bundleRoot, 'restores', restored.body.restoreId);
+  const restoredRuns = new LpbfRunRepository(path.join(restoredRoot, 'runs.sqlite'), { readOnly: true });
+  const restoredSources = new LpbfSourceRepository(path.join(restoredRoot, 'sources/metadata.sqlite'), { readOnly: true });
+  try {
+    assert.deepEqual(restoredRuns.get(f.record.document.runId), f.record);
+    assert.equal(restoredSources.revision('synthetic', 1)?.documentSha256, f.record.document.sources[0].documentSha256);
+    assert.equal(restoredSources.current('synthetic')?.revision, 2);
+  } finally { restoredRuns.close(); restoredSources.close(); }
+  const restoredStore = new LpbfArtifactStore(path.join(restoredRoot, 'artifacts'), { readOnly: true });
+  assert.equal(readFileSync((await restoredStore.verify({ sha256: sha('abc'), byteSize: 3 })).path, 'utf8'), 'abc');
+  assert.deepEqual(readFileSync(path.join(f.runRoot, 'runs.sqlite')), beforeRuns);
+  assert.deepEqual(readFileSync(path.join(f.sourceRoot, 'metadata.sqlite')), beforeSources);
+  assert.equal(readFileSync((await f.sourceStore.verify(f.sourceRef)).path, 'utf8'), 'raw');
+});
+
+test('HTTP rejects corrupted bundles before restore and accepts no filesystem path', async t => {
+  const f = await fixture(t);
+  const exported = await f.post('export'); assert.equal(exported.status, 200);
+  const id = exported.body.bundleId as string;
+  assert.equal((await f.post('export', { destination: f.runRoot })).status, 400);
+  assert.equal((await f.post(`${id}/restore`, { destination: f.runRoot })).status, 400);
+  assert.equal((await f.post('..%2F..%2Flive-runs/verify')).status, 400);
+  assert.equal((await f.post(`${'f'.repeat(32)}/verify`)).status, 404);
+  writeFileSync(path.join(f.bundleRoot, 'exports', id, 'bundle.json'), 'bad');
+  assert.equal((await f.post(`${id}/verify`)).status, 409);
+  assert.equal((await f.post(`${id}/restore`)).status, 409);
+  assert.equal(existsSync(path.join(f.bundleRoot, 'restores')), false);
+  assert.equal(existsSync(path.join(f.runRoot, 'bundle.json')), false);
+  assert.deepEqual(f.runs.get(f.record.document.runId), f.record);
+});
+
+test('generated ID collisions cannot overwrite a bundle or restored copy', async t => {
+  const f = await fixture(t);
+  const id = 'b'.repeat(32);
+  const fixed = new LpbfRunBundleService(f.runRoot, f.sourceRoot, f.bundleRoot, () => id);
+  const first = await fixed.export();
+  const original = readFileSync(path.join(f.bundleRoot, 'exports', id, 'bundle.json'));
+  await assert.rejects(fixed.export(), /already exists/i);
+  const restored = await fixed.restore(first.bundleId);
+  assert.equal(restored.restoreId, id);
+  await assert.rejects(fixed.restore(first.bundleId), /already exists/i);
+  assert.deepEqual(readFileSync(path.join(f.bundleRoot, 'exports', id, 'bundle.json')), original);
+  assert.deepEqual(f.runs.get(f.record.document.runId), f.record);
+});
+
+test('bundle API retains router write guards and disjoint storage roots', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.post(`${'f'.repeat(32)}/verify`)).status, 404);
+  assert.throws(() => new LpbfRunBundleService(f.runRoot, f.sourceRoot, path.join(f.runRoot, 'bundles')),
+    /separate from live/i);
+  const prior = process.env.METALLIKSA_READ_ONLY;
+  process.env.METALLIKSA_READ_ONLY = 'true';
+  try { assert.equal((await f.post('export')).status, 403); }
+  finally {
+    if (prior === undefined) delete process.env.METALLIKSA_READ_ONLY;
+    else process.env.METALLIKSA_READ_ONLY = prior;
+  }
+  assert.equal((await f.post('export', {}, { Origin: 'https://evil.example' })).status, 403);
+  assert.equal(existsSync(f.bundleRoot), false);
+});

@@ -1,5 +1,12 @@
 # LPBF alloy capability and IN625 data gate — 2026-09-23
 
+`python/lpbf_material_capabilities.py` emits the current machine-readable
+authority/capability audit (`python python/lpbf_material_capabilities.py`). It
+reports build-job snapshots, transient registry inputs, model-specific adapter
+values, source ranges and unavailable routes separately; it does not supply
+properties to solvers or make a validation claim. IN625 remains
+`thermal-screening-only` in this report.
+
 ## Current four-alloy capability
 
 `python/four_alloy_materials.py` defines the locked identities, aliases, thermal

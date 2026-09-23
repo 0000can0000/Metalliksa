@@ -1,0 +1,177 @@
+"""Read-only, machine-readable inventory of current LPBF material authorities.
+
+Capability means a code path has inputs, not that its predictions are validated.
+Each model retains its own constitutive inputs; this report never merges them.
+"""
+
+import json
+
+from four_alloy_materials import (
+    ALLOY_MATERIALS, FOUR_ALLOY_IDS, LITERATURE_MELT_POOL_CASES,
+    THERMAL_NAME, inherent_strain_props, marangoni_props, resolve_alloy_id,
+)
+from in625_thermal_material import (
+    SOLID_TEMPERATURE_RANGE_C, SOURCE_URL, in625_lpbf_thermal_snapshot,
+    in625_solid_thermal_at_celsius,
+)
+from lpbf_build_job_material_snapshot import build_material_property_snapshot
+from lpbf_material_registry import catalog, material
+
+
+SCHEMA_VERSION = 1
+
+
+def _four_alloy_capability(alloy_id):
+    names = ALLOY_MATERIALS[alloy_id]
+    build_snapshot, build_sha = build_material_property_snapshot(
+        alloy_id, names["thermal"], names["slicer"]
+    )
+    transient = material(THERMAL_NAME[alloy_id])
+    marangoni = marangoni_props(alloy_id)
+    inherent_strain = inherent_strain_props(alloy_id)
+    comparison = next(case for case in LITERATURE_MELT_POOL_CASES
+                      if case["alloy_id"] == alloy_id)
+    return {
+        "alloyId": alloy_id,
+        "displayName": THERMAL_NAME[alloy_id],
+        "admission": "existing-four-alloy-screening",
+        "buildJob": {
+            "available": True,
+            "modelId": "rosenthal-screening-v1",
+            "authority": "four_alloy_materials.py via lpbf_build_job_material_snapshot.py",
+            "materialPropertySha256": build_sha,
+            "thermalName": names["thermal"],
+            "slicerName": names["slicer"],
+            "effectiveThermal": build_snapshot["thermal"],
+            "effectiveSlicer": build_snapshot["slicer"],
+            "sourceValidityRange_K": None,
+            "evidenceStatus": "estimated-screening-inputs-unvalidated",
+        },
+        "fullTransient": {
+            "available": True,
+            "authority": "lpbf_material_registry.material (legacy four-alloy endpoints)",
+            "materialRevisionSha256": transient["materialRevisionSha256"],
+            "provenanceClass": transient["provenanceClass"],
+            "modelTemperatureCoverage_K": transient["temperatureCoverage_K"],
+            "sourceValidityRange_K": None,
+            "propertyTableColumns": ["T_K", "rho_kg_m3", "k_W_mK", "Cp_J_kgK", "viscosity_Pa_s"],
+            "propertyTable": transient["table"],
+            "solidus_K": transient["solidus_K"],
+            "liquidus_K": transient["liquidus_K"],
+            "boiling_K": transient["boiling_K"],
+            "latentHeat_J_kg": transient["latentHeat_J_kg"],
+            "absorptivity": transient["absorptivity"],
+            "emissivity": transient["emissivity"],
+            "dGamma_dT": transient["dGamma_dT"],
+            "evidenceStatus": "estimated-legacy-model-unvalidated",
+        },
+        "marangoniAdapter": {
+            "inputsPresent": True,
+            "authority": "four_alloy_materials.marangoni_props",
+            "inputs": marangoni,
+            "modelQualification": "open",
+        },
+        "inherentStrainAdapter": {
+            "inputsPresent": True,
+            "authority": "four_alloy_materials.inherent_strain_props",
+            "inputs": inherent_strain,
+            "modelQualification": "open",
+        },
+        "boundedFusionEnthalpyScreening": {
+            "available": False,
+            "reason": "Dedicated bounded fusion-enthalpy route currently exists only for IN625.",
+        },
+        "comparisonFixture": {
+            "id": comparison["id"],
+            "check": comparison["check"],
+            "source": comparison["source"],
+            "doi": comparison["doi"],
+            "publishedWidthDepthPresent": (comparison["publishedWidth_um"] is not None
+                                           and comparison["publishedDepth_um"] is not None),
+            "evidenceStatus": "screening-fixture-not-independent-validation",
+        },
+        "crossModelAbsorptivity": {
+            "buildJobIR": build_snapshot["thermal"]["absorptivity_IR"],
+            "transient": transient["absorptivity"],
+            "marangoni": marangoni["absorptivity"],
+            "inherentStrain": inherent_strain["absorptivity"],
+            "note": "Model-specific assumptions; differing values are not silently reconciled.",
+        },
+        "samePhysicsGpuQualification": "open",
+    }
+
+
+def _in625_capability():
+    screening = in625_lpbf_thermal_snapshot()
+    low_c, high_c = SOLID_TEMPERATURE_RANGE_C
+    registry = next(row for row in catalog() if row["name"] == "Inconel 625")
+    return {
+        "alloyId": "in625",
+        "displayName": "Inconel 625",
+        "admission": "thermal-screening-only",
+        "buildJob": {
+            "available": False,
+            "reason": "IN625 is absent from the locked four-alloy build-job identity and slicer map.",
+        },
+        "fullTransient": {
+            "available": registry["available"],
+            "reason": "No source-backed five-property table through an independently supported boiling temperature, with the required optical and flow inputs.",
+            "requiredPropertyTableColumns": ["T_K", "rho_kg_m3", "k_W_mK", "Cp_J_kgK", "viscosity_Pa_s"],
+            "futureRoute": "A complete sourced user-supplied table can be evaluated separately; no default IN625 transient material is admitted.",
+        },
+        "solidBulkTable": {
+            "available": True,
+            "authority": "in625_thermal_material.in625_solid_thermal_at_celsius",
+            "source": SOURCE_URL,
+            "sourceLocators": {
+                "specificHeat": "Table 2 (calculated values)",
+                "conductivity": "Table 3 (annealed bulk material measurements)",
+            },
+            "temperatureCoverage_C": [low_c, high_c],
+            "properties": ["specific_heat_J_kgK", "thermal_conductivity_W_mK"],
+            "endpointValues": {
+                "low": in625_solid_thermal_at_celsius(low_c),
+                "high": in625_solid_thermal_at_celsius(high_c),
+            },
+            "evidenceStatus": "source-bounded-bulk-solid-only",
+        },
+        "boundedFusionEnthalpyScreening": {
+            "available": registry["thermalOnlyAvailable"],
+            "authority": "in625_thermal_material.in625_lpbf_thermal_snapshot",
+            "snapshot": screening,
+            "modelTemperatureCoverage_K": screening["temperatureCoverage_K"],
+            "sourceValidityRange_K": None,
+            "evidenceStatus": screening["validationStatus"],
+        },
+        "marangoniAdapter": {"inputsPresent": False, "modelQualification": "unavailable"},
+        "inherentStrainAdapter": {"inputsPresent": False, "modelQualification": "unavailable"},
+        "samePhysicsGpuQualification": "unavailable",
+        "modelBoundary": "The solid bulletin table and Sabau/JMatPro enthalpy model are separate authorities; neither supplies a full LPBF transient material.",
+    }
+
+
+def material_capability_report():
+    """Snapshot current configured inputs without mutating any solver or registry."""
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": "lpbf-material-authority-capability-audit",
+        "claimBoundary": "Input availability and content identity do not establish experimental validation or source quality.",
+        "alloys": {**{aid: _four_alloy_capability(aid) for aid in FOUR_ALLOY_IDS},
+                   "in625": _in625_capability()},
+    }
+
+
+def capability_for(name):
+    """Resolve only a known identity; never use a surrogate alloy."""
+    alloy_id = resolve_alloy_id(name)
+    if alloy_id is None and isinstance(name, str):
+        compact = "".join(name.strip().lower().split()).replace("-", "")
+        if compact in ("in625", "inconel625"):
+            alloy_id = "in625"
+    if alloy_id is None:
+        raise ValueError("Unsupported LPBF alloy identity; no surrogate capability is returned")
+    return material_capability_report()["alloys"][alloy_id]
+
+
+if __name__ == "__main__":
+    print(json.dumps(material_capability_report(), sort_keys=True, indent=2, allow_nan=False))

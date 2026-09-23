@@ -33,7 +33,15 @@ gibi etiketlenmez.
 | P6 | GPU termal eşleşmesi | P2, P4 | Açık cihaz seçimi, aynı fizik/girdi/boundary, CPU karşılaştırması, bağımsız analitik kontrol, enerji/alan metrikleri ve bellek/süre profili |
 | P7 | Alaşım genişlemesi | P2, P4 | Dört alaşım yeterlilik matrisi; en az bir yeni alaşımın kaynaklı özellik revizyonu, sıcaklık kapsamı, model kabiliyeti ve ayrı sayısal kontrolleri |
 | P8 | Bütünleşik ürün akışı | P3, P5, P6, P7 | Seç→hesapla→karşılaştır→dışa aktar→geri yükle; eski sonuç ve başarısız/eksik durumları görünür; gerçek tarayıcı/klavye kontrolü |
-| P9 | Son entegrasyon kapısı | P0–P8 | İlgili Python/TypeScript/sayısal/tarayıcı kontrolleri; değişiklik kapsamı, kanıt ve sınırlamalar; STATUS/PROOF ve bitiş kararı |
+| P9 | Son entegrasyon kapısı | P0–P8, P10 | İlgili Python/TypeScript/sayısal/tarayıcı kontrolleri; değişiklik kapsamı, kanıt ve sınırlamalar; STATUS/PROOF ve bitiş kararı |
+| P10 | Çekirdek fizik kusurlarının giderilmesi | P0, ilgili motorun kanıt sınırı | Somut başarısız örnekten hareketle entalpi, enerji, sınır akısı, birim ve zaman adımı kusurlarını motor bazında düzelt; ilgili analitik/sayısal testleri ve değişen benchmark'ları çalıştır; çözülemeyen fizik ve deney sınırlarını çıktıda açık tut |
+
+P10, P4–P9 ile birlikte yürür: doğrulanmış bir motor kusuru diğer paketlerin
+sonucunu etkiliyorsa önce onarılır, önceki raporlar geriye dönük olarak PASS
+sayılmaz. İlk paket Phase 21'in ayrı 2B geçici entalpi motorundaki entalpi
+tersi, sınır akısı ve zaman adımı kusurlarını düzeltti (`69fae9a`). Bu motorun
+hareketsiz 2B kaynak geometrisi gerçek LPBF eriyik havuzu için yeterli olmadığı
+için sonuç tarama olarak etiketlenir. 3B referans P4 kapısı bağımsızdır.
 
 ## IN718 geometri karşılaştırmasının ön protokolü
 

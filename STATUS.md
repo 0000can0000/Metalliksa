@@ -43,6 +43,11 @@
 - Doğrulama: `python/test_lpbf_build_job.py` PASS; `tests/lpbf-build-session.test.ts` 8/8 PASS; `npm run lint` PASS. Prototype-property (`constructor`) ve eski cache hit regresyonları kapsandı.
 - Sıradaki somut adım: worker sonucundaki `material.id` alanını ham istek yerine çözümlenmiş kimliğe bağlamak ve build-job'un fiilen kullandığı özellik snapshot'ı için ayrı, doğrulanabilir bir içerik kimliği tasarlamak. Bu hash deneysel doğrulama/provenance kanıtı sayılmayacak.
 
+## 2026-09-23 - Build-job Worker Sonuç Kimliği
+- Worker'ın `material.id` alanı artık ham `alloyId` isteği yerine solver'ın çözdüğü `alloyId` değerinden geliyor. Başarısız, çözümlenmemiş istekte alan `null` kalıyor.
+- Doğrulama: Gerçek `lpbf_worker.py --execute` yolunda alias `Ti-6Al-4V` → `ti6al4v`, eksik alaşım → `in718`, desteklenmeyen `Inconel 625` → başarısız sonuç ve boş `material.id`. `git diff --check` PASS.
+- Kod commit'i: `6f6c007` (`codex/lpbf-buildjob-material-identity`). Sıradaki somut adım: build-job'un fiilen kullandığı termal/slicer özellik snapshot'ı için ayrı içerik kimliğini tasarlamak; hash'i deneysel doğrulama veya provenance kanıtı olarak sunmamak. EIS/EDS kapsam dışı.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

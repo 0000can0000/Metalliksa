@@ -9,6 +9,9 @@ import { lpbfWorker } from './lpbfWorkerBridge';
 const MAX_RUN_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 const MAX_ARCHIVE_SIZE_BYTES = 15 * 1024 * 1024 * 1024; // 15 GB
 const QUOTA_WARNING_THRESHOLD = 0.9; // Warn at 90%
+export type RunSourceBindingStatus = 'exact-revision-bound' | 'legacy-unlinked';
+const bindingStatus = (record: RunRecord): RunSourceBindingStatus =>
+  record.document.sources.length ? 'exact-revision-bound' : 'legacy-unlinked';
 
 function getDirectorySizeBytes(dir: string): number {
   try {
@@ -52,25 +55,26 @@ export class LpbfRunArchiveService {
     return new LpbfSourceRepository(filename, { readOnly: true });
   }
 
-  list(): { runId: string; createdAt: string; evidenceStatus: string }[] {
+  list(): { runId: string; createdAt: string; evidenceStatus: string; sourceBindingStatus: RunSourceBindingStatus }[] {
     const repository = this.runRepository(true);
     if (!repository) return [];
     try {
       const runs = [];
       for (const record of repository.allRuns()) {
-        runs.push({ runId: record.document.runId, createdAt: record.createdAt, evidenceStatus: record.evidenceStatus });
+        runs.push({ runId: record.document.runId, createdAt: record.createdAt,
+          evidenceStatus: record.evidenceStatus, sourceBindingStatus: bindingStatus(record) });
       }
       return runs;
     } finally { repository.close(); }
   }
 
-  get(runId: string): RunRecord {
+  get(runId: string): RunRecord & { sourceBindingStatus: RunSourceBindingStatus } {
     const repository = this.runRepository(true);
     if (!repository) throw new LpbfRunArchiveError(404, 'Run repository not found.');
     try {
       const record = repository.get(runId);
       if (!record) throw new LpbfRunArchiveError(404, 'Run not found.');
-      return record;
+      return { ...record, sourceBindingStatus: bindingStatus(record) };
     } finally { repository.close(); }
   }
 
@@ -95,32 +99,78 @@ export class LpbfRunArchiveService {
     };
   }
 
-  preview(jobId: string, sources: RunSourceLink[]) {
+  private async resolveSources(repository: LpbfSourceRepository, raw: unknown): Promise<RunSourceLink[]> {
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > 100) {
+      throw new LpbfRunArchiveError(400, 'Select at least one registered source revision.');
+    }
+    const links: RunSourceLink[] = [];
+    const seen = new Set<string>();
+    let artifacts: LpbfArtifactStore | null = null;
+    for (const item of raw) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)
+        || !['datasetId', 'revision'].every(field => Object.hasOwn(item, field))
+        || Object.keys(item).some(field => !['datasetId', 'revision', 'documentSha256'].includes(field))
+        || typeof item.datasetId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(item.datasetId)
+        || !Number.isSafeInteger(item.revision) || item.revision < 1
+        || (item.documentSha256 !== undefined && (typeof item.documentSha256 !== 'string'
+          || !/^[a-f0-9]{64}$/.test(item.documentSha256)))) {
+        throw new LpbfRunArchiveError(400, 'Invalid source revision selection.');
+      }
+      const key = `${item.datasetId}:${item.revision}`;
+      if (seen.has(key)) throw new LpbfRunArchiveError(400, 'Duplicate source revision selection.');
+      seen.add(key);
+      let revision;
+      try { revision = repository.revision(item.datasetId, item.revision); }
+      catch { throw new LpbfRunArchiveError(409, 'Selected source revision integrity changed.'); }
+      if (!revision) throw new LpbfRunArchiveError(404, 'Selected source revision was not found.');
+      if (item.documentSha256 !== undefined && item.documentSha256 !== revision.documentSha256) {
+        throw new LpbfRunArchiveError(409, 'Selected source revision changed. Reload its exact revision.');
+      }
+      for (const artifact of revision.document.artifacts) {
+        try {
+          artifacts ??= new LpbfArtifactStore(path.join(this.sourceRoot, 'artifacts'), { readOnly: true });
+          await artifacts.verify(artifact);
+        }
+        catch { throw new LpbfRunArchiveError(409, 'Selected source revision artifact bytes are missing or changed.'); }
+      }
+      links.push({ datasetId: revision.document.datasetId, revision: revision.revision,
+        documentSha256: revision.documentSha256 });
+    }
+    return links;
+  }
+
+  preview(jobId: string, sources: unknown) {
     return this.exclusive(async () => {
       const sourceRepo = this.sourceRepository();
       if (!sourceRepo) throw new LpbfRunArchiveError(400, 'Source repository not initialized.');
       try {
+        const links = await this.resolveSources(sourceRepo, sources);
         const { capture, root } = await lpbfWorker.captureForArchive(jobId);
-        const previewResult = await dryRunRunImport(capture, sources, sourceRepo, root);
+        const previewResult = await dryRunRunImport(capture, links, sourceRepo, root);
         const quota = this.checkQuota(previewResult.byteSize);
-        return { ...previewResult, quota };
+        return { ...previewResult, quota, sourceBindingStatus: 'exact-revision-bound' as const };
       } finally { sourceRepo.close(); }
     });
   }
 
-  import(jobId: string, sources: RunSourceLink[]) {
+  import(jobId: string, sources: unknown) {
     return this.exclusive(async () => {
       const sourceRepo = this.sourceRepository();
       if (!sourceRepo) throw new LpbfRunArchiveError(400, 'Source repository not initialized.');
       try {
+        const links = await this.resolveSources(sourceRepo, sources);
         const { capture, root } = await lpbfWorker.captureForArchive(jobId);
         // Dry run first to get size for quota check
-        const previewResult = await dryRunRunImport(capture, sources, sourceRepo, root);
+        const previewResult = await dryRunRunImport(capture, links, sourceRepo, root);
         this.checkQuota(previewResult.byteSize);
+
+        // Source bytes can change while the worker capture is checked.
+        await this.resolveSources(sourceRepo, links);
 
         const repository = this.runRepository(false)!;
         try {
-          return await importRun(repository, new LpbfArtifactStore(path.join(this.runRoot, 'artifacts')), capture, sources, sourceRepo, root);
+          const record = await importRun(repository, new LpbfArtifactStore(path.join(this.runRoot, 'artifacts')), capture, links, sourceRepo, root);
+          return { ...record, sourceBindingStatus: 'exact-revision-bound' as const };
         } catch (error) {
           if (error instanceof Error && /conflict/i.test(error.message)) throw new LpbfRunArchiveError(409, 'Run identity conflict.');
           throw error;

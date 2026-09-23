@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from lpbf_convergence_study import ACCEPTANCE, study
+from lpbf_verification import convergence
 
 
 CASE = {"mode": "standard", "backend": "reference", "material": "Inconel 718",
@@ -32,6 +33,15 @@ def fake_solver(payload):
 
 
 class ConvergenceStudy(unittest.TestCase):
+    def test_roundoff_plateau_is_not_a_converging_width_trend(self):
+        # Real 80 W IN718 mesh pilot: the finest width differs only by roundoff.
+        widths = [73.33333333333331, 48.88888888888889, 48.88888888888887]
+        spacings = [36.666666666666664e-6, 24.444444444444443e-6,
+                    16.296296296296294e-6]
+        self.assertEqual(convergence(widths, spacings)["status"], "inconclusive")
+        self.assertEqual(convergence([120., 105., 101.25], [4., 2., 1.])["status"],
+                         "numerically-converging")
+
     def test_two_independent_axes_and_frozen_targets(self):
         original = copy.deepcopy(CASE)
         with patch("lpbf_convergence_study.run", side_effect=fake_solver) as solver:

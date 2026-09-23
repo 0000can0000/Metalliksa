@@ -48,6 +48,11 @@
 - Doğrulama: Gerçek `lpbf_worker.py --execute` yolunda alias `Ti-6Al-4V` → `ti6al4v`, eksik alaşım → `in718`, desteklenmeyen `Inconel 625` → başarısız sonuç ve boş `material.id`. `git diff --check` PASS.
 - Kod commit'i: `6f6c007` (`codex/lpbf-buildjob-material-identity`). Sıradaki somut adım: build-job'un fiilen kullandığı termal/slicer özellik snapshot'ı için ayrı içerik kimliğini tasarlamak; hash'i deneysel doğrulama veya provenance kanıtı olarak sunmamak. EIS/EDS kapsam dışı.
 
+## 2026-09-23 - Geniş LPBF Goal Başlangıcı
+- Kullanıcı ortak LPBF çekirdek/veri hattı hedefini GPU termal CPU eşleşmesi ve veri kapılı alaşım genişlemesiyle birlikte yetkilendirdi. Aktif yürütme planı `docs/LPBF_GOAL_EXECUTION_PLAN_2026-09-23.md`; goal kimliği `01a0cfbf-d2ad-7f70-b94f-b89183eb819c`.
+- Salt okunur sınır incelemeleri build-job özellik/cache kimliği, run istemci/sunucu tür uyuşmazlığı ve eski Warp akış modelinin CPU entalpi-iletiminden farklı olduğunu doğruladı. Bağımsız Python malzeme, run istemcisi ve CPU yakınsama paketleri çalışıyor; dosya sahipliği `docs/ACTIVE_WORK.md` içinde.
+- Plan/koordinasyon commit'i: `15a6ec8`. Kontrol: belge diff ve `git diff --check` PASS; bu plan paketinde solver veya ürün testi çalıştırılmadı. Sıradaki adım: üç bağımsız paket diff/kanıtlarını entegre etmek, ardından aynı termal sözleşmeye sahip GPU ve kaynaklı IN625 veri kapılarını açmak. Dışarıdan gelen belge değişiklikleri korunuyor; EIS/EDS kapsam dışı.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

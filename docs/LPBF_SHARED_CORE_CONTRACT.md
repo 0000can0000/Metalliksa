@@ -87,16 +87,17 @@ compare operator/units/model identity. Do not replace analytical specialist laws
 with transient laws under an unchanged model ID. Their material adapters may
 reuse data while keeping explicit property temperature/optical conventions.
 
-Extraction checkpoint (2026-09-23): `lpbf_core_physics.py` exposes the shared
-`property_at`, `enthalpy_table`, mesh-domain, and scan-schedule APIs. The
-transient solver consumes the shared entry points; `lpbf_simulation.scan_segments`
-remains an import-compatible re-export for OpenFOAM, CFD, evidence and callers.
-The scan schedule implementation was moved verbatim; timing and numerical
-operators did not change. The material registry retains its legacy exports.
-Verification: `test_lpbf_core_contract` and `test_lpbf_engineering` passed 33 of
-34 tests on Windows Python3.12; the OpenFOAM 14 independent-reference test was
-skipped there because its compiled worker is unavailable. That parity test
-passed separately on Ubuntu 22.04 WSL with the compiled OpenFOAM 14 worker.
+Extraction checkpoint (2026-09-23): `lpbf_core_physics.py` exposes shared
+material interpolation, enthalpy, mesh-domain, scan-schedule, and cell-integrated
+Gaussian source APIs. `lpbf_simulation.scan_segments` and the old
+`lpbf_heat_source` names remain import-compatible; timestep limiting and the
+conduction operator remain in `lpbf_heat_source`. Solver diagnostics use the
+shared `cell-integrated-gaussian-gl2-v1` identity. Both extractions moved existing
+implementations without equation, timing, unit, or quadrature changes.
+Verification after the source extraction: core-contract, engineering and
+heat-source suites passed 40 of 42 tests on Windows Python3.12; two
+OpenFOAM/Linux-only cases were skipped there. OpenFOAM 14 reference parity and
+all eight heat-source tests passed on Ubuntu 22.04 WSL with the compiled worker.
 
 GPU candidate is a thermal-only implementation of the same stationary reference
 contract. Require explicit device, no silent fallback, equal scenario/material/

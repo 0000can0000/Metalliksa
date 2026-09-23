@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import numpy as np
-from lpbf_core_physics import enthalpy_table, property_at, calculate_mesh_domain
+from lpbf_core_physics import enthalpy_table, property_at, calculate_mesh_domain, SOURCE_INTEGRATION
 from lpbf_evidence import thermal_audits
 from lpbf_peak import PeakMeltTracker, PEAK_EXTRACTION
 
@@ -80,7 +80,6 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
         child.stdout.close()
     if code:
         raise ValueError("OpenFOAM thermal failed: "+(folder/"solver.log").read_text()[-2500:])
-    from lpbf_heat_source import SOURCE_INTEGRATION
     from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
     if not diagnostic_path.is_file():
         raise ValueError("OpenFOAM binary is outdated: rebuild metalliksaThermal for cell-integrated heating")

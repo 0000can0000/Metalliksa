@@ -12,10 +12,10 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material
 from lpbf_core_physics import property_at, enthalpy_table
-from lpbf_core_physics import calculate_mesh_domain, scan_segments
+from lpbf_core_physics import calculate_mesh_domain, scan_segments, SOURCE_INTEGRATION
 from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
-from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
+from lpbf_heat_source import source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_peak import PeakMeltTracker
 from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID

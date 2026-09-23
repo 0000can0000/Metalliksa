@@ -1,6 +1,6 @@
 # P4 peak-selection diagnostic protocol
 
-Protocol ID: `p4-peak-selection-diagnostic-v1`  
+Protocol ID: `p4-peak-selection-diagnostic-v1`
 Registered before the diagnostic rerun. This is a repeat of the existing 75 W
 numerical case to expose peak-selection metadata that the first report omitted;
 it is not an independent acceptance study and cannot replace or upgrade that

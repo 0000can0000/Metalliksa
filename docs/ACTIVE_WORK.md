@@ -1,9 +1,18 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
-Root owns integration and `STATUS.md`/`PROOF.md`. Committed evidence includes
-the surface-aligned report `57e22ba` and separate official NIST workbook/source
-audit package `ef303e7` on `codex/lpbf-buildjob-material-identity`; no push.
-P4/P5 read-only diagnosis, official source-route and row audits completed.
+Root owns integration and `STATUS.md`/`PROOF.md` on
+`codex/lpbf-buildjob-material-identity`; no push. All current subagents have
+finished. The official NIST workbook audit is `ef303e7`. Phase 21 stationary
+2D screening physics repairs are `69fae9a` and `bf34aef` (6 focused Python
+tests PASS); P10 was added to the active plan in `04e0ea4`. The separate
+preregistered 75 W 3+3 contour report is `4110e73`, SHA-256
+`b9cff92e01378a58ac4ed17333c21ad591a956dfc6e32ddd2dda8a219026b866`.
+All six solves completed with energy PASS, contour mesh width PASS, contour
+mesh depth and both time metrics inconclusive; total 75 W contour/discrete
+status is inconclusive. The frozen 80 W P4 result remains failed. P5 remains
+unavailable. Next: assess peak-time selection and the observation operator
+against field/analytic evidence, then decide whether an independently
+preregistered new P4 study is warranted; do not relax frozen criteria.
 Root alone changes checkpoint documents.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is
@@ -32,9 +41,9 @@ not NIST condition-matched. P9 checks: Python 91 PASS/3 Windows OpenFOAM skips;
 Ubuntu/OpenFOAM engineering 29 PASS; latest TypeScript unit 232 PASS, lint and
 build PASS; new Python source audit 3 PASS. Browser tab 2 and local dev server
 session 29665 are live. Official workbook source preview/import/revision-1
-verify passed in the browser. Next action: commit the checkpoint documents,
-then predeclare a separate continuous-geometry protocol and independent
-process/time study for P4; scope a matched NIST optical operator for P5.
+verify passed in the browser. The separate continuous-geometry protocol and
+independent process/time study are now reported at the top of this file; scope
+a matched NIST optical operator for P5 only after its physical inputs are known.
 
 External `docs/README.md`, `sonkayıtlar/LOG.md`, and
 `docs/SCIENTIFIC_RESEARCH_VISION.md` remain unowned. Preserve them.

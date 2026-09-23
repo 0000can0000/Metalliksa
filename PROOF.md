@@ -818,3 +818,24 @@ no resolved out-of-plane power normalization and scan speed is unused. The
 result therefore reports `is_physically_accurate=false` and its limitations;
 it is not an experimentally validated melt-pool prediction. The independent
 three-dimensional P4 convergence gate is unchanged.
+
+## 2026-09-24 — Preregistered independent 75 W thermal contour study
+
+The protocol and 75 W IN718 scenario were committed before computation in
+`5b2cfd0`; scenario SHA-256 is
+`c64670451843fc0842ea13f36b6acc7ca39385ae0237666090d30e4e550165fc`.
+The six-solve report is `docs/LPBF_P4_CONTOUR_75W_2026-09-24.json` (commit
+`4110e73`, SHA-256
+`b9cff92e01378a58ac4ed17333c21ad591a956dfc6e32ddd2dda8a219026b866`).
+All three mesh and three timestep solves completed with one model, solver and
+material revision; maximum relative energy closure error was 8.55e-14.
+Contour mesh W/D at 20/10/5 µm were 55.99/47.93, 60.02/52.41 and
+62.31/52.13 µm. Width passed the declared finest-pair 5% and positive-trend
+criteria (3.67%); depth changed only 0.53% in the finest pair but was
+nonmonotonic, so its trend was inconclusive. At fixed 10 µm mesh, timestep
+contour geometry changed by less than 0.002% between the two finest steps, but
+both width and depth were nonmonotonic and remain inconclusive. The discrete
+geometry assessment is also inconclusive. The separate contour gate and the
+overall 75 W report are `inconclusive`; neither overrides the failed frozen
+80 W P4 report. Focused study regressions: 13/13 PASS. This is a numerical
+thermal proxy study, not NIST optical validation.

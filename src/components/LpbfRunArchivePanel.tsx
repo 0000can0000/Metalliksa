@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useInputBoundTask } from '../hooks/useInputBoundTask';
-import { listRuns, getRun, previewRun, importRun, type RunPreview, type RunArchiveList } from '../services/lpbfRunArchiveClient';
+import { listRuns, getRun, previewRun, importRun, exportRunBundle, verifyRunBundle, restoreRunBundle,
+  type RunPreview, type RunArchiveList, type ExportedRunBundle, type VerifiedRunBundle,
+  type RestoredRunBundle } from '../services/lpbfRunArchiveClient';
 import { sourceAction, sourceCatalog } from '../services/lpbfSourceService';
 import type { RunRecord, RunSourceLink } from '../types/lpbfRun';
 
@@ -29,7 +31,67 @@ export function LpbfRunArchivePanel() {
       : runs.length === 0 ? <p>No simulation runs archived yet.</p>
       : <><label className="block text-sm">Archived run<select aria-label="Archived run" className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300" value={selected} onChange={event => setSelected(event.target.value)}>{runs.map(item => <option key={item.runId} value={item.runId}>{item.runId.slice(0,8)}... · {item.createdAt}</option>)}</select></label>
         {selected && <ArchivedRunRecord key={selected} runId={selected}/>}</>}
+    <RunBundleControls />
   </section>;
+}
+
+function RunBundleControls() {
+  const [bundleId, setBundleId] = useState('');
+  const exportTask = useInputBoundTask<ExportedRunBundle>('run-bundle-export');
+  const verifyTask = useInputBoundTask<VerifiedRunBundle>(bundleId);
+  const restoreTask = useInputBoundTask<RestoredRunBundle>(bundleId);
+  const busy = !!(exportTask.pending || verifyTask.pending || restoreTask.pending);
+  const verified = verifyTask.data?.bundleId === bundleId;
+
+  const runExport = async () => {
+    const request = exportTask.begin('export');
+    try {
+      const result = await exportRunBundle(request.signal);
+      if (request.isCurrent()) setBundleId(result.bundleId);
+      request.publish(result);
+    } catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  const runVerify = async () => {
+    const request = verifyTask.begin('verify');
+    try { request.publish(await verifyRunBundle(bundleId, request.signal)); }
+    catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  const runRestore = async () => {
+    if (!verified) return;
+    const request = restoreTask.begin('restore');
+    try { request.publish(await restoreRunBundle(bundleId, request.signal)); }
+    catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  return <div className="space-y-3 border-t border-slate-700 pt-4" aria-label="Run bundle controls">
+    <h4 className="font-medium">Server-local bundle</h4>
+    <p className="text-sm text-slate-400">Export a copy on this server, verify its stored bytes, then restore a separate copy. Restoring does not replace the live archive. This interface does not transfer files to or from your device.</p>
+    <p className="text-xs text-amber-200">Bundle integrity does not validate the model. Runs without archived source links remain legacy-unlinked.</p>
+    <button type="button" className={button} disabled={busy} onClick={() => void runExport()}>Export server-local bundle</button>
+    {exportTask.pending && <p role="status">Creating bundle on server…</p>}
+    {exportTask.error && <p role="alert" className="text-rose-300">{exportTask.error}</p>}
+    {exportTask.data && <p role="status" className="text-emerald-200">Bundle created: {exportTask.data.bundleId}. {exportTask.data.manifest.runCount} runs, {exportTask.data.manifest.artifactCount} run artifacts, {exportTask.data.manifest.sourceLinkCount} source links.</p>}
+    <label className="block text-sm">Server-local bundle ID
+      <input type="text" aria-label="Server-local bundle ID" spellCheck={false} autoComplete="off" maxLength={32}
+        className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-sky-300"
+        value={bundleId} onChange={event => setBundleId(event.target.value.trim())} placeholder="32-character bundle ID" />
+    </label>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className={button} disabled={busy || !/^[a-f0-9]{32}$/.test(bundleId)} onClick={() => void runVerify()}>Verify bundle</button>
+      <button type="button" className={button} disabled={busy || !verified} onClick={() => void runRestore()}>Restore verified copy</button>
+    </div>
+    {verifyTask.pending && <p role="status">Verifying bundle bytes and references…</p>}
+    {verifyTask.error && <p role="alert" className="text-rose-300">{verifyTask.error}</p>}
+    {verified && <p role="status" className="text-emerald-200">Bundle verified: {verifyTask.data!.manifest.runCount} runs and {verifyTask.data!.manifest.sourceLinkCount} source links.</p>}
+    {restoreTask.pending && <p role="status">Restoring to an isolated server directory…</p>}
+    {restoreTask.error && <p role="alert" className="text-rose-300">{restoreTask.error}</p>}
+    {restoreTask.data && <p role="status" className="text-emerald-200">Verified copy restored on this server (restore ID: {restoreTask.data.restoreId}). The live archive is unchanged.</p>}
+  </div>;
 }
 
 function ArchivedRunRecord({ runId }: { runId: string }) {

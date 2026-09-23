@@ -15,11 +15,33 @@ export interface RunPreview {
 
 export type RunArchiveList = { runId: string; createdAt: string; evidenceStatus: 'unvalidated-model'; sourceBindingStatus: RunSourceBindingStatus }[];
 
+export interface RunBundleManifest {
+  schemaVersion: 1;
+  kind: 'metalliksa-lpbf-run-bundle';
+  metadata: { sha256: string; byteSize: number };
+  sourceBundle: { sha256: string; byteSize: number };
+  runCount: number;
+  artifactCount: number;
+  sourceLinkCount: number;
+}
+
+export interface ExportedRunBundle {
+  bundleId: string;
+  storage: 'server-local-directory';
+  manifest: RunBundleManifest;
+  verified?: true;
+  restoreId?: string;
+}
+
+export interface VerifiedRunBundle extends ExportedRunBundle { verified: true }
+export interface RestoredRunBundle extends VerifiedRunBundle { restoreId: string }
+
 const invalid = () => new Error('Invalid run archive response. Reload before retrying.');
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const jobId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 const sha = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const bundleId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 const count = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
 const date = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const bindingStatus = (value: unknown): value is RunSourceBindingStatus =>
@@ -60,6 +82,54 @@ async function request(path: string, signal: AbortSignal, body?: object) {
     throw new Error(`Run archive request failed (${response.status}).`);
   }
   return response.json();
+}
+
+function bundleManifest(value: unknown): asserts value is RunBundleManifest {
+  if (!object(value) || value.schemaVersion !== 1 || value.kind !== 'metalliksa-lpbf-run-bundle'
+    || !object(value.metadata) || !sha(value.metadata.sha256) || !count(value.metadata.byteSize)
+    || !object(value.sourceBundle) || !sha(value.sourceBundle.sha256) || !count(value.sourceBundle.byteSize)
+    || !count(value.runCount) || !count(value.artifactCount) || !count(value.sourceLinkCount)) throw invalid();
+}
+
+async function bundleRequest(path: string, signal: AbortSignal): Promise<unknown> {
+  const response = await fetch(`/api/lpbf/runs/bundles${path}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    signal, cache: 'no-store',
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const detail = object(body) && typeof body.error === 'string' ? ` ${body.error}` : '';
+    throw new Error(`Run bundle request failed (${response.status}).${detail}`);
+  }
+  return response.json();
+}
+
+function exportedBundle(value: unknown, expectedId?: string): asserts value is ExportedRunBundle {
+  if (!object(value) || !bundleId(value.bundleId) || value.storage !== 'server-local-directory'
+    || (expectedId !== undefined && value.bundleId !== expectedId)) throw invalid();
+  bundleManifest(value.manifest);
+}
+
+export async function exportRunBundle(signal: AbortSignal): Promise<ExportedRunBundle> {
+  const result: unknown = await bundleRequest('/export', signal);
+  exportedBundle(result);
+  return result;
+}
+
+export async function verifyRunBundle(id: string, signal: AbortSignal): Promise<VerifiedRunBundle> {
+  if (!bundleId(id)) throw new Error('Enter a valid 32-character bundle ID.');
+  const result: unknown = await bundleRequest(`/${id}/verify`, signal);
+  exportedBundle(result, id);
+  if (result.verified !== true) throw invalid();
+  return result as VerifiedRunBundle;
+}
+
+export async function restoreRunBundle(id: string, signal: AbortSignal): Promise<RestoredRunBundle> {
+  if (!bundleId(id)) throw new Error('Enter a valid 32-character bundle ID.');
+  const result: unknown = await bundleRequest(`/${id}/restore`, signal);
+  exportedBundle(result, id);
+  if (result.verified !== true || !bundleId(result.restoreId)) throw invalid();
+  return result as RestoredRunBundle;
 }
 
 export async function listRuns(signal: AbortSignal): Promise<RunArchiveList> {

@@ -31,10 +31,10 @@ export const IndustrialCertificationLab: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-3">
           <ShieldCheck className="text-emerald-400 w-8 h-8" />
-          Endüstriyel Sertifikasyon & Yapay Zeka Yorulma Ömrü (Faz 9 & 10)
+          Industrial Certification & AI Fatigue Life (Phases 9 & 10)
         </h2>
         <p className="text-slate-400 mb-4">
-          Faz 9 (Meta-Model) ve Faz 10 (Gumbel Uç Değer & Murakami) kullanılarak milisaniyeler içinde üretim kalitesi ve yorulma sınırı (Fatigue Limit) tahmini.
+          Predict manufacturing quality and fatigue limits in milliseconds using the Phase 9 meta-model and Phase 10 Gumbel extreme-value and Murakami methods.
         </p>
         <div className="mb-6 flex items-center gap-2">
           <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/30">
@@ -44,7 +44,7 @@ export const IndustrialCertificationLab: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-            <label className="block text-sm text-slate-400 mb-2">Lazer Gücü (W)</label>
+            <label className="block text-sm text-slate-400 mb-2">Laser Power (W)</label>
             <input 
               type="range" min="50" max="600" value={power} 
               onChange={(e) => setPower(Number(e.target.value))}
@@ -54,7 +54,7 @@ export const IndustrialCertificationLab: React.FC = () => {
           </div>
           
           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-            <label className="block text-sm text-slate-400 mb-2">Tarama Hızı (mm/s)</label>
+            <label className="block text-sm text-slate-400 mb-2">Scan Speed (mm/s)</label>
             <input 
               type="range" min="200" max="2500" value={speed} 
               onChange={(e) => setSpeed(Number(e.target.value))}
@@ -64,7 +64,7 @@ export const IndustrialCertificationLab: React.FC = () => {
           </div>
 
           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-            <label className="block text-sm text-slate-400 mb-2">Alaşım</label>
+            <label className="block text-sm text-slate-400 mb-2">Alloy</label>
             <select 
               value={alloy} onChange={(e) => setAlloy(e.target.value)}
               className="w-full bg-slate-900 text-white border border-slate-700 rounded-md p-2"
@@ -86,7 +86,7 @@ export const IndustrialCertificationLab: React.FC = () => {
           className="w-full py-4 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold rounded-lg shadow-lg transition-all flex items-center justify-center gap-2"
         >
           {loading ? <Activity className="animate-spin w-5 h-5" /> : <Layers className="w-5 h-5" />}
-          {loading ? 'AI Hesaplıyor...' : 'Sertifikasyon Analizini Başlat'}
+          {loading ? 'AI is calculating...' : 'Run Certification Analysis'}
         </button>
       </div>
 
@@ -94,14 +94,14 @@ export const IndustrialCertificationLab: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* AI Meltpool */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-blue-400 mb-4 border-b border-slate-800 pb-2">AI Havuz Tahmini</h3>
+            <h3 className="text-lg font-bold text-blue-400 mb-4 border-b border-slate-800 pb-2">AI Melt Pool Estimate</h3>
             <div className="space-y-4">
               <div>
-                <div className="text-sm text-slate-400">Ortalama Derinlik</div>
+                <div className="text-sm text-slate-400">Mean Depth</div>
                 <div className="text-2xl text-white font-mono">{result.AI_Meltpool?.Mean_Depth_um} µm</div>
               </div>
               <div>
-                <div className="text-sm text-slate-400">Hata Bütçesi (Standart Sapma)</div>
+                <div className="text-sm text-slate-400">Uncertainty (Standard Deviation)</div>
                 <div className="text-xl text-yellow-400 font-mono">±{result.AI_Meltpool?.Uncertainty_Std_um} µm</div>
               </div>
             </div>
@@ -109,14 +109,14 @@ export const IndustrialCertificationLab: React.FC = () => {
 
           {/* Gumbel Statistics */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-orange-400 mb-4 border-b border-slate-800 pb-2">Gumbel Olasılıkları</h3>
+            <h3 className="text-lg font-bold text-orange-400 mb-4 border-b border-slate-800 pb-2">Gumbel Probabilities</h3>
             <div className="space-y-4">
               <div>
-                <div className="text-sm text-slate-400">Maksimum Simüle Edilen Gözenek</div>
+                <div className="text-sm text-slate-400">Maximum Simulated Pore</div>
                 <div className="text-xl text-white font-mono">{result.Defect_Simulation?.Max_Simulated_Defect_um} µm</div>
               </div>
               <div>
-                <div className="text-sm text-slate-400">Karakteristik "En Büyük Katil Hata"</div>
+                <div className="text-sm text-slate-400">Characteristic Maximum Critical Defect</div>
                 <div className="text-2xl text-red-400 font-mono font-bold flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5" />
                   {result.Defect_Simulation?.Gumbel_Predicted_Largest_Defect_um} µm
@@ -127,14 +127,14 @@ export const IndustrialCertificationLab: React.FC = () => {
 
           {/* Fatigue Limit */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-800 pb-2">Yorulma Sınırı (Fatigue)</h3>
+            <h3 className="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-800 pb-2">Fatigue Limit</h3>
             <div className="space-y-4">
               <div>
-                <div className="text-sm text-slate-400">Ortalama Yorulma Sınırı</div>
+                <div className="text-sm text-slate-400">Expected Fatigue Limit</div>
                 <div className="text-xl text-white font-mono">{result.Certification_Limits?.Expected_Fatigue_Limit_MPa} MPa</div>
               </div>
               <div>
-                <div className="text-sm text-slate-400">%99 Hayatta Kalma (Survival) Sınırı</div>
+                <div className="text-sm text-slate-400">99% Survival Design Limit</div>
                 <div className="text-3xl text-emerald-400 font-mono font-bold flex items-center gap-2">
                   <CheckCircle className="w-6 h-6" />
                   {result.Certification_Limits?.['99_Percent_Survival_Design_Limit_MPa']} MPa

@@ -69,3 +69,8 @@
 
 ## 2026-09-21 - Faz 8 Hassasiyet ve Optimizasyon
 - Backend'de yer alan `lpbf_bayesian_optimizer.py` modülü `server/lpbfWorkerBridge.ts` ve API üzerinden dışarıya açıldı. Optimum proses penceresi parametrelerinin arayışı yapılarak referans belgeler üretildi.
+
+## 2026-09-23 - Frontend İngilizce Arayüz Metinleri
+- Industrial Certification, Toolpath Thermal Map ve AI Orchestrator ekranlarındaki Türkçe kullanıcı metinleri İngilizceye çevrildi; Toolpath Thermal Map gezinme açıklaması da güncellendi.
+- Doğrulama: `src/components` ve ilgili arayüz metadata'sında Türkçe karakter/ifade taraması yapıldı; kalan eşleşmeler yorum satırları veya bilimsel özel adlar. `git diff --check` PASS. Gerçek tarayıcı kontrolü yapılmadı.
+- Kod değişiklikleri: `IndustrialCertificationLab.tsx`, `ToolpathThermalMapLab.tsx`, `AIOrchestratorPanel.tsx`, `workspaces.ts`.

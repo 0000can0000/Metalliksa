@@ -78,16 +78,16 @@ export const ToolpathThermalMapLab: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-3">
           <Grid3X3 className="text-blue-400 w-8 h-8" />
-          Toolpath Thermal Map (Faz 12 & 17)
+          Toolpath Thermal Map (Phases 12 & 17)
         </h2>
         <p className="text-slate-400 mb-6">
-          Lazer tarama stratejisine (Chessboard / Stripe) göre katman içi 2D takım yolu oluşturur ve çoklu-hat termal ısı birikimini hesaplar. 
-          Çizgiler maksimum ulaşılan sıcaklığa (T_max) göre renklendirilir.
+          Generates a 2D layer toolpath based on the selected scan strategy (Chessboard / Stripe) and calculates multi-track thermal accumulation.
+          Tracks are colored by their maximum temperature (T_max).
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-            <label className="block text-xs text-slate-400 mb-1">Alaşım</label>
+            <label className="block text-xs text-slate-400 mb-1">Alloy</label>
             <select value={alloy} onChange={(e) => setAlloy(e.target.value)} className="w-full bg-slate-900 text-sm text-white border border-slate-700 rounded p-1">
               <option value="IN718">IN718</option>
               <option value="Ti6Al4V">Ti-6Al-4V</option>
@@ -97,10 +97,10 @@ export const ToolpathThermalMapLab: React.FC = () => {
           </div>
           
           <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-            <label className="block text-xs text-slate-400 mb-1">Strateji</label>
+            <label className="block text-xs text-slate-400 mb-1">Strategy</label>
             <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className="w-full bg-slate-900 text-sm text-white border border-slate-700 rounded p-1">
-              <option value="chessboard">Satranç (Chessboard)</option>
-              <option value="stripe">Şerit (Stripe)</option>
+              <option value="chessboard">Chessboard</option>
+              <option value="stripe">Stripe</option>
             </select>
           </div>
           
@@ -110,7 +110,7 @@ export const ToolpathThermalMapLab: React.FC = () => {
           </div>
 
           <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-            <label className="block text-xs text-slate-400 mb-1">Açı (Derece): {angle}</label>
+            <label className="block text-xs text-slate-400 mb-1">Angle (Degrees): {angle}</label>
             <input type="range" min="0" max="180" value={angle} onChange={(e) => setAngle(Number(e.target.value))} className="w-full" />
           </div>
         </div>
@@ -121,7 +121,7 @@ export const ToolpathThermalMapLab: React.FC = () => {
           className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg shadow-lg flex items-center justify-center gap-2"
         >
           {loading ? <Activity className="animate-spin w-5 h-5" /> : <Flame className="w-5 h-5" />}
-          {loading ? 'Termal Simülasyon Çalışıyor...' : 'Takım Yolunu ve Isı Birikimini Hesapla'}
+          {loading ? 'Thermal simulation running...' : 'Calculate Toolpath and Thermal Accumulation'}
         </button>
       </div>
 
@@ -131,8 +131,8 @@ export const ToolpathThermalMapLab: React.FC = () => {
       
       {result && result.tracks && (
         <div className="text-center text-slate-400 text-sm">
-          Oluşturulan Vektör Sayısı: <span className="font-bold text-white">{result.total_tracks}</span> | 
-          Max Sıcaklık: <span className="font-bold text-red-400">{Math.max(...result.tracks.map((t: any) => t.t_max)).toFixed(0)} K</span>
+          Generated Track Count: <span className="font-bold text-white">{result.total_tracks}</span> |
+          Maximum Temperature: <span className="font-bold text-red-400">{Math.max(...result.tracks.map((t: any) => t.t_max)).toFixed(0)} K</span>
         </div>
       )}
     </div>

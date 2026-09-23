@@ -1,5 +1,5 @@
-import { Router, Request, Response } from "express";
-import { getGeminiClient, generateGeminiContentWithFallback } from "../server/geminiService.ts";
+import { Router, type Request, type Response } from "express";
+import { generateGpt6Response } from "../server/openaiService.ts";
 import { airgapDenyPayload, isAirgappedFromEnv } from "../server/airgap.ts";
 
 export const copilotRouter = Router();
@@ -14,73 +14,53 @@ function denyIfAirgapped(res: Response, service: string): boolean {
 
 // General Metallurgy Consultation & Copilot Guidance
 copilotRouter.post(["/api/metallurgy/consult", "/api/consult"], async (req: Request, res: Response) => {
-  if (denyIfAirgapped(res, "Gemini AI consultation")) return;
+  if (denyIfAirgapped(res, "GPT-6 AI consultation")) return;
   try {
     const { prompt, message, context, systemInstruction } = req.body;
     const userPrompt = prompt || message || "Provide metallurgical analysis and ICME optimization advice.";
-
-    let ai;
-    try {
-      ai = getGeminiClient();
-    } catch {
-      return res.json({
-        response: `[Local Fallback Advisory] Based on ICME principles, optimize composition balance, minimize secondary phase embrittlement (e.g. sigma phase in Fe-Cr-Ni or Laves in Ni-Nb), and control thermal gradient to solidification velocity ratio (G/R) to achieve fine equiaxed microstructures.`,
-      });
-    }
 
     const fullPrompt = context
       ? `Material Context: ${typeof context === "string" ? context : JSON.stringify(context)}\n\nQuery: ${userPrompt}`
       : userPrompt;
 
-    const response = await generateGeminiContentWithFallback(ai, {
-      contents: fullPrompt,
-      systemInstruction: systemInstruction || "You are an expert physical metallurgist, CALPHAD thermodynamicist, and additive manufacturing specialist. Provide precise, quantitative, and scientifically rigorous insights.",
+    const response = await generateGpt6Response({
+      model: "gpt-6-sol",
+      input: fullPrompt,
+      instructions: systemInstruction || "You are an expert physical metallurgist, CALPHAD thermodynamicist, and additive manufacturing specialist. Provide precise, quantitative, and scientifically rigorous insights. Distinguish calculations and evidence from hypotheses.",
     });
 
-    const text = (response as any)?.response?.text || (response as any)?.text || "";
+    const text = response.text;
     return res.json({ response: text, text, answer: text });
   } catch (err: any) {
     console.error("[Copilot Error]", err);
-    return res.status(500).json({ error: err.message || "Consultation request failed" });
+    return res.status(err?.message?.includes("OPENAI_API_KEY") ? 503 : 500).json({ error: err.message || "Consultation request failed" });
   }
 });
 
 // SEM & Micrograph Vision Diagnostics
 copilotRouter.post("/api/metallurgy/diagnose-micrograph", async (req: Request, res: Response) => {
-  if (denyIfAirgapped(res, "Gemini micrograph vision")) return;
+  if (denyIfAirgapped(res, "GPT-6 micrograph vision")) return;
   try {
     const { imageBase64, prompt } = req.body;
-    let ai;
-    try {
-      ai = getGeminiClient();
-    } catch {
-      return res.json({
-        diagnosis: "Micrograph shows fine cellular-dendritic subgrains typical of rapid LPBF solidification. Grain boundary precipitates are well-distributed without continuous film embrittlement.",
-      });
+    const mimeType = typeof imageBase64 === "string" && imageBase64.startsWith("data:")
+      ? imageBase64.match(/^data:([^;]+);base64,/)?.[1]
+      : req.body?.mimeType || "image/jpeg";
+    if (imageBase64 && !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType)) {
+      return res.status(415).json({ error: "Upload a JPEG, PNG, WebP, or GIF micrograph for GPT-6 analysis." });
     }
-
-    const contents = imageBase64
-      ? [
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: imageBase64.replace(/^data:image\/[a-z]+;base64,/, ""),
-            },
-          },
-          { text: prompt || "Analyze this metallurgical micrograph. Identify phase morphology, grain boundaries, and any microstructural defects." },
-        ]
-      : prompt || "Analyze micrograph morphology.";
-
-    const response = await generateGeminiContentWithFallback(ai, {
-      contents,
-      systemInstruction: "You are an expert metallographer. Deliver rigorous quantitative and qualitative phase identification.",
+    const response = await generateGpt6Response({
+      model: "gpt-6-astra",
+      input: imageBase64
+        ? { imageBase64, mimeType, prompt: prompt || "Describe visible microstructure features, grain boundaries, and possible defects. State uncertainty and avoid unsupported quantitative claims." }
+        : prompt || "Analyze micrograph morphology.",
+      instructions: "You are an expert metallographer. Describe only features supported by the image. Do not infer phase identity or quantitative measurements without evidence.",
     });
 
     return res.json({
-      diagnosis: (response as any)?.response?.text || (response as any)?.text || "Microstructure analysis completed.",
+      diagnosis: response.text,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || "Micrograph analysis failed" });
+    return res.status(err?.message?.includes("OPENAI_API_KEY") ? 503 : 500).json({ error: err.message || "Micrograph analysis failed" });
   }
 });
 
@@ -96,7 +76,7 @@ copilotRouter.post("/api/metallurgy/detect-sem-legend", async (_req: Request, re
 
 // SEM Auto Analysis
 copilotRouter.post("/api/metallurgy/analyze-sem", async (req: Request, res: Response) => {
-  if (denyIfAirgapped(res, "Gemini SEM analysis")) return;
+  if (denyIfAirgapped(res, "SEM analysis")) return;
   try {
     const { imageBase64, analysisType } = req.body;
     return res.json({

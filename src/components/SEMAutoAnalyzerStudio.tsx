@@ -305,7 +305,7 @@ export const SEMAutoAnalyzerStudio: React.FC = () => {
       // Automatically run Legend Detection & AI analysis
       triggerAutoLegendDetection(base64);
       setTimeout(() => {
-        runGeminiDeepAnalysis(base64, file.name);
+        runSemAnalysis(base64, file.name);
       }, 500);
     };
     reader.readAsDataURL(file);
@@ -914,8 +914,8 @@ export const SEMAutoAnalyzerStudio: React.FC = () => {
     }
   };
 
-  // Run Gemini Deep Metallurgy Analysis Endpoint
-  const runGeminiDeepAnalysis = async (imgBase64Override?: string, fileName?: string) => {
+  // Run SEM analysis endpoint
+  const runSemAnalysis = async (imgBase64Override?: string, fileName?: string) => {
     setIsAiAnalyzing(true);
     setAiError(null);
 
@@ -2041,13 +2041,13 @@ export const SEMAutoAnalyzerStudio: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-sky-400" />
                 <span className="font-mono font-bold text-white text-xs">
-                  Gemini Deep Metallurgy Diagnostic
+                  SEM Microstructure Diagnostic
                 </span>
               </div>
 
               <button
                 type="button"
-                onClick={() => runGeminiDeepAnalysis()}
+                onClick={() => runSemAnalysis()}
                 disabled={isAiAnalyzing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/50 text-xs font-mono font-bold transition disabled:opacity-50"
               >

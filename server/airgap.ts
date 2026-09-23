@@ -4,14 +4,14 @@
  */
 
 export type AirgapBlockedService =
-  | "Gemini AI (copilot / micrograph vision)"
+  | "GPT-6 AI (copilot / micrograph vision)"
   | "NVIDIA cloud NIM / DeepSeek endpoints"
   | "Materials Project live DFT API"
   | "External powder / pricing APIs"
   | "Crossref literature search";
 
 export const AIRGAP_BLOCKED_SERVICES: AirgapBlockedService[] = [
-  "Gemini AI (copilot / micrograph vision)",
+  "GPT-6 AI (copilot / micrograph vision)",
   "NVIDIA cloud NIM / DeepSeek endpoints",
   "Materials Project live DFT API",
   "External powder / pricing APIs",

@@ -67,7 +67,7 @@ export const AirgapBanner: React.FC = () => {
               <div>
                 <div className="text-amber-200/70 uppercase mb-0.5">Blocked</div>
                 <ul className="list-disc pl-4 space-y-0.5">
-                  {(cfg.blockedServices.length ? cfg.blockedServices : ["Gemini", "NVIDIA", "Materials Project live", "External pricing"]).map(
+                  {(cfg.blockedServices.length ? cfg.blockedServices : ["GPT-6", "NVIDIA", "Materials Project live", "External pricing"]).map(
                     (s) => (
                       <li key={s}>{s}</li>
                     )

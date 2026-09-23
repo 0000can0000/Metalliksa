@@ -19,7 +19,6 @@
     "test:meltpool": "python python/test_eagar_tsai.py && python python/test_goldak_fabbro.py && python python/test_lpbf_meltpool_accuracy.py"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@react-three/drei": "^9.109.2",
     "@react-three/fiber": "^8.16.8",
     "@tailwindcss/vite": "^4.1.14",

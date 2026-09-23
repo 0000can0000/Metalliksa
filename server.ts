@@ -54,7 +54,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "MetalliX-Unified-Server",
-    hasApiKey: AIRGAPPED ? false : !!process.env.GEMINI_API_KEY,
+    hasApiKey: AIRGAPPED ? false : !!process.env.OPENAI_API_KEY?.trim(),
     airgapped: AIRGAPPED,
     timestamp: new Date().toISOString(),
   });
@@ -121,7 +121,7 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[MetalliX-Server] Modular server running on http://localhost:${PORT}`);
     if (AIRGAPPED) {
-      console.log("[MetalliX-Server] AIRGAPPED=1 — Gemini / NVIDIA / live MP / external pricing disabled; local LPBF open.");
+      console.log("[MetalliX-Server] AIRGAPPED=1 — GPT-6 / NVIDIA / live MP / external pricing disabled; local LPBF open.");
     }
   });
 }

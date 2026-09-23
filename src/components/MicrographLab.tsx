@@ -129,6 +129,10 @@ export const MicrographLab: React.FC = () => {
   // Process File
   const processSelectedFile = (file: File) => {
     if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setErrorMessage("Upload a JPEG, PNG, WebP, or GIF micrograph.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
@@ -208,7 +212,7 @@ export const MicrographLab: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageBase64: imageToSend,
-          mimeType: customImage ? "image/jpeg" : "image/svg+xml",
+          mimeType: customImage?.match(/^data:([^;]+);base64,/)?.[1] || "image/svg+xml",
           alloyType,
           etchantUsed: etchant,
           magnification,
@@ -237,27 +241,8 @@ export const MicrographLab: React.FC = () => {
 
       setDiagnosisResult(data.diagnosis || data.text);
 
-      if (data.summaryTable) {
-        setSummaryTableData(data.summaryTable);
-      } else {
-        // Fallback structured data from default sample if needed
-        setSummaryTableData({
-          materialGrade: alloyType || selectedSample.material,
-          primaryMatrix: "Primary constituent phases detected",
-          secondaryPhases: "Precipitate / carbide distribution mapped",
-          astmGrainSize: "ASTM E112 Estimated",
-          defectPorosityRating: "ASTM E2109 Class A Verified",
-          estimatedHardness: "Derived from phase balance",
-          estimatedYieldMpa: "Correlated to grain morphology",
-          complianceStatus: "Conforming",
-          confidenceScore: 94,
-          keyFindings: selectedSample.keyFeatures || [
-            "Grain morphology conforms to nominal standard specification.",
-            "Defect distribution within permissible aerospace tolerances.",
-          ],
-        });
-      }
-      setActiveReportTab("table");
+      setSummaryTableData(data.summaryTable || null);
+      setActiveReportTab(data.summaryTable ? "table" : "narrative");
     } catch (err: any) {
       console.error(err);
       setErrorMessage(err.message || "Failed to analyze micrograph.");
@@ -397,7 +382,7 @@ ${diagnosisResult || ""}`
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
@@ -465,8 +450,8 @@ ${diagnosisResult || ""}`
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                        Supports SEM, TEM & Optical Micrographs (PNG, JPG, TIFF,
-                        SVG, WebP)
+                        Supports SEM, TEM & optical micrographs (PNG, JPEG, WebP,
+                        GIF)
                       </div>
                     </div>
                   </div>
@@ -906,7 +891,7 @@ ${diagnosisResult || ""}`
                 <button
                   id="run-ai-micrograph-diagnosis-btn"
                   onClick={handleRunDiagnosis}
-                  disabled={isDiagnosing}
+                  disabled={isDiagnosing || !customImage}
                   className="w-full py-2.5 px-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded text-xs flex items-center justify-center gap-2 shadow-[0_0_12px_rgba(56,189,248,0.3)] transition disabled:opacity-50"
                 >
                   {isDiagnosing ? (
@@ -917,10 +902,11 @@ ${diagnosisResult || ""}`
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Run AI Quantitative Diagnosis</span>
+                      <span>Describe Uploaded Micrograph</span>
                     </>
                   )}
                 </button>
+                {!customImage && <p className="mt-2 text-xs text-slate-400">Upload a real micrograph to analyze it. The built-in SVG specimens are illustrations.</p>}
               </div>
 
               {/* Diagnosis Output Card / Loading State / Findings Table */}
@@ -1033,7 +1019,7 @@ ${diagnosisResult || ""}`
                         <div className="h-3 bg-white/5 rounded w-5/6"></div>
                       </div>
                     </div>
-                  ) : summaryTableData ? (
+                  ) : diagnosisResult ? (
                     /* RESULTS DISPLAY (Summary Table OR Full Narrative) */
                     activeReportTab === "table" ? (
                       <MicrographFindingsTable
@@ -1079,10 +1065,7 @@ ${diagnosisResult || ""}`
                         ))}
                       </ul>
                       <p className="text-[11px] text-slate-500 pt-2 border-t border-[#162032]">
-                        Click <strong>"Run AI Quantitative Diagnosis"</strong>{" "}
-                        to extract constituent phase fractions, ASTM grain
-                        sizing, defect severity ratings, and conformance
-                        findings table.
+                        Upload a real micrograph for a visual description. The built-in specimens are illustrations; this analysis does not establish phase fractions, ASTM grain size, or conformance.
                       </p>
                     </div>
                   )}

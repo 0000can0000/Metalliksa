@@ -950,7 +950,7 @@ Provide an in-depth engineering assessment:
                 <div className="flex items-center justify-between border-b border-[#162032] pb-2">
                   <span className="text-purple-300 font-bold flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-purple-400" />
-                    <span>Gemini DFT Metallurgical Consultation ({selectedDoc.formula_pretty})</span>
+                    <span>GPT-6 Metallurgical Consultation ({selectedDoc.formula_pretty})</span>
                   </span>
                   <button
                     type="button"

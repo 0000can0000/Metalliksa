@@ -8,14 +8,22 @@ active plan in `04e0ea4`. Commits `e8f8313` and `c902700` now fix the build-job
 field-peak/cache identity and Phase 22 face transport/projection contracts.
 The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
 tests; standalone build-job checks and TypeScript typecheck also pass. The
-TypeScript session behavior runner remains unavailable (`spawn EPERM`). CUDA
-is unavailable in this Windows environment. The pressure stencil now pairs
+TypeScript session behavior runner passed 11 focused tests in the elevated
+runner after the sandbox attempt failed with `spawn EPERM`. CUDA is unavailable
+in this Windows environment. The pressure stencil now pairs
 the face divergence, gradient, and Jacobi operator, but its fixed ten sweeps
 do not meet the 1e-3 relative divergence target on smooth manufactured fields
 (residual ratios 0.420619 at 9^3 and 0.793338 at 17^3); 300 sweeps still leave
-0.0378842 at 17^3. Runtime output therefore labels projection convergence
-unverified. A matrix-free device-reduction PCG implementation is underway;
-do not claim Phase 22 projection convergence yet.
+0.0378842 at 17^3. The fixed Jacobi solve was replaced by matrix-free,
+device-reduction preconditioned conjugate gradient on the unchanged face-based
+operator. CPU Warp manufactured-field tests meet the 1e-3 measured linear and
+post-projection divergence gates at 9^3 (15 iterations) and 17^3 (35
+iterations), and exercise zero/nonzero Neumann compatibility, disconnected
+components, exhaustion, and numerical failure. CUDA execution/performance is
+unverified on this host; do not claim GPU-device verification.
+IN625 P7 remains partial: the 273.15–1623.15 K route is explicitly
+unvalidated literature-model screening; source validity span and material /
+process state are not established.
 CPU transient whole-cell surface geometry remains a documented cut-cell
 limitation, not a repaired defect. The separate
 preregistered 75 W 3+3 contour report is `4110e73`, SHA-256
@@ -32,9 +40,9 @@ selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
 non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
-Next: replace fixed Jacobi with a matrix-free residual-controlled pressure
-solve on the unchanged Phase 22 stencil, then verify post-projection divergence
-on manufactured CPU Warp fields. P5 feasibility audit shows the current 3 mm track
+Next: audit remaining Phase 22 constitutive assumptions and CPU transient
+whole-cell surface treatment; preserve the GPU execution gap and P7 source-data
+gap as open gates. P5 feasibility audit shows the current 3 mm track
 bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate
 4.18M/32.32M/258.27M cells at 20/10/5 µm because the domain is square. No 10 mm
 solve was run. After the pressure operator, scope a narrow-band/moving-frame

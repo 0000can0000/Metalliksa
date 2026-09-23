@@ -965,3 +965,43 @@ hit sandbox temp-directory permissions and are not counted as product failures.
 These repairs do not change the frozen P4 failure, NIST P5 `unavailable`, the
 heuristic moving-interface Marangoni/recoil law, or the CPU whole-cell surface
 geometry limitation.
+
+## 2026-09-24 — Phase 22 residual-controlled pressure solve
+
+The fixed ten-sweep Jacobi projection was replaced by matrix-free,
+Jacobi-preconditioned conjugate gradients for the same face-based pressure
+operator. Liquid-neighbor coefficients, free-surface zero-pressure faces, and
+solid/domain no-flow faces preserve the established D/G stencil. Device-side
+partial reductions and ordered kernel launches keep scalar convergence checks
+off the host inside the iteration loop. The runtime reports per-step maximum
+and aggregate iteration counts, measured linear residual, measured
+post-projection divergence, and convergence/failure status.
+
+Focused CPU Warp suite: **19/19 passed**. Manufactured smooth-velocity cases
+reached the 1e-3 post-projection relative L2 divergence target: 9^3 in 15
+iterations (linear residual 7.605e-4; divergence ratio 7.606e-4), and 17^3 in
+35 iterations (linear residual 8.073e-4; divergence ratio 8.074e-4). Tests also
+cover anisotropic manufactured pressure, stepped free surface, solid
+inclusion, compatible Neumann nullspace, incompatible single and disconnected
+Neumann components, compatible disconnected components, iteration exhaustion,
+and numerical breakdown. Incompatible components report
+`numerical_failure`; final residual remains observable. The output distinguishes
+maximum iterations per timestep from total iterations, retaining the old field
+as a compatibility alias.
+
+CUDA execution and performance were not verified because CUDA is unavailable
+on this Windows host. Therefore this establishes CPU Warp numerical behavior,
+not GPU-device execution or CPU/GPU parity. The prior Jacobi failure ratios
+(0.420619 at 9^3, 0.793338 at 17^3 after 10 sweeps, 0.0378842 at 17^3 after
+300) remain historical evidence and have not been presented as PCG results.
+
+The IN625 capability remains deliberately limited to unvalidated,
+literature-model fusion-enthalpy screening from 273.15–1623.15 K; full transient
+and build-job routes remain closed. P7 is **partial** because the model-input
+validity span, material composition/process state, and uncertainty are not
+established. This bounded route does not satisfy the full source/data gate.
+
+Other physics limitations remain open: Phase 22 free-surface Marangoni/recoil
+relations are heuristic, the CPU transient uses a whole-cell surface
+representation, and no experimental validation is claimed. Frozen P4 remains
+failed and NIST P5 remains unavailable.

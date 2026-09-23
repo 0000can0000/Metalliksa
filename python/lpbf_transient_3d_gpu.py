@@ -3,8 +3,11 @@ import math
 import warp as wp
 
 
-_PRESSURE_JACOBI_ITERATIONS = 10
+_PRESSURE_PCG_MAX_ITERATIONS = 100
 _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE = 1.0e-3
+_PRESSURE_STATUS_CONVERGED = 1
+_PRESSURE_STATUS_NUMERICAL_FAILURE = 2
+_PRESSURE_STATUS_BUDGET_EXHAUSTED = 3
 import numpy as np
 
 # Phase 25: Thermo-Morphological Keyhole 3D GPU Solver with Hydrodynamics
@@ -355,6 +358,65 @@ def _pressure_cell_class(
     return 1
 
 
+@wp.func
+def _pressure_diagonal(
+    Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    i: int, j: int, k: int, nx: int, ny: int, nz: int,
+    dx: float, dy: float, dz: float, T_solidus: float
+) -> float:
+    """Diagonal of A=-DG with the projection's liquid/air/solid face rules."""
+    diagonal = 0.0
+    inv_dx2 = 1.0 / (dx * dx)
+    inv_dy2 = 1.0 / (dy * dy)
+    inv_dz2 = 1.0 / (dz * dz)
+    cls = _pressure_cell_class(Z_surf, T, i - 1, j, k, nx, ny, nz, dz, T_solidus)
+    if cls == 1 or cls == 2:
+        diagonal += inv_dx2
+    cls = _pressure_cell_class(Z_surf, T, i + 1, j, k, nx, ny, nz, dz, T_solidus)
+    if cls == 1 or cls == 2:
+        diagonal += inv_dx2
+    cls = _pressure_cell_class(Z_surf, T, i, j - 1, k, nx, ny, nz, dz, T_solidus)
+    if cls == 1 or cls == 2:
+        diagonal += inv_dy2
+    cls = _pressure_cell_class(Z_surf, T, i, j + 1, k, nx, ny, nz, dz, T_solidus)
+    if cls == 1 or cls == 2:
+        diagonal += inv_dy2
+    cls = _pressure_cell_class(Z_surf, T, i, j, k - 1, nx, ny, nz, dz, T_solidus)
+    if cls == 1 or cls == 2:
+        diagonal += inv_dz2
+    cls = _pressure_cell_class(Z_surf, T, i, j, k + 1, nx, ny, nz, dz, T_solidus)
+    if cls == 1 or cls == 2:
+        diagonal += inv_dz2
+    return diagonal
+
+
+@wp.func
+def _pressure_apply_A(
+    P: wp.array3d(dtype=float), Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    i: int, j: int, k: int, nx: int, ny: int, nz: int,
+    dx: float, dy: float, dz: float, T_solidus: float
+) -> float:
+    """Apply A=-DG using matching face coefficients and pressure boundary classes."""
+    center = P[i, j, k]
+    value = _pressure_diagonal(Z_surf, T, i, j, k, nx, ny, nz, dx, dy, dz, T_solidus) * center
+    inv_dx2 = 1.0 / (dx * dx)
+    inv_dy2 = 1.0 / (dy * dy)
+    inv_dz2 = 1.0 / (dz * dz)
+    if _pressure_cell_class(Z_surf, T, i - 1, j, k, nx, ny, nz, dz, T_solidus) == 1:
+        value -= P[i - 1, j, k] * inv_dx2
+    if _pressure_cell_class(Z_surf, T, i + 1, j, k, nx, ny, nz, dz, T_solidus) == 1:
+        value -= P[i + 1, j, k] * inv_dx2
+    if _pressure_cell_class(Z_surf, T, i, j - 1, k, nx, ny, nz, dz, T_solidus) == 1:
+        value -= P[i, j - 1, k] * inv_dy2
+    if _pressure_cell_class(Z_surf, T, i, j + 1, k, nx, ny, nz, dz, T_solidus) == 1:
+        value -= P[i, j + 1, k] * inv_dy2
+    if _pressure_cell_class(Z_surf, T, i, j, k - 1, nx, ny, nz, dz, T_solidus) == 1:
+        value -= P[i, j, k - 1] * inv_dz2
+    if _pressure_cell_class(Z_surf, T, i, j, k + 1, nx, ny, nz, dz, T_solidus) == 1:
+        value -= P[i, j, k + 1] * inv_dz2
+    return value
+
+
 @wp.kernel
 def compute_divergence_kernel(
     U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
@@ -473,6 +535,267 @@ def pressure_jacobi_kernel(
             P_new[i,j,k] = 0.0
     else:
         P_new[i,j,k] = P[i,j,k]
+
+
+@wp.kernel
+def pressure_pcg_clear_reductions_kernel(
+    p_ap: wp.array(dtype=float), rho_next: wp.array(dtype=float), residual2: wp.array(dtype=float)
+):
+    if wp.tid() == 0:
+        p_ap[0] = 0.0
+        rho_next[0] = 0.0
+        residual2[0] = 0.0
+
+
+@wp.kernel
+def pressure_pcg_clear_iteration_reductions_kernel(
+    p_ap: wp.array(dtype=float), rho_next: wp.array(dtype=float), residual2_next: wp.array(dtype=float),
+    status: wp.array(dtype=wp.int32)
+):
+    if wp.tid() == 0 and status[0] == 0:
+        p_ap[0] = 0.0
+        rho_next[0] = 0.0
+        residual2_next[0] = 0.0
+
+
+@wp.kernel
+def pressure_pcg_initialize_kernel(
+    P: wp.array3d(dtype=float), R: wp.array3d(dtype=float), Z: wp.array3d(dtype=float),
+    Direction: wp.array3d(dtype=float),
+    Div: wp.array3d(dtype=float), Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    nx: int, ny: int, nz: int, dx: float, dy: float, dz: float,
+    dt: float, rho: float, T_solidus: float,
+    rz: wp.array(dtype=float), b2: wp.array(dtype=float), r2: wp.array(dtype=float)
+):
+    i, j, k = wp.tid()
+    if _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus) == 1:
+        ax = _pressure_apply_A(P, Z_surf, T, i, j, k, nx, ny, nz, dx, dy, dz, T_solidus)
+        b = -rho * Div[i, j, k] / dt
+        residual = b - ax
+        diagonal = _pressure_diagonal(Z_surf, T, i, j, k, nx, ny, nz, dx, dy, dz, T_solidus)
+        preconditioned = residual / diagonal if diagonal > 0.0 else 0.0
+        R[i, j, k] = residual
+        Z[i, j, k] = preconditioned
+        Direction[i, j, k] = preconditioned
+        local_rz = residual * preconditioned
+        local_b2 = b * b
+        local_r2 = residual * residual
+    else:
+        R[i, j, k] = 0.0
+        Z[i, j, k] = 0.0
+        Direction[i, j, k] = 0.0
+        local_rz = 0.0
+        local_b2 = 0.0
+        local_r2 = 0.0
+        P[i, j, k] = 0.0
+
+    rz_tile = wp.tile_sum(wp.tile(local_rz))
+    b2_tile = wp.tile_sum(wp.tile(local_b2))
+    r2_tile = wp.tile_sum(wp.tile(local_r2))
+    wp.tile_atomic_add(rz, rz_tile)
+    wp.tile_atomic_add(b2, b2_tile)
+    wp.tile_atomic_add(r2, r2_tile)
+
+
+@wp.kernel
+def pressure_pcg_initialize_status_kernel(
+    rz: wp.array(dtype=float), b2: wp.array(dtype=float), r2: wp.array(dtype=float),
+    scale2: wp.array(dtype=float), status: wp.array(dtype=wp.int32), iterations: wp.array(dtype=wp.int32),
+    tolerance: float
+):
+    if wp.tid() == 0:
+        rhs2 = b2[0]
+        initial_r2 = r2[0]
+        if not wp.isfinite(rhs2) or not wp.isfinite(initial_r2) or not wp.isfinite(rz[0]):
+            scale2[0] = 1.0
+            status[0] = 2
+            iterations[0] = 0
+        else:
+            scale2[0] = rhs2 if rhs2 > 1.0e-30 else initial_r2
+            iterations[0] = 0
+            if initial_r2 <= tolerance * tolerance * scale2[0]:
+                status[0] = 1
+            else:
+                status[0] = 0
+
+
+@wp.kernel
+def pressure_pcg_apply_kernel(
+    Direction: wp.array3d(dtype=float), Ap: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    nx: int, ny: int, nz: int, dx: float, dy: float, dz: float, T_solidus: float,
+    p_ap: wp.array(dtype=float), status: wp.array(dtype=wp.int32)
+):
+    i, j, k = wp.tid()
+    local_dot = 0.0
+    if status[0] == 0 and _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus) == 1:
+        value = _pressure_apply_A(Direction, Z_surf, T, i, j, k, nx, ny, nz, dx, dy, dz, T_solidus)
+        Ap[i, j, k] = value
+        local_dot = Direction[i, j, k] * value
+    else:
+        Ap[i, j, k] = 0.0
+    dot_tile = wp.tile_sum(wp.tile(local_dot))
+    wp.tile_atomic_add(p_ap, dot_tile)
+
+
+@wp.kernel
+def pressure_pcg_check_alpha_kernel(
+    rho: wp.array(dtype=float), p_ap: wp.array(dtype=float), alpha: wp.array(dtype=float),
+    status: wp.array(dtype=wp.int32)
+):
+    if wp.tid() == 0 and status[0] == 0:
+        denominator = p_ap[0]
+        numerator = rho[0]
+        if not wp.isfinite(denominator) or not wp.isfinite(numerator) or denominator <= 0.0 or numerator <= 0.0:
+            status[0] = 2
+            alpha[0] = 0.0
+        else:
+            alpha[0] = numerator / denominator
+            if not wp.isfinite(alpha[0]):
+                status[0] = 2
+
+
+@wp.kernel
+def pressure_pcg_update_kernel(
+    P: wp.array3d(dtype=float), R: wp.array3d(dtype=float), Z: wp.array3d(dtype=float),
+    Direction: wp.array3d(dtype=float), Ap: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    nx: int, ny: int, nz: int, dx: float, dy: float, dz: float, T_solidus: float,
+    alpha: wp.array(dtype=float), rho_next: wp.array(dtype=float), residual2_next: wp.array(dtype=float),
+    status: wp.array(dtype=wp.int32)
+):
+    i, j, k = wp.tid()
+    local_rz = 0.0
+    local_r2 = 0.0
+    if status[0] == 0 and _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus) == 1:
+        P[i, j, k] += alpha[0] * Direction[i, j, k]
+        residual = R[i, j, k] - alpha[0] * Ap[i, j, k]
+        diagonal = _pressure_diagonal(Z_surf, T, i, j, k, nx, ny, nz, dx, dy, dz, T_solidus)
+        preconditioned = residual / diagonal if diagonal > 0.0 else 0.0
+        R[i, j, k] = residual
+        Z[i, j, k] = preconditioned
+        local_rz = residual * preconditioned
+        local_r2 = residual * residual
+    rz_tile = wp.tile_sum(wp.tile(local_rz))
+    r2_tile = wp.tile_sum(wp.tile(local_r2))
+    wp.tile_atomic_add(rho_next, rz_tile)
+    wp.tile_atomic_add(residual2_next, r2_tile)
+
+
+@wp.kernel
+def pressure_pcg_check_convergence_kernel(
+    rho_next: wp.array(dtype=float), residual2_next: wp.array(dtype=float),
+    residual2: wp.array(dtype=float), scale2: wp.array(dtype=float),
+    status: wp.array(dtype=wp.int32), iterations: wp.array(dtype=wp.int32), tolerance: float
+):
+    if wp.tid() == 0 and status[0] == 0:
+        next_rho = rho_next[0]
+        r2 = residual2_next[0]
+        residual2[0] = r2
+        if not wp.isfinite(next_rho) or not wp.isfinite(r2):
+            status[0] = 2
+        else:
+            iterations[0] += 1
+            if r2 <= tolerance * tolerance * scale2[0]:
+                status[0] = 1
+
+
+@wp.kernel
+def pressure_pcg_update_direction_kernel(
+    Direction: wp.array3d(dtype=float), Z: wp.array3d(dtype=float),
+    nx: int, ny: int, nz: int, beta: wp.array(dtype=float),
+    status: wp.array(dtype=wp.int32)
+):
+    i, j, k = wp.tid()
+    if status[0] == 0:
+        Direction[i, j, k] = Z[i, j, k] + beta[0] * Direction[i, j, k]
+    else:
+        Direction[i, j, k] = 0.0
+
+
+@wp.kernel
+def pressure_pcg_check_beta_kernel(
+    rho: wp.array(dtype=float), rho_next: wp.array(dtype=float), beta: wp.array(dtype=float),
+    status: wp.array(dtype=wp.int32)
+):
+    if wp.tid() == 0 and status[0] == 0:
+        old_rho = rho[0]
+        new_rho = rho_next[0]
+        if not wp.isfinite(old_rho) or not wp.isfinite(new_rho) or old_rho <= 0.0 or new_rho < 0.0:
+            status[0] = 2
+            beta[0] = 0.0
+        else:
+            beta[0] = new_rho / old_rho
+            if not wp.isfinite(beta[0]):
+                status[0] = 2
+
+
+@wp.kernel
+def pressure_pcg_finalize_kernel(status: wp.array(dtype=wp.int32), iterations: wp.array(dtype=wp.int32)):
+    if wp.tid() == 0 and status[0] == 0:
+        status[0] = _PRESSURE_STATUS_BUDGET_EXHAUSTED
+
+
+@wp.kernel
+def pressure_pcg_accumulate_status_kernel(
+    step_status: wp.array(dtype=wp.int32), step_iterations: wp.array(dtype=wp.int32),
+    aggregate_status: wp.array(dtype=wp.int32), max_iterations_observed: wp.array(dtype=wp.int32),
+    total_iterations_observed: wp.array(dtype=wp.int32)
+):
+    if wp.tid() == 0:
+        if step_status[0] != _PRESSURE_STATUS_CONVERGED:
+            if step_status[0] == _PRESSURE_STATUS_NUMERICAL_FAILURE or aggregate_status[0] == _PRESSURE_STATUS_CONVERGED:
+                aggregate_status[0] = step_status[0]
+        if step_iterations[0] > max_iterations_observed[0]:
+            max_iterations_observed[0] = step_iterations[0]
+        total_iterations_observed[0] += step_iterations[0]
+
+
+def launch_pressure_pcg(
+    P, Div, Z_surf, T, shape, spacing, dt, rho, T_solidus,
+    residual, preconditioned, direction, operator_direction,
+    rho_current, rho_next, rhs_norm2, residual_norm2, residual_next_norm2, scale_norm2,
+    direction_dot_operator, alpha, beta, status, iterations,
+    max_iterations=_PRESSURE_PCG_MAX_ITERATIONS,
+    relative_tolerance=_PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE,
+):
+    """Run fixed-budget device-side PCG; never reads a device scalar in-loop."""
+    nx, ny, nz = shape
+    dx, dy, dz = spacing
+    wp.launch(kernel=pressure_pcg_clear_reductions_kernel, dim=1,
+              inputs=[rho_current, rhs_norm2, residual_norm2], device=P.device)
+    wp.launch(kernel=pressure_pcg_initialize_kernel, dim=shape,
+              inputs=[P, residual, preconditioned, direction, Div, Z_surf, T,
+                      nx, ny, nz, dx, dy, dz, dt, rho, T_solidus,
+                      rho_current, rhs_norm2, residual_norm2], device=P.device)
+    wp.launch(kernel=pressure_pcg_initialize_status_kernel, dim=1,
+              inputs=[rho_current, rhs_norm2, residual_norm2, scale_norm2,
+                      status, iterations, relative_tolerance], device=P.device)
+
+    for _ in range(max_iterations):
+        wp.launch(kernel=pressure_pcg_clear_iteration_reductions_kernel, dim=1,
+                  inputs=[direction_dot_operator, rho_next, residual_next_norm2, status], device=P.device)
+        wp.launch(kernel=pressure_pcg_apply_kernel, dim=shape,
+                  inputs=[direction, operator_direction, Z_surf, T, nx, ny, nz,
+                          dx, dy, dz, T_solidus, direction_dot_operator, status], device=P.device)
+        wp.launch(kernel=pressure_pcg_check_alpha_kernel, dim=1,
+                  inputs=[rho_current, direction_dot_operator, alpha, status], device=P.device)
+        wp.launch(kernel=pressure_pcg_update_kernel, dim=shape,
+                  inputs=[P, residual, preconditioned, direction, operator_direction,
+                          Z_surf, T, nx, ny, nz, dx, dy, dz, T_solidus,
+                          alpha, rho_next, residual_next_norm2, status], device=P.device)
+        wp.launch(kernel=pressure_pcg_check_convergence_kernel, dim=1,
+                  inputs=[rho_next, residual_next_norm2, residual_norm2, scale_norm2, status, iterations,
+                          relative_tolerance], device=P.device)
+        wp.launch(kernel=pressure_pcg_check_beta_kernel, dim=1,
+                  inputs=[rho_current, rho_next, beta, status], device=P.device)
+        wp.launch(kernel=pressure_pcg_update_direction_kernel, dim=shape,
+                  inputs=[direction, preconditioned, nx, ny, nz, beta, status], device=P.device)
+        rho_current, rho_next = rho_next, rho_current
+
+    wp.launch(kernel=pressure_pcg_finalize_kernel, dim=1,
+              inputs=[status, iterations], device=P.device)
+    return rho_current, rho_next
 
 @wp.kernel
 def project_velocity_kernel(
@@ -723,6 +1046,26 @@ class TransientEnthalpy3DGPU:
         P = wp.zeros(shape=shape, dtype=float, device=self.device)
         P_new = wp.zeros_like(P)
         Div = wp.zeros(shape=shape, dtype=float, device=self.device)
+        Div_post = wp.zeros_like(Div)
+        pcg_residual = wp.zeros_like(P)
+        pcg_preconditioned = wp.zeros_like(P)
+        pcg_direction = wp.zeros_like(P)
+        pcg_A_direction = wp.zeros_like(P)
+        pcg_rho = wp.zeros(1, dtype=float, device=self.device)
+        pcg_rho_next = wp.zeros(1, dtype=float, device=self.device)
+        pcg_rhs_norm2 = wp.zeros(1, dtype=float, device=self.device)
+        pcg_residual_norm2 = wp.zeros(1, dtype=float, device=self.device)
+        pcg_residual_next_norm2 = wp.zeros(1, dtype=float, device=self.device)
+        pcg_scale_norm2 = wp.zeros(1, dtype=float, device=self.device)
+        pcg_direction_dot_A = wp.zeros(1, dtype=float, device=self.device)
+        pcg_alpha = wp.zeros(1, dtype=float, device=self.device)
+        pcg_beta = wp.zeros(1, dtype=float, device=self.device)
+        pcg_status = wp.zeros(1, dtype=wp.int32, device=self.device)
+        pcg_iterations = wp.zeros(1, dtype=wp.int32, device=self.device)
+        pressure_aggregate_status = wp.full(1, value=_PRESSURE_STATUS_CONVERGED,
+                                            dtype=wp.int32, device=self.device)
+        max_iterations_observed = wp.zeros(1, dtype=wp.int32, device=self.device)
+        total_iterations_observed = wp.zeros(1, dtype=wp.int32, device=self.device)
         
         initial_z_surf = float((self.nz - 2) * self.dz)
         Z_surf = wp.full(shape=(self.nx, self.ny), value=initial_z_surf, dtype=float, device=self.device)
@@ -770,15 +1113,20 @@ class TransientEnthalpy3DGPU:
                 device=self.device
             )
             
-            # 4. Solve Pressure Poisson (Jacobi Iterations)
-            for _ in range(_PRESSURE_JACOBI_ITERATIONS):
-                wp.launch(
-                    kernel=pressure_jacobi_kernel,
-                    dim=shape,
-                    inputs=[P, P_new, Div, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt, rho, T_solidus],
-                    device=self.device
-                )
-                P, P_new = P_new, P
+            # 4. Solve A p = -rho/dt * div(u), A=-D(G(p)). PCG reductions
+            # remain on device; the host does not read a scalar in this loop.
+            pcg_rho, pcg_rho_next = launch_pressure_pcg(
+                P, Div, Z_surf_new, T_arr, shape, (self.dx, self.dy, self.dz),
+                step_dt, rho, T_solidus,
+                pcg_residual, pcg_preconditioned, pcg_direction, pcg_A_direction,
+                pcg_rho, pcg_rho_next, pcg_rhs_norm2, pcg_residual_norm2,
+                pcg_residual_next_norm2,
+                pcg_scale_norm2, pcg_direction_dot_A, pcg_alpha, pcg_beta,
+                pcg_status, pcg_iterations,
+            )
+            wp.launch(kernel=pressure_pcg_accumulate_status_kernel, dim=1,
+                      inputs=[pcg_status, pcg_iterations, pressure_aggregate_status,
+                              max_iterations_observed, total_iterations_observed], device=self.device)
                 
             # 5. Project Velocity (Make Divergence-Free)
             wp.launch(
@@ -786,6 +1134,17 @@ class TransientEnthalpy3DGPU:
                 dim=shape,
                 inputs=[U, V, W, P, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt, rho, T_solidus],
                 device=self.device
+            )
+
+            # Keep the actual post-projection divergence for the final residual
+            # report. This is a device launch only; synchronization is deferred
+            # to the existing end-of-run barrier.
+            wp.launch(
+                kernel=compute_divergence_kernel,
+                dim=shape,
+                inputs=[U, V, W, Div_post, Z_surf_new, T_arr, self.nx, self.ny,
+                        self.nz, self.dx, self.dy, self.dz, T_solidus],
+                device=self.device,
             )
             
             # 6. Advect Enthalpy and Compute New Temperatures
@@ -828,6 +1187,48 @@ class TransientEnthalpy3DGPU:
         # Max velocity magnitude for diagnostics
         V_mag = np.sqrt(U_host**2 + V_host**2 + W_host**2)
         max_V = np.max(V_mag)
+
+        if steps:
+            pressure_status_code = int(pressure_aggregate_status.numpy()[0])
+            pressure_all_steps_ok = pressure_status_code == _PRESSURE_STATUS_CONVERGED
+            pressure_iterations_used = int(max_iterations_observed.numpy()[0])
+            pressure_total_iterations_used = int(total_iterations_observed.numpy()[0])
+            pressure_residual2 = float(pcg_residual_norm2.numpy()[0])
+            pressure_scale2 = float(pcg_scale_norm2.numpy()[0])
+            pressure_linear_relative_residual = (
+                float(np.sqrt(pressure_residual2 / pressure_scale2))
+                if pressure_scale2 > 0.0 and np.isfinite(pressure_residual2 / pressure_scale2)
+                else (0.0 if pressure_residual2 == 0.0 else float("inf"))
+            )
+            div_before_host = Div.numpy()
+            div_after_host = Div_post.numpy()
+            div_before_norm = float(np.linalg.norm(div_before_host.ravel()))
+            div_after_norm = float(np.linalg.norm(div_after_host.ravel()))
+            pressure_post_divergence_ratio = (
+                div_after_norm / div_before_norm if div_before_norm > 0.0
+                else (0.0 if div_after_norm == 0.0 else float("inf"))
+            )
+            pressure_post_divergence_max = float(np.max(np.abs(div_after_host)))
+            pressure_projection_converged = (
+                pressure_all_steps_ok
+                and pressure_linear_relative_residual <= _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE
+                and pressure_post_divergence_ratio <= _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE
+            )
+            if pressure_projection_converged:
+                pressure_projection_status = "converged"
+            elif pressure_status_code == _PRESSURE_STATUS_NUMERICAL_FAILURE:
+                pressure_projection_status = "numerical_failure"
+            else:
+                pressure_projection_status = "not_converged"
+        else:
+            pressure_status_code = 0
+            pressure_iterations_used = 0
+            pressure_total_iterations_used = 0
+            pressure_linear_relative_residual = None
+            pressure_post_divergence_ratio = None
+            pressure_post_divergence_max = None
+            pressure_projection_converged = None
+            pressure_projection_status = "not_run"
         
         return {
             "melt_volume_um3": float(melt_vol_um3),
@@ -837,13 +1238,20 @@ class TransientEnthalpy3DGPU:
             "sim_time_s": elapsed,
             "device": self.device,
             "steps": steps,
-            # The production path does not yet reduce post-projection
-            # divergence. Keep this explicitly unverified instead of implying
-            # the fixed Jacobi budget met a convergence tolerance.
-            "pressure_projection_iterations": _PRESSURE_JACOBI_ITERATIONS,
+            "pressure_projection_solver": "preconditioned_conjugate_gradient",
+            # Keep the old field as a compatibility alias, with the meaning
+            # made explicit by the max-per-step and total fields below.
+            "pressure_projection_iterations": pressure_iterations_used,
+            "pressure_projection_max_iterations_per_timestep": pressure_iterations_used,
+            "pressure_projection_total_iterations": pressure_total_iterations_used,
+            "pressure_projection_max_iterations": _PRESSURE_PCG_MAX_ITERATIONS,
             "pressure_projection_relative_divergence_tolerance": _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE,
-            "pressure_projection_status": "not_run" if steps == 0 else "unverified_residual_not_measured",
-            "pressure_projection_converged": None
+            "pressure_projection_status": pressure_projection_status,
+            "pressure_projection_converged": pressure_projection_converged,
+            "pressure_projection_relative_linear_residual": pressure_linear_relative_residual,
+            "pressure_projection_post_divergence_relative_l2": pressure_post_divergence_ratio,
+            "pressure_projection_post_divergence_max_s_inv": pressure_post_divergence_max,
+            "pressure_projection_post_residual_scope": "last timestep; linear gate accumulated over all timesteps" if steps else "not_run"
         }
 
 if __name__ == "__main__":
@@ -863,4 +1271,4 @@ if __name__ == "__main__":
     print("Running square hatch toolpath simulation with full fluid mechanics...")
     res = solver.solve_toolpath(toolpath=toolpath)
     print(f"Results: {res}")
-    print("RUN COMPLETE; pressure-projection convergence remains unverified.")
+    print(f"RUN COMPLETE; pressure-projection status={res['pressure_projection_status']}.")

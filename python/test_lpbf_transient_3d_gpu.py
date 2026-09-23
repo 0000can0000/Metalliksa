@@ -4,7 +4,10 @@ import numpy as np
 import warp as wp
 
 from lpbf_transient_3d_gpu import (
-    _PRESSURE_JACOBI_ITERATIONS,
+    _PRESSURE_PCG_MAX_ITERATIONS,
+    _PRESSURE_STATUS_BUDGET_EXHAUSTED,
+    _PRESSURE_STATUS_CONVERGED,
+    _PRESSURE_STATUS_NUMERICAL_FAILURE,
     _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE,
     TransientEnthalpy3DGPU,
     _step_count,
@@ -12,6 +15,7 @@ from lpbf_transient_3d_gpu import (
     _average_transverse_face_component,
     compute_divergence_kernel,
     enthalpy_3d_nonlinear_step_kernel,
+    launch_pressure_pcg,
     pressure_jacobi_kernel,
     project_velocity_kernel,
     velocity_advection_forces_kernel,
@@ -51,6 +55,40 @@ class Transient3DPhysicsContracts(unittest.TestCase):
     def _wp_array(values):
         return wp.array(np.asarray(values, dtype=np.float32), dtype=float, device="cpu")
 
+    @staticmethod
+    def _pressure_cell_class_host(temperature, surface, i, j, k, dz, solidus=1000.0):
+        nx, ny, nz = temperature.shape
+        if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+            return 0
+        if k > int(surface[i, j] / dz):
+            return 2
+        return 1 if temperature[i, j, k] >= solidus else 0
+
+    def _pressure_apply_host(self, pressure, temperature, surface, spacing):
+        nx, ny, nz = pressure.shape
+        dx, dy, dz = spacing
+        out = np.zeros_like(pressure, dtype=np.float64)
+        for i in range(1, nx - 1):
+            for j in range(1, ny - 1):
+                for k in range(1, nz - 1):
+                    if self._pressure_cell_class_host(temperature, surface, i, j, k, dz) != 1:
+                        continue
+                    diagonal = 0.0
+                    value = 0.0
+                    for di, dj, dk, h in ((-1, 0, 0, dx), (1, 0, 0, dx),
+                                          (0, -1, 0, dy), (0, 1, 0, dy),
+                                          (0, 0, -1, dz), (0, 0, 1, dz)):
+                        cls = self._pressure_cell_class_host(
+                            temperature, surface, i + di, j + dj, k + dk, dz
+                        )
+                        if cls in (1, 2):
+                            coefficient = 1.0 / (h * h)
+                            diagonal += coefficient
+                            if cls == 1:
+                                value -= pressure[i + di, j + dj, k + dk] * coefficient
+                    out[i, j, k] = diagonal * pressure[i, j, k] + value
+        return out
+
     def _launch_pressure_operators(self, pressure, temperature, surface, spacing=(1.0, 1.0, 1.0),
                                    velocity=None, div=None, dt=1.0, rho=1.0):
         shape = temperature.shape
@@ -86,7 +124,7 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         dx, dy, dz = spacing
         T, Z_surf = self._wp_array(temperature), self._wp_array(surface)
         U, V, W = (self._wp_array(a) for a in velocity)
-        P, P_new = (wp.zeros(shape, dtype=float, device="cpu") for _ in range(2))
+        P = wp.zeros(shape, dtype=float, device="cpu")
         Div = wp.zeros(shape, dtype=float, device="cpu")
 
         def divergence():
@@ -97,16 +135,45 @@ class Transient3DPhysicsContracts(unittest.TestCase):
             return Div.numpy().copy()
 
         before = divergence()
-        for _ in range(iterations):
-            wp.launch(kernel=pressure_jacobi_kernel, dim=shape,
-                      inputs=[P, P_new, Div, Z_surf, T, nx, ny, nz, dx, dy, dz,
-                              dt, rho, 1000.0], device="cpu")
-            P, P_new = P_new, P
+        pcg_fields = [wp.zeros(shape, dtype=float, device="cpu") for _ in range(4)]
+        residual, preconditioned, direction, A_direction = pcg_fields
+        scalars = [wp.zeros(1, dtype=float, device="cpu") for _ in range(9)]
+        rho_current, rho_next, rhs_norm2, residual_norm2, residual_next_norm2, scale_norm2, direction_dot_A, alpha, beta = scalars
+        status = wp.zeros(1, dtype=wp.int32, device="cpu")
+        pcg_iterations = wp.zeros(1, dtype=wp.int32, device="cpu")
+        rho_current, rho_next = launch_pressure_pcg(
+            P, Div, Z_surf, T, shape, spacing, dt, rho, 1000.0,
+            residual, preconditioned, direction, A_direction,
+            rho_current, rho_next, rhs_norm2, residual_norm2, residual_next_norm2, scale_norm2,
+            direction_dot_A, alpha, beta, status, pcg_iterations,
+            max_iterations=iterations,
+        )
         wp.launch(kernel=project_velocity_kernel, dim=shape,
                   inputs=[U, V, W, P, Z_surf, T, nx, ny, nz, dx, dy, dz,
                           dt, rho, 1000.0], device="cpu")
         after = divergence()
-        return before, after
+        return before, after, P.numpy(), int(status.numpy()[0]), int(pcg_iterations.numpy()[0]), float(residual_norm2.numpy()[0]), float(scale_norm2.numpy()[0])
+
+    def _solve_pressure(self, div, temperature, surface, initial_pressure=None,
+                        spacing=(1.0, 1.0, 1.0), dt=1.0, rho=1.0, max_iterations=100):
+        shape = temperature.shape
+        T, Z_surf, Div = self._wp_array(temperature), self._wp_array(surface), self._wp_array(div)
+        P = self._wp_array(initial_pressure) if initial_pressure is not None else wp.zeros(shape, dtype=float, device="cpu")
+        residual, preconditioned, direction, A_direction = [wp.zeros(shape, dtype=float, device="cpu") for _ in range(4)]
+        rho_current, rho_next, rhs2, residual2, residual_next2, scale2, pAp, alpha, beta = [wp.zeros(1, dtype=float, device="cpu") for _ in range(9)]
+        status = wp.zeros(1, dtype=wp.int32, device="cpu")
+        iterations = wp.zeros(1, dtype=wp.int32, device="cpu")
+        rho_current, rho_next = launch_pressure_pcg(
+            P, Div, Z_surf, T, shape, spacing, dt, rho, 1000.0,
+            residual, preconditioned, direction, A_direction,
+            rho_current, rho_next, rhs2, residual2, residual_next2, scale2, pAp, alpha, beta,
+            status, iterations, max_iterations=max_iterations,
+        )
+        wp.synchronize()
+        scale_value = float(scale2.numpy()[0])
+        residual_value = float(residual2.numpy()[0])
+        relative = float(np.sqrt(residual_value / scale_value)) if scale_value > 0 else 0.0
+        return P.numpy(), int(status.numpy()[0]), int(iterations.numpy()[0]), relative
 
     def test_step_schedule_ends_exactly_at_requested_duration(self):
         dt = 0.1
@@ -124,6 +191,21 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertEqual(result["max_temperature_K"], 300.0)
         self.assertEqual(result["pressure_projection_status"], "not_run")
         self.assertIsNone(result["pressure_projection_converged"])
+
+    def test_solver_result_reports_measured_projection_status_and_residual(self):
+        solver = TransientEnthalpy3DGPU(nx=5, ny=5, nz=5, dx=1e-5, dy=1e-5, dz=1e-5)
+        solver.device = "cpu"
+        result = solver.solve_toolpath(
+            {"t": [0.0, 1e-9], "x": [1e-5, 1e-5], "y": [1e-5, 1e-5], "p": [0.0, 0.0]},
+            T_preheat_K=2000.0,
+        )
+        self.assertEqual(result["pressure_projection_solver"], "preconditioned_conjugate_gradient")
+        self.assertIn(result["pressure_projection_status"], ("converged", "not_converged", "numerical_failure"))
+        self.assertIsNotNone(result["pressure_projection_converged"])
+        self.assertIsNotNone(result["pressure_projection_post_divergence_relative_l2"])
+        self.assertIsNotNone(result["pressure_projection_post_divergence_max_s_inv"])
+        self.assertEqual(result["pressure_projection_iterations"], result["pressure_projection_max_iterations_per_timestep"])
+        self.assertGreaterEqual(result["pressure_projection_total_iterations"], result["pressure_projection_max_iterations_per_timestep"])
 
     def _one_step(self, surface, temperature):
         wp.init()
@@ -283,9 +365,7 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertLess(abs(Div_after.numpy()[2, 2, 2]), 1e-6)
         self.assertAlmostEqual(solved_pressure[2, 2, 2], -3.0, delta=1e-6)
 
-    def test_ten_pressure_jacobi_sweeps_fail_smooth_divergence_tolerance(self):
-        """The production iteration budget must not be described as converged."""
-        self.assertEqual(_PRESSURE_JACOBI_ITERATIONS, 10)
+    def test_pcg_reduces_smooth_divergence_on_small_and_medium_grids(self):
         for n in (9, 17):
             shape = (n, n, n)
             temperature = np.full(shape, 2000.0, dtype=np.float32)
@@ -294,14 +374,139 @@ class Transient3DPhysicsContracts(unittest.TestCase):
             velocity = [np.zeros(shape, dtype=np.float32) for _ in range(3)]
             for i in range(1, n - 2):
                 velocity[0][i, 2:-2, 2:-2] = np.sin(np.pi * i / (n - 2))
-            before, after = self._run_pressure_projection(
-                velocity, temperature, surface, _PRESSURE_JACOBI_ITERATIONS,
+            before, after, _, status, iterations, linear_r2, scale2 = self._run_pressure_projection(
+                velocity, temperature, surface, _PRESSURE_PCG_MAX_ITERATIONS,
                 dt=1.0, rho=1.0,
             )
             before_norm = np.linalg.norm(before[active].ravel())
             after_norm = np.linalg.norm(after[active].ravel())
             relative_residual = after_norm / before_norm
-            self.assertGreater(relative_residual, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+            linear_relative = np.sqrt(linear_r2 / scale2) if scale2 > 0 else 0.0
+            self.assertEqual(status, _PRESSURE_STATUS_CONVERGED)
+            self.assertGreater(iterations, 0)
+            self.assertLessEqual(relative_residual, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+            self.assertGreater(linear_relative, 0.0)
+            self.assertLessEqual(linear_relative, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+
+    def test_pcg_recovers_manufactured_exact_pressure_with_solid_and_air_faces(self):
+        shape = (9, 9, 9)
+        nx, ny, nz = shape
+        spacing = (0.7, 1.1, 1.3)
+        dx, dy, dz = spacing
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        temperature[4, 4, 3] = 300.0  # insulating solid inclusion
+        surface = np.full((nx, ny), 6.5 * dz, dtype=np.float32)
+        surface[4, 3] = surface[4, 4] = 2.5 * dz  # stepped geometric air
+        exact = np.zeros(shape, dtype=np.float32)
+        exact[:] = np.fromfunction(
+            lambda i, j, k: np.sin(0.31 * i) * np.cos(0.27 * j) * np.sin(0.19 * k),
+            shape, dtype=float,
+        ).astype(np.float32)
+        exact[temperature < 1000.0] = 0.0
+        A_exact = self._pressure_apply_host(exact, temperature, surface, spacing)
+        dt, rho = 0.3, 2.0
+        div = (-A_exact * dt / rho).astype(np.float32)
+        solved, status, iterations, relative = self._solve_pressure(
+            div, temperature, surface, spacing=spacing, dt=dt, rho=rho, max_iterations=200
+        )
+        active = np.zeros(shape, dtype=bool)
+        for i in range(nx):
+            for j in range(ny):
+                for k in range(nz):
+                    active[i, j, k] = self._pressure_cell_class_host(
+                        temperature, surface, i, j, k, dz
+                    ) == 1
+        error = np.linalg.norm((solved - exact)[active]) / np.linalg.norm(exact[active])
+        self.assertEqual(status, _PRESSURE_STATUS_CONVERGED)
+        self.assertLessEqual(relative, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+        self.assertLess(error, 2e-3)
+        self.assertGreater(iterations, 0)
+
+    def test_pcg_all_neumann_constant_pressure_and_zero_rhs_nullspace(self):
+        shape = (7, 7, 7)
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        surface = np.full((shape[0], shape[1]), (shape[2] - 2.0), dtype=np.float32)
+        div = np.zeros(shape, dtype=np.float32)
+        initial_pressure = np.full(shape, 7.0, dtype=np.float32)
+        solved, status, iterations, relative = self._solve_pressure(
+            div, temperature, surface, initial_pressure=initial_pressure, max_iterations=20
+        )
+        self.assertEqual(status, _PRESSURE_STATUS_CONVERGED)
+        self.assertEqual(iterations, 0)
+        self.assertEqual(relative, 0.0)
+        self.assertTrue(np.allclose(solved[1:-1, 1:-1, 1:-1], 7.0))
+
+    def test_pcg_rejects_incompatible_rhs_in_closed_neumann_component(self):
+        shape = (9, 9, 9)
+        temperature = np.full(shape, 300.0, dtype=np.float32)
+        surface = np.full(shape[:2], shape[2] - 2.0, dtype=np.float32)
+        temperature[3, 3, 3] = temperature[4, 3, 3] = 2000.0
+        div = np.zeros(shape, dtype=np.float32)
+        div[3, 3, 3] = div[4, 3, 3] = 1.0
+        _, status, _, relative = self._solve_pressure(
+            div, temperature, surface, max_iterations=30
+        )
+        self.assertEqual(status, _PRESSURE_STATUS_NUMERICAL_FAILURE)
+        self.assertGreater(relative, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+
+    def test_pcg_solves_two_disconnected_compatible_neumann_components(self):
+        shape = (10, 10, 10)
+        spacing = (0.8, 1.1, 1.3)
+        temperature = np.full(shape, 300.0, dtype=np.float32)
+        surface = np.full(shape[:2], shape[2] - 2.0, dtype=np.float32)
+        components = (((2, 2, 2), (3, 2, 2)), ((6, 6, 6), (7, 6, 6)))
+        for first, second in components:
+            temperature[first] = temperature[second] = 2000.0
+        exact = np.zeros(shape, dtype=np.float32)
+        exact[2, 2, 2], exact[3, 2, 2] = -1.0, 2.0
+        exact[6, 6, 6], exact[7, 6, 6] = 4.0, 7.0
+        rhs = self._pressure_apply_host(exact, temperature, surface, spacing)
+        solved, status, iterations, relative = self._solve_pressure(
+            -rhs.astype(np.float32), temperature, surface,
+            spacing=spacing, max_iterations=30,
+        )
+        self.assertEqual(status, _PRESSURE_STATUS_CONVERGED)
+        self.assertGreater(iterations, 0)
+        self.assertLessEqual(relative, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+        for first, second in components:
+            self.assertAlmostEqual(
+                solved[second] - solved[first], exact[second] - exact[first], delta=2e-5
+            )
+
+    def test_pcg_rejects_opposite_incompatibilities_across_disconnected_components(self):
+        shape = (10, 10, 10)
+        temperature = np.full(shape, 300.0, dtype=np.float32)
+        surface = np.full(shape[:2], shape[2] - 2.0, dtype=np.float32)
+        for first, second in (((2, 2, 2), (3, 2, 2)), ((6, 6, 6), (7, 6, 6))):
+            temperature[first] = temperature[second] = 2000.0
+        div = np.zeros(shape, dtype=np.float32)
+        div[2, 2, 2] = 1.0
+        div[6, 6, 6] = -1.0
+        _, status, _, relative = self._solve_pressure(
+            div, temperature, surface, max_iterations=30
+        )
+        self.assertEqual(status, _PRESSURE_STATUS_NUMERICAL_FAILURE)
+        self.assertGreater(relative, _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+
+    def test_pcg_reports_budget_exhaustion_and_nonfinite_rhs(self):
+        n = 17
+        shape = (n, n, n)
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        surface = np.full((n, n), n - 2.5, dtype=np.float32)
+        velocity = [np.zeros(shape, dtype=np.float32) for _ in range(3)]
+        for i in range(1, n - 2):
+            velocity[0][i, 2:-2, 2:-2] = np.sin(np.pi * i / (n - 2))
+        before, _, _, status, iterations, residual2, scale2 = self._run_pressure_projection(
+            velocity, temperature, surface, 1, dt=1.0, rho=1.0
+        )
+        self.assertEqual(status, _PRESSURE_STATUS_BUDGET_EXHAUSTED)
+        self.assertEqual(iterations, 1)
+        self.assertGreater(np.sqrt(residual2 / scale2), _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE)
+
+        bad_div = np.zeros(shape, dtype=np.float32)
+        bad_div[3, 3, 3] = np.nan
+        _, bad_status, _, _ = self._solve_pressure(bad_div, temperature, surface, max_iterations=5)
+        self.assertEqual(bad_status, _PRESSURE_STATUS_NUMERICAL_FAILURE)
 
     def test_velocity_advection_interpolates_transverse_face_velocity(self):
         shape = (5, 5, 5)

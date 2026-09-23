@@ -49,18 +49,22 @@ zaman entegrasyonu son aralığı kırpar ve sıfır süreli iz için adım çal
 Yüz hızlarının altı çapraz bileşeni MAC koordinatlarında dört-yüzlü bilinear
 ortalama ile örneklenir; entalpi taşınımı ortak yüzlerde aynı upwind akısını
 kullanır ve iç akıların global entalpi toplamında iptal olduğu CPU Warp testiyle
-denetlenir. Basınç projeksiyonunda ayrık yüz diverjansı, gradyanı ve 7-noktalı
-Poisson/Jacobi operatörü aynı sıvı/serbest-yüzey/katı/alan-sınırı sınıflamasını
-kullanır; checkerboard null modu ve tek hücreli üretilmiş çözüm test edilir.
-Ancak üretimdeki sabit 10 Jacobi turu yakınsamayı sağlamaz: düzgün hız alanında
-göreli L2 diverjans artığı 9^3 ve 17^3 ağlarda sırasıyla 0,420619 ve 0,793338;
-300 turda 17^3 artığı 0,0378842 kalır (hedef 1e-3). Çıktı bu nedenle
-`unverified_residual_not_measured` durumunu ve yakınsamamışlık belirsizliğini
-taşır; örnek başarı metni projeksiyonu doğrulanmış gibi sunmaz. Sonraki P10
-adımı, aynı stencil'i koruyan cihaz indirgemeli PCG ve ölçülmüş projeksiyon
-artığı kapısıdır; bu tasarım/uygulama henüz doğrulanmadı. CPU transient
-motorunun yüzey kesmesi de tam hücre yaklaşımını kullanır; cut-cell
-kütle/iletim düzeltmesi ayrı kapsamdır.
+denetlenir. Basınç projeksiyonunda ayrık yüz diverjansı, gradyanı ve Poisson
+operatörü aynı sıvı/serbest-yüzey/katı/alan-sınırı sınıflamasını kullanır;
+checkerboard, üretilmiş çözüm, ayrık bileşenler ve Neumann uyumluluk testleri
+vardır. Önceki sabit 10 Jacobi turu düzgün hız alanında yakınsamıyordu: göreli
+L2 diverjans artığı 9^3 ve 17^3 ağlarda 0,420619 ve 0,793338; 300 turda 17^3
+artığı 0,0378842 idi (hedef 1e-3). Bunun yerine aynı stencil üzerinde cihaz
+indirgemeli matris-olmayan preconditioned conjugate gradient (PCG) çözücüsü
+eklendi. CPU Warp testleri 9^3'te 15 iterasyonda 7,606e-4, 17^3'te 35
+iterasyonda 8,074e-4 ölçülen post-projection diverjans oranına ulaştı; iki
+ölçüm de 1e-3 hedefini karşılıyor. Uyumsuz Neumann bileşenleri
+`numerical_failure`, uyumlu ayrık bileşenler yakınsıyor; iterasyon tükenmesi ve
+sayısal bozulma da ayrıca raporlanıyor. Runtime çözüm durumu ölçülen residual'a
+bağlıdır. CUDA donanımında çalıştırma ve performans bu Windows hostta
+doğrulanmadı; GPU-device doğrulaması iddia edilmez. CPU transient motorunun
+yüzey kesmesi de tam hücre yaklaşımını kullanır; cut-cell kütle/iletim
+düzeltmesi ayrı kapsamdır.
 
 ## IN718 geometri karşılaştırmasının ön protokolü
 

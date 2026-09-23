@@ -1,15 +1,21 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
 Root owns integration and `STATUS.md`/`PROOF.md` on
-`codex/lpbf-buildjob-material-identity`; no push. All current subagents have
-finished. The official NIST workbook audit is `ef303e7`. Phase 21 stationary
-2D screening physics repairs are `69fae9a` and `bf34aef` (6 focused Python
-tests PASS); P10 was added to the active plan in `04e0ea4`. This turn repaired
-two Phase 22 Warp defects: metal-to-air lateral conduction at a stepped free
-surface and final-step overshoot beyond the requested duration. Warp CPU plus
-peak-selection regressions: 8 PASS / 1 SKIP. The collocated pressure projection
-operator mismatch remains open; design review recommends a paired discrete
-divergence/gradient and matched Poisson stencil before any projection claim.
+`codex/lpbf-buildjob-material-identity`; no push. The official NIST workbook
+audit is `ef303e7`. Phase 21 stationary 2D screening physics repairs are
+`69fae9a` and `bf34aef` (6 focused Python tests PASS); P10 was added to the
+active plan in `04e0ea4`. Commits `e8f8313` and `c902700` now fix the build-job
+field-peak/cache identity and Phase 22 face transport/projection contracts.
+The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
+tests; standalone build-job checks and TypeScript typecheck also pass. The
+TypeScript session behavior runner remains unavailable (`spawn EPERM`). CUDA
+is unavailable in this Windows environment. The pressure stencil now pairs
+the face divergence, gradient, and Jacobi operator, but its fixed ten sweeps
+do not meet the 1e-3 relative divergence target on smooth manufactured fields
+(residual ratios 0.420619 at 9^3 and 0.793338 at 17^3); 300 sweeps still leave
+0.0378842 at 17^3. Runtime output therefore labels projection convergence
+unverified. A matrix-free device-reduction PCG implementation is underway;
+do not claim Phase 22 projection convergence yet.
 CPU transient whole-cell surface geometry remains a documented cut-cell
 limitation, not a repaired defect. The separate
 preregistered 75 W 3+3 contour report is `4110e73`, SHA-256
@@ -26,8 +32,9 @@ selected endpoint by about 0.1 µs while W/D changes remain below 0.004% and
 non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
-Next: implement and test the Phase 22 pressure-projection operator on a small
-manufactured CPU Warp field. P5 feasibility audit shows the current 3 mm track
+Next: replace fixed Jacobi with a matrix-free residual-controlled pressure
+solve on the unchanged Phase 22 stencil, then verify post-projection divergence
+on manufactured CPU Warp fields. P5 feasibility audit shows the current 3 mm track
 bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate
 4.18M/32.32M/258.27M cells at 20/10/5 µm because the domain is square. No 10 mm
 solve was run. After the pressure operator, scope a narrow-band/moving-frame

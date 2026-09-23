@@ -925,3 +925,43 @@ track with a viable domain. The strict comparison remains `unavailable` until
 that model, measured beam-profile evidence, six-section operator, and passing
 independent 3+3 gate are present. A nominal 67 µm Gaussian run may be reported
 only as unvalidated screening and must not emit a NIST residual.
+
+## 2026-09-24 — Build-job peak identity and Phase 22 face transport
+
+Commit `e8f8313` makes Rosenthal peak temperature the value sampled from the
+selected thermal field at the beam center. The build-job implementation is
+identified separately as `lpbf-build-job-core-peak-field-v2`; Python cache keys,
+cache-hit validation, returned build-job/capability provenance, and the UI's
+same-input key use this revision. The heat-source model ID remains
+`rosenthal-screening-v1`. Python build-job and capability checks passed, three
+peak-field consistency tests passed, and `npx tsc --noEmit` passed. The
+TypeScript session behavior test could not launch under the sandbox (`spawn
+EPERM`); it was not counted as passed.
+
+Commit `c902700` uses bilinear averages at each of the six transverse MAC face
+locations, and computes enthalpy advection as a conservative divergence of
+shared upwind face fluxes. Manufactured CPU Warp tests check all six analytical
+interpolants and global enthalpy conservation for divergence-free transport.
+The face divergence, pressure gradient, and pressure Jacobi stencil now share
+the same liquid/free-surface/solid/domain face semantics; a checkerboard test
+and a single-cell manufactured projection pass.
+
+The current production pressure solve still runs ten Jacobi sweeps and does
+not measure the post-projection residual. A smooth manufactured velocity gave
+relative interior L2 divergence ratios 0.420619 on a 9³ grid and 0.793338 on a
+17³ grid; 300 sweeps on 17³ still left 0.0378842, above the target 1e-3. The
+result now reports `unverified_residual_not_measured`, and the demo no longer
+calls the full hydrodynamic solver verified. This is a measured failure of the
+current iteration budget, not a converged projection. A matrix-free PCG
+implementation is underway; it must preserve the exact stencil and measure
+the projected velocity residual before reporting convergence.
+
+Combined focused CPU Warp, peak-field, and material-capability checks: 19 pass.
+The standalone Python build-job checks and capability tests also pass. CUDA is
+unavailable on this Windows host, so these results do not establish GPU-device
+execution/parity. Warp temporary-cache teardown printed the known Windows
+`WinError 5` after tests passed; two separate artifact-writing peak tests also
+hit sandbox temp-directory permissions and are not counted as product failures.
+These repairs do not change the frozen P4 failure, NIST P5 `unavailable`, the
+heuristic moving-interface Marangoni/recoil law, or the CPU whole-cell surface
+geometry limitation.

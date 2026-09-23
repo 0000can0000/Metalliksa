@@ -46,12 +46,21 @@ için sonuç tarama olarak etiketlenir. 3B referans P4 kapısı bağımsızdır.
 Kullanıcı P10'u çekirdek motorlara genişletmeyi ayrıca yetkilendirdi. Phase 22
 Warp solver'ında metal-hava yanal yüz akısı metal hücre maskesiyle kapatıldı;
 zaman entegrasyonu son aralığı kırpar ve sıfır süreli iz için adım çalıştırmaz.
-Warp CPU regresyonları bu iki yerel düzeltmeyi kapsar. Aynı motordaki basınç
-projeksiyonu henüz kabul edilmedi: merkezî diverjans/gradyan çifti 7-noktalı
-Jacobi Laplasyeniyle tutarsızdır ve checkerboard modu bırakabilir. Eşlenik
-ayrık D/G operatörü, sınır maskeleriyle uyumlu Poisson çözümü ve ön/son diverjans
-artakalanı testi P10'un açık işidir. CPU transient motorunun yüzey kesmesi de
-tam hücre yaklaşımını kullanır; cut-cell kütle/iletim düzeltmesi ayrı kapsamdır.
+Yüz hızlarının altı çapraz bileşeni MAC koordinatlarında dört-yüzlü bilinear
+ortalama ile örneklenir; entalpi taşınımı ortak yüzlerde aynı upwind akısını
+kullanır ve iç akıların global entalpi toplamında iptal olduğu CPU Warp testiyle
+denetlenir. Basınç projeksiyonunda ayrık yüz diverjansı, gradyanı ve 7-noktalı
+Poisson/Jacobi operatörü aynı sıvı/serbest-yüzey/katı/alan-sınırı sınıflamasını
+kullanır; checkerboard null modu ve tek hücreli üretilmiş çözüm test edilir.
+Ancak üretimdeki sabit 10 Jacobi turu yakınsamayı sağlamaz: düzgün hız alanında
+göreli L2 diverjans artığı 9^3 ve 17^3 ağlarda sırasıyla 0,420619 ve 0,793338;
+300 turda 17^3 artığı 0,0378842 kalır (hedef 1e-3). Çıktı bu nedenle
+`unverified_residual_not_measured` durumunu ve yakınsamamışlık belirsizliğini
+taşır; örnek başarı metni projeksiyonu doğrulanmış gibi sunmaz. Sonraki P10
+adımı, aynı stencil'i koruyan cihaz indirgemeli PCG ve ölçülmüş projeksiyon
+artığı kapısıdır; bu tasarım/uygulama henüz doğrulanmadı. CPU transient
+motorunun yüzey kesmesi de tam hücre yaklaşımını kullanır; cut-cell
+kütle/iletim düzeltmesi ayrı kapsamdır.
 
 ## IN718 geometri karşılaştırmasının ön protokolü
 

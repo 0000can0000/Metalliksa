@@ -1,12 +1,45 @@
 import numpy as np
 
+
+def _temperature_from_enthalpy(enthalpy, rho, cp, latent_heat, solidus, liquidus):
+    """Invert a linear solid/mushy/liquid specific-enthalpy law."""
+    h_solidus = rho * cp * solidus
+    h_liquidus = rho * (cp * liquidus + latent_heat)
+    return np.where(
+        enthalpy < h_solidus,
+        enthalpy / (rho * cp),
+        np.where(
+            enthalpy <= h_liquidus,
+            solidus + (liquidus - solidus) * (enthalpy - h_solidus) / (h_liquidus - h_solidus),
+            liquidus + (enthalpy - h_liquidus) / (rho * cp),
+        ),
+    )
+
+
+def _conduction_rate(temperature, conductivity, dx, dz):
+    """Conservative two-dimensional face fluxes with adiabatic outer faces."""
+    rate = np.zeros_like(temperature)
+    face_x = 2 * conductivity[:, :-1] * conductivity[:, 1:] / (
+        conductivity[:, :-1] + conductivity[:, 1:]
+    )
+    flux_x = face_x * (temperature[:, 1:] - temperature[:, :-1]) / dx**2
+    rate[:, :-1] += flux_x
+    rate[:, 1:] -= flux_x
+    face_z = 2 * conductivity[:-1, :] * conductivity[1:, :] / (
+        conductivity[:-1, :] + conductivity[1:, :]
+    )
+    flux_z = face_z * (temperature[1:, :] - temperature[:-1, :]) / dz**2
+    rate[:-1, :] += flux_z
+    rate[1:, :] -= flux_z
+    return rate
+
+
 class TransientEnthalpyFDMSolver:
     """
-    Phase 21: Transient 2D Enthalpy-Method Finite Difference (FDM) Melt Pool Solver.
-    Unlike Rosenthal (which ignores Latent Heat of Fusion), this method rigorously 
-    solves the Heat Equation with Phase Change thermodynamics (Solid-Mushy-Liquid),
-    providing highly accurate melt pool boundaries without analytical singularities.
-    Strictly deterministic.
+    Phase 21 stationary two-dimensional cross-section thermal screening solver.
+
+    The scan-speed argument is retained for the API but cannot be represented by
+    this stationary cross-section model. Results are not validated melt-pool data.
     """
     def __init__(self, nx=100, nz=50, dx=2e-6, dz=2e-6):
         self.nx = nx
@@ -15,69 +48,43 @@ class TransientEnthalpyFDMSolver:
         self.dz = dz
         
     def solve_meltpool_cross_section(self, power_W, speed_m_s, T_preheat_K, rho, cp, k_solid, k_liquid, latent_heat_J_kg, T_solidus, T_liquidus, sim_time_s=1e-3, dt=1e-6):
+        positive = (self.dx, self.dz, power_W, speed_m_s, T_preheat_K, rho, cp,
+                    k_solid, k_liquid, latent_heat_J_kg, sim_time_s, dt)
+        if self.nx < 2 or self.nz < 2 or any(not np.isfinite(value) or value <= 0 for value in positive):
+            raise ValueError("Positive finite dimensions and physical inputs are required")
+        if not np.isfinite(T_solidus) or not np.isfinite(T_liquidus) or T_liquidus <= T_solidus:
+            raise ValueError("Liquidus must exceed solidus")
         # Initialize temperature and enthalpy fields
         T = np.full((self.nz, self.nx), float(T_preheat_K))
         # Base enthalpy relative to 0K (simplification)
         H = rho * cp * T
         
-        # Grid parameters
-        alpha_solid = k_solid / (rho * cp)
-        
-        # Stability check (Fourier number)
-        Fo = alpha_solid * dt / (self.dx**2)
-        if Fo > 0.25:
-            # Auto-adjust dt to ensure numerical stability (Von Neumann stability criterion)
-            dt = 0.2 * (self.dx**2) / alpha_solid
-            
-        steps = int(sim_time_s / dt)
+        # Explicit two-axis stability bound uses the largest possible k.
+        alpha_max = max(k_solid, k_liquid) / (rho * cp)
+        stable_dt = 0.4 / (alpha_max * (self.dx**-2 + self.dz**-2))
+        steps = max(1, int(np.ceil(sim_time_s / min(dt, stable_dt))))
+        step_dt = sim_time_s / steps
         
         # Laser parameters (Gaussian surface flux)
         beam_radius = 30e-6
-        # Assume moving laser stays at the center of the 2D cross-section for a moment, or sweeps across.
-        # Let's simulate a stationary laser pulse for a 2D cross section to see penetration,
-        # or a sweep. We'll do a stationary spot for simplicity of 2D depth profiling.
-        x_coords = np.linspace(-self.nx*self.dx/2, self.nx*self.dx/2, self.nx)
+        # Stationary transverse profile; this 2D source does not resolve travel.
+        x_coords = (np.arange(self.nx) - (self.nx - 1) / 2) * self.dx
         laser_intensity = (2.0 * power_W * 0.4 / (np.pi * beam_radius**2)) * np.exp(-2.0 * (x_coords / beam_radius)**2)
         
-        for step in range(steps):
-            T_old = T.copy()
-            
-            # Compute Laplacian of T
-            # d2T/dx2 + d2T/dz2
-            d2T_dx2 = (np.roll(T_old, -1, axis=1) - 2*T_old + np.roll(T_old, 1, axis=1)) / (self.dx**2)
-            d2T_dz2 = (np.roll(T_old, -1, axis=0) - 2*T_old + np.roll(T_old, 1, axis=0)) / (self.dz**2)
-            
-            # Adiabatic boundaries on sides and bottom
-            d2T_dx2[:, 0] = 0; d2T_dx2[:, -1] = 0
-            d2T_dz2[-1, :] = 0
-            
-            # Thermal conductivity depends on state (simple average here)
-            q_conduct = k_solid * (d2T_dx2 + d2T_dz2)
+        for _ in range(steps):
+            liquid_fraction = np.clip((T - T_solidus) / (T_liquidus - T_solidus), 0, 1)
+            conductivity = k_solid + (k_liquid - k_solid) * liquid_fraction
+            q_conduct = _conduction_rate(T, conductivity, self.dx, self.dz)
             
             # Update enthalpy
-            H_new = H + dt * q_conduct
+            H_new = H + step_dt * q_conduct
             
             # Apply laser heat flux at the top surface (z=0)
-            H_new[0, :] += dt * (laser_intensity / self.dz)
+            H_new[0, :] += step_dt * (laser_intensity / self.dz)
             
-            # Enthalpy to Temperature mapping (Phase Change Logic)
-            # H_solidus = rho * cp * T_solidus
-            # H_liquidus = rho * cp * T_liquidus + rho * Lf
-            H_sol = rho * cp * T_solidus
-            H_liq = rho * cp * T_liquidus + rho * latent_heat_J_kg
-            
-            # Vectorized Temp update
-            mask_solid = H_new < H_sol
-            mask_mushy = (H_new >= H_sol) & (H_new <= H_liq)
-            mask_liquid = H_new > H_liq
-            
-            T_new = np.zeros_like(T)
-            T_new[mask_solid] = H_new[mask_solid] / (rho * cp)
-            # Mushy zone (linear interpolation)
-            T_new[mask_mushy] = T_solidus + (T_liquidus - T_solidus) * ((H_new[mask_mushy] - H_sol) / (rho * latent_heat_J_kg))
-            T_new[mask_liquid] = T_liquidus + (H_new[mask_liquid] - H_liq) / (rho * cp) # using cp liquid same as solid for simplicity
-            
-            T = T_new
+            T = _temperature_from_enthalpy(
+                H_new, rho, cp, latent_heat_J_kg, T_solidus, T_liquidus
+            )
             H = H_new
             
         # Compute Melt Pool Dimensions
@@ -95,6 +102,13 @@ class TransientEnthalpyFDMSolver:
             "melt_pool_width_um": float(width_um),
             "melt_pool_depth_um": float(depth_um),
             "max_temperature_K": float(np.max(T)),
-            "is_physically_accurate": True,
-            "latent_heat_accounted": True
+            "is_physically_accurate": False,
+            "latent_heat_accounted": True,
+            "model_scope": "stationary-2d-cross-section-screening",
+            "ignored_inputs": ["speed_m_s"],
+            "limitations": [
+                "Fixed 30 um beam radius and 0.4 absorptivity",
+                "2D heat input has no resolved out-of-plane power normalization",
+                "No scan travel or independent experimental validation",
+            ],
         }

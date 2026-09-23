@@ -793,3 +793,23 @@ production build PASS; official workbook Python 3/3 and combined bare-plate
 plus workbook 8/8 PASS. Earlier Windows LPBF Python 91 PASS/3 OpenFOAM SKIP;
 Ubuntu 22.04/OpenFOAM engineering 29/29 PASS. The large-chunk build warning
 remains.
+
+## 2026-09-24 — Phase 21 two-dimensional thermal screening correction
+
+The old mushy-zone enthalpy inverse returned 1932.53 K at the specified
+liquidus enthalpy for the existing Ti-6Al-4V test inputs, instead of 1928 K.
+Its rolled vertical stencil also connected the top surface to the bottom cell.
+The corrected inverse is continuous at solidus and liquidus; paired face fluxes
+conserve heat with adiabatic outer faces. The explicit timestep bound now uses
+both grid spacings and the largest of solid/liquid conductivity. Focused
+Phase 21 and worker regression tests: 5/5 PASS with normal Windows permissions;
+the sandboxed worker test failed during temporary-directory cleanup (WinError 5).
+The changed code is `python/lpbf_transient_enthalpy_fdm.py`, with regression
+tests in `python/test_lpbf_transient_enthalpy_fdm_physics.py`.
+
+This correction establishes internal numerical consistency for a limited
+stationary two-dimensional screening calculation. The fixed beam profile has
+no resolved out-of-plane power normalization and scan speed is unused. The
+result therefore reports `is_physically_accurate=false` and its limitations;
+it is not an experimentally validated melt-pool prediction. The independent
+three-dimensional P4 convergence gate is unchanged.

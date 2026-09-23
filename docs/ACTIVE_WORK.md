@@ -16,6 +16,10 @@ conditions after the JSON-number fix `3f152d1`.
 The surface-aligned 80 W 3+3 diagnostic still failed P4: W/D mesh
 40/40 → 40/40 → 60/50 µm, finest width/depth changes 33.33%/20%, energy PASS,
 time geometry inconclusive. Source capture exceeded 0.999999999.
+An exploratory 5 µm, 588,544-cell solve (`2a5493a`) completed in 375 s: discrete W/D
+60/55 µm, 10→5 µm depth change 9.09%, still over the frozen 5% limit.
+Supplementary liquidus-contour W/D 20→10→5 µm is monotonic with 1.27%/3.70%
+finest changes, but lacks a predeclared independent 3+3 gate; P4 stays failed.
 The official NIST workbook/sidecar SHA is verified; all 42 BP1 source rows
 reproduce the seven local Table 4 aggregate rows at 0.1 µm. The new workbook
 source is a distinct dataset; the existing transcription and run link persist.
@@ -29,8 +33,8 @@ Ubuntu/OpenFOAM engineering 29 PASS; latest TypeScript unit 232 PASS, lint and
 build PASS; new Python source audit 3 PASS. Browser tab 2 and local dev server
 session 29665 are live. Official workbook source preview/import/revision-1
 verify passed in the browser. Next action: commit the checkpoint documents,
-then investigate the P4 geometry failure without changing its frozen acceptance
-and scope a matched NIST optical operator for P5.
+then predeclare a separate continuous-geometry protocol and independent
+process/time study for P4; scope a matched NIST optical operator for P5.
 
 External `docs/README.md`, `sonkayıtlar/LOG.md`, and
 `docs/SCIENTIFIC_RESEARCH_VISION.md` remain unowned. Preserve them.

@@ -769,6 +769,17 @@ capture fraction exceeded 0.999999999. Energy passed, but discrete W/D across
 the three meshes was 40/40, 40/40 and 60/50 µm; the finest-pair width/depth
 changes were 33.33%/20% and timestep geometry was inconclusive. The frozen
 overall P4 result remains `failed`; surface alignment alone did not resolve it.
+An exploratory 5 µm solve of the same scenario used 588,544 cells and completed
+in 375 s. The discrete depth moved from 50 µm at 10 µm spacing to 55 µm,
+a 9.09% change against the frozen 5% target. The supplementary interpolated
+liquidus contour across 20/10/5 µm showed width/depth finest changes of
+1.27%/3.70% and positive observed orders of 3.06/1.24, respectively. These
+values are captured in `docs/LPBF_FINE_MESH_DIAGNOSTIC_80W_2026-09-24.json`
+(SHA-256 `fa01ffcb477cdba0a536705baacabbb06db6ec819bf2eb525e16b10d31bd75b6`,
+commit `2a5493a`);
+its source hash and numerical arithmetic were checked. The point was selected
+after seeing the original failure, and no independent time-axis study exists
+for this contour, so it is exploratory evidence only. P4 remains `failed`.
 
 **Experimental validity:** No numerical W/D error against NIST Table 4 is
 reported. The current model lacks the measured beam-profile mapping, matched

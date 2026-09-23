@@ -21,7 +21,7 @@ from lpbf_build_job_material_snapshot import (
     build_ambench_material_property_snapshot,
     build_material_property_snapshot,
 )
-from lpbf_job_cache import build_cache_key, cache_get, cache_put
+from lpbf_job_cache import BUILD_JOB_SOLVER_REVISION, build_cache_key, cache_get, cache_put
 from lpbf_screening_uq import apply_uq_prop_scales, run_screening_uq
 from lpbf_thermal_solver import calculate_meltpool_physics
 from murakami_fatigue_screening import (
@@ -396,6 +396,7 @@ def solve_lpbf_build_job(data):
         if (
             cached is not None
             and cached.get("success") is True
+            and cached.get("solverRevision") == BUILD_JOB_SOLVER_REVISION
             and cached.get("alloyId") == alloy_id
             and cached.get("materialPropertySha256") == material_property_sha256
             and cached.get("materialPropertySnapshot") == material_snapshot
@@ -591,6 +592,7 @@ def solve_lpbf_build_job(data):
         "success": True,
         "engine": "lpbf_build_job",
         "modelId": "rosenthal-screening-v1",
+        "solverRevision": BUILD_JOB_SOLVER_REVISION,
         "assumptions": assumptions,
         "alloyId": alloy_id,
         "materialPropertySchemaVersion": material_snapshot["schemaVersion"],

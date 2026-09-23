@@ -6,6 +6,7 @@ import unittest
 from four_alloy_materials import ALLOY_MATERIALS, FOUR_ALLOY_IDS, THERMAL_NAME, resolve_alloy_id
 from in625_thermal_material import in625_lpbf_thermal_snapshot
 from lpbf_build_job_material_snapshot import build_material_property_snapshot
+from lpbf_job_cache import BUILD_JOB_SOLVER_REVISION
 from lpbf_material_capabilities import capability_for, material_capability_report
 from lpbf_material_registry import material
 
@@ -25,6 +26,7 @@ class MaterialCapabilityAuditTests(unittest.TestCase):
                 expected_transient = material(THERMAL_NAME[alloy_id])
                 self.assertTrue(row["buildJob"]["available"])
                 self.assertEqual(row["buildJob"]["modelId"], "rosenthal-screening-v1")
+                self.assertEqual(row["buildJob"]["solverRevision"], BUILD_JOB_SOLVER_REVISION)
                 self.assertEqual(row["buildJob"]["effectiveThermal"], expected_build["thermal"])
                 self.assertEqual(row["buildJob"]["effectiveSlicer"], expected_build["slicer"])
                 self.assertEqual(row["buildJob"]["materialPropertySha256"], expected_sha)

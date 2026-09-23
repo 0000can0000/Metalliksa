@@ -20,6 +20,10 @@ _HITS = 0
 _MISSES = 0
 _MAX_ENTRIES = 64
 
+# Increment when build-job solver behavior changes so a warm worker cannot
+# return results produced by an earlier implementation for identical inputs.
+BUILD_JOB_SOLVER_REVISION = "lpbf-build-job-core-peak-field-v2"
+
 
 def cache_stats() -> Dict[str, Any]:
     return {
@@ -97,6 +101,7 @@ def build_cache_key(data: Dict[str, Any]) -> str:
         "hv": data.get("hardness_HV"),
         "ctThresh": data.get("ctDetectionThreshold_um"),
         "gitSha": data.get("gitSha"),
+        "solverRevision": BUILD_JOB_SOLVER_REVISION,
     }
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()

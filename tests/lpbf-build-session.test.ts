@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { pythonComputationService, type PythonLpbfBuildJobResult } from "../src/services/pythonComputationService";
-import { peekLpbfBuildJobKey, requestLpbfBuildJob, setLpbfMurakamiInput, useLpbfBuildJobStore } from "../src/store/useLpbfBuildJobStore";
+import { BUILD_JOB_SOLVER_REVISION, peekLpbfBuildJobKey, requestLpbfBuildJob, setLpbfMurakamiInput, useLpbfBuildJobStore } from "../src/store/useLpbfBuildJobStore";
 import { useMaterialSpecimenStore } from "../src/store/useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "../src/store/useLpbfBuildMeshStore";
 import { mapSpecimenToBuildJobMaterials } from "../src/utils/lpbfIndustrialDecision";
@@ -12,7 +12,7 @@ const initialBuild = useLpbfBuildJobStore.getState();
 const originalSolve = pythonComputationService.solveLpbfBuildJob;
 let calls = 0;
 const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => ({
-  modelId: "synthetic-session-fixture", uq: null, ambench: null, ...extra,
+  modelId: "synthetic-session-fixture", solverRevision: BUILD_JOB_SOLVER_REVISION, uq: null, ambench: null, ...extra,
 }) as unknown as PythonLpbfBuildJobResult;
 
 beforeEach(() => {
@@ -33,6 +33,26 @@ test("identical fast requests reuse the result; changed CT threshold recomputes"
   setLpbfMurakamiInput({ ctDetectionThreshold_um: 25 });
   await requestLpbfBuildJob();
   assert.equal(calls, 2);
+});
+
+test("same-input results from a prior solver revision are recomputed", async () => {
+  await requestLpbfBuildJob();
+  const currentKey = peekLpbfBuildJobKey();
+  const keyParts = JSON.parse(currentKey) as unknown[];
+  assert.equal(keyParts[0], BUILD_JOB_SOLVER_REVISION);
+
+  // The prior client key was the remaining input/flag tuple without a revision.
+  useLpbfBuildJobStore.setState({ lastKey: JSON.stringify(keyParts.slice(1)) });
+  await requestLpbfBuildJob();
+  assert.equal(calls, 2);
+  assert.equal(useLpbfBuildJobStore.getState().lastKey, currentKey);
+});
+
+test("a backend result from a different solver revision is rejected", async () => {
+  pythonComputationService.solveLpbfBuildJob = async () => fixture({ solverRevision: "old-solver-revision" });
+  await requestLpbfBuildJob();
+  assert.match(useLpbfBuildJobStore.getState().error ?? "", /solver revision mismatch/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
 });
 
 test("defect records differing beyond their first 80 characters cannot collide", async () => {

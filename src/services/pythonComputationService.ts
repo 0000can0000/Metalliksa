@@ -1978,6 +1978,7 @@ export interface PythonLpbfBuildJobResult {
   success: boolean;
   engine: string;
   modelId: string;
+  solverRevision: string;
   assumptions: string[];
   alloyId: string;
   processSeed?: number;

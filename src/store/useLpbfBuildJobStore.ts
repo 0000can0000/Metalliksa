@@ -18,6 +18,10 @@ import { inferSlicerPreset, mapSpecimenToBuildJobMaterials } from "../utils/lpbf
 import { useMaterialSpecimenStore } from "./useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "./useLpbfBuildMeshStore";
 
+// Keep aligned with python/lpbf_job_cache.py; changing this invalidates held
+// same-input results when the client and build-job solver are upgraded.
+export const BUILD_JOB_SOLVER_REVISION = "lpbf-build-job-core-peak-field-v2";
+
 export interface LpbfMurakamiSessionInput {
   defectSqrtAreasPaste: string;
   hardness_HV: number | null;
@@ -129,7 +133,7 @@ function buildJobKey(flags: { enableUq: boolean; includeAmbench: boolean; uqSamp
   // Include the complete CT/defect input and mesh identity. Names/counts do not identify geometry.
   const { customTriangles: _triangles, enableUq: _uq, includeAmbench: _ambench, uqSamples: _samples, ...basePayload } = payload;
   const evidenceKey = JSON.stringify([basePayload, {id:specimen.id,name:specimen.name,composition:specimen.composition}, meshIdentity(liveMesh)]);
-  const key = JSON.stringify([evidenceKey, flags.enableUq, flags.includeAmbench, flags.enableUq ? flags.uqSamples : 0]);
+  const key = JSON.stringify([BUILD_JOB_SOLVER_REVISION, evidenceKey, flags.enableUq, flags.includeAmbench, flags.enableUq ? flags.uqSamples : 0]);
   return { key, evidenceKey, payload, materialSupported: materials !== null };
 }
 
@@ -208,6 +212,9 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
     try {
       const t0 = performance.now();
       const job = await pythonComputationService.solveLpbfBuildJob(payload);
+      if (job.solverRevision !== BUILD_JOB_SOLVER_REVISION) {
+        throw new Error("LPBF build-job solver revision mismatch; update the Python solver before using this result.");
+      }
       if (useLpbfBuildJobStore.getState().seq !== seq) return;
       const prev = useLpbfBuildJobStore.getState();
       const sameEvidence = prev.sessionEvidenceKey === evidenceKey;

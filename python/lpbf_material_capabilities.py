@@ -15,6 +15,7 @@ from in625_thermal_material import (
     in625_solid_thermal_at_celsius,
 )
 from lpbf_build_job_material_snapshot import build_material_property_snapshot
+from lpbf_job_cache import BUILD_JOB_SOLVER_REVISION
 from lpbf_material_registry import catalog, material
 
 
@@ -38,6 +39,7 @@ def _four_alloy_capability(alloy_id):
         "buildJob": {
             "available": True,
             "modelId": "rosenthal-screening-v1",
+            "solverRevision": BUILD_JOB_SOLVER_REVISION,
             "authority": "four_alloy_materials.py via lpbf_build_job_material_snapshot.py",
             "materialPropertySha256": build_sha,
             "thermalName": names["thermal"],

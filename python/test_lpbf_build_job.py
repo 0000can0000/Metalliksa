@@ -70,6 +70,8 @@ def main():
     assert ti["success"]
     assert ti["engine"] == "lpbf_build_job"
     assert ti["modelId"] == "rosenthal-screening-v1"
+    from lpbf_job_cache import BUILD_JOB_SOLVER_REVISION
+    assert ti["solverRevision"] == BUILD_JOB_SOLVER_REVISION
     assert ti["processSeed"] == 42
     assert ti["scanStrategy"]["id"] == "stripe"
     assert ti["uq"] is None  # lazy default
@@ -183,6 +185,16 @@ def main():
     assert stale["cache"]["hit"] is False
     assert stale["materialPropertySha256"] == a["materialPropertySha256"]
 
+    with patch.object(build_job_solver, "cache_get", return_value={
+        **a, "solverRevision": "older-build-job-implementation",
+    }):
+        revision_stale = run_job({"alloyId": "in718", "laserPower_W": 285,
+                                  "scanSpeed_mm_s": 960, "beamDiameter_um": 80,
+                                  "layerThickness_um": 40, "hatchSpacing_um": 110})
+    assert revision_stale["cache"]["hit"] is False
+    assert revision_stale["solverRevision"] == BUILD_JOB_SOLVER_REVISION
+
+    import lpbf_job_cache
     from lpbf_job_cache import build_cache_key, mesh_fingerprint
 
     mesh_a = [[[-1, 0, 0], [1, 0, 0], [0, 1, 1]]] * 9
@@ -191,6 +203,10 @@ def main():
     assert mesh_fingerprint(mesh_a) != mesh_fingerprint(mesh_b)
     assert build_cache_key({"customTriangles": mesh_a}) != build_cache_key({"customTriangles": mesh_b})
     assert build_cache_key({"recoatTimePerLayer_s": 9.0}) != build_cache_key({"recoatTimePerLayer_s": 12.0})
+    revision_key = build_cache_key({"solverRevision": "untrusted-client-value"})
+    assert revision_key == build_cache_key({})
+    with patch.object(lpbf_job_cache, "BUILD_JOB_SOLVER_REVISION", "next-implementation"):
+        assert build_cache_key({}) != revision_key
 
     # UQ must carry the whole frozen base, even when a sample changes only one
     # property and the live registry changes after the base solve.

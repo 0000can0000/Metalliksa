@@ -354,10 +354,7 @@ def calculate_meltpool_physics(
     search_len = max(d_beam * 3.0, w_analytical * 4.5, 80e-6)
     search_depth = max(d_beam * 2.2, w_analytical * 2.0, 40e-6, fabbro["depth_m"] * 1.35)
 
-    if source in ("eagar-tsai", "goldak"):
-        t_peak_C = float(T_field(0.0, 0.0, 0.0))
-    else:
-        t_peak_C = T_preheat + (2.0 * eta_eff * P_laser) / (math.pi * k_th * d_beam * math.sqrt(math.pi))
+    t_peak_C = float(T_field(0.0, 0.0, 0.0))
     # No artificial 3900 °C display ceiling — report the field peak (may exceed boiling).
 
     # 4. Liquidus extents from the conduction field (Rosenthal or Eagar–Tsai)

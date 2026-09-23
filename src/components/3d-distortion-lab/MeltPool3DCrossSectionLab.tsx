@@ -42,6 +42,7 @@ import {
 import {
   MELT_POOL_LITERATURE_CASES,
   isLoadableLiteratureCase,
+  matchesLoadableLiteratureCase,
   regimeFamily,
   relativeErrorPct,
 } from "../../data/meltPoolLiteratureCases";
@@ -158,6 +159,9 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
         heatSource,
         sulfur_ppm: sulfurPpm,
       });
+      if (!res?.meltPoolGeometry || !res?.processParameters || !res?.hydrodynamicsAndRecoil) {
+        throw new Error("Analytical melt pool response is incomplete.");
+      }
       if(generation!==solveGeneration.current||sharedAtStart!==latestSharedInput.current)return;
       setPyResult(res);
 
@@ -1285,11 +1289,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
               </p>
               {MELT_POOL_LITERATURE_CASES.map((c) => {
                 const loadable = isLoadableLiteratureCase(c);
-                const same =
-                  loadable &&
-                  pyResult.material === c.material &&
-                  Math.abs(pyResult.processParameters.laserPower_W - (c.laserPower_W ?? -1)) < 1 &&
-                  Math.abs(pyResult.processParameters.scanSpeed_mm_s - (c.scanSpeed_mm_s ?? -1)) < 1;
+                const same = matchesLoadableLiteratureCase(c, pyResult.material, pyResult.processParameters);
                 const canScore =
                   same && c.publishedWidth_um != null && c.publishedDepth_um != null;
                 const wErr = canScore
@@ -1325,7 +1325,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                       <span className="text-slate-200 font-bold">{c.label}</span>
                       <span className={regimeOk && same ? "text-emerald-400" : "text-slate-400"}>
                         {!loadable
-                          ? "Gap"
+                          ? c.processScope === "bare-plate" ? "Bare-plate model unavailable" : "Gap"
                           : same
                             ? regimeOk
                               ? "Regime match"
@@ -1334,7 +1334,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">
-                      {kindLabel}
+                      {kindLabel}{c.processScope === "bare-plate" ? " · bare plate · D4σ beam" : ""}
                       {loadable
                         ? ` · ${c.material} · ${c.laserPower_W} W · ${c.scanSpeed_mm_s} mm/s · DOI ${c.doi}`
                         : ` · ${c.material} · ${c.source}`}

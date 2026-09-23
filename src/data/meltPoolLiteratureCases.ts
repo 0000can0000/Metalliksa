@@ -14,6 +14,8 @@ export type MeltPoolLiteratureCase = {
   publishedDepth_um: number | null;
   publishedRegime: "Conduction" | "Transition" | "Keyhole" | null;
   kind: MeltPoolLiteratureKind;
+  processScope?: "bare-plate";
+  beamDiameterDefinition?: "D4sigma";
   source: string;
   doi: string;
 };
@@ -35,14 +37,16 @@ function nist718(
     scanSpeed_mm_s: speed,
     beamDiameter_um: d4sigma,
     preheatTemp_C: 23.5,
-    layerThickness_um: 40,
-    hatchSpacing_um: 110,
+    layerThickness_um: null,
+    hatchSpacing_um: null,
     publishedWidth_um: w,
     publishedDepth_um: d,
     publishedRegime: d / (w / 2) > 1 ? "Keyhole" : "Transition",
     kind: "measured",
-    source: "Lane et al., Integr. Mater. Manuf. Innov. (2024) Table 4 — AMMT bare plate",
-    doi: "10.1007/s40192-024-00355-5",
+    processScope: "bare-plate",
+    beamDiameterDefinition: "D4sigma",
+    source: "NIST AMB2022-03 measurement results Table 4 — AMMT bare plate; six cross-sections per condition",
+    doi: "10.18434/mds2-2718",
   };
 }
 
@@ -164,6 +168,7 @@ export function relativeErrorPct(predicted: number, published: number): number {
 
 export function isLoadableLiteratureCase(c: MeltPoolLiteratureCase): boolean {
   return (
+    c.processScope !== "bare-plate" &&
     c.kind !== "no-measured-track" &&
     c.laserPower_W != null &&
     c.scanSpeed_mm_s != null &&
@@ -172,4 +177,25 @@ export function isLoadableLiteratureCase(c: MeltPoolLiteratureCase): boolean {
     c.layerThickness_um != null &&
     c.hatchSpacing_um != null
   );
+}
+
+export function matchesLoadableLiteratureCase(
+  c: MeltPoolLiteratureCase,
+  material: string,
+  process: {
+    laserPower_W: number;
+    scanSpeed_mm_s: number;
+    beamDiameter_um: number;
+    preheatTemp_C: number;
+    layerThickness_um: number;
+    hatchSpacing_um: number;
+  },
+): boolean {
+  return isLoadableLiteratureCase(c) && material === c.material &&
+    Math.abs(process.laserPower_W - c.laserPower_W!) < 1 &&
+    Math.abs(process.scanSpeed_mm_s - c.scanSpeed_mm_s!) < 1 &&
+    Math.abs(process.beamDiameter_um - c.beamDiameter_um!) < 0.1 &&
+    Math.abs(process.preheatTemp_C - c.preheatTemp_C!) < 0.1 &&
+    Math.abs(process.layerThickness_um - c.layerThickness_um!) < 0.1 &&
+    Math.abs(process.hatchSpacing_um - c.hatchSpacing_um!) < 0.1;
 }

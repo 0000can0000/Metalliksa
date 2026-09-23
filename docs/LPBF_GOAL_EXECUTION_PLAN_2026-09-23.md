@@ -35,6 +35,24 @@ gibi etiketlenmez.
 | P8 | Bütünleşik ürün akışı | P3, P5, P6, P7 | Seç→hesapla→karşılaştır→dışa aktar→geri yükle; eski sonuç ve başarısız/eksik durumları görünür; gerçek tarayıcı/klavye kontrolü |
 | P9 | Son entegrasyon kapısı | P0–P8 | İlgili Python/TypeScript/sayısal/tarayıcı kontrolleri; değişiklik kapsamı, kanıt ve sınırlamalar; STATUS/PROOF ve bitiş kararı |
 
+## IN718 geometri karşılaştırmasının ön protokolü
+
+P5 için aday gözlem, NIST AMB2022-03'ün çıplak IN718 levhada yedi tek iz
+koşuluna ait optik kesit W/D ortalamalarıdır. Resmî sonuç belgesi Table 4 her
+koşulda altı ölçümün ortalamasını ve standart sapmasını verir. Kaynak ölçüm
+tanımı, iz ortasındaki kesitte başlangıç levha yüzeyinden en büyük derinliği
+ve kesitteki en büyük genişliği kullanır; model çıktısındaki başka bir genişlik
+tanımı bunun yerine geçmez. Birincil pilotta bu yedi koşula sonuçlara bakarak
+kalibrasyon yapılmayacak; hata ve ölçüm yayılımı koşul bazında raporlanacaktır.
+Sonradan kalibrasyon yapılırsa koşul grupları ve holdout ayrımı önceden ayrı
+bir protokol revizyonunda dondurulacaktır.
+
+Kıyas başlamadan modelin çıplak levha koşulunu, iz ortası ölçüm kesitini ve
+kaynağın `D4σ` ışın tanımını karşılayabildiği gösterilmelidir. Mevcut katalogda
+yer alan 40 µm katman/110 µm hatch değerleri tek iz çıplak levha ölçümü değildir;
+bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas durumu
+`unavailable` olur. Ham termografi sıcaklığı bu W/D kaynağından türetilmez.
+
 ## Değişmez sözleşmeler
 
 - `four_alloy_materials.py` mevcut dört alaşımın ortak malzeme otoritesidir.
@@ -61,7 +79,13 @@ gibi etiketlenmez.
 - Yeni alaşım için kimlik/bileşim, kaynak ve proses durumu, gerekli sıcaklığa bağlı
   özellikler, geçerlilik aralığı, birimler ve desteklenen model ayrı kaydedilir.
   IN625 önceliklidir; kaynak/veri kapısı geçilmeden kullanıcıya hesap desteği
-  açılmaz. Mevcut IN718 varsayılanı yeni alaşıma uygulanmaz.
+  açılmaz. İlk kabul termal modele özgü olabilir; build-job kararı, slicer,
+  yorulma ve qualification kendi eksik özellik/veri kapıları geçilene kadar
+  unavailable kalır. Mevcut IN718 varsayılanı yeni alaşıma uygulanmaz.
+  [NIST AMB2018-02](https://www.nist.gov/ambench/amb2018-02-description) IN625
+  çıplak levha deney kapsamını; [NIST kaynaklı bir model tablosu](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=932570)
+  bazı termofizik değerleri sağlar. Bu parçalı kaynaklar tek başına tam model
+  uygunluğu veya deneysel doğrulama sayılmaz.
 - Yazılım doğruluğu, sayısal doğrulama ve bağımsız deneysel geçerlilik ayrı
   raporlanır. Sentetik/solver verisi holdout ölçümü olarak kullanılamaz.
 

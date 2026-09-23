@@ -28,10 +28,12 @@ experimental validity. Sources: `python/four_alloy_materials.py`,
 
 The W/D check is a factor-of-two *screening* envelope, per `PROOF.md` entry
 012. The IN625 NIST comparison attached to build-job does not turn IN718 into
-a directly validated case (`python/nist_ambench_2018_02.py`). The GPU boundary
-remains open until an explicit-device thermal route matches CPU source,
-material, boundaries, mesh and timestep, with energy closure and independent
-numerical checks (`docs/LPBF_SHARED_CORE_CONTRACT.md`, GPU boundary).
+a directly validated case (`python/nist_ambench_2018_02.py`). An explicit
+`cuda:0` pilot now passes same-input CPU/GPU numerical parity for bounded
+single-track IN718 and 316L examples, including final 3D temperature fields,
+energy balance and melt-pool dimensions. General GPU qualification remains open
+across the parameter range, other alloys and independent measurements; the
+pilot does not change the material capability rows above.
 
 ## IN625 solid thermal source package
 

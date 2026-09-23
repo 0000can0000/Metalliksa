@@ -806,6 +806,11 @@ Phase 21 and worker regression tests: 5/5 PASS with normal Windows permissions;
 the sandboxed worker test failed during temporary-directory cleanup (WinError 5).
 The changed code is `python/lpbf_transient_enthalpy_fdm.py`, with regression
 tests in `python/test_lpbf_transient_enthalpy_fdm_physics.py`.
+Follow-up: preheat inside the mushy interval was initialized as sensible heat
+only, inconsistent with the solver's phase law. A matching temperature-to-
+enthalpy function now initializes it; solid, mushy and liquid round trips and
+a near-zero-duration mushy-preheat solve pass. Focused updated package: 6/6
+PASS with normal Windows permissions.
 
 This correction establishes internal numerical consistency for a limited
 stationary two-dimensional screening calculation. The fixed beam profile has

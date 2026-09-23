@@ -16,6 +16,21 @@ def _temperature_from_enthalpy(enthalpy, rho, cp, latent_heat, solidus, liquidus
     )
 
 
+def _enthalpy_from_temperature(temperature, rho, cp, latent_heat, solidus, liquidus):
+    """Evaluate the same linear phase-change law used by the inverse."""
+    h_solidus = rho * cp * solidus
+    h_liquidus = rho * (cp * liquidus + latent_heat)
+    return np.where(
+        temperature < solidus,
+        rho * cp * temperature,
+        np.where(
+            temperature <= liquidus,
+            h_solidus + (h_liquidus - h_solidus) * (temperature - solidus) / (liquidus - solidus),
+            h_liquidus + rho * cp * (temperature - liquidus),
+        ),
+    )
+
+
 def _conduction_rate(temperature, conductivity, dx, dz):
     """Conservative two-dimensional face fluxes with adiabatic outer faces."""
     rate = np.zeros_like(temperature)
@@ -56,8 +71,7 @@ class TransientEnthalpyFDMSolver:
             raise ValueError("Liquidus must exceed solidus")
         # Initialize temperature and enthalpy fields
         T = np.full((self.nz, self.nx), float(T_preheat_K))
-        # Base enthalpy relative to 0K (simplification)
-        H = rho * cp * T
+        H = _enthalpy_from_temperature(T, rho, cp, latent_heat_J_kg, T_solidus, T_liquidus)
         
         # Explicit two-axis stability bound uses the largest possible k.
         alpha_max = max(k_solid, k_liquid) / (rho * cp)

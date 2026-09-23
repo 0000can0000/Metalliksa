@@ -19,7 +19,7 @@
 ## 2026-09-23 - Ortak LPBF Scan Schedule Çıkarımı
 - `scan_segments` uygulaması `lpbf_core_physics.py` içine taşındı; `lpbf_simulation.scan_segments` eski import yolu olarak korunuyor. OpenFOAM, CFD, evidence ve test çağrıları geriye dönük uyumlu.
 - Doğrulama: Windows Python 3.12 üzerinde `test_lpbf_core_contract` + `test_lpbf_engineering`: 33 PASS, gerçek OpenFOAM testi Windows worker gereksinimi nedeniyle SKIP. OpenFOAM 14 bağımsız parity testi Ubuntu 22.04 WSL'de ayrıca PASS. Tarama rotasyonu/dwell, stripe/island zamanlaması, enerji, entalpi ve solver sözleşmesi kontrolleri geçti.
-- Commit: bu checkpoint yerel `codex/lpbf-shared-core` dalında kaydediliyor. Sıradaki somut adım: hücre-integralli ısı kaynağı sınırını ayrı bir seam olarak çıkarmak.
+- Commit: `b44210f` (`codex/lpbf-shared-core`). Sıradaki somut adım: hücre-integralli ısı kaynağı sınırını ayrı bir seam olarak çıkarmak.
 
 ---
 

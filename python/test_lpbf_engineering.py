@@ -80,7 +80,7 @@ class Verification(unittest.TestCase):
             with self.subTest(patch=patch), self.assertRaises(ValueError): validate(patch)
 
     def test_catalog_and_missing_data(self):
-        self.assertEqual(len(catalog()), 16)
+        self.assertEqual(len(catalog()), 15)
         for item in catalog():
             if item["available"]:
                 m = material(item["name"])

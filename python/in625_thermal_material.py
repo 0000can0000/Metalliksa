@@ -1,4 +1,4 @@
-"""Source-bounded solid IN625 thermal values; not a registered LPBF material.
+"""Source-bounded IN625 solid table and fusion-enthalpy screening model.
 
 Special Metals, INCONEL alloy 625 (2013), Tables 2 and 3, page 2:
 https://www.specialmetals.com/documents/technical-bulletins/inconel/inconel-alloy-625.pdf
@@ -9,6 +9,8 @@ tabulated solid interval is -18..982 C. No liquid or powder surrogate is made.
 """
 
 from bisect import bisect_left
+import hashlib
+import json
 import math
 
 
@@ -58,4 +60,109 @@ def in625_solid_thermal_at_celsius(temperature_c):
     return {
         "thermal_conductivity_W_mK": _interpolate(_CONDUCTIVITY, temperature_c),
         "specific_heat_J_kgK": _interpolate(_SPECIFIC_HEAT, temperature_c),
+    }
+
+
+# Sabau et al., Metallurgical and Materials Transactions B 51 (2020),
+# Appendix B and "Setup of STLF Simulation Model and Material Properties".
+# JMatPro-calculated solid fits are a constitutive model, not measured IN625
+# curves. Only the source's solid/mushy interval is used; no high-T extension.
+SABAU_URL = "https://doi.org/10.1007/s11663-020-01808-w"
+REFERENCE_TEMPERATURE_K = 273.15
+SOLIDUS_K = 1290.0 + 273.15
+LIQUIDUS_K = 1350.0 + 273.15
+LATENT_HEAT_J_KG = 290_000.0
+LIQUID_CP_J_KGK = 700.0
+LIQUID_K_W_MK = 30.0
+_CP_COEFFICIENTS = (362.0, 0.125, 0.0001741, -7.527126e-8)
+_K_COEFFICIENTS = (4.93, 0.01575)
+
+
+def _solid_cp(temperature_k):
+    a, b, c, d = _CP_COEFFICIENTS
+    return a + b*temperature_k + c*temperature_k**2 + d*temperature_k**3
+
+
+def _solid_k(temperature_k):
+    a, b = _K_COEFFICIENTS
+    return a + b*temperature_k
+
+
+def _solid_cp_primitive(temperature_k):
+    a, b, c, d = _CP_COEFFICIENTS
+    return (a*temperature_k + b*temperature_k**2/2
+            + c*temperature_k**3/3 + d*temperature_k**4/4)
+
+
+def in625_lpbf_thermal_snapshot():
+    """Versioned, mass-basis IN625 fusion-enthalpy screening evidence."""
+    snapshot = {
+        "schemaVersion": 1,
+        "materialId": "in625",
+        "name": "Inconel 625",
+        "capability": "bounded-fusion-enthalpy-screening",
+        "validationStatus": "unvalidated-literature-model-screening",
+        "provenanceClass": "literature-constitutive-model",
+        "source": SABAU_URL,
+        "sourceLocators": {
+            "solidCpAndConductivity": "Appendix B, JMatPro-calculated equations",
+            "liquidCpAndConductivity": "Appendix B, liquid-phase constants",
+            "phaseAndLatent": "Setup of STLF Simulation Model and Material Properties",
+        },
+        "temperatureCoverage_K": [REFERENCE_TEMPERATURE_K, LIQUIDUS_K],
+        "solidus_K": SOLIDUS_K,
+        "liquidus_K": LIQUIDUS_K,
+        "latentHeat_J_kg": LATENT_HEAT_J_KG,
+        "solidCpPolynomial_J_kgK": list(_CP_COEFFICIENTS),
+        "solidConductivityLinear_W_mK": list(_K_COEFFICIENTS),
+        "liquidCp_J_kgK": LIQUID_CP_J_KGK,
+        "liquidConductivity_W_mK": LIQUID_K_W_MK,
+        "phaseInterpolation": "linear solid-to-liquid fraction over 1290..1350 C",
+        "uncertaintyNote": (
+            "JMatPro/model-based inputs; no quantified property uncertainty or "
+            "independent validation. Mushy heat capacity and conductivity are "
+            "explicit linear screening interpolations. No powder, vapor, "
+            "optical, volumetric-density or above-liquidus prediction."
+        ),
+    }
+    payload = json.dumps(snapshot, sort_keys=True, separators=(",", ":"),
+                         ensure_ascii=True, allow_nan=False).encode("utf-8")
+    snapshot["materialRevisionSha256"] = hashlib.sha256(payload).hexdigest()
+    return snapshot
+
+
+def in625_lpbf_thermal_at_kelvin(temperature_k):
+    """Return bounded Cp, k, liquid fraction and specific enthalpy from 273.15 K."""
+    if isinstance(temperature_k, bool) or not isinstance(temperature_k, (int, float)):
+        raise ValueError("IN625 screening temperature must be a finite Kelvin number")
+    temperature_k = float(temperature_k)
+    if not math.isfinite(temperature_k) or not REFERENCE_TEMPERATURE_K <= temperature_k <= LIQUIDUS_K:
+        raise ValueError("IN625 fusion-enthalpy screening outside 273.15..1623.15 K")
+    if temperature_k <= SOLIDUS_K:
+        cp = _solid_cp(temperature_k)
+        conductivity = _solid_k(temperature_k)
+        enthalpy = _solid_cp_primitive(temperature_k) - _solid_cp_primitive(REFERENCE_TEMPERATURE_K)
+        fraction = 0.0
+        effective_cp = cp
+    else:
+        width = LIQUIDUS_K - SOLIDUS_K
+        delta = temperature_k - SOLIDUS_K
+        fraction = delta / width
+        cp_s = _solid_cp(SOLIDUS_K)
+        cp = cp_s + (LIQUID_CP_J_KGK - cp_s)*fraction
+        conductivity = _solid_k(SOLIDUS_K) + (LIQUID_K_W_MK - _solid_k(SOLIDUS_K))*fraction
+        enthalpy = (_solid_cp_primitive(SOLIDUS_K) - _solid_cp_primitive(REFERENCE_TEMPERATURE_K)
+                    + cp_s*delta + (LIQUID_CP_J_KGK - cp_s)*delta**2/(2*width)
+                    + LATENT_HEAT_J_KG*fraction)
+        effective_cp = cp + LATENT_HEAT_J_KG/width
+    return {
+        "materialId": "in625",
+        "materialRevisionSha256": in625_lpbf_thermal_snapshot()["materialRevisionSha256"],
+        "validationStatus": "unvalidated-literature-model-screening",
+        "temperature_K": temperature_k,
+        "specificHeat_J_kgK": cp,
+        "effectiveHeatCapacity_J_kgK": effective_cp,
+        "thermalConductivity_W_mK": conductivity,
+        "liquidFraction": fraction,
+        "specificEnthalpy_J_kg": enthalpy,
     }

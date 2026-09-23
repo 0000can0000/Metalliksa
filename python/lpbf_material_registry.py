@@ -10,13 +10,16 @@ import math
 import numpy as np
 from four_alloy_materials import four_alloy_thermophysical_db, resolve_alloy_id, THERMAL_NAME
 from lpbf_thermal_solver import SECONDARY_THERMOPHYSICAL_DB
+from in625_thermal_material import in625_lpbf_thermal_at_kelvin, in625_lpbf_thermal_snapshot
 
 VERSION = "lpbf-materials-1"
-LEGACY = {**four_alloy_thermophysical_db(), **SECONDARY_THERMOPHYSICAL_DB}
-NAMES = ["Ti-6Al-4V", "316L Stainless Steel", "AlSi10Mg", "Inconel 718",
-         *SECONDARY_THERMOPHYSICAL_DB,
-         "Inconel 625", "17-4PH", "15-5PH", "Maraging Steel 18Ni300",
-         "AlSi7Mg", "CuCrZr", "Ti-5553"]
+LEGACY = {**four_alloy_thermophysical_db(),
+          **{name: properties for name, properties in SECONDARY_THERMOPHYSICAL_DB.items()
+             if name != "Inconel 625"}}
+NAMES = list(dict.fromkeys(["Ti-6Al-4V", "316L Stainless Steel", "AlSi10Mg", "Inconel 718",
+                            *SECONDARY_THERMOPHYSICAL_DB,
+                            "Inconel 625", "17-4PH", "15-5PH", "Maraging Steel 18Ni300",
+                            "AlSi7Mg", "CuCrZr", "Ti-5553"]))
 
 
 def _require_json_value(value, path="material", active=None):
@@ -59,14 +62,36 @@ def _require_json_value(value, path="material", active=None):
 def catalog():
     return [{"name": n, "quality": "estimated" if n in LEGACY else "missing",
              "available": n in LEGACY,
+             "thermalOnlyAvailable": n == "Inconel 625",
              "note": "Legacy solid/liquid endpoints; estimated interpolation, constant viscosity."
-             if n in LEGACY else "Supply a sourced property table; no surrogate alloy is substituted."}
+             if n in LEGACY else (
+                 "Bounded fusion-enthalpy literature-model screening only; full transient solver unavailable."
+                 if n == "Inconel 625" else "Supply a sourced property table; no surrogate alloy is substituted.")}
             for n in NAMES]
+
+
+def _in625_identity(name):
+    return isinstance(name, str) and "".join(name.strip().lower().split()).replace("-", "") in ("in625", "inconel625")
+
+
+def thermal_screening_material(name):
+    """IN625-only bounded thermal snapshot; not a full transient material."""
+    if not _in625_identity(name):
+        raise ValueError("Thermal-only screening material unavailable for this identity")
+    return in625_lpbf_thermal_snapshot()
+
+
+def thermal_screening_at(name, temperature_k):
+    if not _in625_identity(name):
+        raise ValueError("Thermal-only screening material unavailable for this identity")
+    return in625_lpbf_thermal_at_kelvin(temperature_k)
 
 
 def material(name, supplied=None):
     if not isinstance(name, str):
         raise ValueError("Material identity must be a string")
+    if _in625_identity(name):
+        name = "Inconel 625"
     aid = resolve_alloy_id(name)
     name = THERMAL_NAME[aid] if aid else name
     if name not in NAMES:

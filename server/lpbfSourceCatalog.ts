@@ -138,3 +138,58 @@ export function nistOpticalTable4CatalogEntry(root = path.resolve('data/benchmar
             'Published standard deviation is not an experimental validation claim for this model.'] } });
     } };
 }
+
+/** NIST publisher workbook is a separate source from the local Table 4 transcription. */
+export function nistOpticalOfficialWorkbookCatalogEntry(root = path.resolve('data/benchmark/nist-amb2022-03-optical/official')): LpbfSourceCatalogEntry {
+  const datasetId = 'nist-amb2022-03-optical-xlsx-official-v1';
+  const name = 'AMB2022-718-SH1-MeltPool_Cross-Section_Measurement_Results.xlsx';
+  const sourceUrl = `https://data.nist.gov/od/ds/ark:/88434/mds2-2718/${name}`;
+  const workbookSha = '2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931';
+  const sidecarSha = '770c0826e53e42c242110e69c032f2cbc74f6183048c43a530c5b62e746ae09b';
+  return { datasetId, title: 'NIST AMB2022-03 optical sections · official workbook', sourceRoot: root,
+    loadDocument() {
+      const manifest = readJson(root, 'manifest.json');
+      const files = manifest.files;
+      if (manifest.schema_version !== 1 || manifest.dataset_id !== datasetId || manifest.version !== '1.0.0'
+        || manifest.material !== 'IN718' || manifest.process_scope !== 'bare-plate'
+        || manifest.artifact_kind !== 'publisher-optical-cross-section-measurements'
+        || manifest.checksum_authority !== 'NIST-published SHA-256 sidecar for the publisher XLSX'
+        || !Array.isArray(files) || files.length !== 2
+        || files[0]?.path !== name || files[0]?.source_url !== sourceUrl
+        || files[0]?.bytes !== 25811 || files[0]?.sha256 !== workbookSha
+        || files[1]?.path !== `${name}.sha256` || files[1]?.source_url !== `${sourceUrl}.sha256`
+        || files[1]?.bytes !== 64 || files[1]?.sha256 !== sidecarSha) {
+        throw new Error('Official optical workbook manifest identity mismatch');
+      }
+      for (const file of files) {
+        const filename = path.join(artifactDirectory(root), file.path);
+        const stat = lstatSync(filename);
+        if (stat.isSymbolicLink() || !stat.isFile() || stat.size !== file.bytes) {
+          throw new Error('Official optical workbook artifact size mismatch');
+        }
+        if (createHash('sha256').update(readFileSync(filename)).digest('hex') !== file.sha256) {
+          throw new Error('Official optical workbook artifact hash mismatch');
+        }
+      }
+      if (readFileSync(path.join(root, `${name}.sha256`), 'utf8').trim() !== workbookSha) {
+        throw new Error('Official optical workbook publisher checksum mismatch');
+      }
+      return validateSourceDocument({ schemaVersion: 1, datasetId, materialId: 'in718', processScope: 'bare-plate',
+        source: { url: 'https://doi.org/10.18434/mds2-2718', citation: manifest.citation,
+          version: manifest.version, terms: null,
+          termsMissingReason: 'Reuse terms for this workbook were not established from the cited NIST data page.' },
+        artifacts: files.map((file: any) => ({ relativePath: file.path, sha256: file.sha256,
+          byteSize: file.bytes, sourceUrl: file.source_url })),
+        sourceContext: { schema_version: 1, dataset_id: datasetId, source_version: manifest.version,
+          publisher_artifact_kind: manifest.artifact_kind, checksum_authority: manifest.checksum_authority,
+          experiment: { process_scope: 'bare-plate', sample: 'AMB2022-718-SH1-BP1',
+            track_length_mm: 10, section_positions_mm: [4.9, 6.0],
+            heat_treatment_missing_reason: 'Not established in this workbook.' },
+          measurement: { quantity: 'optical cross-section melt-pool width and depth', unit_source: 'um',
+            beam_diameter_definition: 'D4sigma', repeat_group_rule: 'Three tracks × two sections at 4.9 and 6.0 mm per case; six measurements.',
+            temperature_conversion: null,
+            temperature_conversion_missing_reason: 'Not applicable to optical cross-section geometry.' },
+          split: 'unassigned', unresolved: ['Optical section operator is not implemented by the model.',
+            'Publisher workbook measurements do not establish model validation.'] } });
+    } };
+}

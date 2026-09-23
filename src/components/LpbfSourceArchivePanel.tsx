@@ -78,7 +78,9 @@ export function SourceConditions({ document, preview }: { document: LpbfSourceDo
     <p className="text-sm">{document.source.citation}</p>
     <p className="text-xs break-all text-slate-400">Source: {document.source.url}</p>
     <div className="text-sm"><h5 className="font-medium">Source use terms</h5><p className="mt-1 text-slate-400">{document.source.terms ?? `Unknown: ${document.source.termsMissingReason}`}</p></div>
-    <p className="text-sm text-amber-200">{transcription.kind === 'local-transcription-of-published-aggregate-measurements'
+    <p className="text-sm text-amber-200">{context?.publisher_artifact_kind === 'publisher-optical-cross-section-measurements'
+      ? 'This NIST publisher workbook contains individual optical cross-section measurements. The model still needs matched conditions, an optical section operator and numerical convergence before a validation claim.'
+      : transcription.kind === 'local-transcription-of-published-aggregate-measurements'
       ? 'This local transcription contains published Table 4 optical width and depth aggregates. Individual cross-sections and images are not included. Bare-plate measurements do not establish powder-bed model validation.'
       : 'Raw camera signal is not measured temperature, melt-pool width or depth. Calibration, units and matching measurement definitions require review. Bare-plate data does not establish powder-bed validation.'}</p>
     {context ? <><h5 className="text-sm font-medium">Measurement conditions and unresolved fields</h5>

@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import express from 'express';
 import { createLpbfSourcesRouter } from '../routes/lpbfSources';
 import { LpbfSourceArchiveService } from '../server/lpbfSourceArchiveService';
-import { nistIn718CatalogEntry, nistOpticalTable4CatalogEntry } from '../server/lpbfSourceCatalog';
+import { nistIn718CatalogEntry, nistOpticalTable4CatalogEntry, nistOpticalOfficialWorkbookCatalogEntry } from '../server/lpbfSourceCatalog';
 
 const sourceRoot = path.resolve('data/benchmark/nist-amb2022-03-optical');
 const datasetId = 'nist-amb2022-03-optical-table4-local-v1';
@@ -93,4 +93,71 @@ test('optical Table 4 source previews and imports as a versioned unreviewed revi
   const verified = await (await post('verify')).json();
   assert.equal(verified.revision, 1);
   assert.equal(verified.artifactIntegrity, 'verified-now');
+});
+
+test('official optical workbook is a distinct publisher source with pinned workbook and checksum bytes', () => {
+  const root = path.join(sourceRoot, 'official');
+  const manifest = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+  const document = nistOpticalOfficialWorkbookCatalogEntry(root).loadDocument() as any;
+  assert.equal(document.datasetId, 'nist-amb2022-03-optical-xlsx-official-v1');
+  assert.equal(document.sourceContext.publisher_artifact_kind, 'publisher-optical-cross-section-measurements');
+  assert.deepEqual(document.sourceContext.experiment.section_positions_mm, [4.9, 6]);
+  assert.equal(document.artifacts.length, 2);
+  for (const file of manifest.files) {
+    const bytes = readFileSync(path.join(root, file.path));
+    assert.equal(file.bytes, bytes.length);
+    assert.equal(file.sha256, sha(bytes));
+  }
+  assert.equal(readFileSync(path.join(root, manifest.files[1].path), 'utf8'), manifest.files[0].sha256);
+  assert.equal(nistOpticalTable4CatalogEntry().datasetId, datasetId);
+  assert.ok(new LpbfSourceArchiveService().catalog().sources.some(item => item.datasetId === document.datasetId));
+});
+
+test('official optical workbook rejects changed publisher bytes and manifest identity', t => {
+  const root = path.join(sourceRoot, 'official');
+  const directory = mkdtempSync(path.join(tmpdir(), 'lpbf-optical-official-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const files = ['manifest.json', 'AMB2022-718-SH1-MeltPool_Cross-Section_Measurement_Results.xlsx',
+    'AMB2022-718-SH1-MeltPool_Cross-Section_Measurement_Results.xlsx.sha256'];
+  for (const file of files) copyFileSync(path.join(root, file), path.join(directory, file));
+  const entry = nistOpticalOfficialWorkbookCatalogEntry(directory);
+  assert.doesNotThrow(() => entry.loadDocument());
+  writeFileSync(path.join(directory, files[1]), Buffer.concat([readFileSync(path.join(directory, files[1])), Buffer.from('x')]));
+  assert.throws(() => entry.loadDocument(), /size mismatch/i);
+  copyFileSync(path.join(root, files[1]), path.join(directory, files[1]));
+  const manifest = JSON.parse(readFileSync(path.join(directory, 'manifest.json'), 'utf8'));
+  manifest.files[0].sha256 = 'f'.repeat(64);
+  writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifest));
+  assert.throws(() => entry.loadDocument(), /manifest identity mismatch/i);
+});
+
+test('official workbook independently previews, imports and verifies over HTTP', async t => {
+  const storage = mkdtempSync(path.join(tmpdir(), 'lpbf-optical-official-store-'));
+  t.after(() => rmSync(storage, { recursive: true, force: true }));
+  const officialId = 'nist-amb2022-03-optical-xlsx-official-v1';
+  const service = new LpbfSourceArchiveService(storage, [
+    nistOpticalTable4CatalogEntry(sourceRoot), nistOpticalOfficialWorkbookCatalogEntry(path.join(sourceRoot, 'official')),
+  ]);
+  const app = express(); app.use(createLpbfSourcesRouter(service));
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>(resolve => server.once('listening', resolve));
+  t.after(() => new Promise<void>(resolve => server.close(() => resolve())));
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/lpbf/sources`;
+  const post = (id: string, suffix: string, body = {}) => fetch(`${base}/${id}/${suffix}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const before = await (await fetch(`${base}/${datasetId}`)).json();
+  const response = await post(officialId, 'preview');
+  assert.equal(response.status, 200);
+  const preview = await response.json();
+  assert.equal(preview.artifactCount, 2);
+  assert.equal(preview.byteSize, 25875);
+  assert.equal(preview.expectedRevision, 0);
+  const imported = await (await post(officialId, 'import',
+    { expectedRevision: 0, documentSha256: preview.documentSha256 })).json();
+  assert.equal(imported.revision.revision, 1);
+  assert.equal(imported.revision.document.datasetId, officialId);
+  const verified = await (await post(officialId, 'verify')).json();
+  assert.equal(verified.artifactIntegrity, 'verified-now');
+  assert.equal(verified.datasetId, officialId);
+  assert.deepEqual(await (await fetch(`${base}/${datasetId}`)).json(), before);
 });

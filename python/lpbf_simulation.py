@@ -444,7 +444,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                           "NIST AMB2022-03 uses a 10 mm bare track and reports D4sigma. "
                           "The ideal-Gaussian diameter identity does not establish the actual beam profile; "
                           "the bounded reference mesh also cannot solve the full-length midpoint. "
-                          "The thermal section is not the four-section optical measurement average.")))
+                          "The thermal section is not the mean of six etched optical sections from three tracks at 4.9 and 6.0 mm.")))
     if p["tracks"] > 1 and p["mode"] in ("standard", "calibration"):
         field_overlap = result.get("fieldOverlapDiagnostics")
         if field_overlap and field_overlap.get("hasInterTrackGap"):

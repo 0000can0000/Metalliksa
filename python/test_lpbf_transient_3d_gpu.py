@@ -15,7 +15,7 @@ from lpbf_transient_3d_gpu import (
     _average_transverse_face_component,
     compute_divergence_kernel,
     enthalpy_3d_nonlinear_step_kernel,
-    keyhole_surface_kernel,
+    free_surface_kinematics_kernel,
     launch_pressure_pcg,
     pressure_jacobi_kernel,
     project_velocity_kernel,
@@ -77,28 +77,101 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         wp.synchronize()
         return fields[3].numpy()[2, 2, 3], fields[5].numpy()[2, 2, 3]
 
-    def test_recoil_surface_motion_starts_above_boiling(self):
-        shape = (5, 5, 5)
-        dz = 1.0e-5
+    def test_free_surface_kinematics_uses_normal_velocity_and_evaporation(self):
+        shape = (7, 7, 7)
+        dx = dy = dz = 1.0e-3
+        dt = 1.0e-3
         surface = np.full((shape[0], shape[1]), 3.5 * dz, dtype=np.float32)
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        U = np.zeros(shape, dtype=np.float32)
+        V = np.zeros(shape, dtype=np.float32)
+        W = np.full(shape, 0.2, dtype=np.float32)
+        updated = self._update_surface(surface, temperature, U, V, W, dt, dx, dy, dz)
+        self.assertAlmostEqual(updated[3, 3], float(surface[3, 3]) + 0.2 * dt, delta=2e-7)
 
-        def update(temp):
-            new_surface = wp.zeros((shape[0], shape[1]), dtype=float, device="cpu")
-            wp.launch(
-                kernel=keyhole_surface_kernel, dim=(shape[0], shape[1]),
-                inputs=[self._wp_array(surface), new_surface,
-                        self._wp_array(np.full(shape, temp, dtype=np.float32)),
-                        *shape[:2], dz, 1.0e-7, 101325.0, 9.7e6, 173.93,
-                        3533.0, 4420.0],
-                device="cpu",
-            )
-            wp.synchronize()
-            return new_surface.numpy()[2, 2]
+        # The evaporative contribution follows the same Hertz-Knudsen flux as
+        # the enthalpy sink, converted to liquid recession speed by rho.
+        hot = np.full(shape, 3600.0, dtype=np.float32)
+        zero = np.zeros(shape, dtype=np.float32)
+        updated = self._update_surface(surface, hot, zero, zero, zero, dt, dx, dy, dz)
+        p_sat = 101325.0 * np.exp((9.7e6 / 173.93) * (1.0 / 3533.0 - 1.0 / 3600.0))
+        m_dot = 0.54 * p_sat / np.sqrt(2.0 * np.pi * 173.93 * 3600.0 + 1e-6)
+        expected = float(surface[3, 3]) - dt * m_dot / 4420.0
+        self.assertAlmostEqual(updated[3, 3], expected, delta=2e-7)
 
-        below_boiling = update(3500.0)
-        above_boiling = update(3600.0)
-        self.assertAlmostEqual(below_boiling, float(surface[2, 2]), delta=1e-10)
-        self.assertLess(above_boiling, float(surface[2, 2]))
+    def _update_surface(self, surface, temperature, U, V, W, dt, dx, dy, dz):
+        nx, ny = surface.shape
+        nz = temperature.shape[2]
+        new_surface = wp.zeros((nx, ny), dtype=float, device="cpu")
+        wp.launch(
+            kernel=free_surface_kinematics_kernel, dim=(nx, ny),
+            inputs=[self._wp_array(surface), new_surface,
+                    self._wp_array(U), self._wp_array(V), self._wp_array(W),
+                    self._wp_array(temperature), nx, ny, nz, dx, dy, dz, dt,
+                    4420.0, 1878.0, 101325.0, 9.7e6, 173.93, 3533.0],
+            device="cpu",
+        )
+        wp.synchronize()
+        return new_surface.numpy()
+
+    def test_free_surface_graph_advects_tangentially(self):
+        shape = (7, 7, 7)
+        dx = dy = dz = 1.0e-3
+        dt = 1.0e-3
+        surface = np.full((shape[0], shape[1]), 3.5 * dz, dtype=np.float32)
+        for i in range(shape[0]):
+            surface[i, :] += np.float32(0.25 * (i - 3) * dx)
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        U = np.full(shape, 0.4, dtype=np.float32)
+        zero = np.zeros(shape, dtype=np.float32)
+        updated = self._update_surface(surface, temperature, U, zero, zero, dt, dx, dy, dz)
+        expected = float(surface[3, 3]) - 0.4 * 0.25 * dt
+        self.assertAlmostEqual(updated[3, 3], expected, delta=2e-7)
+
+    def test_projected_recoil_velocity_drives_kinematic_surface(self):
+        shape = (7, 7, 7)
+        dx = dy = dz = 1.0e-5
+        dt = 1.0e-7
+        rho = 4420.0
+        k_surf = shape[2] - 2
+        surface = np.full(shape[:2], k_surf * dz, dtype=np.float32)
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        temperature[3, 3, k_surf] = 3600.0
+        zero = np.zeros(shape, dtype=np.float32)
+        predictor = [wp.zeros(shape, dtype=float, device="cpu") for _ in range(3)]
+        wp.launch(
+            kernel=velocity_advection_forces_kernel, dim=shape,
+            inputs=[self._wp_array(zero), self._wp_array(zero), self._wp_array(zero),
+                    *predictor, self._wp_array(temperature), self._wp_array(surface),
+                    *shape, dx, dy, dz, dt, 0.005, rho, -0.0003, 0.0,
+                    1928.0, 1878.0, 101325.0, 9.7e6, 173.93, 3533.0],
+            device="cpu",
+        )
+        wp.synchronize()
+        velocity = tuple(field.numpy() for field in predictor)
+        before, after, _, status, _, _, _, projected_velocity = self._run_pressure_projection(
+            velocity, temperature, surface, _PRESSURE_PCG_MAX_ITERATIONS,
+            spacing=(dx, dy, dz), dt=dt, rho=rho,
+        )
+        self.assertEqual(status, _PRESSURE_STATUS_CONVERGED)
+        self.assertGreater(np.linalg.norm(before), 0.0)
+        self.assertLess(np.linalg.norm(after), np.linalg.norm(before))
+
+        projected_w = projected_velocity[2]
+        z_over_dz = float(surface[3, 3]) / dz
+        k_w0 = int(z_over_dz - 0.5)
+        frac_w = z_over_dz - (k_w0 + 0.5)
+        w_surface = ((1.0 - frac_w) * projected_w[3, 3, k_w0]
+                     + frac_w * projected_w[3, 3, k_w0 + 1])
+        self.assertLess(w_surface, 0.0)
+
+        updated = self._update_surface(
+            surface, temperature, *projected_velocity, dt, dx, dy, dz
+        )
+        p_sat = 101325.0 * np.exp((9.7e6 / 173.93) * (1.0 / 3533.0 - 1.0 / 3600.0))
+        m_dot = 0.54 * p_sat / np.sqrt(2.0 * np.pi * 173.93 * 3600.0 + 1e-6)
+        expected = float(surface[3, 3]) + dt * (w_surface - m_dot / rho)
+        self.assertAlmostEqual(updated[3, 3], expected, delta=2e-7)
 
     def test_surface_force_temperature_regimes(self):
         # Above solidus but below liquidus: no Marangoni or recoil boundary law.
@@ -120,10 +193,12 @@ class Transient3DPhysicsContracts(unittest.TestCase):
     @staticmethod
     def _pressure_cell_class_host(temperature, surface, i, j, k, dz, solidus=1000.0):
         nx, ny, nz = temperature.shape
-        if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+        if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0:
             return 0
         if k > int(surface[i, j] / dz):
             return 2
+        if k >= nz - 1:
+            return 0
         return 1 if temperature[i, j, k] >= solidus else 0
 
     def _pressure_apply_host(self, pressure, temperature, surface, spacing):
@@ -214,7 +289,10 @@ class Transient3DPhysicsContracts(unittest.TestCase):
                   inputs=[U, V, W, P, Z_surf, T, nx, ny, nz, dx, dy, dz,
                           dt, rho, 1000.0], device="cpu")
         after = divergence()
-        return before, after, P.numpy(), int(status.numpy()[0]), int(pcg_iterations.numpy()[0]), float(residual_norm2.numpy()[0]), float(scale_norm2.numpy()[0])
+        projected_velocity = tuple(array.numpy().copy() for array in (U, V, W))
+        return (before, after, P.numpy(), int(status.numpy()[0]),
+                int(pcg_iterations.numpy()[0]), float(residual_norm2.numpy()[0]),
+                float(scale_norm2.numpy()[0]), projected_velocity)
 
     def _solve_pressure(self, div, temperature, surface, initial_pressure=None,
                         spacing=(1.0, 1.0, 1.0), dt=1.0, rho=1.0, max_iterations=100):
@@ -268,6 +346,17 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertIsNotNone(result["pressure_projection_post_divergence_max_s_inv"])
         self.assertEqual(result["pressure_projection_iterations"], result["pressure_projection_max_iterations_per_timestep"])
         self.assertGreaterEqual(result["pressure_projection_total_iterations"], result["pressure_projection_max_iterations_per_timestep"])
+
+    def test_solver_recoil_moves_surface_through_projected_velocity(self):
+        solver = TransientEnthalpy3DGPU(nx=5, ny=5, nz=5, dx=1e-5, dy=1e-5, dz=1e-5)
+        solver.device = "cpu"
+        result = solver.solve_toolpath(
+            {"t": [0.0, 1e-7], "x": [1e-5, 1e-5], "y": [1e-5, 1e-5], "p": [0.0, 0.0]},
+            T_preheat_K=3600.0,
+        )
+        self.assertGreater(result["keyhole_depth_um"], 0.0)
+        self.assertIn(result["pressure_projection_status"],
+                      ("converged", "not_converged", "numerical_failure"))
 
     def _one_step(self, surface, temperature):
         wp.init()
@@ -326,10 +415,12 @@ class Transient3DPhysicsContracts(unittest.TestCase):
 
         def cell_class(i, j, k):
             nx, ny, nz = shape
-            if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+            if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0:
                 return 0  # domain face: no penetration
             if k > int(surface[i, j] / dz):
                 return 2  # free-surface air
+            if k >= nz - 1:
+                return 0
             if temperature[i, j, k] < 1000.0:
                 return 0  # solid wall
             return 1
@@ -361,10 +452,12 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         )
 
         def cell_class(i, j, k):
-            if i <= 0 or i >= shape[0] - 1 or j <= 0 or j >= shape[1] - 1 or k <= 0 or k >= shape[2] - 1:
+            if i <= 0 or i >= shape[0] - 1 or j <= 0 or j >= shape[1] - 1 or k <= 0:
                 return 0
             if k > int(surface[i, j] / dz):
                 return 2
+            if k >= shape[2] - 1:
+                return 0
             return 1 if temperature[i, j, k] >= 1000.0 else 0
 
         i, j, k = 2, 2, 3
@@ -436,7 +529,7 @@ class Transient3DPhysicsContracts(unittest.TestCase):
             velocity = [np.zeros(shape, dtype=np.float32) for _ in range(3)]
             for i in range(1, n - 2):
                 velocity[0][i, 2:-2, 2:-2] = np.sin(np.pi * i / (n - 2))
-            before, after, _, status, iterations, linear_r2, scale2 = self._run_pressure_projection(
+            before, after, _, status, iterations, linear_r2, scale2, _ = self._run_pressure_projection(
                 velocity, temperature, surface, _PRESSURE_PCG_MAX_ITERATIONS,
                 dt=1.0, rho=1.0,
             )
@@ -488,6 +581,8 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         shape = (7, 7, 7)
         temperature = np.full(shape, 2000.0, dtype=np.float32)
         surface = np.full((shape[0], shape[1]), (shape[2] - 2.0), dtype=np.float32)
+        # A solid cap closes the liquid component from the open top plane.
+        temperature[:, :, shape[2] - 2] = 300.0
         div = np.zeros(shape, dtype=np.float32)
         initial_pressure = np.full(shape, 7.0, dtype=np.float32)
         solved, status, iterations, relative = self._solve_pressure(
@@ -496,7 +591,8 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertEqual(status, _PRESSURE_STATUS_CONVERGED)
         self.assertEqual(iterations, 0)
         self.assertEqual(relative, 0.0)
-        self.assertTrue(np.allclose(solved[1:-1, 1:-1, 1:-1], 7.0))
+        active = temperature[1:-1, 1:-1, 1:-1] >= 1000.0
+        self.assertTrue(np.allclose(solved[1:-1, 1:-1, 1:-1][active], 7.0))
 
     def test_pcg_rejects_incompatible_rhs_in_closed_neumann_component(self):
         shape = (9, 9, 9)
@@ -558,7 +654,7 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         velocity = [np.zeros(shape, dtype=np.float32) for _ in range(3)]
         for i in range(1, n - 2):
             velocity[0][i, 2:-2, 2:-2] = np.sin(np.pi * i / (n - 2))
-        before, _, _, status, iterations, residual2, scale2 = self._run_pressure_projection(
+        before, _, _, status, iterations, residual2, scale2, _ = self._run_pressure_projection(
             velocity, temperature, surface, 1, dt=1.0, rho=1.0
         )
         self.assertEqual(status, _PRESSURE_STATUS_BUDGET_EXHAUSTED)

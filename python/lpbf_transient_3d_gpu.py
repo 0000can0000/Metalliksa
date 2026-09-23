@@ -88,6 +88,14 @@ def get_psat(T: float, P0: float, Lv: float, Rs: float, Tv: float) -> float:
     return P0 * wp.exp((Lv / Rs) * ((1.0 / Tv) - (1.0 / T)))
 
 @wp.func
+def get_evaporation_mass_flux(T: float, P0: float, Lv: float, Rs: float, Tv: float) -> float:
+    """Return the existing Hertz-Knudsen-like evaporation mass flux [kg/m^2/s]."""
+    if T <= 0.0:
+        return 0.0
+    P_sat = get_psat(T, P0, Lv, Rs, Tv)
+    return (0.54 * P_sat) / wp.sqrt(2.0 * 3.14159265 * Rs * T + 1e-6)
+
+@wp.func
 def get_temperature_from_enthalpy(h_val: float, rho: float, L_f: float, T_s: float, T_l: float, cp_solid: float, cp_liquid: float) -> float:
     H_s = rho * cp_solid * T_s
     cp_mush = 0.5 * (cp_solid + cp_liquid)
@@ -121,32 +129,70 @@ def get_k(T: float, T_s: float, T_l: float, k_solid: float, k_liquid: float) -> 
         return k_solid + (k_liquid - k_solid) * ((T - T_s) / (T_l - T_s))
 
 @wp.kernel
-def keyhole_surface_kernel(
+def free_surface_kinematics_kernel(
     Z_surf: wp.array2d(dtype=float),
     Z_surf_new: wp.array2d(dtype=float),
+    U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
     T: wp.array3d(dtype=float),
-    nx: int, ny: int, dz: float, dt: float,
-    P0: float, Lv: float, Rs: float, Tv: float, rho: float
+    nx: int, ny: int, nz: int,
+    dx: float, dy: float, dz: float, dt: float, rho: float,
+    T_solidus: float, P0: float, Lv: float, Rs: float, Tv: float
 ):
+    """Advect the height graph with projected liquid velocity and evaporation.
+
+    For z-positive-up coordinates, the graph kinematic condition is
+    h_t = w - u*h_x - v*h_y - (m_dot/rho)*sqrt(1+h_x^2+h_y^2).
+    """
     i, j = wp.tid()
     z_old = Z_surf[i, j]
     z_new = z_old
     if i > 0 and i < nx - 1 and j > 0 and j < ny - 1:
         k_surf = int(z_old / dz)
+        if k_surf < 1:
+            k_surf = 1
+        if k_surf > nz - 2:
+            k_surf = nz - 2
         T_surf = T[i, j, k_surf]
+        if T_surf >= T_solidus:
+            z_over_dz = z_old / dz
+            k_center = int(z_over_dz)
+            if k_center > nz - 2:
+                k_center = nz - 2
+            frac_center = z_over_dz - float(k_center)
 
-        # The simplified recoil law is activated only for a molten surface
-        # overheated above its boiling temperature (Alphonso et al., 2023).
-        if T_surf > Tv:
-            P_sat = get_psat(T_surf, P0, Lv, Rs, Tv)
-            P_recoil = 0.54 * P_sat
+            # Interpolate cell-centered tangential velocity to the graph and
+            # average the two staggered faces that meet at each cell center.
+            u0 = 0.5 * (U[i - 1, j, k_center] + U[i, j, k_center])
+            u1 = 0.5 * (U[i - 1, j, k_center + 1] + U[i, j, k_center + 1])
+            v0 = 0.5 * (V[i, j - 1, k_center] + V[i, j, k_center])
+            v1 = 0.5 * (V[i, j - 1, k_center + 1] + V[i, j, k_center + 1])
+            u_surf = (1.0 - frac_center) * u0 + frac_center * u1
+            v_surf = (1.0 - frac_center) * v0 + frac_center * v1
 
-            v_depress = wp.sqrt(2.0 * P_recoil / rho)
-            z_new = z_old - v_depress * dt
+            # W is stored on positive-z faces at k+1/2. Interpolate the
+            # projected normal velocity to the actual height coordinate.
+            k_w0 = int(z_over_dz - 0.5)
+            if k_w0 < 0:
+                k_w0 = 0
+            if k_w0 > nz - 3:
+                k_w0 = nz - 3
+            frac_w = z_over_dz - (float(k_w0) + 0.5)
+            w_surf = (1.0 - frac_w) * W[i, j, k_w0] + frac_w * W[i, j, k_w0 + 1]
 
+            h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
+            h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
+            m_dot = get_evaporation_mass_flux(T_surf, P0, Lv, Rs, Tv)
+            surface_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)
+            height_rate = w_surf - u_surf * h_x - v_surf * h_y - (m_dot / rho) * surface_metric
+            z_new = z_old + dt * height_rate
+
+            # Keep the graph inside the existing active vertical domain.
             if z_new < 2.0 * dz:
                 z_new = 2.0 * dz
-            
+            max_height = float(nz - 2) * dz
+            if z_new > max_height:
+                z_new = max_height
+
     Z_surf_new[i, j] = z_new
 
 @wp.func
@@ -354,11 +400,13 @@ def _pressure_cell_class(
     i: int, j: int, k: int, nx: int, ny: int, nz: int,
     dz: float, T_solidus: float
 ) -> int:
-    """Return 1 for liquid, 2 for geometric free surface, and 0 for solid/domain."""
-    if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+    """Return 1 for liquid, 2 for free-surface air, and 0 for solid/closed sides."""
+    if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0:
         return 0
     if k > int(Z_surf[i, j] / dz):
         return 2
+    if k >= nz - 1:
+        return 0
     if T[i, j, k] < T_solidus:
         return 0
     return 1
@@ -980,8 +1028,7 @@ def enthalpy_3d_nonlinear_step_kernel(
             q_laser = (2.0 * eta * l_state.power / (3.14159265 * radius * radius)) * wp.exp(-2.0 * r2 / (radius * radius))
             q_loss = h_c * (T_c - T_amb) + epsilon * 5.67e-8 * (T_c*T_c*T_c*T_c - T_amb*T_amb*T_amb*T_amb)
             
-            P_sat = get_psat(T_c, P0, Lv, Rs, Tv)
-            m_dot_evap = (0.54 * P_sat) / wp.sqrt(2.0 * 3.14159265 * Rs * T_c + 1e-6)
+            m_dot_evap = get_evaporation_mass_flux(T_c, P0, Lv, Rs, Tv)
             q_evap = m_dot_evap * Lv
             
             h_val_new = h_val_new + dt * (q_laser - q_loss - q_evap) / dz
@@ -1083,24 +1130,15 @@ class TransientEnthalpy3DGPU:
             current_t = step * dt
             step_dt = _step_size(sim_time_s, dt, step)
             
-            # 1. Update Free Surface (Recoil depression)
-            wp.launch(
-                kernel=keyhole_surface_kernel,
-                dim=(self.nx, self.ny),
-                inputs=[
-                    Z_surf, Z_surf_new, T_arr,
-                    self.nx, self.ny, self.dz, step_dt,
-                    P0, Lv, Rs, Tv, rho
-                ],
-                device=self.device
-            )
-            
-            # 2. Advect & Apply Marangoni/Boussinesq/Recoil Forces to Velocity
+            # 1. Advect & Apply Marangoni/Boussinesq/Recoil Forces on the
+            # current interface. The surface is moved from the projected
+            # velocity after this step, rather than from a separate pressure
+            # to Bernoulli-speed conversion.
             wp.launch(
                 kernel=velocity_advection_forces_kernel,
                 dim=shape,
                 inputs=[
-                    U, V, W, U_new, V_new, W_new, T_arr, Z_surf_new,
+                    U, V, W, U_new, V_new, W_new, T_arr, Z_surf,
                     self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt,
                     mu, rho, d_gamma_dT, beta, T_liquidus, T_solidus,
                     P0, Lv, Rs, Tv
@@ -1111,18 +1149,18 @@ class TransientEnthalpy3DGPU:
             V, V_new = V_new, V
             W, W_new = W_new, W
             
-            # 3. Compute Divergence
+            # 2. Compute Divergence
             wp.launch(
                 kernel=compute_divergence_kernel,
                 dim=shape,
-                inputs=[U, V, W, Div, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, T_solidus],
+                inputs=[U, V, W, Div, Z_surf, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, T_solidus],
                 device=self.device
             )
             
-            # 4. Solve A p = -rho/dt * div(u), A=-D(G(p)). PCG reductions
+            # 3. Solve A p = -rho/dt * div(u), A=-D(G(p)). PCG reductions
             # remain on device; the host does not read a scalar in this loop.
             pcg_rho, pcg_rho_next = launch_pressure_pcg(
-                P, Div, Z_surf_new, T_arr, shape, (self.dx, self.dy, self.dz),
+                P, Div, Z_surf, T_arr, shape, (self.dx, self.dy, self.dz),
                 step_dt, rho, T_solidus,
                 pcg_residual, pcg_preconditioned, pcg_direction, pcg_A_direction,
                 pcg_rho, pcg_rho_next, pcg_rhs_norm2, pcg_residual_norm2,
@@ -1134,11 +1172,11 @@ class TransientEnthalpy3DGPU:
                       inputs=[pcg_status, pcg_iterations, pressure_aggregate_status,
                               max_iterations_observed, total_iterations_observed], device=self.device)
                 
-            # 5. Project Velocity (Make Divergence-Free)
+            # 4. Project Velocity (Make Divergence-Free)
             wp.launch(
                 kernel=project_velocity_kernel,
                 dim=shape,
-                inputs=[U, V, W, P, Z_surf_new, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt, rho, T_solidus],
+                inputs=[U, V, W, P, Z_surf, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, step_dt, rho, T_solidus],
                 device=self.device
             )
 
@@ -1148,17 +1186,19 @@ class TransientEnthalpy3DGPU:
             wp.launch(
                 kernel=compute_divergence_kernel,
                 dim=shape,
-                inputs=[U, V, W, Div_post, Z_surf_new, T_arr, self.nx, self.ny,
+                inputs=[U, V, W, Div_post, Z_surf, T_arr, self.nx, self.ny,
                         self.nz, self.dx, self.dy, self.dz, T_solidus],
                 device=self.device,
             )
             
-            # 6. Advect Enthalpy and Compute New Temperatures
+            # 5. Advect Enthalpy and Compute New Temperatures on the current
+            # interface. Its evaporation mass flux is shared with the
+            # kinematic height update below.
             wp.launch(
                 kernel=enthalpy_3d_nonlinear_step_kernel,
                 dim=shape,
                 inputs=[
-                    T_arr, H_arr, U, V, W, T_new, H_new, Z_surf_new,
+                    T_arr, H_arr, U, V, W, T_new, H_new, Z_surf,
                     self.nx, self.ny, self.nz,
                     self.dx, self.dy, self.dz,
                     step_dt, current_t, rho, L_f, T_solidus, T_liquidus,
@@ -1169,6 +1209,18 @@ class TransientEnthalpy3DGPU:
                     float(cp_solid), float(cp_liquid), float(k_solid), float(k_liquid)
                 ],
                 device=self.device
+            )
+
+            # 6. Advance the graph interface after projection, using the
+            # projected liquid velocity and the enthalpy kernel's same
+            # evaporation mass flux. The new mask is active next step.
+            wp.launch(
+                kernel=free_surface_kinematics_kernel,
+                dim=(self.nx, self.ny),
+                inputs=[Z_surf, Z_surf_new, U, V, W, T_arr,
+                        self.nx, self.ny, self.nz, self.dx, self.dy, self.dz,
+                        step_dt, rho, T_solidus, P0, Lv, Rs, Tv],
+                device=self.device,
             )
             
             T_arr, T_new = T_new, T_arr

@@ -85,6 +85,36 @@ yer alan 40 µm katman/110 µm hatch değerleri tek iz çıplak levha ölçümü
 bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas durumu
 `unavailable` olur. Ham termografi sıcaklığı bu W/D kaynağından türetilmez.
 
+### 10 mm çıplak levha modeli için mevcut uygulama sınırı
+
+2026-09-24 kaynak/hesaplanabilirlik denetiminde NIST termografi Table 1 ve 2
+Case 0 girdileri 285 W, 960 mm/s, 67 µm spot, tek +X yönlü 10 mm çıplak levha
+izi ve 23,5 °C altlık sıcaklığı olarak alındı ([resmî yöntem belgesi](https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101)).
+67 µm, modeldeki ideal Gaussian 1/e² çapına yalnız koşullu nominal eşlemedir;
+ölçülmüş profil SHA'sı değildir ve katı P5 kıyas kapısını açmaz.
+
+Mevcut `python/lpbf_simulation.py` giriş sınırı `trackLength_um <= 3000`;
+10.000 µm Case 0 girdisi çözüm başlamadan reddedilir. Alan hesabında sınırı
+yalnız bellekte geçici olarak genişletmek, hiçbir termal çözüm çalıştırmadan,
+mevcut kare X/Y alanının 10,201 mm yayılım için 20/10/5 µm'de sırasıyla
+4.177.936 / 32.315.671 / 258.272.222 hücre istediğini gösterdi. İnce ağda tek
+float64 alan bile yaklaşık 2,07 GB'dir; bu uygulama şekli 3+3 çalışma için
+uygun değildir. Tam iz süresini korumakla birlikte dar enine alan kullanan bir
+hareketli çerçeve/dar-bant model veya yeterli bellekli ayrı bir backend
+gereklidir. Alan hesabı geometri tahminidir, solver çalışması değildir.
+
+Mevcut `midtrack_bare_plate_section` tek bir x=0 kesitinde ever-liquidus
+hücrelerini raporlar. NIST optik tanımı derinliği başlangıç yüzeyinden en büyük
+dikey uzaklık, genişliği kesitteki en büyük yatay uzaklık olarak alır; Tablo 4
+koşul başına üç izde 4,9 ve 6,0 mm konumlarından altı ayrı kesit içerir
+([NIST geometri tanımı, s. 3 ve Tablo 4](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=957295)).
+Yeni model bu iki fiziksel kesiti ve üç tekrar gözlemini ayrı korumalı; mevcut
+x=0 termal vekili bunların ortalaması gibi sunulmamalıdır. Sonraki P5 işi bu
+dar-bant/konumlu kesit modelini ve ona bağlı ağ-zaman kapısını tasarlamaktır.
+Nominal Gaussian sonuçları ayrı, açıkça unvalidated tarama olarak kalır;
+ölçülmüş profil, altı kesit gözlemi ve geçen bağımsız 3+3 kapı olmadan NIST
+residual üretilmez.
+
 ## Değişmez sözleşmeler
 
 - `four_alloy_materials.py` mevcut dört alaşımın ortak malzeme otoritesidir.

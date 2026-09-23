@@ -899,3 +899,29 @@ inconclusive. Focused regressions: 18 PASS / 1 expected Windows OpenFOAM skip.
 No GPU execution or NIST residual was produced. P5 remains unavailable pending
 the matched 10 mm bare-plate condition, suitable beam input, and source-matched
 optical section operator.
+
+## 2026-09-24 — P5 10 mm bare-plate feasibility audit
+
+The official AMB2022-03 thermography baseline specifies 285 W, 960 mm/s,
+67 µm nominal Gaussian spot, a 10 mm +X single track, and 23.5 °C substrate
+temperature in Table 1; Table 2 gives the seven process cases. The 67 µm input
+is an ideal-Gaussian nominal mapping only. The NIST optical definition measures
+depth from the original plate surface to the deepest point and width at the
+widest horizontal extent; the published results comprise six sections per case
+(three tracks × two sections).
+
+The current simulation rejects `trackLength_um=10000` before execution because
+the supported range ends at 3000 µm. A read-only geometry estimate temporarily
+expanded that bound in memory, then called only `calculate_mesh_domain`: the
+existing square X/Y domain spans 10.201 mm and contains 4,177,936 / 32,315,671 /
+258,272,222 cells at 20/10/5 µm. No 10 mm thermal solver was run. At 5 µm one
+float64 field alone would occupy about 2.07 GB before the solver's other arrays.
+
+The existing bare-plate observation is one x=0 plane of ever-liquidus cells.
+It neither captures the NIST locations at 4.9 and 6.0 mm from track start nor
+represents the six-section mean. A narrow-band/moving-frame solver or separate
+memory-capable backend is needed to preserve those locations across the 10 mm
+track with a viable domain. The strict comparison remains `unavailable` until
+that model, measured beam-profile evidence, six-section operator, and passing
+independent 3+3 gate are present. A nominal 67 µm Gaussian run may be reported
+only as unvalidated screening and must not emit a NIST residual.

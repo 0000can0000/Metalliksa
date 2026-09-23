@@ -27,7 +27,12 @@ non-monotonic. Peak selection is a plausible contributor to mesh-depth
 non-monotonicity, not a proven cause. The global cell-center contour remains a
 numerical proxy without surface extrapolation or NIST section equivalence.
 Next: implement and test the Phase 22 pressure-projection operator on a small
-manufactured CPU Warp field; scope any P5-matched section operator separately.
+manufactured CPU Warp field. P5 feasibility audit shows the current 3 mm track
+bound rejects the NIST 10 mm baseline; bypassing only that bound would allocate
+4.18M/32.32M/258.27M cells at 20/10/5 µm because the domain is square. No 10 mm
+solve was run. After the pressure operator, scope a narrow-band/moving-frame
+bare-plate model that records the 4.9 and 6.0 mm sections for three repeats;
+keep the 67 µm ideal-Gaussian case separate from the measured-profile gate.
 Root alone changes checkpoint documents.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is

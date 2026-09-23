@@ -839,3 +839,17 @@ geometry assessment is also inconclusive. The separate contour gate and the
 overall 75 W report are `inconclusive`; neither overrides the failed frozen
 80 W P4 report. Focused study regressions: 13/13 PASS. This is a numerical
 thermal proxy study, not NIST optical validation.
+
+**Beam source boundary:** The NIST [optical cross-section methods, Table 2](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=957295)
+specify a nominally rotational Gaussian 67 µm diameter for the baseline 10 mm
++X track. The [AMB2022-03 methods, Tables 1 and 3](https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101)
+distinguish this 67 µm thermography/optical condition from a separate 110 µm
+dynamic-coupling track condition. NIST's [2025 beam metrology report, pp. 2 and
+13](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616) states that
+the D4σ and 1/e² diameters coincide for an ideal Gaussian, while real profiles
+have deviations; its Table 1 gives 3.3 µm (5.2%) combined standard diameter
+uncertainty for the nominal 67 µm single-line condition. This source supports
+a clearly labelled nominal-Gaussian screening input, but does not provide an
+exact measured profile artifact for the currently strict P5 gate. The archived
+Table 4 revision and its run binding are unchanged; no NIST model residual was
+calculated.

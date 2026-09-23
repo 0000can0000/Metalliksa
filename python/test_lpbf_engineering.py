@@ -308,6 +308,96 @@ class Verification(unittest.TestCase):
         self.assertGreater(errors[0]/errors[1],3.5)
         self.assertGreater(errors[1]/errors[2],3.5)
 
+    def test_heterogeneous_conduction_operator_is_symmetric_and_flux_balanced(self):
+        from lpbf_simulation import conduction_rate
+
+        dx = 2.5e-4
+        shape = (6, 5, 5)
+        i, j, k_index = np.indices(shape)
+        conductivity = np.where(i < 3, 12.0, 37.0) * (1.0 + 0.05 * j)
+        active = k_index < 3
+        rng = np.random.default_rng(20260924)
+        left = rng.normal(size=shape) * active
+        right = rng.normal(size=shape) * active
+        left_rate = conduction_rate(left, conductivity, active, dx)
+        right_rate = conduction_rate(right, conductivity, active, dx)
+
+        # Harmonic face coupling must define a symmetric operator, even across
+        # conductivity jumps, and internal faces must cancel globally.
+        self.assertAlmostEqual(
+            float(np.sum(left * right_rate)),
+            float(np.sum(right * left_rate)),
+            delta=1e-8 * max(1.0, abs(float(np.sum(left * right_rate)))),
+        )
+        left_flux_scale = float(np.sum(np.abs(left_rate)))
+        right_flux_scale = float(np.sum(np.abs(right_rate)))
+        self.assertAlmostEqual(float(left_rate.sum()), 0.0, delta=1e-13 * left_flux_scale)
+        self.assertAlmostEqual(float(right_rate.sum()), 0.0, delta=1e-13 * right_flux_scale)
+        np.testing.assert_array_equal(left_rate[~active], 0.0)
+
+        # Assemble the production half-cell isothermal base and the single
+        # convective-radiative top-plane sink, then check the volume-integrated
+        # power equals the external boundary power exactly.
+        temperature = 300.0 + 20.0 * i + 8.0 * j + 15.0 * k_index
+        reference_K = 300.0
+        emissivity = 0.35
+        convection_W_m2K = 18.0
+        sigma = 5.670374419e-8
+        rate = conduction_rate(temperature, conductivity, active, dx)
+        bottom = 2.0 * conductivity[:, :, 0] * (temperature[:, :, 0] - reference_K) / dx**2
+        top_temperature = temperature[:, :, 2]
+        top_loss = (
+            convection_W_m2K * (top_temperature - reference_K)
+            + emissivity * sigma * (top_temperature**4 - reference_K**4)
+        ) / dx
+        rate[:, :, 0] -= bottom
+        rate[:, :, 2] -= top_loss
+        cell_volume = dx**3
+        boundary_power_W = (float(bottom.sum()) + float(top_loss.sum())) * cell_volume
+        integrated_rate_W = float(rate.sum()) * cell_volume
+        self.assertAlmostEqual(
+            integrated_rate_W,
+            -boundary_power_W,
+            delta=1e-12 * max(abs(integrated_rate_W), abs(boundary_power_W)),
+        )
+
+    def test_heterogeneous_conduction_timestep_refinement_converges(self):
+        from lpbf_simulation import conduction_rate
+
+        dx = 2.5e-4
+        shape = (6, 5, 5)
+        i, j, k_index = np.indices(shape)
+        conductivity = np.where(i < 3, 12.0, 37.0) * (1.0 + 0.05 * j)
+        active = k_index < 3
+        initial = 300.0 + 20.0 * i + 8.0 * j + 15.0 * k_index
+        initial[~active] = 300.0
+        capacity_J_m3K = 8.4e6
+        reference_K = 300.0
+        emissivity = 0.35
+        convection_W_m2K = 18.0
+        sigma = 5.670374419e-8
+
+        def evolve(dt):
+            temperature = initial.copy()
+            for _ in range(round(0.004 / dt)):
+                rate = conduction_rate(temperature, conductivity, active, dx)
+                rate[:, :, 0] -= (
+                    2.0 * conductivity[:, :, 0] * (temperature[:, :, 0] - reference_K) / dx**2
+                )
+                top_temperature = temperature[:, :, 2]
+                rate[:, :, 2] -= (
+                    convection_W_m2K * (top_temperature - reference_K)
+                    + emissivity * sigma * (top_temperature**4 - reference_K**4)
+                ) / dx
+                temperature[active] += dt * rate[active] / capacity_J_m3K
+            return temperature
+
+        fine = evolve(0.004 / 128)
+        coarse_error = float(np.linalg.norm((evolve(0.0005) - fine)[active]))
+        refined_error = float(np.linalg.norm((evolve(0.00025) - fine)[active]))
+        self.assertGreater(coarse_error, refined_error)
+        self.assertGreater(coarse_error / refined_error, 1.7)
+
     def test_exact_latent_heat_integral(self):
         m = material("Inconel 718"); t,h = enthalpy_table(m)
         from lpbf_material_registry import property_at

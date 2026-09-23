@@ -1019,10 +1019,13 @@ it does not extend the stationary 2D model into a moving-source 3D melt-pool
 solver.
 
 The separate CPU reference transient audit found no new demonstrable
-conservation or boundary defect in the reviewed operators. Its next independent
-physics gate is a manufactured heterogeneous-conductivity conduction case with
-mixed isothermal and convective-radiative boundaries, checking operator
-symmetry, net boundary flux, and timestep convergence.
+conservation or boundary defect in the reviewed operators. Two new manufactured
+heterogeneous-conductivity tests pass: the harmonic face operator is symmetric
+across conductivity jumps, active internal fluxes cancel, combined half-cell
+isothermal-bottom plus single-plane convective-radiative-top power closes, and
+explicit timestep refinement converges at first order. This checks the
+discretization/boundary assembly, not experimental accuracy or full transient
+material coupling.
 
 GPU alloy scope was audited without code changes. The existing CUDA path's
 measured parity is limited to its current Inconel 718 case; it does not qualify

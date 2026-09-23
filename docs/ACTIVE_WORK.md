@@ -1,5 +1,22 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-23
 
+Latest ownership update: root integrated CPU convergence (`94ddf92`), IN625
+bounded solid data (`76d5506`), NIST bare-plate UI gate (`246904c`) and Table 4
+uncertainty (`3376300`), CUDA single-track pilot (`37a56cd`), exact-source run
+service (`b3292ee`), build-job effective snapshot (`887e398`), and source
+selection UI (`0daa456`). Root owns `STATUS.md`, this coordination file, the
+execution plan and next material-data gate. `property_snapshot` now owns only
+`server/lpbfRunBundleService.ts`, `routes/lpbfRuns.ts`, and
+`tests/lpbf-run-bundle-api.test.ts` for safe server-local bundle API. The
+`cpu_convergence` agent owns `python/lpbf_simulation.py`,
+`python/lpbf_core_physics.py`, `python/lpbf_peak.py`, and
+`python/test_lpbf_bare_plate.py` for bounded bare-plate/midpoint work.
+`run_contract_ui` owns `src/components/LpbfRunArchivePanel.tsx`,
+`src/services/lpbfRunArchiveClient.ts`, `src/types/lpbfRun.ts`, and focused
+client tests for bundle UI; it coordinates the HTTP contract with the backend
+agent. Root stages/commits each package only after handoff and verification.
+External dirty documents remain unowned.
+
 User authorized continuous LPBF core/database work including GPU thermal parity
 and data-gated alloy expansion. Starting branch `codex/lpbf-buildjob-material-identity`
 at `a35499d`. The existing changes in `docs/README.md`,
@@ -17,6 +34,14 @@ and focused tests. `property_snapshot` owns new
 own `four_alloy_materials.py`, TS or docs. All agents must preserve external
 edits and must not write the same files. Root alone stages/commits while
 parallel file edits are active.
+`cpu_convergence` has handed off its two new convergence files and now owns only
+new `python/lpbf_gpu_thermal.py` and `python/test_lpbf_gpu_thermal.py` for a
+bounded GPU thermal parity pilot. `property_snapshot` has handed off P1 and now
+owns only new `docs/LPBF_ALLOY_CAPABILITY_MATRIX_2026-09-23.md` and optional
+new `python/in625_thermal_material.py` plus its focused test for P7. Root now
+also owns `src/data/meltPoolLiteratureCases.ts`,
+`src/components/3d-distortion-lab/MeltPool3DCrossSectionLab.tsx`, and
+`tests/melt-pool-literature-case.test.ts` for the NIST bare-plate mapping fix.
 
 # Current owner — 01a0c399-42df-72b0-9872-1010354f2d9a, 2026-09-21
 

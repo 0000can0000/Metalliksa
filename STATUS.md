@@ -53,6 +53,17 @@
 - Salt okunur sınır incelemeleri build-job özellik/cache kimliği, run istemci/sunucu tür uyuşmazlığı ve eski Warp akış modelinin CPU entalpi-iletiminden farklı olduğunu doğruladı. Bağımsız Python malzeme, run istemcisi ve CPU yakınsama paketleri çalışıyor; dosya sahipliği `docs/ACTIVE_WORK.md` içinde.
 - Plan/koordinasyon commit'i: `15a6ec8`. Kontrol: belge diff ve `git diff --check` PASS; bu plan paketinde solver veya ürün testi çalıştırılmadı. Sıradaki adım: üç bağımsız paket diff/kanıtlarını entegre etmek, ardından aynı termal sözleşmeye sahip GPU ve kaynaklı IN625 veri kapılarını açmak. Dışarıdan gelen belge değişiklikleri korunuyor; EIS/EDS kapsam dışı.
 
+## 2026-09-23 - Geniş LPBF Goal Ara Kapısı
+- CPU referans yakınsama harness'i 3 ağ + 3 zaman seviyesi, fiilî çözünürlük ve model/malzeme kimliği kapılarıyla eklendi (`94ddf92`). 8 odaklı kontrol PASS; gerçek IN718 pilotunda enerji kapanışı yaklaşık `3.05e-14`, eriyik W/D yakınsaması `inconclusive`. Bu deneysel doğrulama veya tamamlanmış P4 kapısı değildir.
+- Dört alaşımın model yeterlilik matrisi ve IN625 için yalnız −18…982 °C katı-bulk `k(T)`/`Cp(T)` kaynak tablosu eklendi (`76d5506`); 2 kontrol PASS. Sıvı/yüksek sıcaklık ve optik veri eksikleri nedeniyle IN625 tam LPBF hesabına açılmadı.
+- NIST AMB2022-03 IN718 optik yedi tek iz ölçümü çıplak levha ve D4σ olarak işaretlendi; toz katmanı/hatch takma değerleri kaldırıldı, uygunsuz karşılaştırma kapatıldı. 3B uzman laboratuvarı erişilebilir hale geldi (`246904c`); 2 regresyon ve TypeScript kontrolü PASS, gerçek tarayıcıda yedi vaka `Bare-plate model unavailable` olarak görüldü. Tablo 4 standart sapma aktarımı üzerinde çalışma sürüyor.
+- NIST Table 4 yedi koşulun ortalama/standart sapma/n=6 verisi katalogda (`3376300`); odaklı test ve gerçek tarayıcı görünümü geçti. Bunlar yalnız ölçümdür, model kıyası değildir.
+- Etkin build-job özellik snapshot'ı, SHA/cache/UQ ve ayrı IN625 AM-Bench screening snapshot kimliğiyle bağlandı (`887e398`); tam Python build-job testi PASS, gerçek UQ ve üç vakalık AM-Bench yolunda SHA görüldü. Hash bilimsel onay değildir.
+- Açık `cuda:N` termal pilotu CPU ile aynı sınırlı problemi çözüyor (`37a56cd`); RTX 4060 pilotunda son 3B alan, enerji ve W/D paritesi kapıları geçti, 3 kontrol PASS. Ürün backend kaydı sürüyor; eski Warp modeli eşdeğer sayılmıyor.
+- Exact kaynak revizyonlu run servisi (`b3292ee`) ve kaynak seçimi UI'si (`0daa456`) entegre edildi; sunucu ve istemci odaklı kontroller 7 ve 15 PASS. Sunucu-yerel bundle export/verify/izole restore API'si (`258032f`) 11 odaklı testte PASS. Bundle UI entegrasyonu sürüyor.
+- Çıplak levha CPU modu ve +X iz ortası ever-liquidus W/D termal kesit operatörü (`f4e5ba0`) 13 ilgili testte PASS (1 platform SKIP); 3 ağ/3 zaman pilotunda enerji kapısı geçti, W/D yakınsaması `inconclusive`. NIST 10 mm izi, gerçek ışın profili ve dört optik kesit ortalaması çözülemediği için deney karşılaştırması `unavailable`; P4/P5 bilimsel kabulü açık.
+- Sıradaki somut adım: GPU kuyruk adapterini ve bundle UI'sini entegre etmek; IN625 kaynak/model veri kapısını sonuçlandırmak; sonra birleşik sayısal/tarayıcı kontrolleriyle P4–P9 bitiş kararı vermek. Dış belge değişiklikleri korunuyor; EIS/EDS kapsam dışı.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

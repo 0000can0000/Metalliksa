@@ -21,9 +21,9 @@ post-projection divergence gates at 9^3 (15 iterations) and 17^3 (35
 iterations), and exercise zero/nonzero Neumann compatibility, disconnected
 components, exhaustion, and numerical failure. CUDA execution/performance is
 unverified on this host; do not claim GPU-device verification.
-Commit `11334ff` records this pressure-solver repair. Phase 21 also fixed integer
-array conduction silently truncating fractional face fluxes; its focused suite
-passes 6 tests, with commit pending integration. GPU alloy expansion remains
+Commit `11334ff` records this pressure-solver repair. Commit `96eeca2` fixes
+integer array conduction silently truncating fractional face fluxes; its
+focused suite passes 6 tests. GPU alloy expansion remains
 closed: current same-physics CUDA parity covers IN718 only, and IN625 lacks a
 complete source-backed transient property/optical/flow input set.
 IN625 P7 remains partial: the 273.15–1623.15 K route is explicitly

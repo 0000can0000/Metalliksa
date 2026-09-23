@@ -1,6 +1,10 @@
 import time
 import math
 import warp as wp
+
+
+_PRESSURE_JACOBI_ITERATIONS = 10
+_PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE = 1.0e-3
 import numpy as np
 
 # Phase 25: Thermo-Morphological Keyhole 3D GPU Solver with Hydrodynamics
@@ -139,6 +143,60 @@ def keyhole_surface_kernel(
             
     Z_surf_new[i, j] = z_new
 
+@wp.func
+def _liquid_velocity_face(
+    T: wp.array3d(dtype=float), Z_surf: wp.array2d(dtype=float),
+    i: int, j: int, k: int, axis: int,
+    nx: int, ny: int, nz: int, dz: float, T_solidus: float
+) -> bool:
+    """True when a stored positive-axis face is bounded by liquid cells."""
+    ri, rj, rk = i, j, k
+    if axis == 0:
+        ri += 1
+    elif axis == 1:
+        rj += 1
+    else:
+        rk += 1
+
+    if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+        return False
+    if ri <= 0 or ri >= nx - 1 or rj <= 0 or rj >= ny - 1 or rk <= 0 or rk >= nz - 1:
+        return False
+    if k > int(Z_surf[i, j] / dz) or T[i, j, k] < T_solidus:
+        return False
+    if rk > int(Z_surf[ri, rj] / dz) or T[ri, rj, rk] < T_solidus:
+        return False
+    return True
+
+
+@wp.func
+def _average_transverse_face_component(
+    velocity: wp.array3d(dtype=float), T: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float),
+    i0: int, j0: int, k0: int, i1: int, j1: int, k1: int,
+    i2: int, j2: int, k2: int, i3: int, j3: int, k3: int,
+    axis: int, nx: int, ny: int, nz: int, dz: float, T_solidus: float
+) -> float:
+    """Average submerged samples for one bilinearly interpolated component."""
+    total = 0.0
+    count = 0
+    if _liquid_velocity_face(T, Z_surf, i0, j0, k0, axis, nx, ny, nz, dz, T_solidus):
+        total += velocity[i0, j0, k0]
+        count += 1
+    if _liquid_velocity_face(T, Z_surf, i1, j1, k1, axis, nx, ny, nz, dz, T_solidus):
+        total += velocity[i1, j1, k1]
+        count += 1
+    if _liquid_velocity_face(T, Z_surf, i2, j2, k2, axis, nx, ny, nz, dz, T_solidus):
+        total += velocity[i2, j2, k2]
+        count += 1
+    if _liquid_velocity_face(T, Z_surf, i3, j3, k3, axis, nx, ny, nz, dz, T_solidus):
+        total += velocity[i3, j3, k3]
+        count += 1
+    if count > 0:
+        return total / float(count)
+    return 0.0
+
+
 @wp.kernel
 def velocity_advection_forces_kernel(
     U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
@@ -151,6 +209,12 @@ def velocity_advection_forces_kernel(
     T_liquidus: float, T_solidus: float,
     P0: float, Lv: float, Rs: float, Tv: float
 ):
+    """Advance the face-velocity predictor with stagger-aware transport.
+
+    The free-surface Marangoni and recoil assignments below remain the legacy
+    heuristic boundary treatment; this kernel does not model a moving
+    material interface or establish a validated stress/velocity boundary law.
+    """
     i, j, k = wp.tid()
     u_c = U[i, j, k]
     v_c = V[i, j, k]
@@ -167,24 +231,51 @@ def velocity_advection_forces_kernel(
             W_new[i, j, k] = 0.0
             return
             
-        # Upwind advection
-        
-        # Upwind advection
+        # MAC coordinates are U=(i+1/2,j,k), V=(i,j+1/2,k),
+        # W=(i,j,k+1/2). Each transverse component differs on two axes,
+        # requiring a bilinear (four-face) interpolation. Samples crossing a
+        # solid, air, or exterior face are omitted; remaining submerged samples
+        # form a one-sided average, or zero if none are available.
+        v_at_u = _average_transverse_face_component(
+            V, T, Z_surf, i, j - 1, k, i, j, k,
+            i + 1, j - 1, k, i + 1, j, k,
+            1, nx, ny, nz, dz, T_solidus)
+        w_at_u = _average_transverse_face_component(
+            W, T, Z_surf, i, j, k - 1, i, j, k,
+            i + 1, j, k - 1, i + 1, j, k,
+            2, nx, ny, nz, dz, T_solidus)
+        u_at_v = _average_transverse_face_component(
+            U, T, Z_surf, i - 1, j, k, i, j, k,
+            i - 1, j + 1, k, i, j + 1, k,
+            0, nx, ny, nz, dz, T_solidus)
+        w_at_v = _average_transverse_face_component(
+            W, T, Z_surf, i, j - 1, k - 1, i, j - 1, k,
+            i, j, k - 1, i, j, k,
+            2, nx, ny, nz, dz, T_solidus)
+        u_at_w = _average_transverse_face_component(
+            U, T, Z_surf, i - 1, j, k - 1, i, j, k - 1,
+            i - 1, j, k, i, j, k,
+            0, nx, ny, nz, dz, T_solidus)
+        v_at_w = _average_transverse_face_component(
+            V, T, Z_surf, i, j - 1, k - 1, i, j, k - 1,
+            i, j - 1, k, i, j, k,
+            1, nx, ny, nz, dz, T_solidus)
+
         du_dx = (u_c - U[i-1, j, k])/dx if u_c > 0.0 else (U[i+1, j, k] - u_c)/dx
-        du_dy = (u_c - U[i, j-1, k])/dy if v_c > 0.0 else (U[i, j+1, k] - u_c)/dy
-        du_dz = (u_c - U[i, j, k-1])/dz if w_c > 0.0 else (U[i, j, k+1] - u_c)/dz
+        du_dy = (u_c - U[i, j-1, k])/dy if v_at_u > 0.0 else (U[i, j+1, k] - u_c)/dy
+        du_dz = (u_c - U[i, j, k-1])/dz if w_at_u > 0.0 else (U[i, j, k+1] - u_c)/dz
         
-        dv_dx = (v_c - V[i-1, j, k])/dx if u_c > 0.0 else (V[i+1, j, k] - v_c)/dx
+        dv_dx = (v_c - V[i-1, j, k])/dx if u_at_v > 0.0 else (V[i+1, j, k] - v_c)/dx
         dv_dy = (v_c - V[i, j-1, k])/dy if v_c > 0.0 else (V[i, j+1, k] - v_c)/dy
-        dv_dz = (v_c - V[i, j, k-1])/dz if w_c > 0.0 else (V[i, j, k+1] - v_c)/dz
+        dv_dz = (v_c - V[i, j, k-1])/dz if w_at_v > 0.0 else (V[i, j, k+1] - v_c)/dz
         
-        dw_dx = (w_c - W[i-1, j, k])/dx if u_c > 0.0 else (W[i+1, j, k] - w_c)/dx
-        dw_dy = (w_c - W[i, j-1, k])/dy if v_c > 0.0 else (W[i, j+1, k] - w_c)/dy
+        dw_dx = (w_c - W[i-1, j, k])/dx if u_at_w > 0.0 else (W[i+1, j, k] - w_c)/dx
+        dw_dy = (w_c - W[i, j-1, k])/dy if v_at_w > 0.0 else (W[i, j+1, k] - w_c)/dy
         dw_dz = (w_c - W[i, j, k-1])/dz if w_c > 0.0 else (W[i, j, k+1] - w_c)/dz
         
-        adv_u = u_c*du_dx + v_c*du_dy + w_c*du_dz
-        adv_v = u_c*dv_dx + v_c*dv_dy + w_c*dv_dz
-        adv_w = u_c*dw_dx + v_c*dw_dy + w_c*dw_dz
+        adv_u = u_c*du_dx + v_at_u*du_dy + w_at_u*du_dz
+        adv_v = u_at_v*dv_dx + v_c*dv_dy + w_at_v*dv_dz
+        adv_w = u_at_w*dw_dx + v_at_w*dw_dy + w_c*dw_dz
         
         # Diffusion (viscous forces)
         nu = mu / rho
@@ -248,6 +339,22 @@ def velocity_advection_forces_kernel(
     V_new[i, j, k] = v_new_val
     W_new[i, j, k] = w_new_val
 
+@wp.func
+def _pressure_cell_class(
+    Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    i: int, j: int, k: int, nx: int, ny: int, nz: int,
+    dz: float, T_solidus: float
+) -> int:
+    """Return 1 for liquid, 2 for geometric free surface, and 0 for solid/domain."""
+    if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+        return 0
+    if k > int(Z_surf[i, j] / dz):
+        return 2
+    if T[i, j, k] < T_solidus:
+        return 0
+    return 1
+
+
 @wp.kernel
 def compute_divergence_kernel(
     U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
@@ -260,17 +367,37 @@ def compute_divergence_kernel(
 ):
     i, j, k = wp.tid()
     if i > 0 and i < nx - 1 and j > 0 and j < ny - 1 and k > 0 and k < nz - 1:
-        z_surf = Z_surf[i, j]
-        k_surf = int(z_surf / dz)
-        if k > k_surf or T[i,j,k] < T_solidus:
+        if _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus) != 1:
             Div[i,j,k] = 0.0
             return
-            
-        du_dx = (U[i+1,j,k] - U[i-1,j,k])/(2.0*dx)
-        dv_dy = (V[i,j+1,k] - V[i,j-1,k])/(2.0*dy)
-        dw_dz = (W[i,j,k+1] - W[i,j,k-1])/(2.0*dz)
-        
-        Div[i,j,k] = du_dx + dv_dy + dw_dz
+
+        # U/V/W store positive-axis face velocities.  Backward face differences
+        # pair with the forward pressure gradient in project_velocity_kernel.
+        div_x = 0.0
+        cls = _pressure_cell_class(Z_surf, T, i + 1, j, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1 or cls == 2:
+            div_x += U[i, j, k] / dx
+        cls = _pressure_cell_class(Z_surf, T, i - 1, j, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1 or cls == 2:
+            div_x -= U[i - 1, j, k] / dx
+
+        div_y = 0.0
+        cls = _pressure_cell_class(Z_surf, T, i, j + 1, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1 or cls == 2:
+            div_y += V[i, j, k] / dy
+        cls = _pressure_cell_class(Z_surf, T, i, j - 1, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1 or cls == 2:
+            div_y -= V[i, j - 1, k] / dy
+
+        div_z = 0.0
+        cls = _pressure_cell_class(Z_surf, T, i, j, k + 1, nx, ny, nz, dz, T_solidus)
+        if cls == 1 or cls == 2:
+            div_z += W[i, j, k] / dz
+        cls = _pressure_cell_class(Z_surf, T, i, j, k - 1, nx, ny, nz, dz, T_solidus)
+        if cls == 1 or cls == 2:
+            div_z -= W[i, j, k - 1] / dz
+
+        Div[i,j,k] = div_x + div_y + div_z
 
 @wp.kernel
 def pressure_jacobi_kernel(
@@ -287,23 +414,63 @@ def pressure_jacobi_kernel(
         z_surf = Z_surf[i, j]
         k_surf = int(z_surf / dz)
         
-        if k > k_surf or T[i,j,k] < T_solidus:
+        if _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus) != 1:
             P_new[i,j,k] = 0.0
             return
-            
-        term = (Div[i,j,k] * rho / dt)
-        
-        p_xm, p_xp = P[i-1,j,k], P[i+1,j,k]
-        p_ym, p_yp = P[i,j-1,k], P[i,j+1,k]
-        p_zm = float(P[i,j,k-1])
-        p_zp = float(0.0)
-        if k < k_surf:
-            p_zp = float(P[i,j,k+1])
-            
-        num = (p_xm + p_xp)/(dx*dx) + (p_ym + p_yp)/(dy*dy) + (p_zm + p_zp)/(dz*dz) - term
-        den = 2.0/(dx*dx) + 2.0/(dy*dy) + 2.0/(dz*dz)
-        
-        P_new[i,j,k] = num / den
+
+        # This is the negative-semidefinite Laplacian D(G(p)): active-neighbor
+        # faces contribute their pressure, free-surface faces contribute a
+        # zero-pressure Dirichlet coefficient, and solid/domain faces are
+        # no-penetration Neumann faces with no coefficient.
+        numerator = -Div[i,j,k] * rho / dt
+        denominator = 0.0
+        inv_dx2 = 1.0 / (dx * dx)
+        inv_dy2 = 1.0 / (dy * dy)
+        inv_dz2 = 1.0 / (dz * dz)
+
+        cls = _pressure_cell_class(Z_surf, T, i - 1, j, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1:
+            numerator += P[i - 1, j, k] * inv_dx2
+            denominator += inv_dx2
+        elif cls == 2:
+            denominator += inv_dx2
+        cls = _pressure_cell_class(Z_surf, T, i + 1, j, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1:
+            numerator += P[i + 1, j, k] * inv_dx2
+            denominator += inv_dx2
+        elif cls == 2:
+            denominator += inv_dx2
+
+        cls = _pressure_cell_class(Z_surf, T, i, j - 1, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1:
+            numerator += P[i, j - 1, k] * inv_dy2
+            denominator += inv_dy2
+        elif cls == 2:
+            denominator += inv_dy2
+        cls = _pressure_cell_class(Z_surf, T, i, j + 1, k, nx, ny, nz, dz, T_solidus)
+        if cls == 1:
+            numerator += P[i, j + 1, k] * inv_dy2
+            denominator += inv_dy2
+        elif cls == 2:
+            denominator += inv_dy2
+
+        cls = _pressure_cell_class(Z_surf, T, i, j, k - 1, nx, ny, nz, dz, T_solidus)
+        if cls == 1:
+            numerator += P[i, j, k - 1] * inv_dz2
+            denominator += inv_dz2
+        elif cls == 2:
+            denominator += inv_dz2
+        cls = _pressure_cell_class(Z_surf, T, i, j, k + 1, nx, ny, nz, dz, T_solidus)
+        if cls == 1:
+            numerator += P[i, j, k + 1] * inv_dz2
+            denominator += inv_dz2
+        elif cls == 2:
+            denominator += inv_dz2
+
+        if denominator > 0.0:
+            P_new[i,j,k] = numerator / denominator
+        else:
+            P_new[i,j,k] = 0.0
     else:
         P_new[i,j,k] = P[i,j,k]
 
@@ -318,21 +485,75 @@ def project_velocity_kernel(
     dt: float, rho: float, T_solidus: float
 ):
     i, j, k = wp.tid()
-    if i > 0 and i < nx - 1 and j > 0 and j < ny - 1 and k > 0 and k < nz - 1:
-        z_surf = Z_surf[i, j]
-        k_surf = int(z_surf / dz)
-        if k > k_surf or T[i,j,k] < T_solidus:
-            return
-            
-        dP_dx = (P[i+1,j,k] - P[i-1,j,k])/(2.0*dx)
-        dP_dy = (P[i,j+1,k] - P[i,j-1,k])/(2.0*dy)
-        dP_dz = (P[i,j,k+1] - P[i,j,k-1])/(2.0*dz)
-        if k == k_surf:
-            dP_dz = (0.0 - P[i,j,k-1])/(2.0*dz)
-            
-        U[i,j,k] -= (dt / rho) * dP_dx
-        V[i,j,k] -= (dt / rho) * dP_dy
-        W[i,j,k] -= (dt / rho) * dP_dz
+    # Each thread owns its positive-axis faces.  Air is a free surface with
+    # p=0; solid and exterior boundaries impose zero normal velocity.
+    left = _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus)
+    right = _pressure_cell_class(Z_surf, T, i + 1, j, k, nx, ny, nz, dz, T_solidus)
+    if i < nx - 1:
+        if (left == 1 or left == 2) and (right == 1 or right == 2):
+            p_left = P[i, j, k] if left == 1 else 0.0
+            p_right = P[i + 1, j, k] if right == 1 else 0.0
+            U[i, j, k] -= (dt / rho) * (p_right - p_left) / dx
+        elif left == 1 or right == 1:
+            U[i, j, k] = 0.0
+    else:
+        U[i, j, k] = 0.0
+
+    left = _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus)
+    right = _pressure_cell_class(Z_surf, T, i, j + 1, k, nx, ny, nz, dz, T_solidus)
+    if j < ny - 1:
+        if (left == 1 or left == 2) and (right == 1 or right == 2):
+            p_left = P[i, j, k] if left == 1 else 0.0
+            p_right = P[i, j + 1, k] if right == 1 else 0.0
+            V[i, j, k] -= (dt / rho) * (p_right - p_left) / dy
+        elif left == 1 or right == 1:
+            V[i, j, k] = 0.0
+    else:
+        V[i, j, k] = 0.0
+
+    left = _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus)
+    right = _pressure_cell_class(Z_surf, T, i, j, k + 1, nx, ny, nz, dz, T_solidus)
+    if k < nz - 1:
+        if (left == 1 or left == 2) and (right == 1 or right == 2):
+            p_left = P[i, j, k] if left == 1 else 0.0
+            p_right = P[i, j, k + 1] if right == 1 else 0.0
+            W[i, j, k] -= (dt / rho) * (p_right - p_left) / dz
+        elif left == 1 or right == 1:
+            W[i, j, k] = 0.0
+    else:
+        W[i, j, k] = 0.0
+
+
+@wp.func
+def _liquid_transport_cell(
+    T: wp.array3d(dtype=float), Z_surf: wp.array2d(dtype=float),
+    i: int, j: int, k: int, nx: int, ny: int, nz: int,
+    dz: float, T_solidus: float
+) -> bool:
+    """Only liquid material cells carry advective enthalpy flux."""
+    if i <= 0 or i >= nx - 1 or j <= 0 or j >= ny - 1 or k <= 0 or k >= nz - 1:
+        return False
+    if k > int(Z_surf[i, j] / dz) or T[i, j, k] < T_solidus:
+        return False
+    return True
+
+
+@wp.func
+def _enthalpy_face_flux(
+    H: wp.array3d(dtype=float), T: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float), velocity: float,
+    li: int, lj: int, lk: int, ri: int, rj: int, rk: int,
+    nx: int, ny: int, nz: int, dz: float, T_solidus: float
+) -> float:
+    """Oriented upwind enthalpy flux; closed at solid, air, and domain faces."""
+    if not _liquid_transport_cell(T, Z_surf, li, lj, lk, nx, ny, nz, dz, T_solidus):
+        return 0.0
+    if not _liquid_transport_cell(T, Z_surf, ri, rj, rk, nx, ny, nz, dz, T_solidus):
+        return 0.0
+    donor_h = H[li, lj, lk]
+    if velocity < 0.0:
+        donor_h = H[ri, rj, rk]
+    return velocity * donor_h
 
 
 @wp.kernel
@@ -394,13 +615,28 @@ def enthalpy_3d_nonlinear_step_kernel(
         qz = (k_zp*(T_zp - T_c) - k_zm*(T_c - T[i, j, k-1])) / (dz*dz)
         q_cond = qx + qy + qz
         
-        # Enthalpy Advection (Convection via liquid velocity)
-        u_vel, v_vel, w_vel = U[i,j,k], V[i,j,k], W[i,j,k]
-        dh_dx = (h_c_val - H[i-1,j,k])/dx if u_vel > 0.0 else (H[i+1,j,k] - h_c_val)/dx
-        dh_dy = (h_c_val - H[i,j-1,k])/dy if v_vel > 0.0 else (H[i,j+1,k] - h_c_val)/dy
-        dh_dz = (h_c_val - H[i,j,k-1])/dz if w_vel > 0.0 else (H[i,j,k+1] - h_c_val)/dz
-        
-        q_conv = - (u_vel * dh_dx + v_vel * dh_dy + w_vel * dh_dz)
+        # Conservative upwind transport on the positive-axis face velocities.
+        # Each shared face computes the same flux from either adjacent cell,
+        # so internal transfers cancel in the global enthalpy sum.
+        fx_p = _enthalpy_face_flux(H, T, Z_surf, U[i, j, k],
+                                   i, j, k, i + 1, j, k,
+                                   nx, ny, nz, dz, T_solidus)
+        fx_m = _enthalpy_face_flux(H, T, Z_surf, U[i - 1, j, k],
+                                   i - 1, j, k, i, j, k,
+                                   nx, ny, nz, dz, T_solidus)
+        fy_p = _enthalpy_face_flux(H, T, Z_surf, V[i, j, k],
+                                   i, j, k, i, j + 1, k,
+                                   nx, ny, nz, dz, T_solidus)
+        fy_m = _enthalpy_face_flux(H, T, Z_surf, V[i, j - 1, k],
+                                   i, j - 1, k, i, j, k,
+                                   nx, ny, nz, dz, T_solidus)
+        fz_p = _enthalpy_face_flux(H, T, Z_surf, W[i, j, k],
+                                   i, j, k, i, j, k + 1,
+                                   nx, ny, nz, dz, T_solidus)
+        fz_m = _enthalpy_face_flux(H, T, Z_surf, W[i, j, k - 1],
+                                   i, j, k - 1, i, j, k,
+                                   nx, ny, nz, dz, T_solidus)
+        q_conv = -((fx_p - fx_m) / dx + (fy_p - fy_m) / dy + (fz_p - fz_m) / dz)
         
         h_val_new = h_c_val + dt * (q_cond + q_conv)
         
@@ -535,7 +771,7 @@ class TransientEnthalpy3DGPU:
             )
             
             # 4. Solve Pressure Poisson (Jacobi Iterations)
-            for _ in range(10): # 10 iterations is sufficient for small dt
+            for _ in range(_PRESSURE_JACOBI_ITERATIONS):
                 wp.launch(
                     kernel=pressure_jacobi_kernel,
                     dim=shape,
@@ -600,7 +836,14 @@ class TransientEnthalpy3DGPU:
             "keyhole_depth_um": float(max_depth_um),
             "sim_time_s": elapsed,
             "device": self.device,
-            "steps": steps
+            "steps": steps,
+            # The production path does not yet reduce post-projection
+            # divergence. Keep this explicitly unverified instead of implying
+            # the fixed Jacobi budget met a convergence tolerance.
+            "pressure_projection_iterations": _PRESSURE_JACOBI_ITERATIONS,
+            "pressure_projection_relative_divergence_tolerance": _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE,
+            "pressure_projection_status": "not_run" if steps == 0 else "unverified_residual_not_measured",
+            "pressure_projection_converged": None
         }
 
 if __name__ == "__main__":
@@ -620,4 +863,4 @@ if __name__ == "__main__":
     print("Running square hatch toolpath simulation with full fluid mechanics...")
     res = solver.solve_toolpath(toolpath=toolpath)
     print(f"Results: {res}")
-    print("SUCCESS: Full Hydrodynamic (Marangoni + Recoil) GPU simulation verified.")
+    print("RUN COMPLETE; pressure-projection convergence remains unverified.")

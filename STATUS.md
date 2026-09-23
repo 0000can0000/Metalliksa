@@ -24,7 +24,7 @@
 ## 2026-09-23 - Ortak LPBF Hücre-İntegralli Isı Kaynağı
 - Gaussian hücre integrali, hücre ağırlıkları ve hareketli kaynak quadrature'ı `lpbf_core_physics.py` içine taşındı. `lpbf_heat_source` eski fonksiyon/sabit adlarını dışa aktarmaya devam ediyor; timestep sınırlayıcı ve iletim operatörü orada kaldı. Solverlar model kimliği `cell-integrated-gaussian-gl2-v1` değerini doğrudan ortak çekirdekten alıyor.
 - Doğrulama: Windows Python 3.12'de core-contract + engineering + heat-source toplam 40 PASS / 2 Linux/OpenFOAM SKIP. Ubuntu 22.04 WSL'de OpenFOAM 14 parity testi ve ısı-kaynağı grubu 8/8 PASS.
-- Commit: bu checkpoint yerel `codex/lpbf-shared-core` dalında kaydedilecek. Sıradaki somut adım: ortak material authority ve SI/material adapter sınırını kaynak/caller kapsamıyla planlamak.
+- Commit: `2a53597` (`codex/lpbf-shared-core`). Sıradaki somut adım: ortak material authority ve SI/material adapter sınırını kaynak/caller kapsamıyla planlamak.
 
 ---
 

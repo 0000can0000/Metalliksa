@@ -1339,6 +1339,9 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                         ? ` · ${c.material} · ${c.laserPower_W} W · ${c.scanSpeed_mm_s} mm/s · DOI ${c.doi}`
                         : ` · ${c.material} · ${c.source}`}
                     </div>
+                    {c.processScope === "bare-plate" && <p className="mt-1 text-[10px] text-slate-400">
+                      Optical cross-section, n={c.measurementCount}: W {c.publishedWidth_um} ± {c.widthStdDev_um} µm; D {c.publishedDepth_um} ± {c.depthStdDev_um} µm (mean ± SD).
+                    </p>}
                     {canScore && (
                       <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-slate-300">
                         <span>W {pyResult.meltPoolGeometry.width_um} vs {c.publishedWidth_um} μm ({wErr >= 0 ? "+" : ""}{wErr.toFixed(0)}%)</span>

@@ -9,11 +9,18 @@ import {
 test("NIST AMB2022-03 bare-plate measurements cannot be loaded as powder-layer cases", () => {
   const nist = MELT_POOL_LITERATURE_CASES.filter((c) => c.id.startsWith("nist-amb2022-03-"));
   assert.equal(nist.length, 7);
+  assert.deepEqual(nist.map(c => [c.publishedWidth_um, c.widthStdDev_um, c.publishedDepth_um, c.depthStdDev_um]), [
+    [136.3, 2.9, 139.7, 1.9], [106.2, 3.6, 227.2, 3.2], [141.7, 1.8, 102.4, 1.1],
+    [112.9, 1.7, 109.7, 1.7], [156.1, 4.9, 176.5, 2.6], [134.3, 2.5, 166.1, 2.0],
+    [129.4, 1.6, 116.9, 1.2],
+  ]);
   for (const c of nist) {
     assert.equal(c.processScope, "bare-plate");
     assert.equal(c.beamDiameterDefinition, "D4sigma");
     assert.equal(c.layerThickness_um, null);
     assert.equal(c.hatchSpacing_um, null);
+    assert.equal(c.measurementCount, 6);
+    assert.equal(c.publishedRegime, null);
     assert.equal(isLoadableLiteratureCase(c), false);
     assert.equal(matchesLoadableLiteratureCase(c, c.material, {
       laserPower_W: c.laserPower_W!, scanSpeed_mm_s: c.scanSpeed_mm_s!,

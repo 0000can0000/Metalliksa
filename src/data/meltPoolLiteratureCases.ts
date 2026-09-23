@@ -12,6 +12,9 @@ export type MeltPoolLiteratureCase = {
   hatchSpacing_um: number | null;
   publishedWidth_um: number | null;
   publishedDepth_um: number | null;
+  widthStdDev_um?: number;
+  depthStdDev_um?: number;
+  measurementCount?: number;
   publishedRegime: "Conduction" | "Transition" | "Keyhole" | null;
   kind: MeltPoolLiteratureKind;
   processScope?: "bare-plate";
@@ -28,6 +31,8 @@ function nist718(
   d4sigma: number,
   w: number,
   d: number,
+  wStd: number,
+  dStd: number,
 ): MeltPoolLiteratureCase {
   return {
     id,
@@ -41,7 +46,10 @@ function nist718(
     hatchSpacing_um: null,
     publishedWidth_um: w,
     publishedDepth_um: d,
-    publishedRegime: d / (w / 2) > 1 ? "Keyhole" : "Transition",
+    widthStdDev_um: wStd,
+    depthStdDev_um: dStd,
+    measurementCount: 6,
+    publishedRegime: null,
     kind: "measured",
     processScope: "bare-plate",
     beamDiameterDefinition: "D4sigma",
@@ -131,13 +139,13 @@ export const MELT_POOL_LITERATURE_CASES: MeltPoolLiteratureCase[] = [
     source: "No isolated single-track P–v–d–T0–W–D table. Sow 2022 hatch/cube melt pools not ingested; Piedra 2026 Table 3 has width without depth.",
     doi: "",
   },
-  nist718("nist-amb2022-03-0", "IN718 NIST AMB2022-03 baseline", 285, 960, 67, 136.3, 139.7),
-  nist718("nist-amb2022-03-1.1", "IN718 NIST spot 49 µm", 285, 960, 49, 106.2, 227.2),
-  nist718("nist-amb2022-03-1.2", "IN718 NIST spot 82 µm", 285, 960, 82, 141.7, 102.4),
-  nist718("nist-amb2022-03-2.1", "IN718 NIST 1200 mm/s", 285, 1200, 67, 112.9, 109.7),
-  nist718("nist-amb2022-03-2.2", "IN718 NIST 800 mm/s", 285, 800, 67, 156.1, 176.5),
-  nist718("nist-amb2022-03-3.1", "IN718 NIST 325 W", 325, 960, 67, 134.3, 166.1),
-  nist718("nist-amb2022-03-3.2", "IN718 NIST 245 W", 245, 960, 67, 129.4, 116.9),
+  nist718("nist-amb2022-03-0", "IN718 NIST AMB2022-03 baseline", 285, 960, 67, 136.3, 139.7, 2.9, 1.9),
+  nist718("nist-amb2022-03-1.1", "IN718 NIST spot 49 µm", 285, 960, 49, 106.2, 227.2, 3.6, 3.2),
+  nist718("nist-amb2022-03-1.2", "IN718 NIST spot 82 µm", 285, 960, 82, 141.7, 102.4, 1.8, 1.1),
+  nist718("nist-amb2022-03-2.1", "IN718 NIST 1200 mm/s", 285, 1200, 67, 112.9, 109.7, 1.7, 1.7),
+  nist718("nist-amb2022-03-2.2", "IN718 NIST 800 mm/s", 285, 800, 67, 156.1, 176.5, 4.9, 2.6),
+  nist718("nist-amb2022-03-3.1", "IN718 NIST 325 W", 325, 960, 67, 134.3, 166.1, 2.5, 2.0),
+  nist718("nist-amb2022-03-3.2", "IN718 NIST 245 W", 245, 960, 67, 129.4, 116.9, 1.6, 1.2),
   guo316l("guo-316l-n01", "316L Guo N01 (260 W, 0.52 m/s)", 260, 520, 114, 180, "Keyhole"),
   guo316l("guo-316l-n04", "316L Guo N04 (260 W, 1.47 m/s)", 260, 1470, 94, 61, "Conduction"),
   guo316l("guo-316l-n05", "316L Guo N05 (260 W, 2.20 m/s)", 260, 2200, 83, 41, "Conduction"),

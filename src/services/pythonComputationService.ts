@@ -1976,9 +1976,10 @@ export interface PythonLpbfCacheMeta {
 
 export interface PythonLpbfBuildJobResult {
   success: boolean;
+  error?: string;
   engine: string;
   modelId: string;
-  solverRevision: string;
+  solverRevision?: string;
   assumptions: string[];
   alloyId: string;
   processSeed?: number;

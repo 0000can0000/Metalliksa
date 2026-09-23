@@ -212,6 +212,9 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
     try {
       const t0 = performance.now();
       const job = await pythonComputationService.solveLpbfBuildJob(payload);
+      if (!job.success) {
+        throw new Error(job.error || "Python LPBF build-job failed.");
+      }
       if (job.solverRevision !== BUILD_JOB_SOLVER_REVISION) {
         throw new Error("LPBF build-job solver revision mismatch; update the Python solver before using this result.");
       }

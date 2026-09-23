@@ -12,7 +12,7 @@ const initialBuild = useLpbfBuildJobStore.getState();
 const originalSolve = pythonComputationService.solveLpbfBuildJob;
 let calls = 0;
 const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => ({
-  modelId: "synthetic-session-fixture", solverRevision: BUILD_JOB_SOLVER_REVISION, uq: null, ambench: null, ...extra,
+  success: true, modelId: "synthetic-session-fixture", solverRevision: BUILD_JOB_SOLVER_REVISION, uq: null, ambench: null, ...extra,
 }) as unknown as PythonLpbfBuildJobResult;
 
 beforeEach(() => {
@@ -52,6 +52,17 @@ test("a backend result from a different solver revision is rejected", async () =
   pythonComputationService.solveLpbfBuildJob = async () => fixture({ solverRevision: "old-solver-revision" });
   await requestLpbfBuildJob();
   assert.match(useLpbfBuildJobStore.getState().error ?? "", /solver revision mismatch/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
+});
+
+test("backend failures without a solver revision preserve their error", async () => {
+  const backendError = "Unsupported LPBF alloy identity: synthetic unknown alloy";
+  pythonComputationService.solveLpbfBuildJob = async () => ({
+    success: false,
+    error: backendError,
+  } as unknown as PythonLpbfBuildJobResult);
+  await requestLpbfBuildJob();
+  assert.equal(useLpbfBuildJobStore.getState().error, backendError);
   assert.equal(useLpbfBuildJobStore.getState().job, null);
 });
 

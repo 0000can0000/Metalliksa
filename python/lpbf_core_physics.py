@@ -61,7 +61,8 @@ def calculate_mesh_domain(p):
     nxy = int(math.ceil(span / dx_requested))
     dx = span / nxy
     substrate_depth = math.ceil(max(300e-6, 4 * radius) / dx) * dx
-    nz = int(math.ceil((substrate_depth + p["layers"] * p["layer_um"] * 1e-6) / dx))
+    height = 0. if p.get("surfaceMode", "powder-layer") == "bare-plate" else p["layers"] * p["layer_um"] * 1e-6
+    nz = int(math.ceil((substrate_depth + height) / dx))
     
     return {
         "radius": radius,

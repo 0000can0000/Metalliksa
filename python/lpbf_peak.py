@@ -6,6 +6,35 @@ import numpy as np
 PEAK_EXTRACTION = "accepted-step-molten-volume-v1"
 
 
+def midtrack_bare_plate_section(axis, z, ever_molten, dx):
+    """Cell-supported W/D at the plane nearest a +X track's midpoint.
+
+    NIST AMB2022-03 optical W is the widest cross-section extent, and D is the
+    deepest extent below the original bare-plate surface. Ever-liquidus cells
+    are a thermal proxy for the etched boundary, not an experimental contour.
+    """
+    axis, z, ever_molten = np.asarray(axis), np.asarray(z), np.asarray(ever_molten)
+    if (axis.ndim != 1 or z.ndim != 1 or ever_molten.shape != (len(axis), len(axis), len(z))
+            or not np.isfinite(axis).all() or not np.isfinite(z).all() or not np.isfinite(dx) or dx <= 0):
+        raise ValueError("Invalid bare-plate midpoint section grid")
+    plane = int(np.argmin(np.abs(axis)))
+    if abs(axis[plane]) > dx/2 + 1e-12:
+        raise ValueError("Track midpoint not represented by a mesh plane")
+    iy, iz = np.where(ever_molten[plane] & (z[None, :] < 0))
+    result = dict(status="no-melt" if not len(iy) else "thermal-proxy",
+                  operator="midtrack-ever-liquidus-cell-section-v1",
+                  location="nearest cell-center plane to +X track midpoint",
+                  planeOffset_um=float(axis[plane]*1e6), mesh_um=float(dx*1e6),
+                  midpointResolvedWithinQuarterCell=bool(abs(axis[plane]) <= dx/4),
+                  sampleCells=int(len(iy)), surface_m=0.,
+                  width_um=0., depth_um=0.,
+                  evidenceScope="Numerical thermal proxy; no etched-boundary or experimental validation")
+    if len(iy):
+        result["width_um"] = float((axis[iy].max()-axis[iy].min()+dx)*1e6)
+        result["depth_um"] = float(max(0., -z[iz].min()+dx/2)*1e6)
+    return result
+
+
 class PeakMeltTracker:
     def __init__(self, coordinates, dx, material):
         self.xyz = np.asarray(coordinates)

@@ -17,7 +17,7 @@ from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
-from lpbf_peak import PeakMeltTracker
+from lpbf_peak import PeakMeltTracker, midtrack_bare_plate_section
 from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
@@ -27,7 +27,8 @@ DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
                 dwell_s=0.0002, cooling_s=0.0005, scanAngle_deg=0., layerRotation_deg=67.,
                 strategy="meander", stripeWidth_um=500., islandSize_um=200., packingFraction=0.55, powderConductivityRatio=0.12,
-                convection_W_m2K=20., timeout_s=300., study="none", backend="auto")
+                convection_W_m2K=20., timeout_s=300., study="none", backend="auto",
+                surfaceMode="powder-layer", sourcePenetration_um=None)
 BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 500),
               preheat_C=(0, 1200), layer_um=(10, 150), hatch_um=(10, 1000), mesh_um=(5, 80),
               maxDt_s=(1e-9, 1e-4), trackLength_um=(100, 3000), tracks=(1, 8), layers=(1, 5),
@@ -51,6 +52,17 @@ def validate(raw):
             raise ValueError(f"{k} must be integer")
     if p["mode"] not in ("screening", "standard", "high-fidelity", "calibration") or p["strategy"] not in ("meander", "unidirectional", "stripe", "island") or p["study"] not in ("none", "mesh", "timestep"):
         raise ValueError("Unknown mode, strategy or study")
+    if p["surfaceMode"] not in ("powder-layer", "bare-plate"):
+        raise ValueError("Unknown LPBF surface mode")
+    if p["surfaceMode"] == "bare-plate":
+        penetration = p["sourcePenetration_um"]
+        if (p["mode"] != "standard" or p["backend"] != "reference" or p["layers"] != 1
+                or p["tracks"] != 1 or p["scanAngle_deg"] != 0 or p.get("measurements")):
+            raise ValueError("Bare-plate pilot requires standard/reference single +X track and no measurements")
+        if type(penetration) not in (int, float) or not math.isfinite(penetration) or not 5 <= penetration <= 150:
+            raise ValueError("Bare-plate sourcePenetration_um must be finite in [5, 150]")
+    elif p["sourcePenetration_um"] is not None:
+        raise ValueError("sourcePenetration_um is only supported for bare-plate mode")
     m = material(p["material"], p.get("properties"))
     if p["preheat_C"]+273.15 >= m["solidus_K"]:
         raise ValueError("Baseplate preheat must be below solidus")
@@ -186,9 +198,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError("Mesh exceeds 600000-cell reference solver limit; reduce domain or use coarser mesh")
     axis = (np.arange(nxy)+.5)*dx-span/2
     z = (np.arange(nz)+.5)*dx-substrate
-    layer_counts = [int(np.sum(z < layer*layer_m)) for layer in range(int(p["layers"])+1)]
-    if any(b <= a for a,b in zip(layer_counts,layer_counts[1:])):
-        raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
+    bare = p["surfaceMode"] == "bare-plate"
+    if not bare:
+        layer_counts = [int(np.sum(z < layer*layer_m)) for layer in range(int(p["layers"])+1)]
+        if any(b <= a for a,b in zip(layer_counts,layer_counts[1:])):
+            raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
     x, y, zz = np.meshgrid(axis, axis, z, indexing="ij")
     t0 = thermal_inputs["preheat_K"]
     T = np.full(x.shape, t0)
@@ -203,7 +217,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     energy_in = energy_out = 0.
     history, fronts = [], []
     peak_tracker = PeakMeltTracker(np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m)
-    overlap_tracker = FieldOverlapTracker(np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
+    overlap_tracker = None if bare else FieldOverlapTracker(np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
     peak = t0
     time, step, next_sample = 0., 0, 0.
     recorder = FieldRecorder(artifact_dir, np.column_stack([x.ravel(), y.ravel(), zz.ravel()]), dx, m, p)
@@ -214,7 +228,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     while time < end:
         seg = next((s for s in segments if s["start_s"] <= time+1e-14 and time < s["end_s"]-1e-14), None)
         active_layer = max([s["layer"] for s in segments if s["start_s"] <= time+1e-14] or [0])
-        surface = (active_layer+1)*layer_m
+        surface = 0. if bare else (active_layer+1)*layer_m
         active = zz < surface
         top_index = int(np.flatnonzero(z < surface)[-1])
         k = property_at(m, T, 2)*np.where((zz > 0)&~ever, p["powderConductivityRatio"], 1.)
@@ -240,7 +254,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             *(top_temperature+t0)*(top_temperature**2+t0**2))/dx
         dt = min(dt, float(np.min(.9*rho*cp_floor/np.maximum(diagonal, 1e-30))))
         dt, source, rate, capture, retries = source_limited_step(
-            axis, z, dx, seg, time, dt, surface, radius, layer_m,
+            axis, z, dx, seg, time, dt, surface, radius,
+            p["sourcePenetration_um"]*1e-6 if bare else layer_m,
             absorbed_power_W, rate, rho*cp)
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
@@ -271,7 +286,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         active_track = seg["track"] if seg is not None else (
             max([s["track"] for s in segments if s["layer"] == active_layer and s["end_s"] <= time + 1e-14] or [0])
         )
-        overlap_tracker.observe(T, surface, active_layer, active_track)
+        if overlap_tracker is not None:
+            overlap_tracker.observe(T, surface, active_layer, active_track)
         if sampled:
             recorder.record(time, T, surface)
             history.append(dict(time_s=time, peak_K=float(T.max()), center_K=float(T[nxy//2, nxy//2, top_index]),
@@ -286,7 +302,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError(f"Energy balance failed: {balance:.3%}")
     G, R, cooling = (np.sum(fronts, axis=0)[:3]/np.sum(fronts, axis=0)[3]).tolist() if fronts else (None, None, None)
     best, peak_diagnostics = peak_tracker.finish(artifact_dir, step)
-    overlap_metrics = overlap_tracker.finish(artifact_dir)
+    overlap_metrics = overlap_tracker.finish(artifact_dir) if overlap_tracker is not None else None
     width = best["width_um"]*1e-6
     alpha = float(property_at(m, m["liquidus_K"], 2)/(property_at(m, m["liquidus_K"], 1)*property_at(m, m["liquidus_K"], 3)))
     best.update(peakTemperature_K=peak, thermalGradient_K_m=G, solidificationRate_m_s=R,
@@ -294,11 +310,12 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 marangoniNumber=abs(m["dGamma_dT"])*max(0, peak-m["liquidus_K"])*width/(float(property_at(m, peak, 4))*alpha),
                 pecletNumber=p["speed_mm_s"]*1e-3*width/alpha,
                 aspectRatio=best["depth_um"]/best["width_um"] if width else None,
-                trackOverlapRatio=overlap_metrics["trackOverlapRatio"],
-                remeltingRatio=overlap_metrics["globalRemeltRatio"])
+                trackOverlapRatio=overlap_metrics["trackOverlapRatio"] if overlap_metrics else None,
+                remeltingRatio=overlap_metrics["globalRemeltRatio"] if overlap_metrics else None)
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
                 fieldOverlapDiagnostics=overlap_metrics,
-                numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
+                midTrackCrossSection=midtrack_bare_plate_section(axis, z, ever, dx) if bare else None,
+                numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID if overlap_metrics else None, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,
                     maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment, sourceTimestepRetries=source_retries),
@@ -311,7 +328,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
 
 def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     p, m = validate(raw)
-    analytical = screening(p, m)
+    bare = p["surfaceMode"] == "bare-plate"
+    analytical = None if bare else screening(p, m)
     fallback = p["mode"] == "high-fidelity"
     use_foam = p["backend"] == "openfoam-thermal" or (p["backend"] == "auto" and (capabilities or {}).get("openfoamThermal"))
     use_cfd = p["backend"] == "openfoam-cfd"
@@ -338,12 +356,16 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                   assumptions=["SI internal units; beam diameter is 1/e^2 intensity diameter.",
                                "No resolved momentum, Marangoni flow, evaporation, recoil, VOF, keyhole or pores.",
                                "Estimated material laws; fixed reference density conserves mass on a stationary grid.",
-                               "Uniform effective powder, irreversible conductivity densification; no resolved powder particles.",
-                               ("Gaussian penetration equals layer thickness, independent of mesh. Cell-integrated source uses two time quadrature nodes; thermal evolution remains first-order Euler. Absorbed power normalized over represented domain."
+                               ("Homogeneous solid bare plate; no powder or deposited layer."
+                                if bare else "Uniform effective powder, irreversible conductivity densification; no resolved powder particles."),
+                               ("Gaussian penetration is an explicit model input, independent of mesh; cell-integrated source uses two time quadrature nodes and first-order Euler. Absorbed power is normalized over the represented domain."
+                                if bare else "Gaussian penetration equals layer thickness, independent of mesh. Cell-integrated source uses two time quadrature nodes; thermal evolution remains first-order Euler. Absorbed power normalized over represented domain."
                                 if p["mode"] in ("standard", "calibration") else "Analytical screening has no resolved transient heat source or time integration."),
-                               "Transient layer activation uses whole cells selected by their centers; source surface clipping does not implement cut-cell mass or conduction. Inspect numerical resolution diagnostics when available.",
+                               ("Bare surface is fixed at z=0 with whole cells below it; no cut-cell interface."
+                                if bare else "Transient layer activation uses whole cells selected by their centers; source surface clipping does not implement cut-cell mass or conduction. Inspect numerical resolution diagnostics when available."),
                                "Geometry is the molten-domain extent at the earliest maximum volume over accepted timesteps; playback is sparse and multi-track pools may be disconnected. Sampling loss does not bound timestep or mesh error.",
-                               "Cross section is the maximum YZ grid section; it is not scan-normal for rotated scans.",
+                               ("Bare-plate W/D is the ever-liquidus cell extent on the YZ plane nearest the +X track midpoint; it is a thermal proxy for the optical cross section."
+                                if bare else "Cross section is the maximum YZ grid section; it is not scan-normal for rotated scans."),
                                "R = -dT/dt / |grad T| at linearly reconstructed cooling liquidus crossings; gradient vectors are interpolated in time. G, R, G×R are separately event-averaged; G <= 1e-6 K/m is excluded.",
                                "Ma and laser-travel Pe are screening numbers, not resolved velocities.",
                                "Thermal history is input for subsequent mechanics; no residual stress, distortion or cracking prediction."],
@@ -364,14 +386,35 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                 trials.append(trial)
             trials.append(result)
             actual = [v["discretization"]["mesh_m" if key == "mesh_um" else "meanDt_s"] for v in trials]
+            metric_key = "midTrackCrossSection" if bare else "metrics"
+            metric_names = ("width_um", "depth_um") if bare else ("width_um", "depth_um", "volume_um3")
+            checks = {k: convergence([v[metric_key][k] for v in trials], actual) for k in metric_names}
             result["convergenceStudy"] = dict(kind=p["study"], spacings=actual,
-                results=[v["metrics"] for v in trials],
-                checks={k: convergence([v["metrics"][k] for v in trials], actual) for k in ("width_um", "depth_um", "volume_um3")})
+                metricSource=metric_key, results=[v[metric_key] for v in trials], checks=checks)
+            if bare:
+                targets = dict(energyRelativeErrorMax=.01, finestPairWidthDepthRelativeChangeMax=.05,
+                               minimumLevels=3, source="docs/DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md#11")
+                verdicts = {}
+                for key in metric_names:
+                    values = [v[metric_key][key] for v in trials]
+                    change = abs(values[-1]-values[-2])/values[-1] if all(x > 0 for x in values) else None
+                    location_resolved = all(v[metric_key]["midpointResolvedWithinQuarterCell"] for v in trials)
+                    status = ("inconclusive" if change is None else "failed" if change > .05 else
+                              "inconclusive" if not location_resolved else
+                              "pass" if checks[key]["status"] == "numerically-converging" else "inconclusive")
+                    verdicts[key] = dict(status=status, finestPairRelativeChange=change,
+                                       midpointLocationResolved=location_resolved)
+                energies = [v["energyBalance"]["relativeError"] for v in trials]
+                energy_status = "pass" if all(e <= .01 for e in energies) else "failed"
+                states = [energy_status, *(v["status"] for v in verdicts.values())]
+                result["convergenceStudy"]["acceptance"] = dict(targets=targets, metrics=verdicts,
+                    energyStatus=energy_status, maximumEnergyRelativeError=max(energies),
+                    status="failed" if "failed" in states else "inconclusive" if "inconclusive" in states else "pass")
     else:
         result["metrics"] = analytical["goldak"]
     g = result["metrics"]
     w, d, length = g["width_um"], g["depth_um"], g["length_um"]
-    result["geometricDefectScreen"] = defect_diagnostics(w, d, length, p["hatch_um"], p["layer_um"],
+    result["geometricDefectScreen"] = None if bare else defect_diagnostics(w, d, length, p["hatch_um"], p["layer_um"],
         aggregate=p["tracks"] > 1 and p["mode"] in ("standard", "calibration"))
     lof = w <= p["hatch_um"] or d <= p["layer_um"]
     kh = d/max(w, 1e-12) > .5
@@ -379,6 +422,19 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     result["mainRisk"] = "lack-of-fusion" if lof else "keyhole (screening)" if kh else "balling (screening)" if length > math.pi*w else "not established"
     result["recommendation"] = "Reduce hatch/layer spacing; verify penetration experimentally." if lof else "Reduce power or increase speed; verify with free-surface CFD." if kh else "Compare with measured tracks before changing process parameters."
     result["riskScope"] = "Geometric screening only; no probability, density qualification or solidification cracking assessment."
+    if bare:
+        result.update(regime="bare-plate conduction assumption", mainRisk="not assessed",
+                      recommendation="Use the midpoint section only after beam and material conditions are resolved.",
+                      riskScope="Bare-plate thermal proxy; no powder defect, flow, porosity, or experimental qualification.",
+                      beamConvention=dict(input="1/e2 intensity diameter", nistReported="D4sigma second-moment diameter",
+                          idealGaussianRelation="For I(r)=I0 exp(-2r^2/w^2), sigma_x=w/2; D4sigma=4sigma_x=2w=1/e2 diameter.",
+                          mappingStatus="conditional ideal-Gaussian identity; actual measured profile not established",
+                          nistSource="https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101"),
+                      experimentalComparison=dict(status="unavailable", reason=(
+                          "NIST AMB2022-03 uses a 10 mm bare track and reports D4sigma. "
+                          "The ideal-Gaussian diameter identity does not establish the actual beam profile; "
+                          "the bounded reference mesh also cannot solve the full-length midpoint. "
+                          "The thermal section is not the four-section optical measurement average.")))
     if p["tracks"] > 1 and p["mode"] in ("standard", "calibration"):
         field_overlap = result.get("fieldOverlapDiagnostics")
         if field_overlap and field_overlap.get("hasInterTrackGap"):

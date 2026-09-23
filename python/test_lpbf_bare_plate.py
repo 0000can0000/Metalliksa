@@ -1,10 +1,14 @@
 """Bare-plate reference physics and location-specific thermal section checks."""
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
-from lpbf_peak import midtrack_bare_plate_section
+from lpbf_peak import (midtrack_bare_plate_section,
+                       interpolated_midtrack_bare_plate_section,
+                       rectangular_corridor_section_samples,
+                       rectangular_corridor_section_observations)
 from lpbf_core_physics import calculate_mesh_domain, scan_segments
 from lpbf_evidence import resource_estimate
 from lpbf_simulation import run, validate
@@ -70,11 +74,62 @@ class BarePlate(unittest.TestCase):
         self.assertAlmostEqual(result["scanPath"][0]["end"][0], 300e-6)
         self.assertEqual(result["scanPath"][0]["start"][1], 0.0)
         self.assertEqual(result["scanPath"][0]["end"][1], 0.0)
+        observations = result["barePlateSectionObservations"]
+        self.assertEqual(len(observations), 2)
+        self.assertTrue(all(record["status"] == "unsupported" for record in observations))
+        self.assertEqual(len({record["recordId"] for record in observations}), 2)
         domain = calculate_mesh_domain(validate(rectangular)[0])
         self.assertGreater(domain["nx"], domain["ny"])
         self.assertEqual(result["discretization"]["cells"], domain["nx"]*domain["ny"]*domain["nz"])
         self.assertLess(result["energyBalance"]["relativeError"], .01)
         self.assertEqual(result["midTrackCrossSection"]["status"], "thermal-proxy")
+        with patch("lpbf_simulation.rectangular_corridor_section_observations", return_value=[]):
+            no_observations = run(rectangular)
+        for key in ("energyBalance", "discretization", "thermalHistory"):
+            self.assertEqual(result[key], no_observations[key])
+
+    def test_rectangular_corridor_sections_keep_exact_positions_and_interpolate_off_grid(self):
+        axis_x = np.arange(-.005, .0091, .002)
+        axis_y = np.arange(-.01, .0101, .002)
+        z = np.arange(-.01, .0021, .002)
+        requests = rectangular_corridor_section_samples(axis_x, -.005, .01)
+        self.assertEqual([row["distanceFromScanStart_mm"] for row in requests], [4.9, 6.0])
+        self.assertAlmostEqual(requests[0]["xCoordinate_m"], -.0001)
+        self.assertAlmostEqual(requests[1]["xCoordinate_m"], .001)
+        self.assertEqual(requests[0]["interpolationOperator"],
+                         "linear-interpolation-between-accepted-peak-temperature-planes-v1")
+        self.assertAlmostEqual(requests[0]["interpolationFraction"], .45)
+        self.assertEqual(requests[1]["interpolationOperator"], "exact-cell-center")
+        self.assertEqual(len({row["recordId"] for row in requests}), 2)
+        self.assertTrue(all("one simulated" in row["scanLineScope"] for row in requests))
+
+        left = np.full((len(axis_y), len(z)), 300.)
+        right = np.full_like(left, 300.)
+        for iy, y_value in enumerate(axis_y):
+            if abs(y_value) <= .006:
+                left[iy, z >= -.008] = 1800.
+            if abs(y_value) <= .002:
+                right[iy, z >= -.004] = 1800.
+        fields = {2: left, 3: right}
+        observations = rectangular_corridor_section_observations(axis_y, z, fields, requests, .002, 1000.)
+        off_grid, exact = observations
+        expected_field = .55*left+.45*right
+        expected = interpolated_midtrack_bare_plate_section(axis_y, z, expected_field, .002, 1000., 0.)
+        self.assertEqual(off_grid["status"], "thermal-proxy")
+        self.assertEqual(exact["status"], "thermal-proxy")
+        self.assertAlmostEqual(off_grid["width_um"], expected["width_um"])
+        self.assertAlmostEqual(off_grid["depth_um"], expected["depth_um"])
+        self.assertNotEqual(off_grid["width_um"], exact["width_um"])
+        self.assertNotEqual(off_grid["depth_um"], exact["depth_um"])
+        self.assertEqual(off_grid["temporalAggregation"],
+                         "accepted-step maximum per source X plane, then spatially interpolated")
+
+    def test_rectangular_corridor_sections_report_unsupported_without_extrapolation(self):
+        axis_x = np.array([-.003, -.002, -.001])
+        too_short = rectangular_corridor_section_samples(axis_x, -.005, .005)
+        self.assertTrue(all(row["status"] == "unsupported" for row in too_short))
+        self.assertIn("outside the represented cell-center X domain", too_short[0]["reason"])
+        self.assertIn("beyond the simulated scan length", too_short[1]["reason"])
 
     def test_rectangular_corridor_10mm_estimates_and_refuses_oversized_fine_meshes(self):
         p, m = validate({**CASE, "barePlateGeometry": "rectangular-corridor",
@@ -98,6 +153,7 @@ class BarePlate(unittest.TestCase):
     def test_bare_plate_square_default_is_unchanged_by_explicit_square(self):
         implicit = run(CASE)
         explicit = run({**CASE, "barePlateGeometry": "square"})
+        self.assertNotIn("barePlateSectionObservations", implicit)
         self.assertEqual(implicit["metrics"], explicit["metrics"])
         self.assertEqual(implicit["energyBalance"], explicit["energyBalance"])
         self.assertEqual(implicit["discretization"], explicit["discretization"])

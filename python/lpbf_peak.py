@@ -4,6 +4,8 @@ from pathlib import Path
 import numpy as np
 
 PEAK_EXTRACTION = "accepted-step-molten-volume-v1"
+RECTANGULAR_CORRIDOR_SECTION_OPERATOR = "bare-plate-corridor-accepted-peak-x-linear-section-v1"
+RECTANGULAR_CORRIDOR_SECTION_DISTANCES_MM = (4.9, 6.0)
 
 
 def midtrack_bare_plate_section(axis, z, ever_molten, dx, axis_y=None):
@@ -105,6 +107,105 @@ def interpolated_midtrack_bare_plate_section(axis, z, maximum_temperature, dx, l
         return result
     result.update(status="thermal-proxy", width_um=width_um, depth_um=depth_um)
     return result
+
+
+def rectangular_corridor_section_samples(axis_x, scan_start_x_m, track_length_m):
+    """Resolve fixed section coordinates to exact or bracketed X cell centers."""
+    axis_x = np.asarray(axis_x, dtype=float)
+    if (axis_x.ndim != 1 or len(axis_x) < 2 or not np.isfinite(axis_x).all()
+            or not np.isfinite(scan_start_x_m) or not np.isfinite(track_length_m)
+            or track_length_m <= 0 or not np.all(np.diff(axis_x) > 0)):
+        raise ValueError("Invalid rectangular-corridor scan axis or scan extent")
+    dx_values = np.diff(axis_x)
+    if not np.allclose(dx_values, dx_values[0], rtol=1e-8, atol=1e-12):
+        raise ValueError("Rectangular-corridor section X axis must be uniform")
+    dx = float(dx_values[0])
+    samples = []
+    for distance_mm in RECTANGULAR_CORRIDOR_SECTION_DISTANCES_MM:
+        distance_m = distance_mm*1e-3
+        x_position = float(scan_start_x_m+distance_m)
+        sample = dict(recordId=f"single-line-x-{str(distance_mm).replace('.', 'p')}mm",
+                      status="unsupported", operator=RECTANGULAR_CORRIDOR_SECTION_OPERATOR,
+                      scanLineScope="one simulated +X track; not experimental repeats",
+                      distanceFromScanStart_mm=distance_mm, xCoordinate_m=x_position,
+                      scanStartX_m=float(scan_start_x_m), interpolationOperator=None,
+                      sourcePlaneIndices=[], sourcePlaneX_m=[], interpolationFraction=None,
+                      width_um=None, depth_um=None)
+        if distance_m > track_length_m+1e-12:
+            sample["reason"] = "Requested section lies beyond the simulated scan length"
+            samples.append(sample)
+            continue
+        if x_position < axis_x[0]-1e-12 or x_position > axis_x[-1]+1e-12:
+            sample["reason"] = "Requested section lies outside the represented cell-center X domain"
+            samples.append(sample)
+            continue
+        right = int(np.searchsorted(axis_x, x_position, side="left"))
+        tol = max(1e-12, dx*1e-9)
+        if right < len(axis_x) and abs(axis_x[right]-x_position) <= tol:
+            indices, fraction = [right], 0.
+            operator = "exact-cell-center"
+        elif right > 0 and right < len(axis_x):
+            left = right-1
+            fraction = float((x_position-axis_x[left])/(axis_x[right]-axis_x[left]))
+            indices = [left, right]
+            operator = "linear-interpolation-between-accepted-peak-temperature-planes-v1"
+        else:
+            sample["reason"] = "Requested section cannot be interpolated without X-domain extrapolation"
+            samples.append(sample)
+            continue
+        sample.update(status="pending", interpolationOperator=operator,
+                      sourcePlaneIndices=indices,
+                      sourcePlaneX_m=[float(axis_x[index]) for index in indices],
+                      interpolationFraction=fraction)
+        samples.append(sample)
+    return samples
+
+
+def rectangular_corridor_section_observations(axis_y, z, peak_temperature_planes,
+                                               samples, dx, liquidus_K):
+    """Return separate thermal-proxy observations using the X-plane peak fields.
+
+    For off-grid X locations, cell-center peak-temperature fields are blended
+    after temporal maxima have been accumulated independently on each plane.
+    """
+    axis_y, z = np.asarray(axis_y, dtype=float), np.asarray(z, dtype=float)
+    observations = []
+    for request in samples:
+        observation = dict(request)
+        if request["status"] != "pending":
+            observations.append(observation)
+            continue
+        indices = request["sourcePlaneIndices"]
+        if any(index not in peak_temperature_planes for index in indices):
+            observation.update(status="unsupported",
+                               reason="Accepted-step peak field missing for an X interpolation plane")
+            observations.append(observation)
+            continue
+        fields = [np.asarray(peak_temperature_planes[index], dtype=float) for index in indices]
+        if any(field.shape != (len(axis_y), len(z)) or not np.isfinite(field).all() for field in fields):
+            observation.update(status="unsupported", reason="Invalid accepted-step section peak-temperature field")
+            observations.append(observation)
+            continue
+        if len(fields) == 1:
+            section_field = fields[0]
+        else:
+            fraction = request["interpolationFraction"]
+            section_field = (1-fraction)*fields[0]+fraction*fields[1]
+        contour = interpolated_midtrack_bare_plate_section(
+            axis_y, z, section_field, dx, liquidus_K, 0.)
+        observation.update(status=contour["status"],
+                           location=f"section {request['distanceFromScanStart_mm']:.1f} mm from +X scan start",
+                           temporalAggregation="accepted-step maximum per source X plane, then spatially interpolated",
+                           interpolationOperator=request["interpolationOperator"],
+                           contourOperator="linear-liquidus-crossings-between-cell-centers-v1",
+                           sourcePlaneX_um=[x*1e6 for x in request["sourcePlaneX_m"]],
+                           width_um=contour["width_um"], depth_um=contour["depth_um"],
+                           sampleCells=contour["sampleCells"],
+                           evidenceScope="Numerical thermal proxy; no etched-boundary or experimental validation; one simulated line only")
+        if contour.get("reason"):
+            observation["reason"] = contour["reason"]
+        observations.append(observation)
+    return observations
 
 
 def interpolated_peak_melt_pool(coordinates, temperature, surface, angle, dx, liquidus_K):

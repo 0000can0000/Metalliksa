@@ -18,7 +18,9 @@ from lpbf_verification import compare, convergence
 from lpbf_heat_source import source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_peak import (PeakMeltTracker, midtrack_bare_plate_section,
-                       interpolated_midtrack_bare_plate_section)
+                       interpolated_midtrack_bare_plate_section,
+                       rectangular_corridor_section_samples,
+                       rectangular_corridor_section_observations)
 from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
@@ -226,6 +228,13 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     ever = np.zeros_like(T, dtype=bool)
     midpoint_plane = int(np.argmin(np.abs(axis))) if bare else None
     midpoint_temperature_max = np.full((ny, nz), t0) if bare else None
+    rectangular_corridor = bare and p["barePlateGeometry"] == "rectangular-corridor"
+    corridor_section_samples = (rectangular_corridor_section_samples(
+        axis, segments[0]["start"][0], p["trackLength_um"]*1e-6)
+        if rectangular_corridor else None)
+    corridor_peak_planes = ({index: np.full((ny, nz), t0) for index in sorted({
+        plane for sample in corridor_section_samples if sample["status"] == "pending"
+        for plane in sample["sourcePlaneIndices"]})} if rectangular_corridor else None)
     remelt = np.zeros_like(ever)
     previous_melt = np.zeros_like(ever)
     energy_in = energy_out = 0.
@@ -291,6 +300,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         ever |= melt
         if bare:
             np.maximum(midpoint_temperature_max, T[midpoint_plane], out=midpoint_temperature_max)
+            if rectangular_corridor:
+                for plane, maximum in corridor_peak_planes.items():
+                    np.maximum(maximum, T[plane], out=maximum)
         front = liquidus_crossing_sums(old, T, active, dx, dt, m["liquidus_K"])
         if front is not None:
             fronts.append(front)
@@ -336,6 +348,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 midTrackInterpolatedCrossSection=interpolated_midtrack_bare_plate_section(
                     axis_y, z, midpoint_temperature_max, dx, m["liquidus_K"], axis[midpoint_plane]
                 ) if bare else None,
+                **({"barePlateSectionObservations": rectangular_corridor_section_observations(
+                    axis_y, z, corridor_peak_planes, corridor_section_samples, dx, m["liquidus_K"])}
+                    if rectangular_corridor else {}),
                 numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID if overlap_metrics else None, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,

@@ -62,7 +62,12 @@ def _case_result(scenario, key, requested):
                    actualMeanDt_s=disc["meanDt_s"], actualMinimumDt_s=disc["minimumDt_s"],
                    steps=disc["steps"], width_um=result["metrics"]["width_um"],
                    depth_um=result["metrics"]["depth_um"],
+                   volume_um3=result["metrics"].get("volume_um3"),
                    peakTemperature_K=result["metrics"]["peakTemperature_K"],
+                   peakSelection={key: result.get("numericalDiagnostics", {}).get(key) for key in (
+                       "meltPoolExtraction", "peakMeltTime_s", "peakMeltStep",
+                       "peakMeltCellCount", "equalMaximumEndpointCount",
+                       "firstEqualMaximumTime_s", "lastEqualMaximumTime_s")},
                    interpolatedMidTrackCrossSection=copy.deepcopy(
                        result.get("midTrackInterpolatedCrossSection")),
                    interpolatedPeakMeltPool=copy.deepcopy(result.get("peakInterpolatedMeltPool")),

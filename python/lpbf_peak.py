@@ -182,6 +182,8 @@ class PeakMeltTracker:
         self.dx, self.m = dx, material
         self.count = self.sampled_count = 0
         self.state = None
+        self.equal_maximum_count = 0
+        self.first_equal_maximum_time = self.last_equal_maximum_time = None
 
     def observe(self, temperature, surface, angle, time, step, sampled=False):
         temperature = np.asarray(temperature).ravel()
@@ -192,6 +194,11 @@ class PeakMeltTracker:
         if count > self.count:
             self.count = count
             self.state = (temperature.copy(), active, surface, angle, float(time), int(step))
+            self.equal_maximum_count = 1
+            self.first_equal_maximum_time = self.last_equal_maximum_time = float(time)
+        elif count > 0 and count == self.count:
+            self.equal_maximum_count += 1
+            self.last_equal_maximum_time = float(time)
 
     def finish(self, artifact_dir, observed_steps):
         metrics = dict(length_um=0., width_um=0., depth_um=0., volume_um3=0., crossSectionArea_um2=0.)
@@ -226,6 +233,10 @@ class PeakMeltTracker:
                                 evidenceScope="Numerical thermal proxy; no experimental validation")
         diagnostics = dict(meltPoolExtraction=PEAK_EXTRACTION, peakMeltTime_s=time,
                            peakMeltStep=step, meltPoolObservedSteps=int(observed_steps),
+                           peakMeltCellCount=self.count,
+                           equalMaximumEndpointCount=self.equal_maximum_count,
+                           firstEqualMaximumTime_s=self.first_equal_maximum_time,
+                           lastEqualMaximumTime_s=self.last_equal_maximum_time,
                            sampledPeakMeltVolume_um3=self.sampled_count*self.dx**3*1e18,
                            peakMeltSamplingLossFraction=(self.count-self.sampled_count)/self.count if self.count else 0.,
                            interpolatedPeakMeltPool=interpolated)

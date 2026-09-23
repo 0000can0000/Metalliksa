@@ -1,3 +1,23 @@
+# Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-23
+
+User authorized continuous LPBF core/database work including GPU thermal parity
+and data-gated alloy expansion. Starting branch `codex/lpbf-buildjob-material-identity`
+at `a35499d`. The existing changes in `docs/README.md`,
+`sonkayıtlar/LOG.md`, and new `docs/SCIENTIFIC_RESEARCH_VISION.md` are external
+and remain unowned. Root owns integration, execution plan, this coordination
+record and STATUS.md. Read-only boundary reviews completed by `material_boundary`,
+`run_product`, and `gpu_numerics`. Current implementation owners:
+`cpu_convergence` owns new `python/lpbf_convergence_study.py` and focused tests;
+`run_contract_ui` owns `src/types/lpbfRun.ts`,
+`src/services/lpbfRunArchiveClient.ts`, `src/components/LpbfRunArchivePanel.tsx`
+and focused tests. `property_snapshot` owns new
+`python/lpbf_build_job_material_snapshot.py`, `python/lpbf_build_job_solver.py`,
+`python/lpbf_job_cache.py`, `python/lpbf_worker.py`, `python/lpbf_thermal_solver.py`,
+`python/stl_slicer_build_time_solver.py` and focused Python tests. It does not
+own `four_alloy_materials.py`, TS or docs. All agents must preserve external
+edits and must not write the same files. Root alone stages/commits while
+parallel file edits are active.
+
 # Current owner — 01a0c399-42df-72b0-9872-1010354f2d9a, 2026-09-21
 
 Continues LOCAL b8b1f7f after source01a0c383 stopped writing. Owns

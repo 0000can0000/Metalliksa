@@ -66,18 +66,21 @@ export function SourceConditions({ document, preview }: { document: LpbfSourceDo
   const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const measurement = object(context?.measurement);
   const experiment = object(context?.experiment);
+  const transcription = object(context?.transcription);
   const known = (value: unknown, reason?: unknown) => typeof value === 'string' || typeof value === 'number' ? String(value)
     : `Unknown${typeof reason === 'string' ? ` — ${reason}` : ''}`;
   return <div className="space-y-4 border-t border-slate-700 pt-4">
     <h4 className="font-medium">{preview ? 'Preview source conditions' : 'Stored source conditions'}</h4>
     <dl className="grid gap-3 text-sm sm:grid-cols-3">{[
       ['Material', document.materialId.toUpperCase()], ['Process scope', document.processScope], ['Source version', document.source.version],
-      ['Original files', String(document.artifacts.length)], ['Total bytes', document.artifacts.reduce((sum, item) => sum + item.byteSize, 0).toLocaleString('en-US')],
+      ['Archived files', String(document.artifacts.length)], ['Total bytes', document.artifacts.reduce((sum, item) => sum + item.byteSize, 0).toLocaleString('en-US')],
     ].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-400">{label}</dt><dd>{value}</dd></div>)}</dl>
     <p className="text-sm">{document.source.citation}</p>
     <p className="text-xs break-all text-slate-400">Source: {document.source.url}</p>
     <div className="text-sm"><h5 className="font-medium">Source use terms</h5><p className="mt-1 text-slate-400">{document.source.terms ?? `Unknown: ${document.source.termsMissingReason}`}</p></div>
-    <p className="text-sm text-amber-200">Raw camera signal is not measured temperature, melt-pool width or depth. Calibration, units and matching measurement definitions require review. Bare-plate data does not establish powder-bed validation.</p>
+    <p className="text-sm text-amber-200">{transcription.kind === 'local-transcription-of-published-aggregate-measurements'
+      ? 'This local transcription contains published Table 4 optical width and depth aggregates. Individual cross-sections and images are not included. Bare-plate measurements do not establish powder-bed model validation.'
+      : 'Raw camera signal is not measured temperature, melt-pool width or depth. Calibration, units and matching measurement definitions require review. Bare-plate data does not establish powder-bed validation.'}</p>
     {context ? <><h5 className="text-sm font-medium">Measurement conditions and unresolved fields</h5>
       <dl className="grid gap-4 text-sm sm:grid-cols-2">{[
         ['Machine', known(experiment.machine)], ['Heat treatment', known(experiment.heat_treatment, experiment.heat_treatment_missing_reason)],
@@ -89,6 +92,6 @@ export function SourceConditions({ document, preview }: { document: LpbfSourceDo
       {Array.isArray(context.unresolved) && <ul className="list-disc pl-5 space-y-1 text-sm text-amber-200">{context.unresolved.filter(item => typeof item === 'string').map((item, index) => <li key={index}>{String(item)}</li>)}</ul>}
       <details><summary className="cursor-pointer text-sm">Full source context</summary><pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-3 text-xs leading-5 text-slate-300" tabIndex={0} aria-label="Full source context">{JSON.stringify(context, null, 2)}</pre></details></>
       : <p className="text-amber-200">Source context unknown. Measurement conditions have not been established.</p>}
-    <details><summary className="cursor-pointer text-sm focus-visible:outline-2 focus-visible:outline-sky-300">Original file hashes</summary><ul className="mt-3 space-y-3 text-xs">{document.artifacts.map(item => <li key={item.relativePath} className="break-all">{item.relativePath} · {item.byteSize.toLocaleString('en-US')} bytes<br/>SHA256 {item.sha256}</li>)}</ul></details>
+    <details><summary className="cursor-pointer text-sm focus-visible:outline-2 focus-visible:outline-sky-300">Archived file hashes</summary><ul className="mt-3 space-y-3 text-xs">{document.artifacts.map(item => <li key={item.relativePath} className="break-all">{item.relativePath} · {item.byteSize.toLocaleString('en-US')} bytes<br/>SHA256 {item.sha256}</li>)}</ul></details>
   </div>;
 }

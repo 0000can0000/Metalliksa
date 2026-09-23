@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { artifactDirectory } from './lpbfArtifactStore';
@@ -61,5 +62,79 @@ export function cmuTi64CatalogEntry(root = path.resolve('data/benchmark/cmu-ti64
           terms: null, termsMissingReason: 'Public benchmark' },
         artifacts: manifest.files.map((file: any) => ({ relativePath: file.path, sha256: file.sha256, byteSize: file.bytes, sourceUrl: file.source_url })),
         sourceContext: { schema_version: 1, dataset_id: manifest.dataset_id, source_version: '1' } });
+    } };
+}
+
+/** A locally transcribed Table 4 aggregate, kept separate from NIST's raw HDF5 catalog. */
+export function nistOpticalTable4CatalogEntry(root = path.resolve('data/benchmark/nist-amb2022-03-optical')): LpbfSourceCatalogEntry {
+  const datasetId = 'nist-amb2022-03-optical-table4-local-v1';
+  const artifactSha256 = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';
+  const artifactBytes = 3374;
+  const resultsUrl = 'https://www.nist.gov/document/am-bench-amb2022-03-measurement-and-result-descriptions-v10';
+  const methodsUrl = 'https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101';
+  return { datasetId, title: 'NIST AMB2022-03 Table 4 · local aggregate transcription', sourceRoot: root,
+    loadDocument() {
+      const manifest = readJson(root, 'manifest.json');
+      const file = manifest.files?.[0];
+      if (manifest.schema_version !== 1 || manifest.dataset_id !== datasetId || manifest.version !== '1.0.0'
+        || manifest.material !== 'IN718' || manifest.process_scope !== 'bare-plate'
+        || manifest.artifact_kind !== 'local-transcription-of-published-aggregate-measurements'
+        || !Array.isArray(manifest.files) || manifest.files.length !== 1
+        || file?.path !== 'table4-aggregate-v1.json' || file.source_url !== resultsUrl
+        || file.bytes !== artifactBytes || file.sha256 !== artifactSha256) {
+        throw new Error('Optical transcription manifest identity mismatch');
+      }
+      const filename = path.join(artifactDirectory(root), file.path);
+      const stat = lstatSync(filename);
+      if (stat.isSymbolicLink() || !stat.isFile() || stat.size !== file.bytes || stat.size > 1024 * 1024) {
+        throw new Error('Optical transcription artifact size mismatch');
+      }
+      const bytes = readFileSync(filename);
+      if (createHash('sha256').update(bytes).digest('hex') !== file.sha256) {
+        throw new Error('Optical transcription artifact hash mismatch');
+      }
+      const data = JSON.parse(bytes.toString('utf8'));
+      const experiment = data.experiment;
+      if (data.schemaVersion !== 1 || data.kind !== manifest.artifact_kind
+        || data.transcriptionVersion !== manifest.version || data.material !== 'IN718'
+        || data.benchmark !== 'AMB2022-03' || data.doi !== '10.18434/mds2-2718'
+        || data.publishedResults !== resultsUrl || data.publishedMethods !== methodsUrl
+        || data.measurement?.countPerCondition !== 6 || data.measurement?.unit !== 'um'
+        || experiment?.processScope !== 'bare-plate' || experiment?.sample !== 'AMB2022-718-SH1-BP1'
+        || experiment?.beamDiameterDefinition !== 'D4sigma' || experiment?.scanDirection !== '+X'
+        || experiment?.trackLength_mm !== 10 || experiment?.powderLayerThickness_um !== null
+        || experiment?.hatchSpacing_um !== null || !Array.isArray(data.cases) || data.cases.length !== 7
+        || new Set(data.cases.map((item: any) => item.caseNumber)).size !== 7
+        || data.cases.some((item: any) => typeof item.caseNumber !== 'string'
+          || item.sampleId !== `AMB2022-718-SH1-BP1-L${item.caseNumber}`
+          || ['laserPower_W', 'scanSpeed_mm_s', 'beamDiameterD4sigma_um', 'depthMean_um',
+            'depthStdDev_um', 'widthMean_um', 'widthStdDev_um'].some(key =>
+            typeof item[key] !== 'number' || !Number.isFinite(item[key]) || item[key] <= 0))) {
+        throw new Error('Optical transcription content identity mismatch');
+      }
+      return validateSourceDocument({ schemaVersion: 1, datasetId, materialId: 'in718', processScope: 'bare-plate',
+        source: { url: 'https://doi.org/10.18434/mds2-2718', citation: manifest.citation,
+          version: manifest.version, terms: null,
+          termsMissingReason: 'Reuse terms for this local transcription were not established from the cited NIST result and method PDFs.' },
+        artifacts: [{ relativePath: file.path, sha256: file.sha256, byteSize: file.bytes, sourceUrl: resultsUrl }],
+        sourceContext: { schema_version: 1, dataset_id: datasetId, source_version: manifest.version,
+          transcription: { kind: data.kind, publisher_raw_data: false, publisher_pdf: false,
+            note: data.transcriptionNote, published_results_location: data.publishedResultsLocation,
+            checksum_authority: manifest.checksum_authority, results_url: resultsUrl, methods_url: methodsUrl },
+          experiment: { machine: experiment.machine, process_scope: experiment.processScope,
+            sample: experiment.sample, scan_direction: experiment.scanDirection,
+            track_length_mm: experiment.trackLength_mm, substrate_and_chamber_temperature_C: experiment.substrateAndChamberTemperature_C,
+            substrate_and_chamber_temperature_uncertainty_C: experiment.substrateAndChamberTemperatureUncertainty_C,
+            powder_layer_thickness_um: null, hatch_spacing_um: null,
+            heat_treatment: experiment.heatTreatment,
+            heat_treatment_missing_reason: experiment.heatTreatmentMissingReason },
+          measurement: { quantity: data.measurement.quantity, method: data.measurement.method,
+            unit_source: data.measurement.unit, temperature_conversion: null,
+            temperature_conversion_missing_reason: 'Not applicable to optical cross-section geometry.',
+            beam_diameter_definition: experiment.beamDiameterDefinition,
+            repeat_group_rule: 'Six cross-sections per condition; only Table 4 aggregate means and standard deviations are archived.',
+            uncertainty: data.measurement.uncertainty },
+          split: 'unassigned', unresolved: ['Individual cross-section measurements and source images are not in this local transcription.',
+            'Published standard deviation is not an experimental validation claim for this model.'] } });
     } };
 }

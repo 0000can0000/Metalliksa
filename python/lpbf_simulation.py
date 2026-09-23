@@ -17,7 +17,8 @@ from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
-from lpbf_peak import PeakMeltTracker, midtrack_bare_plate_section
+from lpbf_peak import (PeakMeltTracker, midtrack_bare_plate_section,
+                       interpolated_midtrack_bare_plate_section)
 from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
@@ -212,6 +213,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     rho = float(property_at(m, t0, 1))*np.where(zz > 0, p["packingFraction"], 1.)
     H = np.zeros_like(T)
     ever = np.zeros_like(T, dtype=bool)
+    midpoint_plane = int(np.argmin(np.abs(axis))) if bare else None
+    midpoint_temperature_max = np.full((nxy, nz), t0) if bare else None
     remelt = np.zeros_like(ever)
     previous_melt = np.zeros_like(ever)
     energy_in = energy_out = 0.
@@ -275,6 +278,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         melt = (T >= m["liquidus_K"])&active
         remelt |= melt&ever&~previous_melt
         ever |= melt
+        if bare:
+            np.maximum(midpoint_temperature_max, T[midpoint_plane], out=midpoint_temperature_max)
         front = liquidus_crossing_sums(old, T, active, dx, dt, m["liquidus_K"])
         if front is not None:
             fronts.append(front)
@@ -302,6 +307,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError(f"Energy balance failed: {balance:.3%}")
     G, R, cooling = (np.sum(fronts, axis=0)[:3]/np.sum(fronts, axis=0)[3]).tolist() if fronts else (None, None, None)
     best, peak_diagnostics = peak_tracker.finish(artifact_dir, step)
+    interpolated_peak = peak_diagnostics.pop("interpolatedPeakMeltPool")
     overlap_metrics = overlap_tracker.finish(artifact_dir) if overlap_tracker is not None else None
     width = best["width_um"]*1e-6
     alpha = float(property_at(m, m["liquidus_K"], 2)/(property_at(m, m["liquidus_K"], 1)*property_at(m, m["liquidus_K"], 3)))
@@ -313,8 +319,12 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 trackOverlapRatio=overlap_metrics["trackOverlapRatio"] if overlap_metrics else None,
                 remeltingRatio=overlap_metrics["globalRemeltRatio"] if overlap_metrics else None)
     return dict(metrics=best, thermalHistory=history, fieldSeries=recorder.finish(),
+                peakInterpolatedMeltPool=interpolated_peak,
                 fieldOverlapDiagnostics=overlap_metrics,
                 midTrackCrossSection=midtrack_bare_plate_section(axis, z, ever, dx) if bare else None,
+                midTrackInterpolatedCrossSection=interpolated_midtrack_bare_plate_section(
+                    axis, z, midpoint_temperature_max, dx, m["liquidus_K"], axis[midpoint_plane]
+                ) if bare else None,
                 numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID if overlap_metrics else None, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,

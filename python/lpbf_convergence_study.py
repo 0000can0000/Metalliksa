@@ -63,6 +63,9 @@ def _case_result(scenario, key, requested):
                    steps=disc["steps"], width_um=result["metrics"]["width_um"],
                    depth_um=result["metrics"]["depth_um"],
                    peakTemperature_K=result["metrics"]["peakTemperature_K"],
+                   interpolatedMidTrackCrossSection=copy.deepcopy(
+                       result.get("midTrackInterpolatedCrossSection")),
+                   interpolatedPeakMeltPool=copy.deepcopy(result.get("peakInterpolatedMeltPool")),
                    energyBalance={"input_J": input_j, "losses_J": losses_j,
                                   "stored_J": stored_j, "relativeError": closure,
                                   "denominator": "input_J", "reference": "initial enthalpy at preheat"},
@@ -133,6 +136,10 @@ def study(scenario, mesh_levels_um, timestep_levels_s):
         raise ValueError("scenario must fix mesh_um and maxDt_s for the opposite axis")
     report = {"schemaVersion": SCHEMA_VERSION, "scope": "CPU reference numerical convergence only",
               "experimentalValidation": False, "acceptance": copy.deepcopy(ACCEPTANCE),
+              "supplementaryMetric": {
+                  "sources": ["interpolatedPeakMeltPool", "interpolatedMidTrackCrossSection"],
+                  "usedForAcceptance": False,
+                  "reason": "Exploratory liquidus contours; frozen cell-extent acceptance is unchanged"},
               "scenario": copy.deepcopy(scenario),
               "meshStudy": {"fixedMaxDt_s": scenario["maxDt_s"],
                             "levels": [_case_result(scenario, "mesh_um", level) for level in mesh_levels]},

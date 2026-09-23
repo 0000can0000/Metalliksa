@@ -1,0 +1,90 @@
+"""Numerical GPU parity checks with targets fixed before execution."""
+
+import unittest
+from unittest.mock import patch
+import copy
+
+import numpy as np
+
+from lpbf_gpu_thermal import PARITY_TARGETS, compare_with_cpu, require_cuda
+from lpbf_simulation import validate
+from lpbf_core_physics import scan_segments
+
+
+CASE = {"mode": "standard", "backend": "reference", "material": "Inconel 718",
+        "power_W": 60, "speed_mm_s": 1200, "mesh_um": 40, "maxDt_s": 2e-7,
+        "layer_um": 80, "trackLength_um": 200, "cooling_s": 2e-5, "dwell_s": 0}
+
+
+class GpuThermal(unittest.TestCase):
+    def test_equal_summaries_cannot_hide_wrong_final_field(self):
+        settings, _ = validate(CASE)
+        end = scan_segments(settings)[1]
+        coords = np.array([[0., 0., 0.], [1e-5, 0., 0.]])
+        metrics = {"peakTemperature_K": 1500., "width_um": 40., "depth_um": 40.,
+                   "length_um": 100., "volume_um3": 1000.}
+        energy = {"input_J": 1., "losses_J": .2, "stored_J": .8}
+        disc = {"cells": 2, "mesh_m": 1e-5, "steps": 1}
+        cpu = {"coreContract": {"modelId": "stationary-enthalpy-conduction-v1"},
+               "material": {"name": "Inconel 718", "materialId": "in718",
+                            "materialRevisionSha256": "a" * 64, "version": "lpbf-materials-1"},
+               "settings": settings, "metrics": metrics, "energyBalance": energy,
+               "discretization": disc, "thermalHistory": [{"time_s": end}],
+               "solver": {"id": "enthalpy-fv-6"}}
+        gpu = {"solver": {"modelId": "stationary-enthalpy-conduction-v1"},
+               "material": copy.deepcopy(cpu["material"]), "metrics": copy.deepcopy(metrics),
+               "energyBalance": copy.deepcopy(energy), "discretization": copy.deepcopy(disc)}
+        frame = {"time_s": end, "surface_m": settings["layer_um"] * 1e-6}
+        # Same peak and total temperature, but the hot cells are in wrong places.
+        field = {"temperature_K": np.array([1500., 1000.]), "coordinates_m": coords,
+                 "time_s": end, "surface_m": frame["surface_m"], "steps": 1}
+        with patch("lpbf_gpu_thermal.run_gpu", return_value=(gpu, field)), \
+             patch("lpbf_gpu_thermal._run_cpu_with_final",
+                   return_value=(cpu, frame, np.array([1000., 1500.]), coords)):
+            result = compare_with_cpu(CASE)
+        self.assertEqual(result["comparisons"]["peakTemperature_K"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["stored_J"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["finalSampling"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["finalTemperatureField"]["status"], "failed")
+        self.assertEqual(result["status"], "failed")
+
+    def test_device_is_explicit_and_never_falls_back(self):
+        for device in ("cpu", "cuda", "auto", "cuda:-1", "cuda:abc"):
+            with self.assertRaisesRegex(ValueError, "no CPU fallback"):
+                require_cuda(device)
+        with patch("torch.cuda.is_available", return_value=False):
+            with self.assertRaisesRegex(RuntimeError, "no CPU fallback"):
+                require_cuda("cuda:0")
+
+    def test_cuda_reference_parity_for_molten_track(self):
+        try:
+            import torch
+            available = torch.cuda.is_available()
+        except ImportError:
+            available = False
+        if not available:
+            self.skipTest("CUDA runtime unavailable; real GPU parity unverified")
+        self.assertEqual(PARITY_TARGETS["integralRelativeMax"], .01)
+        self.assertEqual(PARITY_TARGETS["widthDepthAbsoluteCellsMax"], 1.)
+        self.assertEqual(PARITY_TARGETS["fieldRiseL2RelativeMax"], .01)
+        self.assertEqual(PARITY_TARGETS["fieldRiseMaxRelativeMax"], .01)
+        self.assertEqual(PARITY_TARGETS["peakMeltVolumeRelativeMax"], .01)
+        result = compare_with_cpu(CASE, "cuda:0")
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["gpu"]["solver"]["thermalEvolutionDevice"], "cuda:0")
+        self.assertEqual(result["gpu"]["solver"]["sourceIntegrationDevice"], "cpu")
+        self.assertEqual(result["gpu"]["solver"]["modelId"], result["cpu"]["coreContract"]["modelId"])
+        self.assertEqual(result["gpu"]["material"]["materialRevisionSha256"],
+                         result["cpu"]["material"]["materialRevisionSha256"])
+        self.assertGreater(result["gpu"]["metrics"]["width_um"], 0)
+        self.assertGreater(result["gpu"]["metrics"]["depth_um"], 0)
+        self.assertLessEqual(result["gpu"]["energyBalance"]["relativeError"], .01)
+        self.assertEqual(result["comparisons"]["finalSampling"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["finalTemperatureField"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["volume_um3"]["status"], "pass")
+        self.assertEqual(result["comparisons"]["length_um"]["status"], "pass")
+        self.assertFalse(result["experimentalValidation"])
+
+
+if __name__ == "__main__":
+    unittest.main()

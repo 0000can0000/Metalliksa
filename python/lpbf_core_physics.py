@@ -73,6 +73,16 @@ def calculate_mesh_domain(p):
     }
 
 
+def thermal_si_inputs(p, material):
+    """Resolve shared reference/OpenFOAM thermal inputs to SI units."""
+    return {
+        "preheat_K": p["preheat_C"] + 273.15,
+        "layer_m": p["layer_um"] * 1e-6,
+        "speed_m_s": p["speed_mm_s"] * 1e-3,
+        "absorbed_power_W": p["power_W"] * material["absorptivity"],
+    }
+
+
 def property_at(material, temperature, column):
     """Shared LPBF material-property interpolation boundary (temperature in K)."""
     return _registry_property_at(material, temperature, column)

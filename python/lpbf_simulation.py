@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material
 from lpbf_core_physics import property_at, enthalpy_table
-from lpbf_core_physics import calculate_mesh_domain, scan_segments, SOURCE_INTEGRATION
+from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs, SOURCE_INTEGRATION
 from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import source_limited_step, conduction_diagonal
@@ -175,6 +175,10 @@ def liquidus_crossing_sums(old, new, active, dx, dt, liquidus):
 
 def transient(p, m, report=lambda *args: None, artifact_dir=None):
     segments, end = scan_segments(p)
+    thermal_inputs = thermal_si_inputs(p, m)
+    layer_m = thermal_inputs["layer_m"]
+    speed_m_s = thermal_inputs["speed_m_s"]
+    absorbed_power_W = thermal_inputs["absorbed_power_W"]
     dx_requested = p["mesh_um"]*1e-6
     domain = calculate_mesh_domain(p)
     radius, span, nxy, nz, dx, substrate = (domain[k] for k in ("radius", "span", "nxy", "nz", "dx", "substrate_depth"))
@@ -182,11 +186,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         raise ValueError("Mesh exceeds 600000-cell reference solver limit; reduce domain or use coarser mesh")
     axis = (np.arange(nxy)+.5)*dx-span/2
     z = (np.arange(nz)+.5)*dx-substrate
-    layer_counts = [int(np.sum(z < layer*p["layer_um"]*1e-6)) for layer in range(int(p["layers"])+1)]
+    layer_counts = [int(np.sum(z < layer*layer_m)) for layer in range(int(p["layers"])+1)]
     if any(b <= a for a,b in zip(layer_counts,layer_counts[1:])):
         raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
     x, y, zz = np.meshgrid(axis, axis, z, indexing="ij")
-    t0 = p["preheat_C"]+273.15
+    t0 = thermal_inputs["preheat_K"]
     T = np.full(x.shape, t0)
     tt, hh = enthalpy_table(m)
     h0 = np.interp(t0, tt, hh)
@@ -210,12 +214,12 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     while time < end:
         seg = next((s for s in segments if s["start_s"] <= time+1e-14 and time < s["end_s"]-1e-14), None)
         active_layer = max([s["layer"] for s in segments if s["start_s"] <= time+1e-14] or [0])
-        surface = (active_layer+1)*p["layer_um"]*1e-6
+        surface = (active_layer+1)*layer_m
         active = zz < surface
         top_index = int(np.flatnonzero(z < surface)[-1])
         k = property_at(m, T, 2)*np.where((zz > 0)&~ever, p["powderConductivityRatio"], 1.)
         cp = property_at(m, T, 3)
-        dt = min(p["maxDt_s"], .12*dx*dx/float(np.max(k/(rho*cp))), radius/(4*p["speed_mm_s"]*1e-3), end-time)
+        dt = min(p["maxDt_s"], .12*dx*dx/float(np.max(k/(rho*cp))), radius/(4*speed_m_s), end-time)
         # End exactly on scan/deposition events: never smear laser-on into a dwell.
         events = [s[v]-time for s in segments for v in ("start_s", "end_s") if s[v] > time+1e-14]
         if events:
@@ -236,8 +240,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             *(top_temperature+t0)*(top_temperature**2+t0**2))/dx
         dt = min(dt, float(np.min(.9*rho*cp_floor/np.maximum(diagonal, 1e-30))))
         dt, source, rate, capture, retries = source_limited_step(
-            axis, z, dx, seg, time, dt, surface, radius, p["layer_um"]*1e-6,
-            p["power_W"]*m["absorptivity"], rate, rho*cp)
+            axis, z, dx, seg, time, dt, surface, radius, layer_m,
+            absorbed_power_W, rate, rho*cp)
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
         max_increment = max(max_increment, float(np.max(dt*np.abs(rate)/(rho*cp))))

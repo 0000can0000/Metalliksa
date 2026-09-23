@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import numpy as np
-from lpbf_core_physics import enthalpy_table, property_at, calculate_mesh_domain, SOURCE_INTEGRATION
+from lpbf_core_physics import enthalpy_table, property_at, calculate_mesh_domain, thermal_si_inputs, SOURCE_INTEGRATION
 from lpbf_evidence import thermal_audits
 from lpbf_peak import PeakMeltTracker, PEAK_EXTRACTION
 
@@ -19,11 +19,12 @@ def generate_case(p, m, folder):
     folder = Path(folder); (folder/"system").mkdir(parents=True, exist_ok=True)
     (folder/"constant").mkdir(exist_ok=True)
     segments, end = scan_segments(p)
+    thermal_inputs = thermal_si_inputs(p, m)
     domain = calculate_mesh_domain(p)
     radius, span, nxy, nz, dx, bottom = domain["radius"], domain["span"], domain["nxy"], domain["nz"], domain["dx"], -domain["substrate_depth"]
     if nxy*nxy*nz > 600000: raise ValueError("OpenFOAM thermal cell budget exceeded")
     z = bottom+(np.arange(nz)+.5)*dx
-    counts = [int(np.sum(z < layer*p["layer_um"]*1e-6)) for layer in range(int(p["layers"])+1)]
+    counts = [int(np.sum(z < layer*thermal_inputs["layer_m"])) for layer in range(int(p["layers"])+1)]
     if any(b <= a for a,b in zip(counts,counts[1:])):
         raise ValueError("Mesh cannot resolve each powder layer; reduce mesh spacing below layer thickness")
     top = bottom+nz*dx
@@ -42,15 +43,15 @@ mergePatchPairs ();
     (folder/"system/fvSolution").write_text(HEADER % "fvSolution"+"solvers {}\n")
     tt, hh = enthalpy_table(m)
     table = np.column_stack([tt, hh, *[property_at(m, tt, i) for i in (1, 2, 3, 4)]])
-    config = [end, p["maxDt_s"], p["preheat_C"]+273.15, m["solidus_K"], m["liquidus_K"], m["boiling_K"],
-              p["power_W"]*m["absorptivity"], radius, p["layer_um"]*1e-6,
-              p["packingFraction"], p["powderConductivityRatio"], p["convection_W_m2K"], m["emissivity"], dx, p["speed_mm_s"]*1e-3]
+    config = [end, p["maxDt_s"], thermal_inputs["preheat_K"], m["solidus_K"], m["liquidus_K"], m["boiling_K"],
+              thermal_inputs["absorbed_power_W"], radius, thermal_inputs["layer_m"],
+              p["packingFraction"], p["powderConductivityRatio"], p["convection_W_m2K"], m["emissivity"], dx, thermal_inputs["speed_m_s"]]
     with (folder/"thermalInput.dat").open("w") as stream:
         stream.write(" ".join(map(str, config))+"\n"+str(len(table))+"\n")
         np.savetxt(stream, table, fmt="%.17g")
         stream.write(str(len(segments))+"\n")
         for s in segments:
-            stream.write(" ".join(map(str, [s["start_s"], s["end_s"], *s["start"], *s["end"], (s["layer"]+1)*p["layer_um"]*1e-6, s["track"], s["layer"]]))+"\n")
+            stream.write(" ".join(map(str, [s["start_s"], s["end_s"], *s["start"], *s["end"], (s["layer"]+1)*thermal_inputs["layer_m"], s["track"], s["layer"]]))+"\n")
     return dx, segments
 
 

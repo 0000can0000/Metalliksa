@@ -32,6 +32,11 @@
 - Doğrulama: Windows Python 3.12'de core-contract + engineering + heat-source 44 PASS / 2 platforma özel SKIP. OpenFOAM 14 bağımsız parity testi Ubuntu 22.04 WSL'de PASS.
 - Sıradaki somut adım: material authority ve SI/material adapter sınırını kaynak/caller kapsamıyla planlamak; EIS/EDS kapsam dışı kalıyor.
 
+## 2026-09-23 - Ortak Termal SI Girdileri
+- Kelvin preheat, metre cinsinden katman kalınlığı, m/s tarama hızı ve absorbe edilmiş lazer gücü dönüşümleri `thermal_si_inputs()` ile ortak çekirdeğe alındı. Referans transient solver ve termal OpenFOAM case üreticisi bu değerleri paylaşıyor; analitik tarama ve ayrı CFD modeli kapsam dışı.
+- Doğrulama: Windows Python 3.12'de core-contract + engineering + heat-source 45 PASS / 2 platforma özel SKIP. WSL OpenFOAM 14 bağımsız parity testi PASS.
+- Sıradaki somut adım: kalan adapter alanlarını (özellikle katman/beam geometri dönüşümleri) ancak birebir parity kanıtıyla değerlendirmek; EIS/EDS kapsam dışı.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

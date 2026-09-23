@@ -108,6 +108,16 @@ class Verification(unittest.TestCase):
                                      ensure_ascii=True, allow_nan=False).encode("utf-8")
                 self.assertEqual(digest, hashlib.sha256(encoded).hexdigest())
 
+    def test_shared_reference_thermal_inputs_use_si_units(self):
+        from lpbf_core_physics import thermal_si_inputs
+        p, m = validate({"mode": "standard", "material": "Inconel 718", "power_W": 123,
+                         "speed_mm_s": 125, "beamDiameter_um": 74, "preheat_C": 37,
+                         "layer_um": 37, "hatch_um": 91, "absorptivity": .37})
+        self.assertEqual(thermal_si_inputs(p, m), {
+            "preheat_K": 310.15, "layer_m": 37e-6, "speed_m_s": .125,
+            "absorbed_power_W": 123*.37,
+        })
+
     def test_supplied_material_revision_changes_with_source_and_is_unverified(self):
         supplied = copy.deepcopy(material("Inconel 718"))
         for key in ("materialId", "provenanceClass", "materialIdentitySchemaVersion", "materialRevisionSha256"):

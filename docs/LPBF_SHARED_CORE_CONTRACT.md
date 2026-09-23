@@ -110,6 +110,12 @@ experimental provenance, or scientific validation. Legacy estimates are marked
 `estimated-legacy`; supplied tables are `user-supplied-unverified`; the result
 contract remains `evidenceClass='unvalidated-model'`.
 
+The reference transient solver and thermal OpenFOAM adapter now share
+`thermal_si_inputs(p, material)` for preheat K, layer m, scan speed m/s, and
+absorbed power W. The analytical screening route retains its own assumptions;
+the separate free-surface CFD route is outside this conversion seam. The
+conversion-only change preserves the existing solver equations and model IDs.
+
 GPU candidate is a thermal-only implementation of the same stationary reference
 contract. Require explicit device, no silent fallback, equal scenario/material/
 source/boundaries, timestep/mesh studies, energy closure and CPU comparisons

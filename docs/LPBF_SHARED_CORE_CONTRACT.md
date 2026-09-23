@@ -122,3 +122,17 @@ source/boundaries, timestep/mesh studies, energy closure and CPU comparisons
 before speed claims. The existing Warp flow prototype does not satisfy this
 contract and remains isolated. Calibration ambiguity does not block these
 independent numerical tasks. No temperature conversion is guessed for NIST.
+
+## Build-job alloy identity boundary
+
+The build-job route accepts only the four locked alloy identities through an
+exact normalized alias allowlist and checks that the specimen base metal agrees.
+Unsupported, contradictory, or compound specimen identities do not submit a
+surrogate. Python validates explicit thermal and slicer material names against
+the resolved alloy before cache lookup, then passes canonical names to both
+solvers and canonicalizes those fields in the cache key. For backward
+compatibility, an omitted or blank `alloyId` still
+defaults to IN718. This is an identity-consistency guard; it does not yet bind
+the worker result to a complete resolved thermal/slicer property snapshot or
+establish scientific provenance. The shared thermal-registry revision digest
+does not apply to build-job properties.

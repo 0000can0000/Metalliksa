@@ -89,6 +89,42 @@ def main():
     assert ti["thermal"]["meltPoolGeometry"]["width_um"] > 0
     assert "gates" in ti["verdict"] and len(ti["verdict"]["gates"]) >= 7
 
+    # Same-alloy aliases are accepted but normalized before solver invocation.
+    from unittest.mock import patch
+    import lpbf_build_job_solver as build_job_solver
+
+    received_materials = {}
+    calculate_thermal = build_job_solver.calculate_meltpool_physics
+    solve_material_slicer = build_job_solver.solve_slicer
+
+    def capture_thermal_name(name, *args, **kwargs):
+        received_materials["thermal"] = name
+        return calculate_thermal(name, *args, **kwargs)
+
+    def capture_slicer_name(payload):
+        received_materials["slicer"] = payload["material"]
+        return solve_material_slicer(payload)
+
+    with patch.object(build_job_solver, "calculate_meltpool_physics", capture_thermal_name), patch.object(
+        build_job_solver, "solve_slicer", capture_slicer_name
+    ):
+        aliased_ti = run_job(
+            {
+                "alloyId": "ti-6al-4v",
+                "thermalMaterial": "Ti-6Al-4V ELI",
+                "slicerMaterial": "Ti-6Al-4V",
+                "laserPower_W": 200,
+                "scanSpeed_mm_s": 900,
+                "beamDiameter_um": 80,
+                "preheatTemp_C": 150,
+                "layerThickness_um": 30,
+                "hatchSpacing_um": 100,
+                "bypassCache": True,
+            }
+        )
+    assert aliased_ti["success"]
+    assert received_materials == {"thermal": "Ti-6Al-4V", "slicer": "Ti-6Al-4V ELI"}
+
     # Hash cache hit on identical request
     clear_cache()
     a = run_job(
@@ -236,6 +272,55 @@ def main():
     assert unsupported["success"] is False
     assert "Unsupported LPBF alloy identity" in unsupported["error"]
     assert "No surrogate alloy" in unsupported["error"]
+
+    thermal_mismatch = run_job(
+        {"alloyId": "ss316l", "thermalMaterial": "Inconel 718", "bypassCache": True}
+    )
+    assert thermal_mismatch["success"] is False
+    assert "thermalMaterial" in thermal_mismatch["error"]
+    slicer_mismatch = run_job(
+        {"alloyId": "ss316l", "slicerMaterial": "CoCrMo", "bypassCache": True}
+    )
+    assert slicer_mismatch["success"] is False
+    assert "slicerMaterial" in slicer_mismatch["error"]
+
+    # A stale successful cache entry must not bypass material identity checks.
+    with patch.object(
+        build_job_solver,
+        "cache_get",
+        return_value={"success": True, "alloyId": "ss316l", "computeTimeMs": 1},
+    ) as mocked_cache_get:
+        cached_mismatch = build_job_solver.solve_lpbf_build_job(
+            {"alloyId": "ss316l", "thermalMaterial": "Inconel 718"}
+        )
+    assert cached_mismatch["success"] is False
+    assert "thermalMaterial" in cached_mismatch["error"]
+    mocked_cache_get.assert_not_called()
+
+    # Equivalent alloy/material aliases should resolve to one cache identity.
+    cache_keys = []
+
+    def return_seeded_cache_entry(key):
+        cache_keys.append(key)
+        return {"success": True, "alloyId": "ti6al4v", "computeTimeMs": 1}
+
+    with patch.object(build_job_solver, "cache_get", side_effect=return_seeded_cache_entry):
+        alias_cache_a = build_job_solver.solve_lpbf_build_job(
+            {
+                "alloyId": "ti6al4v",
+                "thermalMaterial": "Ti-6Al-4V ELI",
+                "slicerMaterial": "Ti-6Al-4V",
+            }
+        )
+        alias_cache_b = build_job_solver.solve_lpbf_build_job(
+            {
+                "alloyId": "Ti-6Al-4V",
+                "thermalMaterial": "Ti-6Al-4V",
+                "slicerMaterial": "Ti-6Al-4V ELI",
+            }
+        )
+    assert alias_cache_a["success"] and alias_cache_b["success"]
+    assert len(cache_keys) == 2 and cache_keys[0] == cache_keys[1]
 
     omitted_alloy = run_job({"bypassCache": True})
     assert omitted_alloy["success"] is True

@@ -327,16 +327,6 @@ def solve_lpbf_build_job(data):
         if parsed:
             data["defectSqrtAreas_um"] = parsed
 
-    bypass_cache = bool(data.get("bypassCache", False))
-    cache_key = build_cache_key(data)
-    if not bypass_cache:
-        cached = cache_get(cache_key)
-        if cached is not None:
-            cached["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
-            if cached.get("thermal"):
-                cached["thermal"]["computeTimeMs"] = cached["computeTimeMs"]
-            return cached
-
     requested_alloy = data.get("alloyId")
     if requested_alloy is None or not str(requested_alloy).strip():
         alloy_id = "in718"
@@ -351,8 +341,41 @@ def solve_lpbf_build_job(data):
                 ),
             }
     mats = ALLOY_MATERIALS[alloy_id]
-    thermal_mat = data.get("thermalMaterial") or mats["thermal"]
-    slicer_mat = data.get("slicerMaterial") or mats["slicer"]
+    for field, canonical_name in (
+        ("thermalMaterial", mats["thermal"]),
+        ("slicerMaterial", mats["slicer"]),
+    ):
+        override = data.get(field)
+        if override is None or not str(override).strip():
+            continue
+        override_alloy = resolve_alloy_id(override)
+        if override_alloy != alloy_id:
+            return {
+                "success": False,
+                "error": (
+                    f"{field} {override!r} does not match requested LPBF alloy "
+                    f"{alloy_id!r}; expected an alias of {canonical_name!r}."
+                ),
+            }
+
+    # Aliases are accepted only as identity assertions; always pass the mapped
+    # canonical name to the underlying solver so the requested alloy controls it.
+    thermal_mat = mats["thermal"]
+    slicer_mat = mats["slicer"]
+
+    bypass_cache = bool(data.get("bypassCache", False))
+    cache_data = dict(data)
+    cache_data["alloyId"] = alloy_id
+    cache_data["thermalMaterial"] = thermal_mat
+    cache_data["slicerMaterial"] = slicer_mat
+    cache_key = build_cache_key(cache_data)
+    if not bypass_cache:
+        cached = cache_get(cache_key)
+        if cached is not None:
+            cached["computeTimeMs"] = round((time.time() - t0) * 1000.0, 1)
+            if cached.get("thermal"):
+                cached["thermal"]["computeTimeMs"] = cached["computeTimeMs"]
+            return cached
 
     power = float(data.get("laserPower_W", 285.0))
     speed = float(data.get("scanSpeed_mm_s", data.get("scanSpeed_mms", 960.0)))

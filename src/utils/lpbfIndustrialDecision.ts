@@ -17,6 +17,66 @@ export interface SolverMaterialMap {
   alloyId: LPBFAlloyId;
 }
 
+type BuildJobSolverMaterialMap = SolverMaterialMap & {
+  baseMetal: Extract<BaseMetalType, "Ti" | "Fe" | "Al" | "Ni">;
+};
+
+/** Strict material identity contract used only by the build-job solver. */
+const TI64_BUILD_JOB_MATERIAL: BuildJobSolverMaterialMap = {
+  pythonThermal: "Ti-6Al-4V", pythonSlicer: "Ti-6Al-4V ELI", alloyId: "ti6al4v", baseMetal: "Ti",
+};
+const SS316L_BUILD_JOB_MATERIAL: BuildJobSolverMaterialMap = {
+  pythonThermal: "316L Stainless Steel", pythonSlicer: "SS 316L", alloyId: "ss316l", baseMetal: "Fe",
+};
+const ALSI10MG_BUILD_JOB_MATERIAL: BuildJobSolverMaterialMap = {
+  pythonThermal: "AlSi10Mg", pythonSlicer: "AlSi10Mg", alloyId: "alsi10mg", baseMetal: "Al",
+};
+const IN718_BUILD_JOB_MATERIAL: BuildJobSolverMaterialMap = {
+  pythonThermal: "Inconel 718", pythonSlicer: "Inconel 718", alloyId: "in718", baseMetal: "Ni",
+};
+
+const BUILD_JOB_MATERIALS: Record<string, BuildJobSolverMaterialMap> = {
+  // Ti-6Al-4V canonical names, established shorthand, and product grade labels.
+  ti6al4v: TI64_BUILD_JOB_MATERIAL,
+  ti64: TI64_BUILD_JOB_MATERIAL,
+  ti6al4vgrade5: TI64_BUILD_JOB_MATERIAL,
+  ti6al4vgrade5titanium: TI64_BUILD_JOB_MATERIAL,
+  ti6al4vgrade23eli: TI64_BUILD_JOB_MATERIAL,
+  ti6al4vgrade23eliastmf3001: TI64_BUILD_JOB_MATERIAL,
+  ti6al4vgrade23unsr56401: TI64_BUILD_JOB_MATERIAL,
+  // 316L canonical names and grade/designation labels.
+  "316l": SS316L_BUILD_JOB_MATERIAL,
+  "316lstainlesssteel": SS316L_BUILD_JOB_MATERIAL,
+  aisi316lstainlesssteel: SS316L_BUILD_JOB_MATERIAL,
+  aisi316lstainlesssteelunss31603: SS316L_BUILD_JOB_MATERIAL,
+  "316lstainlesssteelunss31603": SS316L_BUILD_JOB_MATERIAL,
+  "ss316l": SS316L_BUILD_JOB_MATERIAL,
+  // AlSi10Mg names used by the specimen preset and materials catalog.
+  alsi10mg: ALSI10MG_BUILD_JOB_MATERIAL,
+  alsi10mgadditivelightweight: ALSI10MG_BUILD_JOB_MATERIAL,
+  alsi10mgadditivepowderalloylpbft6: ALSI10MG_BUILD_JOB_MATERIAL,
+  // IN718 canonical shorthand and established specification labels.
+  in718: IN718_BUILD_JOB_MATERIAL,
+  inconel718: IN718_BUILD_JOB_MATERIAL,
+  inconel718ams5662: IN718_BUILD_JOB_MATERIAL,
+  inconel718ams5662unsn07718: IN718_BUILD_JOB_MATERIAL,
+  inconel718nickelbasesuperalloyprecipitationhardened: IN718_BUILD_JOB_MATERIAL,
+};
+
+function normalizeBuildJobMaterialAlias(name: string): string {
+  return name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function mapSpecimenToBuildJobMaterials(
+  name: string,
+  baseMetal?: BaseMetalType
+): BuildJobSolverMaterialMap | null {
+  const alias = normalizeBuildJobMaterialAlias(name);
+  if (!Object.prototype.hasOwnProperty.call(BUILD_JOB_MATERIALS, alias)) return null;
+  const materials = BUILD_JOB_MATERIALS[alias];
+  return baseMetal === undefined || baseMetal === materials.baseMetal ? materials : null;
+}
+
 export function mapSpecimenToSolverMaterials(
   name: string,
   baseMetal: BaseMetalType

@@ -4,6 +4,7 @@ import { pythonComputationService, type PythonLpbfBuildJobResult } from "../src/
 import { peekLpbfBuildJobKey, requestLpbfBuildJob, setLpbfMurakamiInput, useLpbfBuildJobStore } from "../src/store/useLpbfBuildJobStore";
 import { useMaterialSpecimenStore } from "../src/store/useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "../src/store/useLpbfBuildMeshStore";
+import { mapSpecimenToBuildJobMaterials } from "../src/utils/lpbfIndustrialDecision";
 
 // Deliberately incomplete service fixtures exercise session routing, never physical truth.
 const initialSpecimen = useMaterialSpecimenStore.getState().activeSpecimen;
@@ -92,12 +93,50 @@ test("unsupported alloy identity refuses computation and clears a previous suppo
   assert.equal(calls, 1);
   assert.ok(useLpbfBuildJobStore.getState().job);
   const supported = useMaterialSpecimenStore.getState().activeSpecimen;
-  useMaterialSpecimenStore.setState({ activeSpecimen: { ...supported, id: "synthetic-unknown-alloy", name: "Unknown nickel alloy", baseMetal: "Ni" } });
-  await requestLpbfBuildJob();
-  assert.equal(calls, 1, "Unknown Ni alloy must not silently submit an IN718 surrogate");
-  assert.equal(useLpbfBuildJobStore.getState().job, null);
-  assert.equal(useLpbfBuildJobStore.getState().busy, false);
-  assert.match(useLpbfBuildJobStore.getState().error!, /no supported material mapping.*no surrogate alloy was submitted/);
+  useLpbfBuildJobStore.setState({
+    sessionUq: { enabled: true, nSamples: 8, source: "synthetic stale fixture" } as NonNullable<typeof initialBuild.sessionUq>,
+    sessionAmbench: {} as NonNullable<typeof initialBuild.sessionAmbench>,
+    sessionEvidenceKey: "stale-evidence",
+  });
+  for (const [name, baseMetal] of [
+    ["Unknown nickel alloy", "Ni"],
+    ["CoCrMo", "Co"],
+    ["Unknown iron alloy", "Fe"],
+    ["316L", "Co"],
+    ["IN718", "Fe"],
+  ] as const) {
+    useMaterialSpecimenStore.setState({ activeSpecimen: { ...supported, id: `synthetic-${baseMetal}`, name, baseMetal } });
+    await requestLpbfBuildJob();
+    assert.equal(calls, 1, `${name} must not submit a surrogate alloy`);
+    assert.equal(useLpbfBuildJobStore.getState().job, null);
+    assert.equal(useLpbfBuildJobStore.getState().busy, false);
+    assert.equal(useLpbfBuildJobStore.getState().sessionUq, null);
+    assert.equal(useLpbfBuildJobStore.getState().sessionAmbench, null);
+    assert.equal(useLpbfBuildJobStore.getState().sessionEvidenceKey, null);
+    assert.match(useLpbfBuildJobStore.getState().error!, /no supported material mapping.*no surrogate alloy was submitted/);
+  }
+});
+
+test("build-job material mapping accepts only its four canonical solver alloys", () => {
+  assert.equal(mapSpecimenToBuildJobMaterials("Ti-6Al-4V Grade 23 ELI", "Ti")?.alloyId, "ti6al4v");
+  assert.equal(mapSpecimenToBuildJobMaterials("Ti-6Al-4V Grade 5 Titanium", "Ti")?.alloyId, "ti6al4v");
+  assert.equal(mapSpecimenToBuildJobMaterials("Ti64", "Ti")?.alloyId, "ti6al4v");
+  assert.equal(mapSpecimenToBuildJobMaterials("AISI 316L Stainless Steel", "Fe")?.alloyId, "ss316l");
+  assert.equal(mapSpecimenToBuildJobMaterials("AlSi10Mg Additive Lightweight", "Al")?.alloyId, "alsi10mg");
+  assert.equal(mapSpecimenToBuildJobMaterials("Inconel 718 (AMS 5662)", "Ni")?.alloyId, "in718");
+  assert.equal(mapSpecimenToBuildJobMaterials("IN718", "Ni")?.alloyId, "in718");
+  assert.equal(mapSpecimenToBuildJobMaterials("316L", "Co"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("IN718", "Fe"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("Ti64", "Al"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("AlSi10Mg", "Ni"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("CoCrMo"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("Unknown iron alloy"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials(""), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("Not Inconel 718"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("Ti-6Al-4V alternative alloy"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("AlSi10Mg + CoCrMo"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("316L-coated CoCrMo"), null);
+  assert.equal(mapSpecimenToBuildJobMaterials("constructor"), null);
 });
 
 test("returning to a supported alloy cannot reuse a request superseded by an unsupported identity", async () => {

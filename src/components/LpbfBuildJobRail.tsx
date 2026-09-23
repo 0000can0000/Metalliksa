@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Box, Layers, Sliders, AlertTriangle, Database, ChevronRight, Undo2, Copy, Check } from "lucide-react";
-import { useMaterialSpecimenStore, LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
+import { useMaterialSpecimenStore, type BaseMetalType, type LpbfScanStrategy } from "../store/useMaterialSpecimenStore";
 import { useLpbfBuildJobPython } from "../store/useLpbfBuildJobStore";
 import type { LPBFAlloyId } from "../types/lpbfDataFoundation";
 import type { PrintVerdict } from "../utils/lpbfIndustrialDecision";
-import { mapSpecimenToSolverMaterials } from "../utils/lpbfIndustrialDecision";
+import { mapSpecimenToBuildJobMaterials } from "../utils/lpbfIndustrialDecision";
 import { mapActionableReasons, modelHonestyLine, toActionableHeadline } from "../utils/lpbfActionableReasons";
 import { LITERATURE_PV_WINDOWS } from "../utils/lpbfFourAlloySchema";
 import { LPBF_DEMO_VECTORS } from "../utils/lpbfDemoVectors";
@@ -14,7 +14,6 @@ const LPBF_JOB_ALLOYS: { alloyId: LPBFAlloyId; presetId: string; label: string }
   { alloyId: "ss316l", presetId: "ss-316l", label: "316L" },
   { alloyId: "alsi10mg", presetId: "alsi10mg", label: "AlSi10Mg" },
   { alloyId: "in718", presetId: "inconel-718", label: "IN718" },
-  { alloyId: "in625", presetId: "inconel-625", label: "IN625" },
 ];
 
 export type LpbfBuildJobStage = "alloy" | "cad" | "process" | "record";
@@ -75,12 +74,9 @@ function gateChipLabel(id: string): string {
   return map[id] || id;
 }
 
-function screeningAlloyWarning(name: string, baseMetal: string, alloyId: LPBFAlloyId): string | null {
-  const n = `${name} ${baseMetal}`.toLowerCase();
-  if (n.includes("cocr") || n.includes("hastelloy") || n.includes("scalmalloy") || n.includes("copper")) {
-    return `Screening uses solver alloy ${alloyId}; this specimen is not one of the four locked LPBF alloys.`;
-  }
-  return null;
+function screeningAlloyWarning(name: string, baseMetal: BaseMetalType): string | null {
+  if (mapSpecimenToBuildJobMaterials(name, baseMetal)) return null;
+  return `Build screening does not support ${name || "an unspecified material"}; select one of the four listed alloys. No surrogate alloy was submitted.`;
 }
 
 function verdictTone(verdict: PrintVerdict): string {
@@ -108,16 +104,17 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
   const { job, error, busy, cache, lastFlags } = useLpbfBuildJobPython();
   const [copied, setCopied] = useState(false);
   const lpbf = specimen.lpbf;
-  const activeAlloyId = mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal).alloyId;
-  const alloyWarn = screeningAlloyWarning(specimen.name, specimen.baseMetal, activeAlloyId);
-  const pvBox = LITERATURE_PV_WINDOWS[activeAlloyId];
-  const pPad = Math.round((pvBox.powerMax_W - pvBox.powerMin_W) * 0.25) || 40;
-  const vPad = Math.round((pvBox.speedMax_mm_s - pvBox.speedMin_mm_s) * 0.25) || 80;
-  const pMin = Math.min(lpbf.laserPower_W, Math.max(50, pvBox.powerMin_W - pPad));
-  const pMax = Math.max(lpbf.laserPower_W, pvBox.powerMax_W + pPad);
-  const vMin = Math.min(lpbf.scanSpeed_mms, Math.max(100, pvBox.speedMin_mm_s - vPad));
-  const vMax = Math.max(lpbf.scanSpeed_mms, pvBox.speedMax_mm_s + vPad);
-  const demo = LPBF_DEMO_VECTORS[activeAlloyId] ?? LPBF_DEMO_VECTORS.in718;
+  const materialMap = mapSpecimenToBuildJobMaterials(specimen.name, specimen.baseMetal);
+  const activeAlloyId = materialMap?.alloyId ?? null;
+  const alloyWarn = screeningAlloyWarning(specimen.name, specimen.baseMetal);
+  const pvBox = activeAlloyId ? LITERATURE_PV_WINDOWS[activeAlloyId] : null;
+  const pPad = pvBox ? Math.round((pvBox.powerMax_W - pvBox.powerMin_W) * 0.25) || 40 : 0;
+  const vPad = pvBox ? Math.round((pvBox.speedMax_mm_s - pvBox.speedMin_mm_s) * 0.25) || 80 : 0;
+  const pMin = pvBox ? Math.min(lpbf.laserPower_W, Math.max(50, pvBox.powerMin_W - pPad)) : Math.max(1, Math.min(lpbf.laserPower_W, 50));
+  const pMax = pvBox ? Math.max(lpbf.laserPower_W, pvBox.powerMax_W + pPad) : Math.max(lpbf.laserPower_W, 1000);
+  const vMin = pvBox ? Math.min(lpbf.scanSpeed_mms, Math.max(100, pvBox.speedMin_mm_s - vPad)) : Math.max(1, Math.min(lpbf.scanSpeed_mms, 100));
+  const vMax = pvBox ? Math.max(lpbf.scanSpeed_mms, pvBox.speedMax_mm_s + vPad) : Math.max(lpbf.scanSpeed_mms, 2000);
+  const demo = activeAlloyId ? LPBF_DEMO_VECTORS[activeAlloyId] : null;
   const activeStage = subTabToBuildJobStage(activeSubTab, focusedWizardStage);
   const inAdvanced = isAdvancedLpbfSubTab(activeSubTab);
   const decision = job?.verdict ?? null;
@@ -133,7 +130,7 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
   const actionable = decision ? mapActionableReasons(decision.reasons).slice(0, 3) : [];
   const gates = decision?.gates ?? [];
   const suggested = decision?.suggestedPatch;
-  const alloyLabel = LPBF_JOB_ALLOYS.find((a) => a.alloyId === activeAlloyId)?.label ?? activeAlloyId;
+  const alloyLabel = LPBF_JOB_ALLOYS.find((a) => a.alloyId === activeAlloyId)?.label ?? `Unsupported: ${specimen.name || "unspecified material"}`;
   const jobLine = useMemo(
     () =>
       [
@@ -364,14 +361,16 @@ export const LpbfBuildJobRail: React.FC<Props> = ({
             {a.label}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => updateLpbfProcess(demo.printable)}
-          className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-emerald-500/30 text-emerald-200 bg-emerald-500/10"
-          title="Loads the shared conduction demo vector; Python re-scores"
-        >
-          Load conduction vector
-        </button>
+        {demo && (
+          <button
+            type="button"
+            onClick={() => updateLpbfProcess(demo.printable)}
+            className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-emerald-500/30 text-emerald-200 bg-emerald-500/10"
+            title="Loads the shared conduction demo vector; Python re-scores"
+          >
+            Load conduction vector
+          </button>
+        )}
         <span className="text-[10px] text-sky-200 font-mono">
           {alloyLabel} · {lpbf.laserPower_W} W · {lpbf.scanSpeed_mms} mm/s · h {lpbf.hatch_um} · t {lpbf.layer_um} · d{" "}
           {lpbf.beamDiameter_um}

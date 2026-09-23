@@ -14,10 +14,9 @@ import {
   PythonLpbfMurakamiBlock,
   PythonLpbfUqBlock,
 } from "../services/pythonComputationService";
-import { inferSlicerPreset, mapSpecimenToSolverMaterials } from "../utils/lpbfIndustrialDecision";
+import { inferSlicerPreset, mapSpecimenToBuildJobMaterials } from "../utils/lpbfIndustrialDecision";
 import { useMaterialSpecimenStore } from "./useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "./useLpbfBuildMeshStore";
-import { canonicalLpbfMaterialName } from "../utils/lpbfMaterialIdentity";
 
 export interface LpbfMurakamiSessionInput {
   defectSqrtAreasPaste: string;
@@ -83,17 +82,19 @@ export type LpbfBuildJobRequestOptions = {
 function buildJobKey(flags: { enableUq: boolean; includeAmbench: boolean; uqSamples: number }): {
   key: string;
   evidenceKey: string;
+  materialSupported: boolean;
   payload: Parameters<typeof pythonComputationService.solveLpbfBuildJob>[0];
 } {
   const specimen = useMaterialSpecimenStore.getState().activeSpecimen;
   const liveMesh = useLpbfBuildMeshStore.getState().mesh;
   const murakamiInput = useLpbfBuildJobStore.getState().murakamiInput;
   const lpbf = specimen.lpbf;
-  const materials = mapSpecimenToSolverMaterials(specimen.name, specimen.baseMetal);
+  const materials = mapSpecimenToBuildJobMaterials(specimen.name, specimen.baseMetal);
   const payload: Parameters<typeof pythonComputationService.solveLpbfBuildJob>[0] = {
-    alloyId: materials.alloyId,
-    thermalMaterial: materials.pythonThermal,
-    slicerMaterial: materials.pythonSlicer,
+    // Unsupported identities remain visible in the key but are never submitted.
+    alloyId: materials?.alloyId ?? specimen.name,
+    thermalMaterial: materials?.pythonThermal ?? specimen.name,
+    slicerMaterial: materials?.pythonSlicer ?? specimen.name,
     laserPower_W: lpbf.laserPower_W,
     scanSpeed_mm_s: lpbf.scanSpeed_mms,
     beamDiameter_um: lpbf.beamDiameter_um,
@@ -129,7 +130,7 @@ function buildJobKey(flags: { enableUq: boolean; includeAmbench: boolean; uqSamp
   const { customTriangles: _triangles, enableUq: _uq, includeAmbench: _ambench, uqSamples: _samples, ...basePayload } = payload;
   const evidenceKey = JSON.stringify([basePayload, {id:specimen.id,name:specimen.name,composition:specimen.composition}, meshIdentity(liveMesh)]);
   const key = JSON.stringify([evidenceKey, flags.enableUq, flags.includeAmbench, flags.enableUq ? flags.uqSamples : 0]);
-  return { key, evidenceKey, payload };
+  return { key, evidenceKey, payload, materialSupported: materials !== null };
 }
 
 export function peekLpbfBuildJobKey(): string {
@@ -151,16 +152,29 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
   const enableUq = options?.enableUq === true;
   const includeAmbench = options?.includeAmbench === true;
   const uqSamples = options?.uqSamples ?? 96;
-  const { key, evidenceKey, payload } = buildJobKey({ enableUq, includeAmbench, uqSamples });
+  const { key, evidenceKey, payload, materialSupported } = buildJobKey({ enableUq, includeAmbench, uqSamples });
   if (options?.bypassCache || force) {
     payload.bypassCache = true;
   }
   const st = useLpbfBuildJobStore.getState();
-  const materialName = canonicalLpbfMaterialName(useMaterialSpecimenStore.getState().activeSpecimen.name);
-  const supported = ["Ti-6Al-4V","316L Stainless Steel","AlSi10Mg","Inconel 718"].includes(materialName);
+  const materialName = useMaterialSpecimenStore.getState().activeSpecimen.name || "unspecified material";
   const invalidProcess = [payload.laserPower_W,payload.scanSpeed_mm_s,payload.beamDiameter_um,payload.layerThickness_um,payload.hatchSpacing_um].some(value=>!Number.isFinite(value)||value<=0) || !Number.isFinite(payload.preheatTemp_C) || payload.preheatTemp_C<0;
-  if (!supported || invalidProcess) {
-    useLpbfBuildJobStore.setState({job:null,busy:false,seq:st.seq+1,lastKey:key,lastFlags:{enableUq,includeAmbench},lastUqSamples:uqSamples,error:!supported?`Build screening has no supported material mapping for ${materialName}. Select a supported LPBF alloy; no surrogate alloy was submitted.`:"Build screening requires finite positive power, speed, beam, hatch and layer inputs, and nonnegative preheat."});
+  if (!materialSupported || invalidProcess) {
+    useLpbfBuildJobStore.setState({
+      job: null,
+      busy: false,
+      seq: st.seq + 1,
+      lastKey: key,
+      lastFlags: { enableUq, includeAmbench },
+      lastUqSamples: uqSamples,
+      sessionUq: null,
+      sessionAmbench: null,
+      sessionEvidenceKey: null,
+      roundTripMs: null,
+      error: !materialSupported
+        ? `Build screening has no supported material mapping for ${materialName}. Select one of the four supported LPBF alloys; no surrogate alloy was submitted.`
+        : "Build screening requires finite positive power, speed, beam, hatch and layer inputs, and nonnegative preheat.",
+    });
     return;
   }
 

@@ -37,6 +37,12 @@
 - Doğrulama: Windows Python 3.12'de core-contract + engineering + heat-source 45 PASS / 2 platforma özel SKIP. WSL OpenFOAM 14 bağımsız parity testi PASS.
 - Sıradaki somut adım: kalan adapter alanlarını (özellikle katman/beam geometri dönüşümleri) ancak birebir parity kanıtıyla değerlendirmek; EIS/EDS kapsam dışı.
 
+## 2026-09-23 - Build-job Alaşım Eşleşmesi ve Cache Sözleşmesi
+- Build-job ön yüzü yalnızca dört kilit alaşım için tam ad/alias allowlist'i kullanıyor ve specimen `baseMetal` alanıyla tutarlılığı denetliyor. CoCrMo, bilinmeyen, boş, çelişkili/bileşik, base-metal çatışmalı ve prototype adları reddediliyor; desteklenmeyen malzeme için 316L/IN718 literatür grafiği veya demo vektörü gösterilmiyor ve önceki job/UQ/NIST durumu temizleniyor.
+- Python build-job API'si açık `alloyId` ile uyumsuz termal/slicer override'larını cache erişiminden önce reddediyor. Aynı alaşımın geçerli alias'ları solver'a kanonik adla gidiyor ve cache anahtarı kanonik kimliğe göre oluşturuluyor. Eksik/boş `alloyId` için mevcut IN718 varsayılanı korunuyor.
+- Doğrulama: `python/test_lpbf_build_job.py` PASS; `tests/lpbf-build-session.test.ts` 8/8 PASS; `npm run lint` PASS. Prototype-property (`constructor`) ve eski cache hit regresyonları kapsandı.
+- Sıradaki somut adım: worker sonucundaki `material.id` alanını ham istek yerine çözümlenmiş kimliğe bağlamak ve build-job'un fiilen kullandığı özellik snapshot'ı için ayrı, doğrulanabilir bir içerik kimliği tasarlamak. Bu hash deneysel doğrulama/provenance kanıtı sayılmayacak.
+
 ---
 
 ## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi

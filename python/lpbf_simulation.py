@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from lpbf_material_registry import material
 from lpbf_core_physics import property_at, enthalpy_table
-from lpbf_core_physics import calculate_mesh_domain
+from lpbf_core_physics import calculate_mesh_domain, scan_segments
 from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import SOURCE_INTEGRATION, source_limited_step, conduction_diagonal
@@ -112,41 +112,6 @@ def screening(p, m):
                           truncated=bool(top[0].any() or top[-1].any() or top[:, -1].any() or cross[:, -1].any()),
                           assumptions="Constant preheat properties; conduction only; discrete liquidus extent; no keyhole correction.")
     return out
-
-
-def scan_segments(p):
-    length, speed = p["trackLength_um"]*1e-6, p["speed_mm_s"]*1e-3
-    time = 0.
-    segments = []
-    for layer in range(int(p["layers"])):
-        theta = math.radians(p["scanAngle_deg"]+layer*p["layerRotation_deg"])
-        u, v = np.array([math.cos(theta), math.sin(theta)]), np.array([-math.sin(theta), math.cos(theta)])
-        tracks = int(p["tracks"])
-        groups = []
-        if p["strategy"] == "island":
-            across = max(1, int(p["islandSize_um"]/p["hatch_um"]))
-            columns = math.ceil(p["trackLength_um"]/p["islandSize_um"])
-            for row_start in range(0,tracks,across):
-                order = range(columns) if (row_start//across)%2 == 0 else reversed(range(columns))
-                for col in order:
-                    a = -length/2+col*length/columns
-                    b = a+length/columns
-                    groups.extend((track,a,b,(-1 if (track-row_start)%2 else 1),f"{row_start//across}:{col}")
-                                  for track in range(row_start,min(tracks,row_start+across)))
-        else:
-            stripe_tracks = max(1,int(p["stripeWidth_um"]/p["hatch_um"]))
-            for track in range(tracks):
-                parity = track%stripe_tracks if p["strategy"] == "stripe" else track
-                direction = -1 if p["strategy"] != "unidirectional" and parity%2 else 1
-                groups.append((track,-length/2,length/2,direction,None))
-        for track,a,b,direction,island in groups:
-            offset = (track-(tracks-1)/2)*p["hatch_um"]*1e-6*v
-            start,end = offset+(a if direction>0 else b)*u,offset+(b if direction>0 else a)*u
-            duration = (b-a)/speed
-            segments.append(dict(start_s=time,end_s=time+duration,start=start.tolist(),end=end.tolist(),
-                                 layer=layer,track=track,island=island))
-            time += duration+p["dwell_s"]
-    return segments, time+p["cooling_s"]
 
 
 def conduction_rate(T, k, active, dx):

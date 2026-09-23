@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { exportRunBundle, getRun, importRun, listRuns, previewRun, restoreRunBundle,
+import { compareNistOpticalRun, exportRunBundle, getRun, importRun, listRuns, previewRun, restoreRunBundle,
   verifyRunBundle } from '../src/services/lpbfRunArchiveClient';
 
 const jobId = 'a'.repeat(32);
@@ -128,4 +128,52 @@ test('bundle client rejects invalid IDs before a network request', async t => {
   const fetchMock = t.mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected request'); });
   await assert.rejects(verifyRunBundle('../unsafe', signal), /valid 32-character bundle ID/i);
   assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+const opticalLink = { datasetId: 'nist-amb2022-03-optical-table4-local-v1',
+  revision: 2, documentSha256: 'e'.repeat(64) };
+const opticalRun = { ...record, document: { ...document, sources: [opticalLink] },
+  sourceBindingStatus: 'exact-revision-bound' } as const;
+const opticalBinding = { ...opticalLink, sourceDatasetId: 'nist-mds2-2718',
+  artifactSha256: 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518' };
+const opticalReport = { schemaVersion: 1, benchmark: 'AMB2022-03-TMPG', caseNumber: '0',
+  status: 'unavailable', validationStatus: 'unvalidated',
+  reference: { doi: '10.18434/mds2-2718', results: 'https://www.nist.gov/results',
+    resultsLocator: 'Table 4', methods: 'https://www.nist.gov/methods',
+    measurement: 'six optical sections', archiveKind: 'local transcription' },
+  sourceBinding: opticalBinding, reasons: ['Optical operator is unavailable.'], errors: null };
+
+test('NIST client posts only a case number and binds the reply to the selected run and revision', async t => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(opticalReport)));
+  const result = await compareNistOpticalRun(opticalRun, '0', signal);
+  assert.equal(result.errors, null);
+  const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+  assert.equal(url, `/api/lpbf/runs/${jobId}/nist-comparison`);
+  assert.equal(init.method, 'POST');
+  assert.deepEqual(JSON.parse(init.body as string), { caseNumber: '0' });
+});
+
+test('NIST client rejects stale case, source binding and numeric unavailable output', async t => {
+  for (const bad of [
+    { ...opticalReport, caseNumber: '1.1' },
+    { ...opticalReport, sourceBinding: { ...opticalBinding, revision: 3 } },
+    { ...opticalReport, sourceBinding: null, errors: { width: { absolute_um: 1 } } },
+    { ...opticalReport, validationStatus: 'experimentally-validated' },
+  ]) {
+    respond(t, bad);
+    await assert.rejects(compareNistOpticalRun(opticalRun, '0', signal), /invalid/i);
+    t.mock.restoreAll();
+  }
+});
+
+test('NIST client accepts only finite, consistent unvalidated screening errors', async t => {
+  const error = { signed_um: -2, absolute_um: 2, measuredMean_um: 100,
+    publishedStdDev_um: 4, model_um: 98 };
+  const comparable = { ...opticalReport, status: 'comparable-screening', reasons: [],
+    errors: { width: error, depth: { ...error, signed_um: 3, absolute_um: 3, model_um: 103 } } };
+  respond(t, comparable);
+  assert.equal((await compareNistOpticalRun(opticalRun, '0', signal)).status, 'comparable-screening');
+  t.mock.restoreAll();
+  respond(t, { ...comparable, errors: { ...comparable.errors, width: { ...error, absolute_um: -2 } } });
+  await assert.rejects(compareNistOpticalRun(opticalRun, '0', signal), /invalid/i);
 });

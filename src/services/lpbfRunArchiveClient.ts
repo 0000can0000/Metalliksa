@@ -1,4 +1,5 @@
-import type { RunRecord, RunSourceLink, RunDocument, RunSourceBindingStatus } from '../types/lpbfRun';
+import type { RunRecord, RunSourceLink, RunDocument, RunSourceBindingStatus,
+  NistOpticalCaseNumber, NistOpticalReport } from '../types/lpbfRun';
 
 export interface RunPreview {
   document: RunDocument;
@@ -46,6 +47,10 @@ const count = (value: unknown): value is number => Number.isSafeInteger(value) &
 const date = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const bindingStatus = (value: unknown): value is RunSourceBindingStatus =>
   value === 'exact-revision-bound' || value === 'legacy-unlinked';
+const opticalCases = new Set<string>(['0', '1.1', '1.2', '2.1', '2.2', '3.1', '3.2']);
+const opticalDatasetId = 'nist-amb2022-03-optical-table4-local-v1';
+const opticalArtifactSha = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 const sameSources = (actual: RunSourceLink[], expected: RunSourceLink[]) =>
   actual.length === expected.length && actual.every((source, index) =>
     source.datasetId === expected[index].datasetId
@@ -143,6 +148,44 @@ export async function listRuns(signal: AbortSignal): Promise<RunArchiveList> {
 export async function getRun(runId: string, signal: AbortSignal): Promise<RunRecord> {
   const result: unknown = await request(`/${encodeURIComponent(runId)}`, signal);
   recordIdentity(result, runId);
+  return result;
+}
+
+function opticalError(value: unknown): boolean {
+  if (!object(value) || !finite(value.signed_um) || !finite(value.absolute_um)
+    || !finite(value.measuredMean_um) || !finite(value.publishedStdDev_um) || !finite(value.model_um)
+    || value.absolute_um < 0 || value.measuredMean_um <= 0 || value.publishedStdDev_um <= 0
+    || value.model_um <= 0) return false;
+  return Math.abs(value.absolute_um - Math.abs(value.signed_um)) < 1e-6
+    && Math.abs(value.model_um - value.measuredMean_um - value.signed_um) < 1e-6;
+}
+
+function opticalReport(value: unknown, run: RunRecord, caseNumber: NistOpticalCaseNumber): asserts value is NistOpticalReport {
+  if (!object(value) || value.schemaVersion !== 1 || value.benchmark !== 'AMB2022-03-TMPG'
+    || value.caseNumber !== caseNumber || value.validationStatus !== 'unvalidated'
+    || !['unavailable', 'comparable-screening'].includes(value.status as string)
+    || !object(value.reference) || value.reference.doi !== '10.18434/mds2-2718'
+    || typeof value.reference.results !== 'string' || typeof value.reference.methods !== 'string'
+    || !Array.isArray(value.reasons) || value.reasons.some(reason => typeof reason !== 'string' || !reason.trim())) throw invalid();
+  if (value.sourceBinding !== null) {
+    const source = value.sourceBinding;
+    if (!object(source) || source.datasetId !== opticalDatasetId || source.sourceDatasetId !== 'nist-mds2-2718'
+      || source.artifactSha256 !== opticalArtifactSha || !Number.isSafeInteger(source.revision)
+      || !sha(source.documentSha256)
+      || !run.document.sources.some(link => link.datasetId === source.datasetId
+        && link.revision === source.revision && link.documentSha256 === source.documentSha256)) throw invalid();
+  }
+  if (value.status === 'unavailable') {
+    if (value.errors !== null || value.reasons.length === 0) throw invalid();
+  } else if (value.reasons.length !== 0 || value.sourceBinding === null || !object(value.errors)
+    || !opticalError(value.errors.width) || !opticalError(value.errors.depth)) throw invalid();
+}
+
+export async function compareNistOpticalRun(run: RunRecord, caseNumber: NistOpticalCaseNumber,
+  signal: AbortSignal): Promise<NistOpticalReport> {
+  if (!jobId(run.document.runId) || !opticalCases.has(caseNumber)) throw new Error('Select a valid archived run and Table 4 case.');
+  const result: unknown = await request(`/${run.document.runId}/nist-comparison`, signal, { caseNumber });
+  opticalReport(result, run, caseNumber);
   return result;
 }
 

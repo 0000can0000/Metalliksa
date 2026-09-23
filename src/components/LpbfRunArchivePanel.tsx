@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useInputBoundTask } from '../hooks/useInputBoundTask';
 import { listRuns, getRun, previewRun, importRun, exportRunBundle, verifyRunBundle, restoreRunBundle,
+  compareNistOpticalRun,
   type RunPreview, type RunArchiveList, type ExportedRunBundle, type VerifiedRunBundle,
   type RestoredRunBundle } from '../services/lpbfRunArchiveClient';
 import { sourceAction, sourceCatalog } from '../services/lpbfSourceService';
-import type { RunRecord, RunSourceLink } from '../types/lpbfRun';
+import type { RunRecord, RunSourceLink, NistOpticalCaseNumber, NistOpticalReport } from '../types/lpbfRun';
 
 const button = 'rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-sky-300 disabled:opacity-40';
 
@@ -123,7 +124,72 @@ function ArchivedRunRecord({ runId }: { runId: string }) {
       <pre className="text-xs bg-slate-950 p-3 overflow-auto mt-2 text-slate-300">{JSON.stringify(record.document, null, 2)}</pre>
       </details>
     </div>}
+    {record && <NistOpticalComparison record={record} />}
   </div>;
+}
+
+const opticalCases: { id: NistOpticalCaseNumber; label: string }[] = [
+  { id: '0', label: 'Case 0 · 285 W · 960 mm/s · 67 µm' },
+  { id: '1.1', label: 'Case 1.1 · 285 W · 960 mm/s · 49 µm' },
+  { id: '1.2', label: 'Case 1.2 · 285 W · 960 mm/s · 82 µm' },
+  { id: '2.1', label: 'Case 2.1 · 285 W · 1200 mm/s · 67 µm' },
+  { id: '2.2', label: 'Case 2.2 · 285 W · 800 mm/s · 67 µm' },
+  { id: '3.1', label: 'Case 3.1 · 325 W · 960 mm/s · 67 µm' },
+  { id: '3.2', label: 'Case 3.2 · 245 W · 960 mm/s · 67 µm' },
+];
+
+export function NistOpticalComparison({ record }: { record: RunRecord }) {
+  const [caseNumber, setCaseNumber] = useState<NistOpticalCaseNumber>('0');
+  const requestKey = `${record.document.runId}:${record.documentSha256}:${caseNumber}`;
+  const task = useInputBoundTask<NistOpticalReport>(requestKey);
+  const link = record.document.sources.find(source => source.datasetId === 'nist-amb2022-03-optical-table4-local-v1');
+
+  const compare = async () => {
+    const request = task.begin('compare');
+    try { request.publish(await compareNistOpticalRun(record, caseNumber, request.signal)); }
+    catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  const report = task.data;
+  return <section aria-label="NIST optical Table 4 comparison" className="space-y-3 rounded-xl border border-slate-700 p-4 text-sm">
+    <div><h4 className="font-medium">NIST AMB2022-03 · optical Table 4</h4>
+      <p className="text-xs text-amber-200">Literature-model screening · unvalidated. Table 4 is a local transcription of published aggregate measurements.</p></div>
+    <p>Run: <span className="font-mono">{record.document.runId}</span></p>
+    <p>Core contract: {record.document.capture.contractStatus === 'core-v1-bound' ? 'Bound' : 'Legacy unbound'}</p>
+    <p>Archived Table 4 link: {link ? <>revision {link.revision} · document SHA-256 <span className="font-mono break-all">{link.documentSha256}</span></>
+      : 'Unavailable · this run has no Table 4 source revision link'}</p>
+    <label className="block">Published process case
+      <select aria-label="NIST Table 4 case" value={caseNumber}
+        className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300"
+        onChange={event => setCaseNumber(event.target.value as NistOpticalCaseNumber)}>
+        {opticalCases.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+      </select>
+    </label>
+    <button type="button" className={button} disabled={!!task.pending} onClick={() => void compare()}>Compare archived run</button>
+    {task.pending && <p role="status">Checking archived run and Table 4 bytes…</p>}
+    {task.error && <p role="alert" className="text-rose-300">{task.error}</p>}
+    {report && <NistOpticalResult report={report} />}
+  </section>;
+}
+
+export function NistOpticalResult({ report }: { report: NistOpticalReport }) {
+  return <div aria-live="polite" className="space-y-2">
+      <p className="font-medium">{report.status === 'unavailable' ? 'Comparison unavailable' : 'Comparable screening result'} · unvalidated</p>
+      <p>Verified Table 4 binding: {report.sourceBinding
+        ? <>revision {report.sourceBinding.revision} · document SHA-256 <span className="font-mono break-all">{report.sourceBinding.documentSha256}</span></>
+        : 'Unavailable'}</p>
+      {report.status === 'unavailable' ? <ul className="list-disc space-y-1 pl-5 text-amber-200">
+        {report.reasons.map((reason, index) => <li key={`${index}:${reason}`}>{reason}</li>)}
+      </ul> : report.errors && <div className="space-y-1 text-slate-200">
+        {(['width', 'depth'] as const).map(quantity => <p key={quantity}>
+          {quantity === 'width' ? 'Width' : 'Depth'}: signed error {report.errors![quantity].signed_um.toFixed(2)} µm;
+          absolute error {report.errors![quantity].absolute_um.toFixed(2)} µm;
+          measured mean {report.errors![quantity].measuredMean_um.toFixed(2)} µm;
+          published SD {report.errors![quantity].publishedStdDev_um.toFixed(2)} µm.
+        </p>)}
+      </div>}
+    </div>;
 }
 
 interface ArchivedSourceOption { key: string; label: string; link: RunSourceLink }

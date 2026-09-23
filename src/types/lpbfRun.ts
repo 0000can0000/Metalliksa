@@ -29,3 +29,32 @@ export interface RunRecord {
   evidenceStatus: 'unvalidated-model';
   sourceBindingStatus: RunSourceBindingStatus;
 }
+
+export type NistOpticalCaseNumber = '0' | '1.1' | '1.2' | '2.1' | '2.2' | '3.1' | '3.2';
+
+export interface NistOpticalError {
+  signed_um: number;
+  absolute_um: number;
+  measuredMean_um: number;
+  publishedStdDev_um: number;
+  model_um: number;
+}
+
+export interface NistOpticalReport {
+  schemaVersion: 1;
+  benchmark: 'AMB2022-03-TMPG';
+  caseNumber: NistOpticalCaseNumber;
+  status: 'unavailable' | 'comparable-screening';
+  validationStatus: 'unvalidated';
+  reference: {
+    doi: '10.18434/mds2-2718';
+    results: string;
+    resultsLocator: string;
+    methods: string;
+    measurement: string;
+    archiveKind: string;
+  };
+  sourceBinding: (RunSourceLink & { sourceDatasetId: 'nist-mds2-2718'; artifactSha256: string }) | null;
+  reasons: string[];
+  errors: { width: NistOpticalError; depth: NistOpticalError } | null;
+}

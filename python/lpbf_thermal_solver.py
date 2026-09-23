@@ -235,11 +235,11 @@ def calculate_meltpool_physics(
     heat_source: "rosenthal" (Build Job default), "eagar-tsai", or "goldak" (Melt Pool lab).
     sulfur_ppm: Heiple–Roper screening only (does not refit W/D or re-score Build Job).
     """
-    base = (
-        thermal_props(material_name)
-        or SECONDARY_THERMOPHYSICAL_DB.get(material_name)
-        or thermal_props("Inconel 718")
-    )
+    if not isinstance(material_name, str) or not material_name.strip():
+        raise ValueError(f"Unsupported LPBF material identity: {material_name!r}")
+    base = thermal_props(material_name) or SECONDARY_THERMOPHYSICAL_DB.get(material_name)
+    if base is None:
+        raise ValueError(f"Unsupported LPBF material identity: {material_name!r}")
     props = dict(base)
     if prop_overrides:
         props.update(prop_overrides)
@@ -683,7 +683,7 @@ def calculate_meltpool_physics(
                 "depth_um": round(d_um, 1)
             })
 
-    return {
+    result = {
         "success": True,
         "engine": "MetalliX-Python-HPC-LPBF-MeltPool-v6.0",
         "modelId": heat_source_id,
@@ -814,6 +814,15 @@ def calculate_meltpool_physics(
             "grid": process_map_grid
         }
     }
+    if material_name == "Inconel 625":
+        result["materialEvidence"] = {
+            "propertySource": "lpbf_thermal_solver.SECONDARY_THERMOPHYSICAL_DB.Inconel 625",
+            "provenanceClass": "legacy-estimated-secondary",
+            "validationStatus": "unvalidated",
+            "scope": "direct-meltpool-screening",
+            "usesBoundedIN625Snapshot": False,
+        }
+    return result
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--status":

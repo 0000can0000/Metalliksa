@@ -5,31 +5,27 @@ export interface RunSourceLink {
 }
 
 export interface RunCapture {
-  version: 1;
-  id: string; // Worker job id
-  inputHash: string;
-  implementationHash: string;
-  solverBinaryHash: string | null;
-  platform: string;
-  artifacts: {
-    relativePath: string;
-    sha256: string;
-    byteSize: number;
-  }[];
+  schemaVersion: 1;
+  jobId: string;
+  resultJson: string;
+  inputJson: string;
+  materialJson: string;
+  contractStatus: 'core-v1-bound' | 'legacy-unbound';
 }
 
 export interface RunDocument {
   schemaVersion: 1;
   runId: string;
-  jobId: string;
   capture: RunCapture;
   sources: RunSourceLink[];
 }
+
+export type RunSourceBindingStatus = 'exact-revision-bound' | 'legacy-unlinked';
 
 export interface RunRecord {
   document: RunDocument;
   documentSha256: string;
   createdAt: string;
-  evidenceStatus: 'unreviewed-run-archive';
-  artifactIntegrity: 'verified-at-import';
+  evidenceStatus: 'unvalidated-model';
+  sourceBindingStatus: RunSourceBindingStatus;
 }

@@ -102,7 +102,7 @@ def material(name, supplied=None):
         _require_json_value(supplied)
         allowed = {"source", "solidus_K", "liquidus_K", "boiling_K", "latentHeat_J_kg", "absorptivity", "emissivity",
                    "dGamma_dT", "table", "name", "version", "quality", "physicalMeltingPoint_K", "phaseRegularization_K",
-                   "temperatureCoverage_K", "uncertaintyNote", "materialId", "provenanceClass",
+                   "temperatureCoverage_K", "sourceValidityRange_K", "uncertaintyNote", "materialId", "provenanceClass",
                    "materialIdentitySchemaVersion", "materialRevisionSha256"}
         if set(supplied)-allowed:
             raise ValueError("Unknown material property fields")
@@ -148,6 +148,13 @@ def material(name, supplied=None):
         raise ValueError("table rows must be [T_K, rho_kg_m3, k_W_mK, cp_J_kgK, viscosity_Pa_s]")
     if (a <= 0).any() or (np.diff(a[:, 0]) <= 0).any() or a[0, 0] > 273.15 or a[-1, 0] < m["boiling_K"]:
         raise ValueError("Positive properties, increasing temperatures and full temperature coverage required")
+    if "sourceValidityRange_K" in m:
+        validity = m["sourceValidityRange_K"]
+        if (not isinstance(validity, list) or len(validity) != 2
+                or any(type(value) not in (int, float) or value <= 0 or value > 10000
+                       or not math.isfinite(value) for value in validity)
+                or validity[0] > a[0, 0] or validity[1] < max(a[-1, 0], m["boiling_K"])):
+            raise ValueError("sourceValidityRange_K must cover the full property table and boiling regime")
     for col, lo, hi in ((1, 100, 30000), (2, .01, 2000), (3, 50, 10000), (4, 1e-5, 10)):
         if (a[:, col] < lo).any() or (a[:, col] > hi).any():
             raise ValueError(f"Property column {col} outside physical model bounds [{lo}, {hi}]")

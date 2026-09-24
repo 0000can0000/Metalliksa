@@ -58,7 +58,7 @@ export interface SimulationResult {
   settings: SimulationInput; confidence: "low"; validationStatus: "unvalidated";
   productionReady: false; label: string; fallbackReason: string | null;
   metrics: { width_um: number; depth_um: number; length_um: number; [key: string]: unknown };
-  material: { name: string; quality: string; source: string; temperatureCoverage_K?: number[]; liquidus_K?: number; solidus_K?: number; table?: number[][]; uncertaintyNote?: string };
+  material: { name: string; quality: string; source: string; temperatureCoverage_K?: number[]; sourceValidityRange_K?: number[]; liquidus_K?: number; solidus_K?: number; table?: number[][]; uncertaintyNote?: string };
   analyticalComparison: Record<string, { width_um: number; depth_um: number; length_um: number }>;
   assumptions: string[]; regime: string; mainRisk: string; recommendation: string; riskScope: string;
   thermalHistory?: { time_s: number; peak_K: number }[];

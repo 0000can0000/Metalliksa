@@ -133,6 +133,29 @@ class Verification(unittest.TestCase):
         self.assertNotEqual(first["materialRevisionSha256"], revised["materialRevisionSha256"])
         self.assertEqual(first["provenanceClass"], "user-supplied-unverified")
         self.assertEqual(first["quality"], "user-supplied-unverified")
+        self.assertNotIn("sourceValidityRange_K", first)
+
+    def test_source_validity_range_is_separate_and_must_cover_model_table(self):
+        supplied = copy.deepcopy(material("Inconel 718"))
+        for key in ("materialId", "provenanceClass", "materialIdentitySchemaVersion", "materialRevisionSha256"):
+            supplied.pop(key)
+        supplied["source"] = "Bounded synthetic unit-test source"
+        coverage = [supplied["table"][0][0], supplied["table"][-1][0]]
+        supplied["sourceValidityRange_K"] = coverage
+        accepted = material("Inconel 718", supplied)
+        self.assertEqual(accepted["sourceValidityRange_K"], coverage)
+        self.assertEqual(accepted["temperatureCoverage_K"], coverage)
+        without_validity = copy.deepcopy(supplied)
+        without_validity.pop("sourceValidityRange_K")
+        self.assertNotEqual(accepted["materialRevisionSha256"],
+                            material("Inconel 718", without_validity)["materialRevisionSha256"])
+
+        for invalid in ([coverage[0] + 1, coverage[1]], [coverage[0], coverage[1] - 1],
+                        [True, coverage[1]], [coverage[0], float("inf")], [coverage[0]]):
+            bad = copy.deepcopy(supplied)
+            bad["sourceValidityRange_K"] = invalid
+            with self.subTest(validity=invalid), self.assertRaises(ValueError):
+                material("Inconel 718", bad)
 
     def test_supplied_data_for_additional_alloy(self):
         # Synthetic table exercises schema only; explicitly marked synthetic source.

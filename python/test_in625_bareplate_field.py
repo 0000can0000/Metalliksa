@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -125,6 +126,27 @@ def test_cuda_inverse_checks_bounds_and_uses_unchecked_60_step_bisection():
             torch.tensor(REFERENCE_TEMPERATURE_K, dtype=torch.float64),
             torch.tensor(LIQUIDUS_K, dtype=torch.float64), torch,
         )
+
+
+def test_warp_cuda_inverse_matches_phase_boundary_temperatures():
+    torch = pytest.importorskip("torch")
+    wp = pytest.importorskip("warp")
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA device is not available")
+    wp.config.use_precompiled_headers = False
+    wp.config.kernel_cache_dir = str(Path(__file__).resolve().parent / ".tmp-in625-warp-tests")
+
+    expected = [REFERENCE_TEMPERATURE_K, SOLIDUS_K-1e-6, SOLIDUS_K,
+                SOLIDUS_K+15.0, LIQUIDUS_K-1e-6, LIQUIDUS_K]
+    enthalpy = [in625_lpbf_thermal_at_kelvin(value)["specificEnthalpy_J_kg"]
+                for value in expected]
+    h0 = in625_lpbf_thermal_at_kelvin(REFERENCE_TEMPERATURE_K)["specificEnthalpy_J_kg"]
+    h1 = in625_lpbf_thermal_at_kelvin(LIQUIDUS_K)["specificEnthalpy_J_kg"]
+    gpu_enthalpy = torch.tensor(enthalpy, dtype=torch.float64, device="cuda:0")
+    recovered = field._temperature_from_enthalpy_warp(gpu_enthalpy, h0, h1, torch)
+    torch.testing.assert_close(
+        recovered.cpu(), torch.tensor(expected, dtype=torch.float64), rtol=0.0, atol=2e-10,
+    )
 
 
 def test_cpu_moving_surface_source_conserves_absorbed_energy_and_metadata():

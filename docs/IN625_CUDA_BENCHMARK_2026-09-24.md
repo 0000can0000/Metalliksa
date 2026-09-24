@@ -48,3 +48,37 @@ independent 64-point enthalpy and total-energy oracles passed for both outputs;
 maximum CPU/CUDA differences were 9.095e-13 K and 4.657e-10 J/kg. This
 higher-resolution synthetic case still does not qualify the material or
 process. CUDA remained slower; no crossover is demonstrated.
+
+## Fused CUDA enthalpy inversion — 2026-09-25
+
+The 60-step pointwise Torch bisection was replaced on the explicit CUDA path by
+one float64 Warp kernel per enthalpy inversion. The kernel retains the same
+bounded interval, enthalpy law, comparison direction and all 60 bisection
+updates. The Torch-loop implementation remains the fallback when Warp cannot
+be imported. Focused IN625 field tests passed **13/13**, including a direct Warp
+inverse check at the reference, solidus and liquidus boundaries, field parity,
+independent enthalpy and energy checks.
+
+The timing workload was unchanged from the 2,048-cell z-refined case above:
+16 × 16 × 8 cells, 125 × 125 × 62.5 µm cells, 1500 K initial state,
+12.5 µs step, 264 steps, 30 W absorbed power, 0.3 mm Gaussian sigma and a
+stationary source at (1, 1) mm. All runs used explicit `cuda:0`, identical
+material revision `f47b07e4…6f07`, CUDA synchronization immediately before
+and after each timed call, one untimed backend warm-up, and a 180 s per-call
+cap. No sample timed out.
+
+| Alternating pair | Torch-loop CUDA | Fused Warp CUDA | Peak temperature (both) | Mushy cells (both) |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 52.972063 s | 2.097026 s | 1593.516257613138 K | 44 |
+| 2 | 33.083509 s | 1.355652 s | 1593.516257613138 K | 44 |
+| 3 | 34.246542 s | 1.529947 s | 1593.516257613138 K | 44 |
+
+Median time was 34.246542 s for Torch and 1.529947 s for Warp on this one
+workload. Pair ratios were 25.261×, 24.404× and 22.384×. Timings varied by
+about 1.6× within each backend, so the evidence supports a repeatable direction
+of improvement for this case but not a stable or application-wide speedup
+factor. Torch and Warp summed specific enthalpy differed by 5×10⁻⁷ J/kg
+(relative 3.4×10⁻¹⁶); both reported final total enthalpy 11.570662616926892 J
+and maximum energy residual 5.329070518200751×10⁻¹⁵ J. This is numerical
+parity for the bounded screening workload, not material or LPBF process
+validation, and does not establish GPU parity for other thermal contracts.

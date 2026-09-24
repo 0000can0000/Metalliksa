@@ -19,6 +19,11 @@ import math
 
 import numpy as np
 
+try:
+    import warp as _wp
+except ImportError:  # The explicit CUDA solver retains its Torch reference fallback.
+    _wp = None
+
 from in625_thermal_material import (
     LIQUIDUS_K,
     REFERENCE_TEMPERATURE_K,
@@ -171,6 +176,84 @@ def _temperature_from_enthalpy_torch(enthalpy, law, h0, h1, torch):
         below = law(mid, validate=False)[3] < enthalpy
         lo, hi = torch.where(below, mid, lo), torch.where(below, hi, mid)
     return (lo + hi) / 2.0
+
+
+if _wp is not None:
+    @_wp.func
+    def _in625_specific_enthalpy_warp(t: _wp.float64, reference: _wp.float64,
+                                      solidus: _wp.float64, liquidus: _wp.float64,
+                                      a: _wp.float64, b: _wp.float64, c: _wp.float64,
+                                      d: _wp.float64, liquid_cp: _wp.float64,
+                                      latent: _wp.float64) -> _wp.float64:
+        hs = (a*solidus + b*solidus*solidus/_wp.float64(2.0)
+              + c*solidus*solidus*solidus/_wp.float64(3.0)
+              + d*solidus*solidus*solidus*solidus/_wp.float64(4.0)
+              - (a*reference + b*reference*reference/_wp.float64(2.0)
+                 + c*reference*reference*reference/_wp.float64(3.0)
+                 + d*reference*reference*reference*reference/_wp.float64(4.0)))
+        if t <= solidus:
+            return (a*t + b*t*t/_wp.float64(2.0) + c*t*t*t/_wp.float64(3.0)
+                    + d*t*t*t*t/_wp.float64(4.0)
+                    - (a*reference + b*reference*reference/_wp.float64(2.0)
+                       + c*reference*reference*reference/_wp.float64(3.0)
+                       + d*reference*reference*reference*reference/_wp.float64(4.0)))
+        cs = a + b*solidus + c*solidus*solidus + d*solidus*solidus*solidus
+        delta = t-solidus
+        width = liquidus-solidus
+        fraction = delta/width
+        return (hs + cs*delta + (liquid_cp-cs)*delta*delta/(_wp.float64(2.0)*width)
+                + latent*fraction)
+
+
+    @_wp.kernel
+    def _in625_inverse_bisection_kernel(enthalpy: _wp.array(dtype=_wp.float64),
+                                        temperature: _wp.array(dtype=_wp.float64),
+                                        count: _wp.int32, reference: _wp.float64,
+                                        solidus: _wp.float64, liquidus: _wp.float64,
+                                        a: _wp.float64, b: _wp.float64, c: _wp.float64,
+                                        d: _wp.float64, liquid_cp: _wp.float64,
+                                        latent: _wp.float64):
+        i = _wp.tid()
+        if i < count:
+            target = enthalpy[i]
+            lo = reference
+            hi = liquidus
+            for _ in range(60):
+                mid = (lo+hi)/_wp.float64(2.0)
+                below = _in625_specific_enthalpy_warp(
+                    mid, reference, solidus, liquidus, a, b, c, d, liquid_cp, latent
+                ) < target
+                if below:
+                    lo = mid
+                else:
+                    hi = mid
+            temperature[i] = (lo+hi)/_wp.float64(2.0)
+
+
+def _temperature_from_enthalpy_warp(enthalpy, h0, h1, torch):
+    """Invert IN625 enthalpy in one CUDA kernel while retaining 60 bisections."""
+    if _wp is None:
+        raise RuntimeError("Warp is unavailable for the fused IN625 CUDA inverse")
+    if (not bool(torch.isfinite(enthalpy).all())
+            or bool((enthalpy < h0).any()) or bool((enthalpy > h1).any())):
+        raise ValueError("enthalpy crosses bounded IN625 temperature interval; rejecting step")
+    _wp.init()
+    contiguous = enthalpy.contiguous()
+    result = torch.empty_like(contiguous)
+    input_wp = _wp.from_torch(contiguous.reshape(-1), dtype=_wp.float64)
+    output_wp = _wp.from_torch(result.reshape(-1), dtype=_wp.float64)
+    stream = _wp.stream_from_torch(torch.cuda.current_stream(device=enthalpy.device))
+    coefficients = _SNAPSHOT["solidCpPolynomial_J_kgK"]
+    with _wp.ScopedStream(stream, sync_enter=False, sync_exit=False):
+        _wp.launch(
+            kernel=_in625_inverse_bisection_kernel,
+            dim=contiguous.numel(),
+            inputs=[input_wp, output_wp, contiguous.numel(), REFERENCE_TEMPERATURE_K,
+                    _SNAPSHOT["solidus_K"], LIQUIDUS_K, *coefficients,
+                    _SNAPSHOT["liquidCp_J_kgK"], _SNAPSHOT["latentHeat_J_kg"]],
+            device=str(enthalpy.device),
+        )
+    return result
 
 
 def _conductive_power_numpy(temperature, conductivity, cfg):
@@ -337,6 +420,8 @@ def run_cuda(config: BareplateConfig = BareplateConfig(), device: str = "cuda:0"
     h1 = law(torch.full((), LIQUIDUS_K, dtype=dtype, device=dev))[3]
 
     def inverse(h):
+        if _wp is not None:
+            return _temperature_from_enthalpy_warp(h, h0, h1, torch)
         return _temperature_from_enthalpy_torch(h, law, h0, h1, torch)
 
     def conductive_power(t, conductivity):

@@ -1,5 +1,23 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+## Continuation checkpoint — layer-conforming P4 v1 (2026-09-24)
+
+The unsafe substrate-depth shift proposed during diagnosis was rejected: it
+would move the z=0 material interface and misclassify whole cells. A separate
+one-layer, layer-conforming companion protocol was frozen before running in
+`067eea6` (`docs/LPBF_P4_LAYER_CONFORMING_PROTOCOL_2026-09-24.md` and its
+scenario JSON). All six runs completed under the unchanged 99% source-capture
+guard and 1% energy criterion. Energy closure passed (maximum relative error
+`3.07e-14`), but v1 is `failed` for mesh convergence and `inconclusive` for
+timestep convergence: the actual mesh ratios are 2 and 1.5, and actual mean-dt
+ratios are not constant. The solver's existing trend oracle therefore returns
+inconclusive; no acceptance criterion changed. Results are preserved in
+`docs/LPBF_P4_LAYER_CONFORMING_80W_2026-09-24.json` (SHA-256
+`2c74226dace13c93290e8086f3e1e57dc526f2967dcf4454f9416011c5598b51`). The
+original frozen P4 remains `failed`. Next, if another companion is justified,
+predeclare exact factor-two, surface-conforming actual meshes and timesteps;
+do not reuse these v1 results to claim a pass.
+
 ## Continuation checkpoint — P4 forensic boundary + NIST beam correction (2026-09-24)
 
 NIST's 2025 beam report includes a normalized measured signal-intensity

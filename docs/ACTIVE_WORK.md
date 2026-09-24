@@ -876,3 +876,11 @@ The lower graph-floor and projected-CFL regressions now cover CPU and explicit
 cuda:0 when available. Focused execution passed 2 tests and 4 device subtests
 on NVIDIA GeForce RTX 4060 Laptop GPU. This verifies the new guard kernels and
 fail-closed path execute on CUDA; it does not qualify the process model.
+
+## NIST P5 geometry feasibility audit — 2026-09-24
+
+The current `stationary-enthalpy-conduction-v1` resolves one homogeneous material, with a minimum 300 µm IN718 substrate, an initial-temperature fixed bottom, and no SS304 layer/contact model. The NIST comparison cannot be made source-matched by merely increasing domain depth: that would extend IN718 rather than add the support stack. Any backing/contact treatment needs a separate opt-in solver/model identity so existing v1 runs and hashes remain valid.
+
+The current source is a normal-incidence symmetric Gaussian. `scanAngle_deg=0` is the scan-path direction and does not encode incidence. NIST Table 1's optical/thermography setup is 5 ± 0.5°; the 8° condition belongs to separate dynamic-coupling measurements. The AMB2022-03 optical package reviewed for this audit exposes no measured irradiance-map artifact, so a measured-profile gate must remain closed until one is located and byte-bound.
+
+Next: design the versioned source/geometry contract for an opt-in layered 3.17 mm IN718 plate plus full-contact SS304 backing, with explicit interface and bottom-boundary assumptions and incidence angle/azimuth. First validate the numerical implementation independently; retain P5 as unavailable until exact source evidence, section operator, convergence, and comparison checks all pass. Preserve v1 behavior and all P4/P5/P6/P7 outcomes.

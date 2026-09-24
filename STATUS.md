@@ -286,3 +286,9 @@
 ## 2026-09-24 — Phase 22 guard CUDA execution follow-up
 - The two new boundary/CFL regressions now run on CPU and explicit cuda:0 when available. Focused GPU-aware run: **2 tests passed, 4 device subtests passed** on NVIDIA GeForce RTX 4060 Laptop GPU.
 - This compiles and executes the floor-hit fail-closed path and actual projected-velocity CFL kernel on CUDA. It does not amount to whole-process experimental or general solver validation. Existing P4/P5/P6/P7 statuses are unchanged.
+
+## NIST P5 geometry feasibility audit — 2026-09-24
+
+A focused feasibility audit confirms the current `stationary-enthalpy-conduction-v1` cannot represent the source specimen: its domain uses a minimum 300 µm homogeneous IN718 substrate, fixes the bottom at initial temperature, and has no SS304 backing/contact interface. Increasing depth alone would still model the support as IN718. The solver heat source is a normal-incidence symmetric Gaussian; `scanAngle_deg=0` describes path direction, not incidence. NIST's 5 ± 0.5° applies to the Table 1 thermography/optical setup, while 8° belongs to a separate dynamic-coupling condition. No AMB2022-03 measured irradiance-map artifact was found in the cited dataset package.
+
+Decision: preserve v1 identity and keep P5 unavailable. A credible follow-up requires an opt-in versioned layered-plate/support model with explicit contact and bottom-boundary assumptions, and explicit incidence angle/azimuth in the source contract. Do not bind a presumed Gaussian as measured profile evidence. No new P5 run until these source-matching gates are closed.

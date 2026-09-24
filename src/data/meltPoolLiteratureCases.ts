@@ -1,4 +1,4 @@
-import opticalTable4 from "../../data/benchmark/nist-amb2022-03-optical/table4-aggregate-v1.json";
+import opticalTable4 from "../../data/benchmark/nist-amb2022-03-optical/table4-aggregate-v2.json";
 
 export type MeltPoolLiteratureKind = "measured" | "asymptotic" | "no-measured-track";
 

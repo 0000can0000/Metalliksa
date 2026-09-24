@@ -1325,3 +1325,27 @@ were within the frozen `1e-3` limit (1/1 PASS). This is a pressure-operator
 oracle only; it does not validate surface-force constitutive laws, total-energy
 closure, convergence, performance, or experimental behavior. Details:
 `docs/PHASE22_CUDA_PRESSURE_MANUFACTURED_2026-09-24.md`.
+
+## 2026-09-24 — Sloped-surface energy ledger and worker timeout
+
+Phase 22 previously applied the graph-area metric to evaporation cooling but
+not to convection/radiation. Commit `a344821` now applies the actual graph area
+once to all three environmental losses, while laser input remains projected
+area. An opt-in independent per-cell ledger records laser, conduction,
+advection, convection, radiation, evaporation, and surface-mask reset terms.
+The focused suite passed 28/28. On RTX 4060 `cuda:0`, 64³ cells and 43 steps,
+whole-field relative energy closure was `9.724e-5`, below `1e-3`; both pressure
+residual gates were also below `1e-3`. This is one bounded CUDA case, not mesh
+or time convergence or experimental validation. Report:
+`docs/PHASE22_CUDA_ENERGY_AUDIT_2026-09-24.md`.
+
+The CPU `enthalpy-fv-6` audit found no new high-confidence hidden physics defect;
+existing energy, conservative internal-face, and source-capture tests cover the
+inspected operators. The distinct legacy 2D FDM endpoint remains explicitly
+screening-only and is not evidence about the shared CPU core.
+
+`python/lpbf_worker.py` now supplies the 300 s default when a build-job omits
+`timeout_s`; `python/test_lpbf_worker_timeout.py` passed 1/1. The current
+checkout's live HTTP API then completed two IN718 build jobs, each with the
+resolved material snapshot SHA-256. Archive/restore for this build-job result
+remains unverified.

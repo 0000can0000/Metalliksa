@@ -1,5 +1,17 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+Latest completed physics slice: commit `a344821` fixes sloped-surface area
+scaling for GPU convection/radiation/evaporation and adds the Phase 22 energy
+ledger; its focused suite passed 28/28 and the 64³ RTX 4060 CUDA closure was
+`9.724e-5`. CPU core audit found no new high-confidence defect in `enthalpy-fv-6`;
+legacy 2D FDM limitations remain explicitly scoped. The build-job worker's
+missing `timeout_s` default is fixed locally and the focused regression passed
+1/1; two live HTTP jobs completed with material property hashes. Archive/restore
+and full P6 acceptance remain open. P4 tied-endpoint diagnostics are complete
+and diagnostic-only; 75 W remains inconclusive and frozen 80 W remains failed.
+Root owns report integration, the build-job archive boundary, and the next
+predeclared numerical/source gates; preserve all frozen acceptance criteria.
+
 Root owns integration and `STATUS.md`/`PROOF.md` on
 `codex/lpbf-buildjob-material-identity`; no push. The official NIST workbook
 audit is `ef303e7`. Phase 21 stationary 2D screening physics repairs are

@@ -36,6 +36,7 @@ from lpbf_transient_enthalpy_fdm import TransientEnthalpyFDMSolver
 from stl_voxelizer import STLVoxelizer
 
 ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().parents[1]/".lpbf-jobs")))
+DEFAULT_JOB_TIMEOUT_S = 300.0
 
 
 def capabilities():
@@ -222,6 +223,7 @@ class Queue:
     def execute(self, job):
         folder = self.root/job
         params = json.loads((folder/"input.json").read_text())
+        timeout_s = params.get("timeout_s", DEFAULT_JOB_TIMEOUT_S)
         with (folder/"progress.log").open("w") as log:
             child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--execute", str(folder)],
                                      stdout=log, stderr=log, start_new_session=(os.name != "nt"))
@@ -229,7 +231,7 @@ class Queue:
             try:
                 while child.poll() is None:
                     state = self.get(job)["status"]
-                    timed_out = time.monotonic()-started > params["timeout_s"]
+                    timed_out = time.monotonic()-started > timeout_s
                     if state == "cancelled" or timed_out or self.closed.is_set():
                         if os.name == "nt":
                             child.kill()
@@ -257,7 +259,7 @@ class Queue:
                     if self.get(job)["status"] == "cancelled":
                         return
                     final_log = (folder/"progress.log").read_text(errors="replace")[-16000:]
-                    if time.monotonic()-started > params["timeout_s"] or self.closed.is_set():
+                    if time.monotonic()-started > timeout_s or self.closed.is_set():
                         self.finish_running(job, status="timed_out" if not self.closed.is_set() else "failed",
                                             error="Simulation timeout" if not self.closed.is_set() else "Worker stopped during execution", log=final_log)
                         return

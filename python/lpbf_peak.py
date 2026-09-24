@@ -281,9 +281,16 @@ def interpolated_peak_melt_pool(coordinates, temperature, surface, angle, dx, li
 
 
 class PeakMeltTracker:
-    def __init__(self, coordinates, dx, material):
+    def __init__(self, coordinates, dx, material, track_tied_contours=False,
+                 capture_tied_fields=False):
         self.xyz = np.asarray(coordinates)
         self.dx, self.m = dx, material
+        self.track_tied_contours = bool(track_tied_contours)
+        self.capture_tied_fields = bool(capture_tied_fields)
+        if self.capture_tied_fields and not self.track_tied_contours:
+            raise ValueError("Capturing tied peak fields requires contour tracking")
+        self._tied_contours = []
+        self._tied_fields = []
         self.count = self.sampled_count = 0
         self.state = None
         self.equal_maximum_count = 0
@@ -300,9 +307,25 @@ class PeakMeltTracker:
             self.state = (temperature.copy(), active, surface, angle, float(time), int(step))
             self.equal_maximum_count = 1
             self.first_equal_maximum_time = self.last_equal_maximum_time = float(time)
+            if self.track_tied_contours:
+                self._tied_contours = []
+                self._tied_fields = []
+                self._record_tied_contour(temperature, surface, angle, time, step)
         elif count > 0 and count == self.count:
             self.equal_maximum_count += 1
             self.last_equal_maximum_time = float(time)
+            if self.track_tied_contours:
+                self._record_tied_contour(temperature, surface, angle, time, step)
+
+    def _record_tied_contour(self, temperature, surface, angle, time, step):
+        contour = interpolated_peak_melt_pool(
+            self.xyz, temperature, surface, angle, self.dx, self.m['liquidus_K'])
+        self._tied_contours.append(dict(
+            time_s=float(time), step=int(step), status=contour.get("status"),
+            width_um=contour.get("width_um"), depth_um=contour.get("depth_um")))
+        if self.capture_tied_fields:
+            self._tied_fields.append((temperature.copy(), float(surface), float(angle),
+                                      float(time), int(step)))
 
     def finish(self, artifact_dir, observed_steps):
         metrics = dict(length_um=0., width_um=0., depth_um=0., volume_um3=0., crossSectionArea_um2=0.)
@@ -344,4 +367,35 @@ class PeakMeltTracker:
                            sampledPeakMeltVolume_um3=self.sampled_count*self.dx**3*1e18,
                            peakMeltSamplingLossFraction=(self.count-self.sampled_count)/self.count if self.count else 0.,
                            interpolatedPeakMeltPool=interpolated)
+        if self.track_tied_contours:
+            valid = [row for row in self._tied_contours
+                     if row["status"] == "thermal-proxy"
+                     and all(isinstance(row[key], (int, float)) and math.isfinite(row[key])
+                             for key in ("width_um", "depth_um"))]
+            summary = dict(operator="peak-liquidus-cell-edge-linear-contour-v1",
+                           endpointCount=self.equal_maximum_count,
+                           observedContourCount=len(self._tied_contours),
+                           validContourCount=len(valid),
+                           invalidContourCount=len(self._tied_contours)-len(valid),
+                           first=copy_contour_endpoint(self._tied_contours[0]) if self._tied_contours else None,
+                           last=copy_contour_endpoint(self._tied_contours[-1]) if self._tied_contours else None)
+            for key in ("width_um", "depth_um"):
+                values = [float(row[key]) for row in valid]
+                summary[key] = (dict(min=min(values), median=float(np.median(values)), max=max(values))
+                                if values else None)
+            if self.capture_tied_fields and artifact_dir and self._tied_fields:
+                tied_path = Path(artifact_dir)/"peak-tied-maximum-fields.npz"
+                np.savez_compressed(
+                    tied_path, T_K=np.stack([row[0] for row in self._tied_fields]),
+                    surface_m=np.asarray([row[1] for row in self._tied_fields]),
+                    scanAngle_deg=np.asarray([row[2] for row in self._tied_fields]),
+                    time_s=np.asarray([row[3] for row in self._tied_fields]),
+                    step=np.asarray([row[4] for row in self._tied_fields], dtype=np.int64),
+                    liquidus_K=self.m["liquidus_K"], mesh_m=self.dx)
+                summary["capturedFieldsArtifact"] = tied_path.name
+            diagnostics["tiedPeakContourSpread"] = summary
         return metrics, diagnostics
+
+
+def copy_contour_endpoint(row):
+    return {key: row[key] for key in ("time_s", "step", "status", "width_um", "depth_um")}

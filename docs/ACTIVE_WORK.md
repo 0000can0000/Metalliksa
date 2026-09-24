@@ -1,5 +1,20 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+## Continuation checkpoint — factor-two P4 companion (2026-09-24)
+
+The second separately frozen layer-conforming campaign is committed as
+`9594ea4` and its six-run report as `docs/LPBF_P4_LAYER_CONFORMING_FACTOR_TWO_80W_2026-09-24.json`
+(SHA-256 `563a449fb3ad7069706941104efccb8a624089ab1fa1fcf35a59acd8e807097d`).
+All runs completed with the unchanged 99% source-capture guard. Energy closure
+passed (maximum relative error `1.281e-13`). Mesh trend failed: the first two
+cell-extent W/D pairs are identical and the finest pair changes 33.33% in width
+and 20.0% in depth. Timestep trend is inconclusive because all three accepted
+time levels report identical cell-extent W/D. The frozen original P4 remains
+`failed`; both companion reports remain distinct numerical outcomes. The safe
+next P10 action is to determine whether a physically consistent cut-cell/source
+fix can preserve the z=0 interface; do not shift the grid origin or weaken any
+source/convergence criterion. Continue the other P0–P10 lanes independently.
+
 ## Continuation checkpoint — layer-conforming P4 v1 (2026-09-24)
 
 The unsafe substrate-depth shift proposed during diagnosis was rejected: it

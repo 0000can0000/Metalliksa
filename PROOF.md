@@ -1288,3 +1288,15 @@ same-lot, uncertainty-bounded full table through boiling. IN625 therefore stays
 limited to its current unvalidated fusion-enthalpy screening; full transient
 and GPU admission remain closed. Source details and direct citations are in
 `docs/IN625_P7_SOURCE_GATE_2026-09-24.md`.
+
+## 2026-09-24 — Phase 22 CPU/CUDA multistep smoke
+
+The frozen five-step production `TransientEnthalpy3DGPU.solve_toolpath` case
+ran on CPU and explicit RTX 4060 `cuda:0`; the focused test passed 1/1. Both
+pressure projections converged, with equal peak temperature, melt volume, and
+surface recession. Maximum velocity differed by `4.77e-7 m/s`; post-projection
+relative L2 divergence was `7.34e-8` / `1.03e-7`. Maximum absolute divergence
+remains reported as `0.078125` / `0.15625 s^-1`. Full-field comparison, energy
+closure, performance, mesh/time convergence, and experimental validation are
+not available from this smoke. See
+`docs/PHASE22_CPU_CUDA_MULTISTEP_SMOKE_2026-09-24.md`.

@@ -12,6 +12,14 @@ oracle passes 2 tests; it is not OpenFOAM runtime evidence. WSL
 `E_ACCESSDENIED` prevented local solver compile/integration. Commits `e8f8313`
 and `c902700` fix the build-job field-peak/cache identity and Phase 22 face
 transport/projection contracts.
+New P6 smoke artifact: `python/test_lpbf_phase22_multistep_cuda_parity.py` and
+`docs/PHASE22_CPU_CUDA_MULTISTEP_SMOKE_2026-09-24.md`. The five-step production
+`solve_toolpath` case passed on CPU and explicit RTX 4060 `cuda:0`; root rerun
+passed 1/1 using a workspace-local Warp cache. It records converged pressure
+projections and close scalar parity, but no full-field parity, energy closure,
+performance, mesh/time convergence, or experiment qualification. Max absolute
+post-projection divergence differs (0.078125 vs 0.15625 s^-1) and remains
+reported. Warp's system PCH temp cleanup emitted WinError 5 after exit code 0.
 The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
 tests; standalone build-job checks and TypeScript typecheck also pass. The
 TypeScript session behavior runner passed 11 focused tests in the elevated

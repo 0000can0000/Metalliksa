@@ -9,6 +9,17 @@ from lpbf_core_physics import (SOURCE_INTEGRATION, GAUSS_NODES, _evaluate,
                                gaussian_interval, cell_weights, integrated_source)
 
 
+def require_source_capture(capture, minimum_fraction):
+    """Validate the shared source-capture limit before applying its renormalized field."""
+    if (isinstance(capture, (bool, np.bool_)) or not isinstance(capture, (int, float, np.number))
+            or not np.isfinite(capture) or capture < minimum_fraction):
+        raise ValueError(
+            f"Gaussian source capture {capture:.3%} is below "
+            f"the {minimum_fraction:.0%} minimum; expand the represented domain"
+        )
+    return capture
+
+
 def source_limited_step(axis, z, dx, segment, time, dt, surface, radius, penetration, power, passive_rate, capacity, axis_y=None):
     """Reintegrate the moving source whenever its sensible-increment cap cuts dt."""
     for retries in range(12):

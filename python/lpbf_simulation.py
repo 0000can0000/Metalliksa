@@ -15,7 +15,7 @@ from lpbf_core_physics import property_at, enthalpy_table
 from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs, SOURCE_INTEGRATION
 from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
-from lpbf_heat_source import source_limited_step, conduction_diagonal
+from lpbf_heat_source import require_source_capture, source_limited_step, conduction_diagonal
 from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_peak import (PeakMeltTracker, midtrack_bare_plate_section,
                        interpolated_midtrack_bare_plate_section,
@@ -294,11 +294,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             axis, z, dx, seg, time, dt, surface, radius,
             p["sourcePenetration_um"]*1e-6 if bare else layer_m,
             absorbed_power_W, rate, rho*cp, axis_y=axis_y)
-        if capture < MINIMUM_SOURCE_CAPTURE_FRACTION:
-            raise ValueError(
-                f"Gaussian source capture {capture:.3%} is below "
-                f"the {MINIMUM_SOURCE_CAPTURE_FRACTION:.0%} minimum; expand the represented domain"
-            )
+        require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
         max_increment = max(max_increment, float(np.max(dt*np.abs(rate)/(rho*cp))))

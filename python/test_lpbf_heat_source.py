@@ -8,10 +8,20 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
 import numpy as np
-from lpbf_heat_source import gaussian_interval, cell_weights, integrated_source, source_limited_step, conduction_diagonal
+from lpbf_heat_source import (require_source_capture, gaussian_interval, cell_weights, integrated_source,
+                              source_limited_step, conduction_diagonal)
+from lpbf_simulation import MINIMUM_SOURCE_CAPTURE_FRACTION
 
 
 class HeatSourceVerification(unittest.TestCase):
+    def test_capture_gate_uses_shared_one_percent_limit(self):
+        self.assertEqual(require_source_capture(MINIMUM_SOURCE_CAPTURE_FRACTION,
+                                               MINIMUM_SOURCE_CAPTURE_FRACTION),
+                         MINIMUM_SOURCE_CAPTURE_FRACTION)
+        with self.assertRaisesRegex(ValueError, "Gaussian source capture .* below the 99% minimum"):
+            require_source_capture(MINIMUM_SOURCE_CAPTURE_FRACTION - 1e-6,
+                                   MINIMUM_SOURCE_CAPTURE_FRACTION)
+
     @unittest.skipIf(os.name == "nt", "OpenFOAM dispatch is Linux-only")
     def test_reused_case_cannot_inherit_new_binary_diagnostics(self):
         from lpbf_openfoam import thermal

@@ -15,9 +15,10 @@ from unittest.mock import patch
 import numpy as np
 
 from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs
-from lpbf_heat_source import source_limited_step
+from lpbf_heat_source import require_source_capture, source_limited_step
 from lpbf_peak import PeakMeltTracker
-from lpbf_simulation import validate, fingerprint, run as cpu_run
+from lpbf_simulation import (MINIMUM_SOURCE_CAPTURE_FRACTION, validate, fingerprint,
+                             run as cpu_run)
 from lpbf_material_registry import enthalpy_table, property_at
 
 
@@ -163,8 +164,9 @@ def run_gpu(raw, device="cuda:0", capture_final=False):
         diagonal[:, :, top_index] += (p["convection_W_m2K"]
             + material["emissivity"]*5.670374419e-8*(top+t0)*(top**2+t0**2))/dx
         dt = min(dt, torch.min(.9*rho*cp_floor/torch.clamp(diagonal, min=1e-30)).item())
-        dt, source_np, _, _, _ = source_limited_step(axis, z, dx, segment, time, dt, layer_m,
+        dt, source_np, _, capture, _ = source_limited_step(axis, z, dx, segment, time, dt, layer_m,
             radius, layer_m, ti["absorbed_power_W"], rate.cpu().numpy(), (rho*cp).cpu().numpy())
+        require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
         source = torch.as_tensor(source_np, dtype=torch.float64, device=cuda)
         rate += source
         enthalpy += dt*rate

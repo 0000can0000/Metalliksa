@@ -6,7 +6,7 @@ import copy
 
 import numpy as np
 
-from lpbf_gpu_thermal import PARITY_TARGETS, compare_with_cpu, require_cuda
+from lpbf_gpu_thermal import PARITY_TARGETS, compare_with_cpu, require_cuda, run_gpu
 from lpbf_simulation import validate
 from lpbf_core_physics import scan_segments
 
@@ -17,6 +17,25 @@ CASE = {"mode": "standard", "backend": "reference", "material": "Inconel 718",
 
 
 class GpuThermal(unittest.TestCase):
+    def test_gpu_path_rejects_truncated_source_capture(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("PyTorch unavailable for GPU-path driver test")
+        import lpbf_gpu_thermal
+        from lpbf_simulation import MINIMUM_SOURCE_CAPTURE_FRACTION
+
+        settings, _ = validate(CASE)
+        domain = lpbf_gpu_thermal.calculate_mesh_domain(settings)
+        n = domain["nxy"]
+        z_count = domain["nz"]
+        capture = MINIMUM_SOURCE_CAPTURE_FRACTION - 1e-3
+        with patch("lpbf_gpu_thermal.require_cuda", return_value=(torch, torch.device("cpu"))), \
+             patch("lpbf_gpu_thermal.source_limited_step",
+                   return_value=(settings["maxDt_s"], np.zeros((n, n, z_count)), None, capture, 0)):
+            with self.assertRaisesRegex(ValueError, "Gaussian source capture .* below the 99% minimum"):
+                run_gpu(CASE, "cuda:0")
+
     def test_equal_summaries_cannot_hide_wrong_final_field(self):
         settings, _ = validate(CASE)
         end = scan_segments(settings)[1]

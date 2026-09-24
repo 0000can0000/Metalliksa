@@ -25,6 +25,18 @@ equal endpoints by mesh), not a proven cause of the frozen failed result.
 P5 stays unavailable because the current model lacks matching melt flow,
 evaporation mass transfer and mass/latent-energy closure.
 
+Engine choice: the standard 3D CPU transient in `python/lpbf_simulation.py`
+already follows piecewise-linear moving scan segments with a cell-integrated
+Gaussian source, two-node time quadrature, adaptive explicit stepping and a
+global energy ledger on a fixed material grid. It is the better canonical
+thermal reference; do not rebuild it before its resolution/validation gaps are
+measured. The separate `TransientEnthalpyFDMSolver` remains stationary 2D
+screening and must not be represented as scan-resolved. A proposed factor-two
+source-power defect was disproved: each GL2 time node contributes 0.5P, and
+both together integrate to P per step; the existing axial power regression
+passed. Spatial source renormalization remains explicitly bounded by the 99%
+capture guard and is not experimental validation.
+
 P8: the current source built with `npm run build`; Vite reported a large
 Three.js chunk warning. The freshly built server and Python worker started
 locally and `/api/health` returned `status: ok`. A fresh UI pass computed the
@@ -45,9 +57,10 @@ artifacts, and 3 source links; verification passed and isolated restore
 `58d94b80d0904a53bb11f5bab73eac51` completed while the live archive remained
 unchanged. This is software workflow/integrity evidence only.
 
-Next: continue P4 tied-peak diagnostic design without changing the frozen
-acceptance protocol; prioritize a separately contracted moving-source thermal
-engine with explicit beam/power normalization and conservation, and retain P7
+Next: continue P4 tied-peak diagnosis without changing the frozen acceptance
+protocol; quantify mesh/time error for the existing moving-source solver,
+increase resolution where the UI reports only 1–2 cells across a melt dimension,
+and pursue a matched independent IN718 experiment. Retain P7
 full-transient/build-job and P5 gates as closed until evidence passes admission.
 Preserve user-owned changes and stage only files explicitly owned by this work.
 

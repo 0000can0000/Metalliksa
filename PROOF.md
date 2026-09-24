@@ -1675,3 +1675,12 @@ source links; bundle verification passed. Isolated restore
 `58d94b80d0904a53bb11f5bab73eac51` completed and the UI confirmed the live
 archive was unchanged. This verifies software archive integrity and workflow,
 not the physical model. No changes were made to the frozen P4/P5/P7 gates.
+
+### Moving-source power contract check (2026-09-25)
+
+An audit questioned the per-node `0.5 * power` factor in
+`python/lpbf_core_physics.py::integrated_source`. This is the GL2 time
+quadrature weight, not a half-power loss: `GAUSS_NODES` contains two nodes,
+each contributes 0.5 of the absorbed power after per-node spatial
+normalization, so their sum integrates to the requested power per step.
+`python -m unittest test_lpbf_heat_source.HeatSourceVerification.test_symmetry_power_and_future_powder -v` passed and asserts a 70 W integrated source for a 70 W input. This checks the axial source integration contract only; it does not validate the thermal evolution experimentally or establish mesh/time convergence. The standard 3D moving-source CPU transient already exists in `python/lpbf_simulation.py`; the separate Phase 21 2D stationary solver remains screening-only.

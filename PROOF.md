@@ -1550,4 +1550,27 @@ blocked by Windows ACL errors opening SQLite/temp paths; the agent's actual
 small CPU worker→capture exercise passed. No OpenFOAM build/run was performed.
 The source inputs remain locally derived/model-based, density is not lot-
 matched, and nothing here establishes scientific validation or qualification.
-Implementation and evidence checkpoint committed locally as `cd456d2`.
+Implementation and evidence checkpoint committed locally as `a5d60b6`.
+
+## Follow-up checkpoint — Marangoni normal spacing + alloy matrix (2026-09-24)
+
+A second core-physics audit found that the Phase 22 Marangoni boundary wrote
+`mu * du_t/dn = tau` but scaled the velocity increment with vertical `dz`.
+For a height graph, the adjacent vertical sample's first-order normal spacing
+is `dz/sqrt(1 + h_x^2 + h_y^2)`, so the previous law over-applied tangential
+shear on sloped surfaces. The kernel now uses that spacing. The sloped-graph
+regression checks both tangential direction and recovered traction magnitude.
+
+After this change, `python -m unittest test_lpbf_transient_3d_gpu -v` ran
+**29/29 PASS** in 44.476 s; Warp compiled and exercised the relevant kernels on
+CPU and the actual NVIDIA RTX 4060 Laptop GPU (`cuda:0`). This is numerical
+kernel evidence only, not model/experiment qualification.
+
+The five-alloy summary based on the machine-readable capability authority is
+drafted in `docs/LPBF_ALLOY_CAPABILITY_MATRIX_2026-09-24.md`. It preserves the
+four legacy alloys as estimated/unvalidated and IN625 as bounded bare-plate
+CPU/CUDA screening only. After resumption, the focused suite was rerun:
+**29/29 PASS** in 7.177 s; Warp loaded the Marangoni kernel on CPU and RTX 4060
+`cuda:0`. The kernel fix, test, matrix, and evidence checkpoint form a separate
+package. Frozen P4 remains `failed`, P5 remains `unavailable`, and the broad
+goal is not complete.

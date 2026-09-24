@@ -325,7 +325,8 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         grad_x = ((1.0 + hy * hy) * dT_dx - hx * hy * dT_dy) / denominator
         grad_y = ((1.0 + hx * hx) * dT_dy - hx * hy * dT_dx) / denominator
         grad_z = hx * grad_x + hy * grad_y
-        scale = dz * (-0.0003 / 0.005)
+        normal_spacing = dz / np.sqrt(denominator)
+        scale = normal_spacing * (-0.0003 / 0.005)
         expected = scale * np.array([grad_x, grad_y, grad_z])
         devices = ["cpu"] + (["cuda:0"] if wp.get_cuda_device_count() else [])
         for device in devices:
@@ -344,6 +345,12 @@ class Transient3DPhysicsContracts(unittest.TestCase):
             actual = np.array([field.numpy()[3, 3, 3] for field in fields[3:]])
             np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-7, err_msg=device)
             self.assertAlmostEqual(float(np.dot(actual, [-hx, -hy, 1.0])), 0.0, delta=1e-6)
+            actual_surface_gradient = np.array([grad_x, grad_y, grad_z])
+            actual_surface_traction = 0.005 * actual / normal_spacing
+            np.testing.assert_allclose(
+                actual_surface_traction, -0.0003 * actual_surface_gradient,
+                rtol=1e-5, atol=1e-8, err_msg=device,
+            )
 
     def test_recoil_impulse_follows_local_height_graph_normal(self):
         shape = (7, 7, 7)

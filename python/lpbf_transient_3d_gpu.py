@@ -379,7 +379,11 @@ def velocity_advection_forces_kernel(
                 grad_z = h_x * grad_x + h_y * grad_y
 
                 # tau = d_gamma/dT * grad_s(T), mu * du_t/dn = tau.
-                shear_scale = dz * (d_gamma_dT / mu)
+                # The adjacent interior velocity sample is one vertical dz
+                # below the graph, so its first-order normal spacing is
+                # dz/sqrt(1 + h_x^2 + h_y^2), not dz.
+                normal_spacing = dz / wp.sqrt(metric_det)
+                shear_scale = normal_spacing * (d_gamma_dT / mu)
                 u_marangoni = U[i, j, k-1] + shear_scale * grad_x
                 v_marangoni = V[i, j, k-1] + shear_scale * grad_y
                 w_marangoni = W[i, j, k-1] + shear_scale * grad_z

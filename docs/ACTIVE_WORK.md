@@ -1,15 +1,16 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
-## Latest checkpoint — core-physics + IN625 UI/archive slice (2026-09-24)
+## Latest checkpoint — resumed, physics/matrix package validated (2026-09-24)
 
 User explicitly widened this goal to include evidenced physics defects in the
-core engines. Phase 22 surface Marangoni gradients are now metric-projected
-into tangential U/V/W components, and recoil points inward along the local
-height-graph normal. The IN625 screen UI now decodes and checks the binary
-float64 temperature fields and displays CPU/CUDA field parity. Its local
-source and run archive path passed preview/import/verify, archive, and
-server-local bundle export/verify/restore. Details and exact evidence are in
-`STATUS.md` and `PROOF.md`.
+core engines. The previously committed Phase 22 work metric-projects Marangoni
+surface gradients and points recoil inward along the height-graph normal.
+Follow-up: a second audit found that Marangoni shear used vertical
+`dz` instead of the normal spacing `dz/sqrt(1+h_x²+h_y²)`; the code and
+regression test are updated, and the full Phase 22 Python suite passed **29/29**
+with CPU and actual RTX 4060 `cuda:0` test coverage. The alloy capability
+matrix is recorded at
+`docs/LPBF_ALLOY_CAPABILITY_MATRIX_2026-09-24.md`.
 
 Focused evidence: Phase 22 Python 29/29 plus CPU/CUDA field/multistep/pressure
 groups 5/5; IN625 binary/client tests 6/6; source/API groups 10/10 and 16/16;
@@ -19,13 +20,13 @@ field difference 0 K, RMS 0 K, and zero scalar/energy-ledger differences.
 IN625 remains unvalidated literature-model screening; its run has a legacy
 unbound core contract, and no experimental comparison is admitted.
 
-Next: continue the still-open P4/P5/P6/P7 acceptance work from the active plan;
-in particular retain the frozen P4 failure and P5 unavailable status, and
-finish the remaining full-scale/convergence/physics evidence gates. Do not
-claim goal completion from this integration slice. No push. Root owns
-checkpoint docs; preserve the user-owned `docs/README.md`, `sonkayıtlar/LOG.md`,
-and `docs/SCIENTIFIC_RESEARCH_VISION.md` changes. This slice is committed as
-`cd456d2`.
+Next: continue the still-open P4/P5/P6/P7 acceptance work from the active plan.
+The Marangoni fix, capability matrix, and this evidence checkpoint are being
+committed as a separate package after a fresh 29/29 focused run. Preserve the
+frozen P4 `failed` and P5 `unavailable` outcomes. No goal-completion claim yet.
+The previous committed package is `a5d60b6`. Preserve user-owned `docs/README.md`,
+`sonkayıtlar/LOG.md`, and `docs/SCIENTIFIC_RESEARCH_VISION.md` edits; do not
+stage them.
 
 ## Latest P6/P7 integration checkpoint — 2026-09-24
 

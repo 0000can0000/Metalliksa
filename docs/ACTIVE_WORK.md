@@ -13,16 +13,19 @@ Gaussian assumption. The active plan has been corrected; P5 remains
 
 P4 remains frozen `failed`: width trend inconclusive, depth finest-pair change
 17.1875%, timestep geometry inconclusive. Its report stores aggregate rows, not
-the original runs' full thermal history or field series. The current solver
-can expose sampled history and peak diagnostics, but an exact-vector
-reconstruction attempt stopped at the coarse-mesh source gate: captured
-Gaussian power was 86.763%, below today's 99% minimum. This is a newer guard
-boundary, so it does not reproduce the historical run. Do not change the
-capture gate or acceptance limits to force a replay. Next, determine whether an
-isolated checkout of the historical solver implementation can reproduce the
-recorded rows and expose peak-time diagnostics; otherwise keep P4 failed until
-a genuinely new same-scope vector is frozen prospectively. The completed 75 W
-vectors are exhausted and cannot be reused as prospective levels.
+the original runs' full thermal history or field series. A replay at diagnostic
+commit `5dae4c9` matched all six stored input hashes and exactly reproduced
+each row's actual spacing, steps, W/D, peak temperature and energy error. Its
+`implementationHash` did not match, so this remains a matched-input forensic
+diagnostic, not an exact-code replay. Equal-maximum endpoints ranged from 439
+and 300 on the two coarser meshes to 25 on the fine mesh; this is a plausible
+selection sensitivity, not a proven cause of non-monotonic depth. Details:
+`docs/LPBF_P4_PEAK_DIAGNOSTIC_REPLAY_2026-09-24.md`. Separately, today's solver
+rejects the 86.763%-capture coarse mesh under its newer 99% minimum; do not
+weaken that guard or the P4 criteria. Next: identify the exact source tree
+behind the original implementation hashes. Until then the replay cannot alter
+P4 acceptance. The completed 75 W vectors are exhausted and cannot be reused
+as prospective levels.
 
 P8's strongest recorded live UI evidence is the IN625 flow in `PROOF.md` §
 “Core physics + IN625 UI/archive integration”: source revision 2

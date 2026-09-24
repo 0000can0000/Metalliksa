@@ -387,6 +387,26 @@ Full timings are in docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 Next: profile backend launch and arithmetic costs before deciding on fused
 kernels; maintain P6/P7 as partial.
 
+## 2026-09-24 — Frozen 80 W peak-selection forensic replay
+
+The archived P4 report does not retain the historical full thermal history or
+field series. Six isolated runs at diagnostic commit `5dae4c9` used the exact
+frozen input hashes and reproduced every saved aggregate (actual mesh/time,
+step count, W/D, peak temperature and energy error) with zero delta. All six
+`implementationHash` values differ, including when fingerprinted at the
+report's `ec6b0a5` commit; this is therefore a matched-input forensic replay,
+not exact-code reproduction.
+
+The replay shows broad equal-maximum plateaus on coarse mesh levels (439 and
+300 accepted endpoints, versus 25 at the fine mesh). Timestep levels select
+the same W/D and sample an approximately 2.2 µs plateau with 6/12/25 tied
+endpoints. This is a possible discrete peak-selection sensitivity, not a proven
+cause of the non-monotonic depth sequence. See
+`docs/LPBF_P4_PEAK_DIAGNOSTIC_REPLAY_2026-09-24.md`. Frozen P4 remains `failed`;
+the current 99% source-capture validity guard and all acceptance limits remain
+unchanged. Continue source-tree provenance investigation before drawing any
+formal conclusion from the diagnostic.
+
 ## 2026-09-24 — Phase 22 guard CUDA execution
 
 The lower-domain evaporation stop and projected post-pressure CFL tests execute

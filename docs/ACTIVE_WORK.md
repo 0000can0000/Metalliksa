@@ -899,7 +899,7 @@ Added an opt-in `layered-plate-enthalpy-v1` CPU reference path for one bare IN71
 
 Focused verification: layered plate + heat source + layered conduction **24 PASS / 1 platform skip**; two v2 core-contract tests **2/2 PASS**; Python compile, TypeScript typecheck and `git diff --check` PASS. The TypeScript runtime test is blocked by Windows Node/esbuild `spawn EPERM`. One broader saved-binding test is blocked by Windows SQLite temp-directory ACL errors. These are stated validation limits, not solver passes.
 
-This path is an unvalidated sensitivity model, not a source-matched AMB2022-03 reproduction. Generic SS304 properties and assumed contact/bottom boundary values are not specimen measurements; no measured AMB2022-03 irradiance map was found. Keep NIST P5 unavailable. The layered-model package is ready for a local commit; the independent GPU inversion-kernel parity/timing experiment continues afterward.
+This path is an unvalidated sensitivity model, not a source-matched AMB2022-03 reproduction. Generic SS304 properties and assumed contact/bottom boundary values are not specimen measurements; no measured AMB2022-03 irradiance map was found. Keep NIST P5 unavailable. The layered-model package is committed as `9a95cce`. The independent GPU inversion-kernel parity/timing experiment continues: the first paired 2,048-cell CUDA case was numerically identical and measured 52.972063 s for the Torch loop versus 2.097026 s for Warp, but more valid alternating repeats are required before a speed claim.
 
 ## Layered-plate v2 scaffold
 

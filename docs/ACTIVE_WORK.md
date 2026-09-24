@@ -57,12 +57,26 @@ artifacts, and 3 source links; verification passed and isolated restore
 `58d94b80d0904a53bb11f5bab73eac51` completed while the live archive remained
 unchanged. This is software workflow/integrity evidence only.
 
+The NIST local Table 4 transcription was refreshed from source version 1.0.0
+(archived revision 1; 3,374 bytes; document SHA-256
+`b312cc286ccf7cd41c2ff8bc2bea3c0cf183af432125f402dfbebdf71b235ee0`) to
+catalog version 1.1.0 (archived revision 2; 4,321 bytes; SHA-256
+`6c9d9f80f8c4eb2b7a6c18bbaab9ed7a993e43f155190dfff49808a4f854aaf0`). The
+import verified bytes and added source-located heat-treatment context. Earlier
+IN718 run `aad3bc4b6ceb4abbbc56942554f202cb` remains immutably linked to rev 1;
+the comparator correctly rejected its outdated fixed artifact. NIST case 0
+also differs from that run's process vector, and the strict model gate needs a
+verified measured AMB2022-03 beam profile that the source hunt has not found.
+No run was silently rebound; new source provenance alone does not qualify the
+model.
+
 Next: continue P4 tied-peak diagnosis without changing the frozen acceptance
 protocol; quantify mesh/time error for the existing moving-source solver,
 increase resolution where the UI reports only 1–2 cells across a melt dimension,
-and pursue a matched independent IN718 experiment. Retain P7
-full-transient/build-job and P5 gates as closed until evidence passes admission.
-Preserve user-owned changes and stage only files explicitly owned by this work.
+and locate the exact measured AMB2022-03 beam-profile artifact before attempting
+a source-matched comparison. Retain P7 full-transient/build-job and P5 gates as
+closed until evidence passes admission. Preserve user-owned changes and stage
+only files explicitly owned by this work.
 
 ## Continuation checkpoint — layer-conforming P4 v2 result (2026-09-24)
 

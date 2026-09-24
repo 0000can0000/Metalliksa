@@ -1684,3 +1684,24 @@ quadrature weight, not a half-power loss: `GAUSS_NODES` contains two nodes,
 each contributes 0.5 of the absorbed power after per-node spatial
 normalization, so their sum integrates to the requested power per step.
 `python -m unittest test_lpbf_heat_source.HeatSourceVerification.test_symmetry_power_and_future_powder -v` passed and asserts a 70 W integrated source for a 70 W input. This checks the axial source integration contract only; it does not validate the thermal evolution experimentally or establish mesh/time convergence. The standard 3D moving-source CPU transient already exists in `python/lpbf_simulation.py`; the separate Phase 21 2D stationary solver remains screening-only.
+
+### NIST Table 4 source revision update (2026-09-25)
+
+The source archive initially contained Table 4 local transcription revision 1
+(source version 1.0.0, one 3,374-byte file, document SHA-256
+`b312cc286ccf7cd41c2ff8bc2bea3c0cf183af432125f402dfbebdf71b235ee0`). The
+current catalog previewed version 1.1.0 (one 4,321-byte file) and imported it
+as revision 2; the UI confirmed bytes matched at import. Revision 2 document
+SHA-256 is `6c9d9f80f8c4eb2b7a6c18bbaab9ed7a993e43f155190dfff49808a4f854aaf0`.
+The update adds source-located heat-treatment evidence. It remains an
+unreviewed local aggregate transcription, not raw NIST measurements.
+
+The earlier archived IN718 run `aad3bc4b6ceb4abbbc56942554f202cb` is
+immutable and linked to revision 1. Its comparison against the current fixed
+transcription correctly returned unavailable because the archived artifact
+does not match the reviewed version 1.1.0 bytes; the run was not silently
+rebound. The selected Table 4 case 0 is also not that job's process vector.
+The comparator's model gate additionally requires a verified measured beam
+profile artifact, which was not available in the AMB2022-03 source hunt. Thus
+importing revision 2 improves provenance but does not make this or any run a
+validatable/validated NIST comparison by itself.

@@ -377,3 +377,10 @@ Full timings are in docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 
 Next: profile backend launch and arithmetic costs before deciding on fused
 kernels; maintain P6/P7 as partial.
+
+## 2026-09-24 — Phase 22 guard CUDA execution
+
+The lower-domain evaporation stop and projected post-pressure CFL tests execute
+on CPU and explicit RTX 4060 Laptop GPU. The focused two-test run passed with
+four CPU/CUDA subtests. This confirms compilation/execution of the new guard
+path on the selected device, not experimental validity of the Phase 22 model.

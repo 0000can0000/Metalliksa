@@ -260,3 +260,7 @@
 - Added a 2,048-cell z-refined synthetic case over the same 2×2×0.5 mm domain, 3.3 ms, 30 W and 0.099 J input. CPU/CUDA medians: 4.013/43.617 s (3 alternated repeats; CUDA 10.87× slower). Both reached 1593.516258 K and 44 mushy cells. Independent enthalpy/energy oracles passed; max field deltas 9.10e-13 K and 4.66e-10 J/kg.
 - This verifies same-law numerical consistency at one larger, anisotropically refined screen, not process convergence, alloy qualification, or GPU crossover. Detailed method: docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 - Current next action: decide whether to implement fused/compiled kernels only after a backend-level profile identifies launch-bound versus arithmetic-bound time; otherwise prioritize source/data and model-closure gates. P6/P7 remain partial.
+
+## 2026-09-24 — Phase 22 guard CUDA execution follow-up
+- The two new boundary/CFL regressions now run on CPU and explicit cuda:0 when available. Focused GPU-aware run: **2 tests passed, 4 device subtests passed** on NVIDIA GeForce RTX 4060 Laptop GPU.
+- This compiles and executes the floor-hit fail-closed path and actual projected-velocity CFL kernel on CUDA. It does not amount to whole-process experimental or general solver validation. Existing P4/P5/P6/P7 statuses are unchanged.

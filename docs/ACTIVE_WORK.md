@@ -717,3 +717,10 @@ docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 
 Next: only pursue fused GPU work if a backend profile confirms launch or
 arithmetic bottlenecks; keep P6/P7 partial.
+
+## Phase 22 guard GPU follow-up — 2026-09-24
+
+The lower graph-floor and projected-CFL regressions now cover CPU and explicit
+cuda:0 when available. Focused execution passed 2 tests and 4 device subtests
+on NVIDIA GeForce RTX 4060 Laptop GPU. This verifies the new guard kernels and
+fail-closed path execute on CUDA; it does not qualify the process model.

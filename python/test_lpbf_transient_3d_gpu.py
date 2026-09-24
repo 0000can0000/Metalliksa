@@ -263,17 +263,26 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         return new_surface.numpy()
 
     def test_solver_fails_before_evaporation_when_surface_hits_bottom_floor(self):
-        solver = TransientEnthalpy3DGPU(
-            nx=4, ny=4, nz=4, dx=1e-5, dy=1e-5, dz=1e-5
-        )
-        solver.device = "cpu"
         toolpath = {
             "t": [0.0, 1e-9], "x": [1e-5, 1e-5],
             "y": [1e-5, 1e-5], "p": [0.0, 0.0],
         }
-
-        with self.assertRaisesRegex(RuntimeError, "Phase 22 validity error.*z=2\\*dz"):
-            solver.solve_toolpath(toolpath, T_preheat_K=2000.0)
+        devices = ["cpu"] + (["cuda:0"] if wp.get_cuda_device_count() else [])
+        previous_pch_setting = wp.config.use_precompiled_headers
+        try:
+            for device in devices:
+                with self.subTest(device=device):
+                    if device != "cpu":
+                        wp.config.use_precompiled_headers = False
+                    solver = TransientEnthalpy3DGPU(
+                        nx=4, ny=4, nz=4, dx=1e-5, dy=1e-5, dz=1e-5
+                    )
+                    solver.device = device
+                    with self.assertRaisesRegex(RuntimeError, "Phase 22 validity error.*z=2\\*dz"):
+                        solver.solve_toolpath(toolpath, T_preheat_K=2000.0)
+        finally:
+            wp.config.use_precompiled_headers = previous_pch_setting
+        self.assertEqual(wp.config.use_precompiled_headers, previous_pch_setting)
 
     def test_free_surface_graph_advects_tangentially(self):
         shape = (7, 7, 7)
@@ -620,18 +629,30 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         V = np.zeros(shape, dtype=np.float32)
         W = np.zeros(shape, dtype=np.float32)
         U[2, 2, 2] = 10.0  # synthetic post-projection component above the 5 m/s predictor cap
-        exceeded = wp.zeros(1, dtype=wp.int32, device="cpu")
-
-        wp.launch(
-            kernel=validate_projected_momentum_cfl_kernel, dim=shape,
-            inputs=[self._wp_array(U), self._wp_array(V), self._wp_array(W),
-                    self._wp_array(surface), self._wp_array(temperature), exceeded,
-                    *shape, dx, dy, dz, 1.0e-7, mu / rho, 1878.0,
-                    _PHASE22_MOMENTUM_CFL_LIMIT],
-            device="cpu",
-        )
-        wp.synchronize()
-        self.assertEqual(int(exceeded.numpy()[0]), 1)
+        devices = ["cpu"] + (["cuda:0"] if wp.get_cuda_device_count() else [])
+        previous_pch_setting = wp.config.use_precompiled_headers
+        try:
+            for device in devices:
+                with self.subTest(device=device):
+                    if device != "cpu":
+                        wp.config.use_precompiled_headers = False
+                    exceeded = wp.zeros(1, dtype=wp.int32, device=device)
+                    wp.launch(
+                        kernel=validate_projected_momentum_cfl_kernel, dim=shape,
+                        inputs=[wp.array(U, dtype=float, device=device),
+                                wp.array(V, dtype=float, device=device),
+                                wp.array(W, dtype=float, device=device),
+                                wp.array(surface, dtype=float, device=device),
+                                wp.array(temperature, dtype=float, device=device), exceeded,
+                                *shape, dx, dy, dz, 1.0e-7, mu / rho, 1878.0,
+                                _PHASE22_MOMENTUM_CFL_LIMIT],
+                        device=device,
+                    )
+                    wp.synchronize_device(device)
+                    self.assertEqual(int(exceeded.numpy()[0]), 1)
+        finally:
+            wp.config.use_precompiled_headers = previous_pch_setting
+        self.assertEqual(wp.config.use_precompiled_headers, previous_pch_setting)
 
     def test_zero_duration_single_point_toolpath_does_not_heat(self):
         solver = TransientEnthalpy3DGPU(nx=4, ny=4, nz=4, dx=1e-5, dy=1e-5, dz=1e-5)

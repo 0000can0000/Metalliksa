@@ -17,7 +17,7 @@ from lpbf_simulation import run
 
 
 TABLE_PATH = (Path(__file__).resolve().parents[1] / "data" / "benchmark" /
-              "nist-amb2022-03-optical" / "table4-aggregate-v1.json")
+              "nist-amb2022-03-optical" / "table4-aggregate-v2.json")
 
 
 def source_binding():

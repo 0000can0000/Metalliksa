@@ -10,7 +10,7 @@ from lpbf_nist_official_measurements import (
 )
 
 
-TABLE_PATH = WORKBOOK_PATH.parents[1] / "table4-aggregate-v1.json"
+TABLE_PATH = WORKBOOK_PATH.parents[1] / "table4-aggregate-v2.json"
 
 
 class NistOfficialMeasurements(unittest.TestCase):

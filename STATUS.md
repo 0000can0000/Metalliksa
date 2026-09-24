@@ -22,6 +22,12 @@
 - Doğrulama: `python/test_lpbf_transient_3d_gpu.py` **34/34 PASS**; yeni kernel CPU ve NVIDIA RTX 4060 `cuda:0` üzerinde çalıştı. Entegre sentetik hareketli-yüzey koşusunda göreli enerji artığı `2.79e-4` oldu. Bu sayısal/yazılım tutarlılığı kanıtıdır; deneysel doğrulama değildir. Her adım ek kernel maliyeti eklendi, performans etkisi ölçülmedi.
 - Sonraki iş: P0–P10 ana hedefini sürdür; NIST P5 kayıtlarındaki 800°C/2h işlem bilgisinin eksik metadata temsilini kaynak revizyonu/manifest etkileriyle düzeltme yolunu incele. P4 failed, P5 unavailable, P6/P7 partial durumları değişmedi.
 
+## 2026-09-24 — NIST AMB2022-03 Table 4 kaynak revizyonu 1.1.0
+- Resmî NIST yöntem belgesinin §2.1’i bare plate örneklerinin lazerlemeden önce vakumda 800°C/2h residual-stress anneal edildiğini belirtir; §2.5 BP1’i bu bare plate grubunda tanımlar. Yerel v1 aggregate dosyası değiştirilmeden v2/1.1.0 oluşturuldu; yeni alan ve kaynak konumu açıkça bağlandı, yedi koşulun tüm sayısal ölçümleri aynı kaldı. Manifest, source catalog, Python doğrulama, NIST API ve run-source hash allowlist’i yeni SHA-256’ya geçirildi.
+- Windows NIST API alt sürecinde Python stdin artık açık UTF-8 çözümlüyor; aksi durumda derece işareti varsayılan kod sayfasında bozulup hash/metadata kapısı kapanıyordu. Dondurulmuş v1 protokolündeki artifact hash/path korunmuştur.
+- Doğrulama: NIST kaynak/run API/UI/literature testleri **30/30 PASS**; Python comparison + resmi workbook aggregate testleri **9/9 PASS**; TypeScript `npm run lint` PASS. NIST kaynak metadata’sının düzelmesi P5 karşılaştırmasını geçerli kılmaz: plaka/SS304 temaslı termal sınır, 5° geliş açısı, ölçülmüş kaynak profili/bayt bağı ve model section operator eşleşmesi halen kapanmadı. P5 `unavailable` kalır.
+- Sonraki somut adım: P5 için 3.17mm IN718 plaka ve tam temaslı SS304 taban sınırını model sözleşmesinde temsil etme fizibilitesini ve 5° lazer geometrisini kaynak profiliyle eşleştirmeyi araştır; kaynak yakalama, mesh veya kabul eşiği gevşetme.
+
 ## 2026-09-22 - Build-job Alaşım Kimliği Güvenlik Onarımı
 - Build-job solver artık açıkça gönderilen desteklenmeyen `alloyId` değerlerini IN718'e sessizce düşürmek yerine hata ile reddediyor; alaşım belirtilmemesi durumundaki geriye dönük IN718 varsayılanı korunuyor.
 - `Inconel 625` için desteklenmeyen surrogate hesaplamayı engelleyen Python regresyonu eklendi.

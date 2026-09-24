@@ -842,6 +842,34 @@ NIST P5 source's 800°C/2 h treatment in the existing immutable dataset,
 manifest, API catalog, and archived revision chain; do not silently rewrite a
 source-bound artifact. Preserve P4 failed, P5 unavailable, and P6/P7 partial.
 
+## NIST AMB2022-03 metadata correction — 2026-09-24
+
+The official methods description establishes that the AMB2022-03 bare plates
+were vacuum residual-stress annealed at 800°C for 2 h before scanning (Section
+2.1, PDF p. 2); Section 2.5 identifies BP1 as one of those bare plates. The
+local aggregate values were unchanged. A new immutable transcription
+`table4-aggregate-v2.json` / version 1.1.0 records that preparation, its source
+location, and the superseded v1 artifact hash. The manifest, source catalog,
+NIST comparison service, Python gate, and run client now bind the v2 SHA-256.
+The frozen P5 v1 preregistration remains on its original path and hash.
+
+Windows subprocess stdin is explicitly decoded as UTF-8 in the Python NIST
+comparison entry point; default console encoding had corrupted the new degree
+symbol and caused correct source bytes to fail both canonical-content and
+metadata checks.
+
+Verification: NIST source/run API/UI/literature tests **30/30 PASS**; Python
+comparison plus official workbook aggregate tests **9/9 PASS**; TypeScript
+`npm run lint` PASS. This corrects specimen metadata only. P5 remains unavailable
+because the modeled slab/support/bottom thermal boundary, 5° incidence,
+measured-profile byte binding, and section operator do not match the NIST
+experiment.
+
+Next: scope a source-matched 3.17 mm IN718 plate with full-contact SS304 backing
+and bottom boundary, then close the 5° source geometry and profile evidence
+before any new P5 run. Keep P4/P5/P6/P7 outcomes as recorded; do not relax source
+capture, mesh, or acceptance thresholds.
+
 ## Phase 22 guard GPU follow-up — 2026-09-24
 
 The lower graph-floor and projected-CFL regressions now cover CPU and explicit

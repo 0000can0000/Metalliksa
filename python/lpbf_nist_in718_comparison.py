@@ -18,10 +18,10 @@ RESULTS_URL = "https://www.nist.gov/document/am-bench-amb2022-03-measurement-and
 METHODS_URL = "https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101"
 ARCHIVE_DATASET_ID = "nist-amb2022-03-optical-table4-local-v1"
 SOURCE_DATASET_ID = "nist-mds2-2718"
-TRANSCRIPTION_ARTIFACT_SHA256 = "dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518"
-# SHA-256 of the parsed v1.0.0 transcription as sorted compact ASCII JSON.
+TRANSCRIPTION_ARTIFACT_SHA256 = "d1b36dfa2e01a3537093c481e249ce52df6b8879c1c67480ddb9aa10799133da"
+# SHA-256 of the parsed v1.1.0 transcription as sorted compact ASCII JSON.
 # This binds parameter-supplied rows independently of source-document metadata.
-TRANSCRIPTION_CONTENT_SHA256 = "8e1bb0c2844928dbb04346459ab39c9b93b16eae8503d35383299c73cf06d754"
+TRANSCRIPTION_CONTENT_SHA256 = "250e7cdb8c9665fa242cf567464ade681ba627c28c6a0b9226ef1a45642f6267"
 BENCHMARK = "AMB2022-03-TMPG"
 OPTICAL_OPERATOR = "amb2022-03-etched-optical-six-section-mean-v1"
 CASE_PROCESS = {
@@ -93,6 +93,13 @@ def _table_reasons(table):
             or experiment.get("powderLayerThickness_um") is not None
             or experiment.get("hatchSpacing_um") is not None):
         reasons.append("Table 4 experiment must be the 10 mm +X IN718 bare-plate optical track with D4sigma beam.")
+    treatment = experiment.get("heatTreatment")
+    evidence = _object(experiment.get("heatTreatmentEvidence"))
+    if (treatment != "Residual-stress annealed in vacuum at 800 °C for 2 h before laser processing."
+            or evidence.get("sourceUrl") != METHODS_URL
+            or evidence.get("location") != "Version 1.01, Section 2.1 (Plate preparation), PDF page 2"
+            or experiment.get("heatTreatmentMissingReason") is not None):
+        reasons.append("Table 4 BP1 heat-treatment metadata must bind to the NIST methods description.")
     rows = table.get("cases")
     if not isinstance(rows, list) or len(rows) != len(CASE_PROCESS):
         return reasons + ["All seven published Table 4 process cases are required."], {}
@@ -260,7 +267,7 @@ def compare_nist_in718_optical_geometry(result, table4, source_binding, expected
 if __name__ == "__main__":
     import sys
 
-    request = json.load(sys.stdin)
+    request = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     print(json.dumps(compare_nist_in718_optical_geometry(
         json.loads(request["resultJson"]), json.loads(request["table4Json"]), request["sourceBinding"],
         request["expectedSourceBinding"], request["caseNumber"]),

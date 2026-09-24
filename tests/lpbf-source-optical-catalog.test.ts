@@ -11,7 +11,7 @@ import { nistIn718CatalogEntry, nistOpticalTable4CatalogEntry, nistOpticalOffici
 
 const sourceRoot = path.resolve('data/benchmark/nist-amb2022-03-optical');
 const datasetId = 'nist-amb2022-03-optical-table4-local-v1';
-const artifact = 'table4-aggregate-v1.json';
+const artifact = 'table4-aggregate-v2.json';
 const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 test('optical Table 4 catalog identifies local transcription, six-measurement SD and exact artifact bytes', () => {
@@ -22,6 +22,12 @@ test('optical Table 4 catalog identifies local transcription, six-measurement SD
   const data = JSON.parse(bytes.toString('utf8'));
   assert.equal(data.kind, 'local-transcription-of-published-aggregate-measurements');
   assert.equal(data.measurement.countPerCondition, 6);
+  assert.equal(data.transcriptionVersion, '1.1.0');
+  assert.equal(data.supersedes.transcriptionVersion, '1.0.0');
+  assert.equal(data.experiment.heatTreatment,
+    'Residual-stress annealed in vacuum at 800 °C for 2 h before laser processing.');
+  assert.equal(data.experiment.heatTreatmentEvidence.location,
+    'Version 1.01, Section 2.1 (Plate preparation), PDF page 2');
   assert.deepEqual(data.cases.map((row: any) => [row.caseNumber, row.depthMean_um, row.depthStdDev_um,
     row.widthMean_um, row.widthStdDev_um]), [
     ['0', 139.7, 1.9, 136.3, 2.9], ['1.1', 227.2, 3.2, 106.2, 3.6],
@@ -37,6 +43,9 @@ test('optical Table 4 catalog identifies local transcription, six-measurement SD
   assert.equal(document.sourceContext.experiment.process_scope, 'bare-plate');
   assert.equal(document.sourceContext.experiment.scan_direction, '+X');
   assert.equal(document.sourceContext.experiment.track_length_mm, 10);
+  assert.equal(document.sourceContext.experiment.heat_treatment, data.experiment.heatTreatment);
+  assert.equal(document.sourceContext.experiment.heat_treatment_evidence.sourceUrl, data.publishedMethods);
+  assert.equal(document.sourceContext.experiment.heat_treatment_missing_reason, null);
   assert.equal(document.sourceContext.measurement.beam_diameter_definition, 'D4sigma');
   assert.equal(document.artifacts[0].sha256, sha(bytes));
   assert.ok(new LpbfSourceArchiveService().catalog().sources.some(item => item.datasetId === datasetId));

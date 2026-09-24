@@ -11,9 +11,9 @@ import { getHostPython } from './pythonRuntime';
 
 const DATASET_ID = 'nist-amb2022-03-optical-table4-local-v1';
 const PUBLISHER_ID = 'nist-mds2-2718';
-const TABLE_SHA256 = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';
-const TABLE_BYTES = 3374;
-const TABLE_PATH = 'table4-aggregate-v1.json';
+const TABLE_SHA256 = 'd1b36dfa2e01a3537093c481e249ce52df6b8879c1c67480ddb9aa10799133da';
+const TABLE_BYTES = 4321;
+const TABLE_PATH = 'table4-aggregate-v2.json';
 const RESULTS_URL = 'https://www.nist.gov/document/am-bench-amb2022-03-measurement-and-result-descriptions-v10';
 const METHODS_URL = 'https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101';
 const CASES = new Set(['0', '1.1', '1.2', '2.1', '2.2', '3.1', '3.2']);

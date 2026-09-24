@@ -146,7 +146,7 @@ const opticalLink = { datasetId: 'nist-amb2022-03-optical-table4-local-v1',
 const opticalRun = { ...record, document: { ...document, sources: [opticalLink] },
   sourceBindingStatus: 'exact-revision-bound' } as const;
 const opticalBinding = { ...opticalLink, sourceDatasetId: 'nist-mds2-2718',
-  artifactSha256: 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518' };
+  artifactSha256: 'd1b36dfa2e01a3537093c481e249ce52df6b8879c1c67480ddb9aa10799133da' };
 const opticalReport = { schemaVersion: 1, benchmark: 'AMB2022-03-TMPG', caseNumber: '0',
   status: 'unavailable', validationStatus: 'unvalidated',
   reference: { doi: '10.18434/mds2-2718', results: 'https://www.nist.gov/results',

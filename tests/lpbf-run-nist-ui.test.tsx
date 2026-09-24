@@ -39,7 +39,7 @@ test('unavailable optical comparison renders reasons without error numbers', () 
 test('comparable optical screening shows signed errors and published SD as unvalidated', () => {
   const report: NistOpticalReport = { ...unavailable, status: 'comparable-screening', reasons: [],
     sourceBinding: { ...link, sourceDatasetId: 'nist-mds2-2718',
-      artifactSha256: 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518' },
+      artifactSha256: 'd1b36dfa2e01a3537093c481e249ce52df6b8879c1c67480ddb9aa10799133da' },
     errors: { width: { signed_um: -2, absolute_um: 2, measuredMean_um: 100,
       publishedStdDev_um: 4, model_um: 98 },
       depth: { signed_um: 3, absolute_um: 3, measuredMean_um: 120,

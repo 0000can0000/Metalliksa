@@ -52,7 +52,7 @@ const runKind = (value: unknown): value is RunKind =>
   || value === 'transient-thermal' || value === 'bounded-material-screening' || value === 'legacy-unspecified';
 const opticalCases = new Set<string>(['0', '1.1', '1.2', '2.1', '2.2', '3.1', '3.2']);
 const opticalDatasetId = 'nist-amb2022-03-optical-table4-local-v1';
-const opticalArtifactSha = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';
+const opticalArtifactSha = 'd1b36dfa2e01a3537093c481e249ce52df6b8879c1c67480ddb9aa10799133da';
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 const sameSources = (actual: RunSourceLink[], expected: RunSourceLink[]) =>
   actual.length === expected.length && actual.every((source, index) =>

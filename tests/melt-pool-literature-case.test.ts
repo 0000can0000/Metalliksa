@@ -5,7 +5,7 @@ import {
   isLoadableLiteratureCase,
   matchesLoadableLiteratureCase,
 } from "../src/data/meltPoolLiteratureCases";
-import opticalTable4 from "../data/benchmark/nist-amb2022-03-optical/table4-aggregate-v1.json";
+import opticalTable4 from "../data/benchmark/nist-amb2022-03-optical/table4-aggregate-v2.json";
 
 test("NIST AMB2022-03 bare-plate measurements cannot be loaded as powder-layer cases", () => {
   const nist = MELT_POOL_LITERATURE_CASES.filter((c) => c.id.startsWith("nist-amb2022-03-"));

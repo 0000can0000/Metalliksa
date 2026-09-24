@@ -68,19 +68,19 @@ export function cmuTi64CatalogEntry(root = path.resolve('data/benchmark/cmu-ti64
 /** A locally transcribed Table 4 aggregate, kept separate from NIST's raw HDF5 catalog. */
 export function nistOpticalTable4CatalogEntry(root = path.resolve('data/benchmark/nist-amb2022-03-optical')): LpbfSourceCatalogEntry {
   const datasetId = 'nist-amb2022-03-optical-table4-local-v1';
-  const artifactSha256 = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';
-  const artifactBytes = 3374;
+  const artifactSha256 = 'd1b36dfa2e01a3537093c481e249ce52df6b8879c1c67480ddb9aa10799133da';
+  const artifactBytes = 4321;
   const resultsUrl = 'https://www.nist.gov/document/am-bench-amb2022-03-measurement-and-result-descriptions-v10';
   const methodsUrl = 'https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101';
   return { datasetId, title: 'NIST AMB2022-03 Table 4 · local aggregate transcription', sourceRoot: root,
     loadDocument() {
       const manifest = readJson(root, 'manifest.json');
       const file = manifest.files?.[0];
-      if (manifest.schema_version !== 1 || manifest.dataset_id !== datasetId || manifest.version !== '1.0.0'
+      if (manifest.schema_version !== 1 || manifest.dataset_id !== datasetId || manifest.version !== '1.1.0'
         || manifest.material !== 'IN718' || manifest.process_scope !== 'bare-plate'
         || manifest.artifact_kind !== 'local-transcription-of-published-aggregate-measurements'
         || !Array.isArray(manifest.files) || manifest.files.length !== 1
-        || file?.path !== 'table4-aggregate-v1.json' || file.source_url !== resultsUrl
+        || file?.path !== 'table4-aggregate-v2.json' || file.source_url !== resultsUrl
         || file.bytes !== artifactBytes || file.sha256 !== artifactSha256) {
         throw new Error('Optical transcription manifest identity mismatch');
       }
@@ -103,7 +103,15 @@ export function nistOpticalTable4CatalogEntry(root = path.resolve('data/benchmar
         || experiment?.processScope !== 'bare-plate' || experiment?.sample !== 'AMB2022-718-SH1-BP1'
         || experiment?.beamDiameterDefinition !== 'D4sigma' || experiment?.scanDirection !== '+X'
         || experiment?.trackLength_mm !== 10 || experiment?.powderLayerThickness_um !== null
-        || experiment?.hatchSpacing_um !== null || !Array.isArray(data.cases) || data.cases.length !== 7
+        || experiment?.hatchSpacing_um !== null
+        || experiment?.heatTreatment !== 'Residual-stress annealed in vacuum at 800 °C for 2 h before laser processing.'
+        || experiment?.heatTreatmentEvidence?.sourceUrl !== methodsUrl
+        || experiment?.heatTreatmentEvidence?.location !== 'Version 1.01, Section 2.1 (Plate preparation), PDF page 2'
+        || experiment?.heatTreatmentMissingReason !== null
+        || data.supersedes?.transcriptionVersion !== '1.0.0'
+        || data.supersedes?.artifactPath !== 'table4-aggregate-v1.json'
+        || data.supersedes?.artifactSha256 !== 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518'
+        || !Array.isArray(data.cases) || data.cases.length !== 7
         || new Set(data.cases.map((item: any) => item.caseNumber)).size !== 7
         || data.cases.some((item: any) => typeof item.caseNumber !== 'string'
           || item.sampleId !== `AMB2022-718-SH1-BP1-L${item.caseNumber}`
@@ -127,6 +135,7 @@ export function nistOpticalTable4CatalogEntry(root = path.resolve('data/benchmar
             substrate_and_chamber_temperature_uncertainty_C: experiment.substrateAndChamberTemperatureUncertainty_C,
             powder_layer_thickness_um: null, hatch_spacing_um: null,
             heat_treatment: experiment.heatTreatment,
+            heat_treatment_evidence: experiment.heatTreatmentEvidence,
             heat_treatment_missing_reason: experiment.heatTreatmentMissingReason },
           measurement: { quantity: data.measurement.quantity, method: data.measurement.method,
             unit_source: data.measurement.unit, temperature_conversion: null,

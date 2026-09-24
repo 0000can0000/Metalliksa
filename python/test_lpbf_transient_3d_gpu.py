@@ -24,6 +24,7 @@ from lpbf_transient_3d_gpu import (
     launch_pressure_pcg,
     pressure_jacobi_kernel,
     project_velocity_kernel,
+    validate_projected_momentum_cfl_kernel,
     velocity_advection_forces_kernel,
 )
 
@@ -249,9 +250,10 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         nx, ny = surface.shape
         nz = temperature.shape[2]
         new_surface = wp.zeros((nx, ny), dtype=float, device="cpu")
+        surface_floor_hit = wp.zeros(1, dtype=wp.int32, device="cpu")
         wp.launch(
             kernel=free_surface_kinematics_kernel, dim=(nx, ny),
-            inputs=[self._wp_array(surface), new_surface,
+            inputs=[self._wp_array(surface), new_surface, surface_floor_hit,
                     self._wp_array(U), self._wp_array(V), self._wp_array(W),
                     self._wp_array(temperature), nx, ny, nz, dx, dy, dz, dt,
                     4420.0, 1878.0, 101325.0, 9.7e6, 173.93, 3533.0],
@@ -259,6 +261,19 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         )
         wp.synchronize()
         return new_surface.numpy()
+
+    def test_solver_fails_before_evaporation_when_surface_hits_bottom_floor(self):
+        solver = TransientEnthalpy3DGPU(
+            nx=4, ny=4, nz=4, dx=1e-5, dy=1e-5, dz=1e-5
+        )
+        solver.device = "cpu"
+        toolpath = {
+            "t": [0.0, 1e-9], "x": [1e-5, 1e-5],
+            "y": [1e-5, 1e-5], "p": [0.0, 0.0],
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "Phase 22 validity error.*z=2\\*dz"):
+            solver.solve_toolpath(toolpath, T_preheat_K=2000.0)
 
     def test_free_surface_graph_advects_tangentially(self):
         shape = (7, 7, 7)
@@ -594,6 +609,29 @@ class Transient3DPhysicsContracts(unittest.TestCase):
             dt * momentum_rate, _PHASE22_MOMENTUM_CFL_LIMIT + 1e-12
         )
         self.assertEqual(_step_count(1e-6, dt), math.ceil(1e-6 / dt))
+
+    def test_projected_velocity_cfl_guard_uses_actual_field(self):
+        shape = (5, 5, 5)
+        dx = dy = dz = 2.0e-6
+        rho, mu = 8190.0, 0.01
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        surface = np.full(shape[:2], 4.5 * dz, dtype=np.float32)
+        U = np.zeros(shape, dtype=np.float32)
+        V = np.zeros(shape, dtype=np.float32)
+        W = np.zeros(shape, dtype=np.float32)
+        U[2, 2, 2] = 10.0  # synthetic post-projection component above the 5 m/s predictor cap
+        exceeded = wp.zeros(1, dtype=wp.int32, device="cpu")
+
+        wp.launch(
+            kernel=validate_projected_momentum_cfl_kernel, dim=shape,
+            inputs=[self._wp_array(U), self._wp_array(V), self._wp_array(W),
+                    self._wp_array(surface), self._wp_array(temperature), exceeded,
+                    *shape, dx, dy, dz, 1.0e-7, mu / rho, 1878.0,
+                    _PHASE22_MOMENTUM_CFL_LIMIT],
+            device="cpu",
+        )
+        wp.synchronize()
+        self.assertEqual(int(exceeded.numpy()[0]), 1)
 
     def test_zero_duration_single_point_toolpath_does_not_heat(self):
         solver = TransientEnthalpy3DGPU(nx=4, ny=4, nz=4, dx=1e-5, dy=1e-5, dz=1e-5)

@@ -171,6 +171,7 @@ def get_k(T: float, T_s: float, T_l: float, k_solid: float, k_liquid: float) -> 
 def free_surface_kinematics_kernel(
     Z_surf: wp.array2d(dtype=float),
     Z_surf_new: wp.array2d(dtype=float),
+    surface_floor_hit: wp.array(dtype=wp.int32),
     U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
     T: wp.array3d(dtype=float),
     nx: int, ny: int, nz: int,
@@ -228,7 +229,9 @@ def free_surface_kinematics_kernel(
             z_new = z_old + dt * height_rate
 
             # Keep the graph inside the existing active vertical domain.
-            if z_new < 2.0 * dz:
+            if z_new <= 2.0 * dz:
+                if m_dot > 0.0:
+                    wp.atomic_max(surface_floor_hit, 0, 1)
                 z_new = 2.0 * dz
             max_height = float(nz - 2) * dz
             if z_new > max_height:
@@ -983,6 +986,27 @@ def project_velocity_kernel(
         W[i, j, k] = 0.0
 
 
+@wp.kernel
+def validate_projected_momentum_cfl_kernel(
+    U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float), T: wp.array3d(dtype=float),
+    exceeded: wp.array(dtype=wp.int32),
+    nx: int, ny: int, nz: int, dx: float, dy: float, dz: float,
+    dt: float, nu: float, T_solidus: float, cfl_limit: float,
+):
+    """Flag any liquid cell whose projected explicit transport CFL is unsafe."""
+    i, j, k = wp.tid()
+    if _pressure_cell_class(Z_surf, T, i, j, k, nx, ny, nz, dz, T_solidus) == 1:
+        rate = (
+            wp.abs(U[i, j, k]) / dx
+            + wp.abs(V[i, j, k]) / dy
+            + wp.abs(W[i, j, k]) / dz
+            + 2.0 * nu * (1.0 / (dx * dx) + 1.0 / (dy * dy) + 1.0 / (dz * dz))
+        )
+        if dt * rate > cfl_limit:
+            wp.atomic_max(exceeded, 0, 1)
+
+
 @wp.func
 def _liquid_transport_cell(
     T: wp.array3d(dtype=float), Z_surf: wp.array2d(dtype=float),
@@ -1341,6 +1365,8 @@ class TransientEnthalpy3DGPU:
         initial_z_surf = float((self.nz - 2) * self.dz)
         Z_surf = wp.full(shape=(self.nx, self.ny), value=initial_z_surf, dtype=float, device=self.device)
         Z_surf_new = wp.zeros_like(Z_surf)
+        surface_floor_hit = wp.zeros(1, dtype=wp.int32, device=self.device)
+        momentum_cfl_exceeded = wp.zeros(1, dtype=wp.int32, device=self.device)
         
         start_time = time.perf_counter()
         
@@ -1374,7 +1400,7 @@ class TransientEnthalpy3DGPU:
                 inputs=[U, V, W, Div, Z_surf, T_arr, self.nx, self.ny, self.nz, self.dx, self.dy, self.dz, T_solidus],
                 device=self.device
             )
-            
+
             # 3. Solve A p = -rho/dt * div(u), A=-D(G(p)). PCG reductions
             # remain on device; the host does not read a scalar in this loop.
             pcg_rho, pcg_rho_next = launch_pressure_pcg(
@@ -1398,6 +1424,19 @@ class TransientEnthalpy3DGPU:
                 device=self.device
             )
 
+            # The predictor clamp cannot bound velocities after pressure
+            # projection. Check the actual projected field before any explicit
+            # enthalpy transport or energy-ledger update.
+            wp.launch(
+                kernel=validate_projected_momentum_cfl_kernel,
+                dim=shape,
+                inputs=[U, V, W, Z_surf, T_arr, momentum_cfl_exceeded,
+                        self.nx, self.ny, self.nz, self.dx, self.dy, self.dz,
+                        step_dt, mu / rho, T_solidus,
+                        _PHASE22_MOMENTUM_CFL_LIMIT],
+                device=self.device,
+            )
+
             # Keep the actual post-projection divergence for the final residual
             # report. This is a device launch only; synchronization is deferred
             # to the existing end-of-run barrier.
@@ -1408,6 +1447,30 @@ class TransientEnthalpy3DGPU:
                         self.nz, self.dx, self.dy, self.dz, T_solidus],
                 device=self.device,
             )
+
+            # Predict the graph update from projected velocities before
+            # enthalpy applies surface fluxes. If evaporation would be clipped
+            # by the bottom-domain floor, stop before recording an energy/mass
+            # loss that the geometry cannot represent conservatively.
+            wp.launch(
+                kernel=free_surface_kinematics_kernel,
+                dim=(self.nx, self.ny),
+                inputs=[Z_surf, Z_surf_new, surface_floor_hit, U, V, W, T_arr,
+                        self.nx, self.ny, self.nz, self.dx, self.dy, self.dz,
+                        step_dt, rho, T_solidus, P0, Lv, Rs, Tv],
+                device=self.device,
+            )
+            wp.synchronize_device(self.device)
+            if int(surface_floor_hit.numpy()[0]) != 0:
+                raise RuntimeError(
+                    "Phase 22 validity error: evaporating molten surface reached "
+                    "the z=2*dz domain floor; mass and energy cannot be conserved."
+                )
+            if int(momentum_cfl_exceeded.numpy()[0]) != 0:
+                raise RuntimeError(
+                    "Phase 22 validity error: projected velocity exceeds the explicit "
+                    "momentum and enthalpy transport CFL limit."
+                )
             
             # 5. Advect Enthalpy and Compute New Temperatures on the current
             # interface. Its evaporation mass flux is shared with the
@@ -1449,18 +1512,7 @@ class TransientEnthalpy3DGPU:
                     device=self.device,
                 )
 
-            # 6. Advance the graph interface after projection, using the
-            # projected liquid velocity and the enthalpy kernel's same
-            # evaporation mass flux. The new mask is active next step.
-            wp.launch(
-                kernel=free_surface_kinematics_kernel,
-                dim=(self.nx, self.ny),
-                inputs=[Z_surf, Z_surf_new, U, V, W, T_arr,
-                        self.nx, self.ny, self.nz, self.dx, self.dy, self.dz,
-                        step_dt, rho, T_solidus, P0, Lv, Rs, Tv],
-                device=self.device,
-            )
-            
+            # The preflighted graph update becomes active with this enthalpy step.
             T_arr, T_new = T_new, T_arr
             H_arr, H_new = H_new, H_arr
             Z_surf, Z_surf_new = Z_surf_new, Z_surf

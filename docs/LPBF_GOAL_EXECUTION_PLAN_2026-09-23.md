@@ -333,3 +333,20 @@ docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
 P4 remains failed, P5 unavailable, and P6 partial. Next work remains physically
 closed model development and larger same-physics GPU performance/crossover
 analysis; CPU/CUDA agreement does not establish process validity.
+
+## 2026-09-24 — Projected CFL and height-graph floor validity guards
+
+Phase 22 now checks the actual post-projection velocity field against the
+explicit momentum and enthalpy-transport stability bound before applying
+thermal fluxes. A violation stops with a validity error. If molten-surface
+evaporation would drive the interface into the height graph's lower domain
+floor, the solver likewise stops before updating enthalpy or the energy
+ledger. The synthetic regressions and full Phase 22 CPU Warp suite pass 33/33;
+no GPU run was part of this package. This closes two numerical/model-boundary
+gaps without qualifying the free-surface model or changing P5's unavailable
+status.
+
+NIMS experiment 264 is a separate molten-density lead. Public metadata lacks
+the sample-specific chemistry, numerical values/uncertainty, and surface-
+tension/viscosity fits needed to combine it with Scheel data. Detailed source
+limits: docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.

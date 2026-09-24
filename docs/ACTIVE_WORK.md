@@ -672,3 +672,20 @@ source limits and citations: docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
 P4 remains failed, P5 unavailable, and P6 partial. Continue physics closure and
 same-physics GPU scale/crossover analysis; numerical parity alone is not
 qualification.
+
+## Latest core-physics closure — projected CFL and graph-floor stop (2026-09-24)
+
+Phase 22 now checks the actual projected velocity field against the explicit
+momentum/enthalpy transport bound before enthalpy or the energy ledger changes.
+If the conservative 0.5 rate bound is exceeded, the solver fails closed with a
+validity error. The same preflight stops if a molten surface with evaporation
+would be clipped at the z=2*dz graph floor. Synthetic regressions cover both
+conditions; the full Phase 22 suite passes 33/33 on CPU Warp. GPU execution was
+not part of this test run; Windows Warp temp cleanup emitted an ACL warning
+after passing tests.
+
+NIMS experiment 264 remains a separate liquid-density source lead only:
+public metadata exposes no chemistry ID, numerical values/uncertainty, or
+specimen-specific surface-tension/viscosity fits. See
+docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md. P4 failed, P5 unavailable, P6
+partial, and P7 closed remain unchanged.

@@ -243,3 +243,10 @@
 - Scheel et al. supplies useful as-deposited LPBF Hastelloy X Cp/enthalpy, but the liquid conductivity is a 15× modeling assumption, density is a fixed room-temperature measurement, and the full property uncertainty/melting-range set is not closed. NASA AM context and NIMS liquid-density metadata do not close these gaps or match into one source revision.
 - Decision: no P7 full-range pass and no runtime alloy admission. A clearly labelled bounded numerical pilot can be considered only with measured Cp/latent heat separated from assumed liquid properties. Source limits and links are recorded in docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
 - P4 remains failed, P5 unavailable, and P6 partial. Next: continue scoped physics closure and larger same-physics GPU crossover analysis; parity alone does not qualify the alloy or process.
+
+## 2026-09-24 — Phase 22 fail-closed transport boundaries
+- The projected explicit transport CFL is now checked against actual U/V/W before enthalpy updates; a projected field over the conservative 0.5 momentum/advection bound stops with a validity error. An evaporating molten interface reaching the z=2*dz height-graph floor likewise stops before enthalpy and ledger updates, avoiding unpaired loss at a clipped surface.
+- Synthetic regressions cover a 10 m/s projected velocity and molten evaporation at the lower graph floor. Full Phase 22 suite: **33/33 PASS** on CPU Warp. Warp temp cleanup emitted a Windows ACL warning after tests; GPU execution was not performed in this run.
+- NIMS experiment 264's public page does not expose specimen chemistry IDs, numeric density values/uncertainty, or sample-specific surface-tension/viscosity fits. NIMS documents those outputs for its method generally, but this record does not establish them. No files were downloaded. Detailed source boundary: docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
+- Next: run a warm-up plus repeated, alternating CPU/CUDA timings on the same IN625 workload; separate solver and end-to-end timing, and make no speedup claim before that evidence.
+

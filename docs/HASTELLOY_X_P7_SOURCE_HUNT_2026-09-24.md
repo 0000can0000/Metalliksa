@@ -25,3 +25,17 @@ A bounded numerical pilot may use only the source-covered Cp and fusion enthalpy
 - Hastelloy X runtime alloy admission: closed.
 - Next source step: capture source bytes, exact tables/curves, chemistry/state metadata, and uncertainty for any proposed property revision; inspect the raw NIMS analysis file before making claims beyond the accessible dataset metadata.
 - Preserve P4 failed, P5 unavailable, and P6 partial statuses. Continue with the separately scoped physics closure and GPU scale/performance work; do not infer qualification from CPU/CUDA parity.
+
+## NIMS experiment 264 visibility boundary
+
+The public MDR metadata identifies a Nilaco-supplied melt-state Hastelloy X
+specimen, but exposes no elemental composition percentages, chemistry/specimen
+identifier, numerical density points, or uncertainty. Its files include a
+density analysis and an ambiguously named ESL text file; the public record does
+not establish surface-tension or viscosity fit results for this specimen.
+NIMS documents that its broader oscillating-drop method can derive surface
+tension and viscosity, but that general method description is not evidence that
+experiment 264 publishes those properties. No source files were downloaded or
+scraped for this review; NIMS prohibits scraping and bulk acquisition. Keep the
+dataset as a separate density-source lead until a permitted, source-specific
+inspection establishes values and uncertainty.

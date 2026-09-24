@@ -96,6 +96,15 @@ def get_evaporation_mass_flux(T: float, P0: float, Lv: float, Rs: float, Tv: flo
     return (0.54 * P_sat) / wp.sqrt(2.0 * 3.14159265 * Rs * T + 1e-6)
 
 @wp.func
+def get_liquid_surface_evaporation_mass_flux(
+    T: float, T_solidus: float, P0: float, Lv: float, Rs: float, Tv: float
+) -> float:
+    """Apply the free-surface evaporation law only to a molten surface cell."""
+    if T < T_solidus:
+        return 0.0
+    return get_evaporation_mass_flux(T, P0, Lv, Rs, Tv)
+
+@wp.func
 def get_temperature_from_enthalpy(h_val: float, rho: float, L_f: float, T_s: float, T_l: float, cp_solid: float, cp_liquid: float) -> float:
     H_s = rho * cp_solid * T_s
     cp_mush = 0.5 * (cp_solid + cp_liquid)
@@ -181,7 +190,9 @@ def free_surface_kinematics_kernel(
 
             h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
             h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
-            m_dot = get_evaporation_mass_flux(T_surf, P0, Lv, Rs, Tv)
+            m_dot = get_liquid_surface_evaporation_mass_flux(
+                T_surf, T_solidus, P0, Lv, Rs, Tv
+            )
             surface_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)
             height_rate = w_surf - u_surf * h_x - v_surf * h_y - (m_dot / rho) * surface_metric
             z_new = z_old + dt * height_rate
@@ -1069,7 +1080,9 @@ def enthalpy_3d_nonlinear_step_kernel(
             q_loss = (h_c * (T_c - T_amb)
                       + epsilon * 5.67e-8 * (T_c*T_c*T_c*T_c - T_amb*T_amb*T_amb*T_amb))
             
-            m_dot_evap = get_evaporation_mass_flux(T_c, P0, Lv, Rs, Tv)
+            m_dot_evap = get_liquid_surface_evaporation_mass_flux(
+                T_c, T_solidus, P0, Lv, Rs, Tv
+            )
             h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
             h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
             surface_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)
@@ -1183,7 +1196,9 @@ def phase22_energy_ledger_step_kernel(
             q_radiation = epsilon * 5.67e-8 * (
                 T_c * T_c * T_c * T_c - T_amb * T_amb * T_amb * T_amb
             )
-            m_dot = get_evaporation_mass_flux(T_c, P0, Lv, Rs, Tv)
+            m_dot = get_liquid_surface_evaporation_mass_flux(
+                T_c, T_solidus, P0, Lv, Rs, Tv
+            )
             h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
             h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
             area_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)

@@ -295,3 +295,15 @@ on CPU/CUDA for one synthetic test vector, but that alloy remains unqualified
 and CUDA is slower on the 128-cell profile. P7 source review found no complete
 alternate source package; Hastelloy X is a candidate for further data capture,
 not an admitted alloy. Preserve these statuses until new evidence is produced.
+
+## 2026-09-24 — Phase 22 molten-surface evaporation gate
+
+The enthalpy kernel and energy ledger could apply evaporation above the
+1500 K saturation cutoff even when the surface-kinematics kernel kept the
+surface fixed below `T_solidus`. An 1850 K regression against the default
+1878 K solidus reproduced the unpaired enthalpy sink. One shared
+liquid-surface flux helper now gates enthalpy loss, ledger loss, and surface
+recession at the solidus; existing above-solidus area and mass matching still
+passes. The Phase 22 Python suite passes 30/30 on CPU Warp. This repair closes
+only an internal model-contract inconsistency, not the missing experimental
+validation or P4/P5/P6/P7 gates.

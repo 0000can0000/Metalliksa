@@ -1597,3 +1597,20 @@ claim. Full context and limitations: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-0
 This closes field-level coverage of the implemented IN625 screening law's
 mushy interval for one synthetic vector; it does not admit the source data or
 model as physically qualified. P6 and P7 remain partial.
+
+## Phase 22 molten-surface evaporation consistency fix (2026-09-24)
+
+The surface recession kernel already limited its Hertz–Knudsen-like mass loss
+to cells at or above the material solidus, but the enthalpy sink and energy
+ledger did not. A CPU regression at 1850 K against the default 1878 K solidus
+reproduced the mismatch: enthalpy fell while the surface height stayed fixed.
+The solver now routes energy loss, ledger accounting, and height recession
+through one liquid-surface mass-flux helper. Below solidus all three terms are
+zero; above solidus the existing flux and surface-area treatment is preserved.
+
+The focused regression first failed against the old behavior, then passed after
+the fix. `python -m pytest -q test_lpbf_transient_3d_gpu.py`: **30 passed** on
+CPU Warp. Pytest cache writes and Warp's process-exit temporary-directory
+cleanup emitted Windows ACL warnings; the Warp kernel tests themselves passed.
+This is an internal physics-contract consistency fix, not experimental
+qualification; P4/P5/P6/P7 retain their existing statuses.

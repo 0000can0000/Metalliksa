@@ -632,3 +632,16 @@ No live migration, second queue, installation, push or secondary module work.
 Preserve external edits in SECONDARY_MODULE_BACKLOG, uqLabData,
 pythonComputationService, monteCarloEngine, eisFileParser and tafelParser.
 CBM generation2026-09-18 stale/untracked; direct source fallback for named paths.
+
+## Newest core-physics slice — Phase 22 evaporation (2026-09-24)
+
+Phase 22 now uses the same `T >= T_solidus` gate for liquid-surface
+evaporation energy loss, free-surface mass recession, and energy-ledger
+accounting. A regression first reproduced energy loss at 1850 K with fixed
+surface height, then passed with zero below-solidus evaporation and preserved
+the above-solidus mass/energy relation. Full
+`test_lpbf_transient_3d_gpu.py`: **30/30 CPU Warp PASS**; no GPU execution was
+run for this slice. Windows pytest-cache and Warp PCH-temp cleanup ACL warnings
+occurred after passing kernel checks. Experimental/model qualification does
+not change. Next physics review: bound the explicit momentum predictor's time
+step by advection and viscosity stability as well as thermal diffusion.

@@ -16,6 +16,7 @@ from lpbf_transient_3d_gpu import (
     compute_divergence_kernel,
     enthalpy_3d_nonlinear_step_kernel,
     free_surface_kinematics_kernel,
+    phase22_energy_ledger_step_kernel,
     launch_pressure_pcg,
     pressure_jacobi_kernel,
     project_velocity_kernel,
@@ -150,6 +151,59 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertTrue(np.isclose(evaporated_mass_from_enthalpy, expected_mass, rtol=0.01))
         self.assertTrue(np.isclose(evaporated_mass_from_enthalpy,
                                    evaporated_mass_from_height, rtol=0.01))
+
+    def test_solid_surface_has_no_liquid_evaporation_energy_or_mass_loss(self):
+        shape = (5, 5, 7)
+        dx = dy = dz = 1.0e-4
+        dt = 1.0e-2
+        temperature = np.full(shape, 1850.0, dtype=np.float32)
+        enthalpy = np.full(shape, 1.0e10, dtype=np.float32)
+        surface = np.full(shape[:2], 3.5 * dz, dtype=np.float32)
+        zero_velocity = wp.zeros(shape, dtype=float, device="cpu")
+        empty_toolpath = self._wp_array([0.0])
+        new_enthalpy = wp.zeros(shape, dtype=float, device="cpu")
+        new_temperature = wp.zeros(shape, dtype=float, device="cpu")
+        wp.launch(
+            kernel=enthalpy_3d_nonlinear_step_kernel, dim=shape,
+            inputs=[self._wp_array(temperature), self._wp_array(enthalpy),
+                    zero_velocity, zero_velocity, zero_velocity,
+                    new_temperature, new_enthalpy, self._wp_array(surface),
+                    *shape, dx, dy, dz, dt, 0.0, 4420.0, 2.9e5,
+                    1878.0, 1928.0, empty_toolpath, empty_toolpath,
+                    empty_toolpath, empty_toolpath, 0, 30e-6, 0.0,
+                    0.0, 0.0, 300.0, 101325.0, 9.7e6, 173.93, 3533.0,
+                    670.0, 730.0, 15.0, 25.0],
+            device="cpu",
+        )
+        wp.synchronize()
+
+        ledger_arrays = [
+            wp.zeros(shape, dtype=wp.float64, device="cpu") for _ in range(7)
+        ]
+        wp.launch(
+            kernel=phase22_energy_ledger_step_kernel, dim=shape,
+            inputs=[self._wp_array(temperature), self._wp_array(enthalpy),
+                    zero_velocity, zero_velocity, zero_velocity,
+                    self._wp_array(surface), *ledger_arrays,
+                    *shape, dx, dy, dz, dt, 0.0, 4420.0, 2.9e5,
+                    1878.0, 1928.0, empty_toolpath, empty_toolpath,
+                    empty_toolpath, empty_toolpath, 0, 30e-6, 0.0,
+                    0.0, 0.0, 300.0, 101325.0, 9.7e6, 173.93, 3533.0,
+                    670.0, 730.0, 15.0, 25.0],
+            device="cpu",
+        )
+        wp.synchronize()
+
+        updated_surface = self._update_surface(
+            surface, temperature, np.zeros(shape, dtype=np.float32),
+            np.zeros(shape, dtype=np.float32), np.zeros(shape, dtype=np.float32),
+            dt, dx, dy, dz,
+        )
+        i = j = 2
+        k = int(float(surface[i, j]) / dz)
+        self.assertEqual(float(updated_surface[i, j]), float(surface[i, j]))
+        self.assertEqual(float(new_enthalpy.numpy()[i, j, k]), float(enthalpy[i, j, k]))
+        self.assertEqual(float(ledger_arrays[5].numpy()[i, j, k]), 0.0)
 
     def test_convection_and_radiation_losses_use_graph_surface_area_once(self):
         shape = (5, 5, 7)

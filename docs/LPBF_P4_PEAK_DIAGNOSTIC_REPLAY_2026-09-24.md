@@ -15,8 +15,11 @@ The replay is **not an exact implementation replay**: all six provenance
 `implementationHash` values differed, and fingerprinting the frozen inputs at
 the report commit `ec6b0a5` also failed to reproduce the stored hashes. The hash
 covers every `python/*.py` file and the validated inputs, so the exact
-report-time source tree has not yet been identified. The diff from `ec6b0a5`
-to diagnostic commit `5dae4c9` changes the peak tracker only to add equal-peak
+report-time source tree has not yet been identified. A Git-blob scan over 69
+commits from the P4 harness through the new capture gate found no matching
+implementation hash; the original run likely used a dirty/uncommitted or
+unrecorded Python tree. The diff from `ec6b0a5` to diagnostic commit `5dae4c9`
+changes the peak tracker only to add equal-peak
 counters, adds their serialization, and updates a descriptive section label;
 the thermal update, material registry, source integration, and verification
 operator are unchanged. Those counters do not change peak winner selection.

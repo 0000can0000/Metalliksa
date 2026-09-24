@@ -22,10 +22,16 @@ and 300 on the two coarser meshes to 25 on the fine mesh; this is a plausible
 selection sensitivity, not a proven cause of non-monotonic depth. Details:
 `docs/LPBF_P4_PEAK_DIAGNOSTIC_REPLAY_2026-09-24.md`. Separately, today's solver
 rejects the 86.763%-capture coarse mesh under its newer 99% minimum; do not
-weaken that guard or the P4 criteria. Next: identify the exact source tree
-behind the original implementation hashes. Until then the replay cannot alter
-P4 acceptance. The completed 75 W vectors are exhausted and cannot be reused
-as prospective levels.
+weaken that guard or the P4 criteria. A Git-blob scan of 69 commits from the
+P4 harness through the new capture gate found no matching original
+`implementationHash`; the historical tree was likely dirty or outside the
+recorded Git ancestry and cannot be recovered from the report hash alone. The
+comparison confirms that the numerical operator files stayed unchanged from
+the frozen-report commit to the diagnostic commit; only additive tie counters,
+their serialization and one explanatory label differed. This supports using
+the plateau counts as same-operator diagnostics, not as byte-identical
+historical execution. The completed 75 W vectors are exhausted and cannot be
+reused as prospective levels.
 
 P8's strongest recorded live UI evidence is the IN625 flow in `PROOF.md` §
 “Core physics + IN625 UI/archive integration”: source revision 2

@@ -180,3 +180,7 @@
 - `solve_toolpath(..., include_diagnostic_fields=True)` yalnız açıkça istendiğinde son T/H/U/V/W/P/yüzey alanlarını verir; varsayılan sonuç şeması değişmez ve 100.000 hücre üstü tanı isteği reddedilir.
 - Aynı dondurulmuş 5-adımlı vaka CPU ile RTX 4060 `cuda:0` arasında bütün alanlarda sabit toleransları geçti; odaklı paket **3/3 PASS** (alan paritesi, varsayılan şema, boyut kapısı). En büyük T farkı `2.4414e-4 K`, H göreli L2 `1.96e-8`, basınç göreli L2 `6.92e-7`, yüzey yüksekliği farkı sıfır. Ayrıntılar: `docs/PHASE22_FULL_FIELD_CPU_CUDA_PARITY_2026-09-24.md`.
 - Bu solverda kaynak/taşınım/radyasyon/buharlaşma terimleri için denetlenebilir tam enerji defteri yok; enerji kapanışı unavailable. Sonuç tek küçük vaka içindir; analitik doğruluk, yakınsama, performans ve deney doğrulaması sağlamaz. P6 kısmi.
+
+## 2026-09-24 — Phase 22 CUDA bağımsız basınç kontrolü
+- Üretim CUDA PCG'si, 9³ dondurulmuş sıvı ağında bağımsız host sonlu-hacim `A=-D(G)` operatörünün ürettiği imal edilmiş basınç çözümünü geri buldu. Açık RTX 4060 `cuda:0`, hedefli **1/1 PASS**; lineer residual `7.4851e-4`, gauge-ayarlı basınç göreli L2 hatası `2.9145e-4`, bağımsız operatör residual'ı `7.4854e-4` (her biri ≤`1e-3`).
+- Bu yalnız ayrık basınç operatörünün tek-manufactured-case kontrolüdür; enerji kapanışı, yüzey kuvvet yasaları, mesh/time yakınsaması veya deney kıyası değildir. [Rapor](docs/PHASE22_CUDA_PRESSURE_MANUFACTURED_2026-09-24.md).

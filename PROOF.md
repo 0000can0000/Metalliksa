@@ -1313,3 +1313,15 @@ unchanged. No auditable total-energy ledger exists in this solver, so energy
 closure remains unavailable. This is small-case numerical parity, not
 analytical, convergence, performance, or experimental validation. See
 `docs/PHASE22_FULL_FIELD_CPU_CUDA_PARITY_2026-09-24.md`.
+
+## 2026-09-24 — CUDA manufactured pressure oracle
+
+The device-side Phase 22 PCG recovered a mean-centered discrete manufactured
+pressure on a 9³ liquid grid against an independently assembled host
+finite-volume `A=-D(G)` operator. On explicit RTX 4060 `cuda:0`, the linear
+residual was `7.4851e-4`, gauge-adjusted pressure relative L2 error
+`2.9145e-4`, and independently recomputed operator residual `7.4854e-4`; all
+were within the frozen `1e-3` limit (1/1 PASS). This is a pressure-operator
+oracle only; it does not validate surface-force constitutive laws, total-energy
+closure, convergence, performance, or experimental behavior. Details:
+`docs/PHASE22_CUDA_PRESSURE_MANUFACTURED_2026-09-24.md`.

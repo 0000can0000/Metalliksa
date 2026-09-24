@@ -26,6 +26,11 @@ passed the frozen CPU/explicit-`cuda:0` tolerances for the same small case (3/3
 focused PASS); opt-in output is capped at 100,000 cells and defaults remain
 unchanged. No auditable energy ledger is exposed, so energy closure remains
 unavailable and P6 remains partial.
+The CUDA PCG also passed one independent manufactured-pressure oracle on a
+9³ liquid grid (linear residual `7.4851e-4`, gauge-adjusted pressure error
+`2.9145e-4`, independent operator residual `7.4854e-4`, each within `1e-3`);
+see `docs/PHASE22_CUDA_PRESSURE_MANUFACTURED_2026-09-24.md`. This does not close
+the energy-ledger requirement or validate surface-force laws.
 The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
 tests; standalone build-job checks and TypeScript typecheck also pass. The
 TypeScript session behavior runner passed 11 focused tests in the elevated

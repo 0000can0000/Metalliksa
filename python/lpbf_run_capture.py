@@ -11,7 +11,17 @@ from lpbf_evidence import enforce_thermal_balances
 
 MAX_JSON_BYTES = 16 * 1024 * 1024
 EXCLUDED = {'result.json', 'result.tmp', 'progress.log'}
-RUN_KINDS = {'build-screening', 'transient-thermal', 'legacy-unspecified'}
+RUN_KINDS = {'analytical-screening', 'build-screening', 'transient-thermal', 'legacy-unspecified'}
+
+
+def _is_analytical_screening(result):
+    settings = result.get('settings')
+    physics = result.get('resolvedPhysics')
+    if not isinstance(physics, dict):
+        contract = result.get('coreContract')
+        physics = contract.get('resolvedPhysics') if isinstance(contract, dict) else None
+    return (isinstance(settings, dict) and settings.get('mode') == 'screening'
+            and isinstance(physics, dict) and physics.get('transient') is False)
 
 
 def _directory(folder):
@@ -48,8 +58,11 @@ def capture_run(folder, job_id):
     if run_kind == 'build-screening' and (not isinstance(settings, dict)
             or settings.get('jobType') != 'build-job'):
         raise ValueError('Build screening classification requires captured build-job settings')
+    if run_kind == 'analytical-screening' and not _is_analytical_screening(result):
+        raise ValueError('Analytical screening classification requires screening mode without transient physics')
     if run_kind == 'transient-thermal' and (not isinstance(settings, dict)
-            or settings.get('jobType') not in (None, 'transient-thermal')):
+            or settings.get('jobType') not in (None, 'transient-thermal')
+            or _is_analytical_screening(result)):
         raise ValueError('Transient thermal classification conflicts with captured settings')
     enforce_thermal_balances(result)
     refs = result.get('artifacts')

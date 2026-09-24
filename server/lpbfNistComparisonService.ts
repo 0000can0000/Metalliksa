@@ -69,6 +69,9 @@ export class LpbfNistComparisonService {
     }
     const record = this.runs.get(runId);
     const result = JSON.parse(record.document.capture.resultJson);
+    if (record.runKind === 'analytical-screening') {
+      return unavailable(caseNumber, ['Analytical screening has no transient thermal evolution and is not eligible for NIST optical comparison.']);
+    }
     if (record.runKind === 'build-screening' || result.settings?.jobType === 'build-job') {
       return unavailable(caseNumber, ['Build-job screening captures are not eligible for NIST optical comparison.']);
     }

@@ -14,7 +14,7 @@ export interface RunCapture {
   runKind?: RunKind;
 }
 
-export type RunKind = 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
+export type RunKind = 'analytical-screening' | 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
 
 export interface RunDocument {
   schemaVersion: 1;

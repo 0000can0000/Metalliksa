@@ -9,9 +9,9 @@ const link = { datasetId: 'nist-amb2022-03-optical-table4-local-v1',
   revision: 2, documentSha256: 'a'.repeat(64) };
 const record: RunRecord = { document: { schemaVersion: 1, runId: 'b'.repeat(32),
   capture: { schemaVersion: 1, jobId: 'b'.repeat(32), resultJson: '{}', inputJson: '{}',
-    materialJson: '{}', contractStatus: 'core-v1-bound' }, sources: [link] },
+    materialJson: '{}', contractStatus: 'core-v1-bound', runKind: 'analytical-screening' }, sources: [link] },
   documentSha256: 'c'.repeat(64), createdAt: '2026-09-23T00:00:00Z',
-  evidenceStatus: 'unvalidated-model', sourceBindingStatus: 'exact-revision-bound' };
+  evidenceStatus: 'unvalidated-model', sourceBindingStatus: 'exact-revision-bound', runKind: 'analytical-screening' };
 const unavailable: NistOpticalReport = { schemaVersion: 1, benchmark: 'AMB2022-03-TMPG',
   caseNumber: '0', status: 'unavailable', validationStatus: 'unvalidated',
   reference: { doi: '10.18434/mds2-2718', results: '', resultsLocator: '', methods: '',
@@ -23,6 +23,7 @@ test('NIST run controls expose seven keyboard-selectable cases and exact archive
   assert.match(html, /aria-label="NIST Table 4 case"/);
   assert.equal((html.match(/<option/g) ?? []).length, 7);
   assert.match(html, /Compare archived run/);
+  assert.match(html, /Run kind: analytical-screening/);
   assert.match(html, /revision 2/);
   assert.match(html, new RegExp(link.documentSha256));
   assert.match(html, /unvalidated/);

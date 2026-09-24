@@ -1,18 +1,20 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
-Latest completed physics slice: commit `a344821` fixes sloped-surface area
-scaling for GPU convection/radiation/evaporation and adds the Phase 22 energy
-ledger; its focused suite passed 28/28 and the 64³ RTX 4060 CUDA closure was
-`9.724e-5`. CPU core audit found no new high-confidence defect in `enthalpy-fv-6`;
-legacy 2D FDM limitations remain explicitly scoped. The build-job worker's
-missing `timeout_s` default is fixed and its timeout/run-kind regression passed
-2/2; two live HTTP jobs completed with material property hashes. Run captures
-now classify build-screening/transient-thermal, keep old v1 records as
-legacy-unspecified, and block build-job NIST comparisons. Python capture/e2e is
-7/7; focused TypeScript archive/NIST/client/bundle tests are 31/31 and lint
-passes. The combined selected-browser build-job archive/restore flow and full
-P6 acceptance remain open. P4 tied-endpoint diagnostics are complete
-and diagnostic-only; 75 W remains inconclusive and frozen 80 W remains failed.
+Latest physics slice adds the independent Phase 22 manufactured thermal oracle
+in `docs/PHASE22_MANUFACTURED_THERMAL_2026-09-24.md`: the production heat kernel
+matches a closed-form 3D diffusion field and exact integrated energy on CPU
+9³/17³/33³ and explicit RTX 4060 `cuda:0` 33³; focused tests pass 2/2. This
+closes that P6 subcheck only. Independent CPU, CUDA/Warp, and phase/flux audits
+found no additional high-confidence core-physics defect to patch; OpenFOAM
+evaporation mass closure and back-condensation remain unqualified scope limits.
+The archive contract now classifies `mode=screening` with
+`resolvedPhysics.transient=false` as `analytical-screening`. A fresh isolated UI
+flow ran IN718 Case 0 parameters, archived it with exact Table 4 revision 1,
+confirmed NIST comparison unavailable for analytical screening, then exported,
+verified, and restored a one-run/one-source bundle. Targeted validation: Python
+10/10, TypeScript 35/35, lint and diff checks pass. P6 remains partial; P4 tied-
+endpoint diagnostics are diagnostic-only, 75 W is inconclusive and frozen 80 W
+remains failed.
 Root owns report integration, the build-job archive boundary, and the next
 predeclared numerical/source gates; preserve all frozen acceptance criteria.
 P5 Case 0's 480 µm run stopped at the fixed-material boiling guard after 133

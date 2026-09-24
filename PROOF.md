@@ -1392,3 +1392,57 @@ comparisons return unavailable for both new and legacy captures; no
 execution 7/7, focused archive/NIST/client/bundle TypeScript 31/31, lint PASS.
 The complete selected-browser build-job → comparison → export → isolated restore
 chain is still open.
+
+## 2026-09-24 — Phase 22 analytic thermal oracle and browser archive flow
+
+`python/test_lpbf_phase22_manufactured_thermal.py` exercises the production
+`enthalpy_3d_nonlinear_step_kernel` on a source-free, fixed-property 3D
+Dirichlet Fourier mode. The exact field is
+`T=300+10 product_i sin(pi*x_i/L) exp(-3 alpha pi² t/L²)`; expected energy
+change is independently integrated from that field, without the solver ledger.
+CPU 9³/17³/33³ relative field errors are `1.5814e-3`, `5.5712e-4`,
+`1.4679e-4`; relative exact-energy errors are `6.0033e-3`, `2.1197e-3`,
+`5.5784e-4`. Explicit RTX 4060 `cuda:0` at 33³ gives `1.4677e-4` field and
+`5.5771e-4` energy error. Focused test **2/2 PASS**. This closes only the
+manufactured heat-operator subcheck; Phase 22 full model and P6 remain partial.
+Full conditions and limits: `docs/PHASE22_MANUFACTURED_THERMAL_2026-09-24.md`.
+
+An isolated browser session on a dedicated local server imported and verified
+NIST AMB2022-03 official workbook revision 1 (`73293ca6…`) and local Table 4
+transcription revision 1 (`b312cc28…`). Two IN718 Quick Screening jobs were
+captured with those source links. The Table 4 comparison correctly returned
+unavailable: the record was not a standard CPU transient solve, did not execute
+the 10 mm bare-plate path or ambient condition, lacked a measured-profile
+mapping and six-section observation operator, and had no 3–6-level mesh/time
+studies. The flow exported bundle `43642650e30942489be6867d6f0e11da` (2 runs,
+3 run artifacts, 2 source links), verified it, and restored copy
+`30d6a902b25c44e2a65c357bb35c26d2`. During this trial the app mislabelled an
+analytical screening result (`settings.mode=screening`,
+`resolvedPhysics.transient=false`) as `transient-thermal`; this contract defect
+is under repair. These scratch-root records are diagnostic, not durable product
+archive evidence; repeat the acceptance flow after the run-kind fix.
+
+## 2026-09-24 — Run-kind fix and repeat browser acceptance
+
+Worker/capture/archive now use `analytical-screening` when a captured result has
+`settings.mode=screening` and explicitly reports `resolvedPhysics.transient=false`.
+The queue, Python capture, TypeScript repository, UI, NIST eligibility, and
+bundle path preserve that identity. Fresh isolated UI run `a102b5269a3744b49b0cc0309e698752`
+used IN718 and the NIST Table 4 Case 0 vector (285 W, 960 mm/s, 67 µm beam,
+23 °C), completed as Rosenthal/Goldak analytical geometry, then previewed and
+archived as `analytical-screening` with exact Table 4 transcription revision 1
+(`b312cc28…`). The NIST comparison correctly returned unavailable because
+analytical screening has no transient thermal evolution. Bundle
+`3b6b4a0d570a4429b7b5b6b2380e5fce` contained 1 run, 2 artifacts, and 1 source
+link; verification succeeded and restored copy `9ee6029283504c74a925e53e2a53c4f2`
+was separate from the unchanged live archive. This is an archive/workflow
+acceptance result, not thermal model validation. Focused checks: Python 10/10,
+TypeScript 35/35, `npm run lint` and `git diff --check` PASS.
+
+Independent audits of the active CPU enthalpy-FV, CUDA/Warp thermal path, and
+phase/heat-flux closures found no additional high-confidence implementation
+defect. Their scope does not qualify experimental accuracy. OpenFOAM evaporation
+currently uses an evaporative energy sink/recoil term without a demonstrated
+metal mass/VOF closure; its back-condensation assumption and IN718 applicability
+remain unverified, so that branch is not treated as a qualified free-surface
+model. P6 remains partial; do not remove the CPU boiling guard or claim P5.

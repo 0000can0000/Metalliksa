@@ -24,6 +24,11 @@ class WorkerTimeout(unittest.TestCase):
     def test_worker_run_kind_is_explicit_and_keeps_gpu_archive_closed(self):
         self.assertEqual(_archive_run_kind("build-job"), "build-screening")
         self.assertEqual(_archive_run_kind(None), "transient-thermal")
+        analytical = {"settings": {"mode": "screening"},
+                      "coreContract": {"resolvedPhysics": {"transient": False}}}
+        self.assertEqual(_archive_run_kind(None, analytical), "analytical-screening")
+        direct_physics = {"settings": {"mode": "screening"}, "resolvedPhysics": {"transient": False}}
+        self.assertEqual(_archive_run_kind(None, direct_physics), "analytical-screening")
         self.assertIsNone(_archive_run_kind("gpu-thermal-pilot"))
 
     def test_build_job_without_timeout_uses_bounded_worker_default(self):

@@ -39,11 +39,20 @@ ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().p
 DEFAULT_JOB_TIMEOUT_S = 300.0
 
 
-def _archive_run_kind(job_type):
+def _archive_run_kind(job_type, result=None):
     if job_type == "gpu-thermal-pilot":
         return None  # Its archive contract is intentionally unavailable.
     if job_type == "build-job":
         return "build-screening"
+    if isinstance(result, dict):
+        settings = result.get("settings")
+        core_contract = result.get("coreContract")
+        physics = result.get("resolvedPhysics")
+        if not isinstance(physics, dict) and isinstance(core_contract, dict):
+            physics = core_contract.get("resolvedPhysics")
+        if (isinstance(settings, dict) and settings.get("mode") == "screening"
+                and isinstance(physics, dict) and physics.get("transient") is False):
+            return "analytical-screening"
     return "transient-thermal"
 
 
@@ -325,7 +334,7 @@ def main():
                 result = run(input_data, report, folder,
                              json.loads((folder/"capabilities.json").read_text()))
 
-            run_kind = _archive_run_kind(job_type)
+            run_kind = _archive_run_kind(job_type, result)
             if run_kind is not None:
                 result["runKind"] = run_kind
             result["provenance"]["runtime_s"] = time.monotonic()-execution_start

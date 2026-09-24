@@ -201,3 +201,22 @@ Kullanıcıya ara karar gerektirmeyen işlerde durulmaz. Bağlam değişiminde b
 
 EIS/EDS ve diğer yan araştırma modülleri kapsam dışıdır. Push, yayın veya
 canlı veri göçü bu planın bitiş koşulu değildir.
+
+## 2026-09-24 — P6/P8 ve çekirdek fizik devamı
+
+P6'nın bağımsız analitik ısı alt-kapısı artık Phase 22 üretim entalpi kernel'ine
+uygulanan 3B Fourier modu ve tam-alan enerji oracle'ıyla sınanıyor; rapor
+`docs/PHASE22_MANUFACTURED_THERMAL_2026-09-24.md`. Bu sabit-özellikli iletim
+kontrolü, önceki enerji defteri/CPU paritesi kontrollerinden ayrıdır ve tam
+P6'yı veya P4/P5'i kapatmaz. CPU/GPU taramasında yeni, yüksek güvenli başka bir
+kusur bulunmadı; OpenFOAM IN718 ve yüksek-sıcaklık akış/arayüz sınırlamaları
+ayrıca kalır.
+
+P8 browser UI archive/export/restore akışı run-kind onarımından sonra izole
+köklerde tekrarlandı. IN718 analitik screening `analytical-screening` olarak
+önizlendi/arşivlendi ve exact Table 4 revision 1 bağı korundu. NIST optical
+karşılaştırması, transient olmayan model için unavailable döndü. Bir-run/one-
+source bundle üretildi, doğrulandı ve ayrı kopyaya geri yüklendi; canlı arşivin
+değişmediği UI'da doğrulandı. Odaklı testler Python 10/10, TypeScript 35/35,
+lint ve diff check PASS. P8 yazılım akışı kabul edildi; bilimsel kıyas ve P5
+model geçerliliği hâlâ açık.

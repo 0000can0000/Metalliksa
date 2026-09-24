@@ -12,7 +12,7 @@ export interface RunCapture {
   contractStatus: 'core-v1-bound' | 'legacy-unbound';
   runKind?: RunKind;
 }
-export type RunKind = 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
+export type RunKind = 'analytical-screening' | 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
 export interface RunSourceLink { datasetId: string; revision: number; documentSha256: string }
 export interface RunDocument { schemaVersion: 1; runId: string; capture: RunCapture; sources: RunSourceLink[] }
 export interface RunRecord { document: RunDocument; documentSha256: string; createdAt: string; evidenceStatus: 'unvalidated-model'; runKind: RunKind }
@@ -57,12 +57,17 @@ export function validateRunDocument(raw: unknown): RunDocument {
     || !/^[a-f0-9]{32}$/.test(d.runId) || d.runId !== c.jobId) throw new Error('Invalid run identity');
   const result = snapshot(c.resultJson);
   const capturedRunKind = result.runKind === undefined ? 'legacy-unspecified' : result.runKind;
+  const settings = result.settings;
+  const resolvedPhysics = result.resolvedPhysics ?? result.coreContract?.resolvedPhysics;
+  const analyticalScreening = settings?.mode === 'screening' && resolvedPhysics?.transient === false;
   if (typeof capturedRunKind !== 'string'
-    || !['build-screening', 'transient-thermal', 'legacy-unspecified'].includes(capturedRunKind)
+    || !['analytical-screening', 'build-screening', 'transient-thermal', 'legacy-unspecified'].includes(capturedRunKind)
     || (result.runKind === undefined) !== (c.runKind === undefined)
     || (c.runKind !== undefined && c.runKind !== capturedRunKind)
     || (capturedRunKind === 'build-screening' && result.settings?.jobType !== 'build-job')
-    || (capturedRunKind === 'transient-thermal' && !['transient-thermal', undefined].includes(result.settings?.jobType))) {
+    || (capturedRunKind === 'analytical-screening' && !analyticalScreening)
+    || (capturedRunKind === 'transient-thermal'
+      && (!['transient-thermal', undefined].includes(result.settings?.jobType) || analyticalScreening))) {
     throw new Error('Invalid captured run classification');
   }
   if (!result.verdict) { // Not a build-job

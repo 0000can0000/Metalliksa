@@ -47,6 +47,24 @@ class CaptureTests(unittest.TestCase):
         self.save()
         self.assertEqual(capture_run(self.root, 'a'*32)['runKind'], 'transient-thermal')
 
+    def test_analytical_screening_classification_requires_nontransient_physics(self):
+        self.result['runKind'] = 'analytical-screening'
+        self.result['settings']['mode'] = 'screening'
+        self.assertIs(self.result['coreContract']['resolvedPhysics']['transient'], False)
+        self.save()
+        self.assertEqual(capture_run(self.root, 'a'*32)['runKind'], 'analytical-screening')
+
+        self.result['runKind'] = 'transient-thermal'
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'Transient thermal classification'):
+            capture_run(self.root, 'a'*32)
+
+        self.result['runKind'] = 'analytical-screening'
+        self.result['coreContract']['resolvedPhysics']['transient'] = True
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'Analytical screening classification'):
+            capture_run(self.root, 'a'*32)
+
     def test_missing_changed_or_unlisted_output_fails(self):
         for action in ('changed', 'missing', 'extra'):
             with self.subTest(action=action):
@@ -91,6 +109,8 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(located['root'], str(queue.root.absolute()))
         self.assertEqual(located['platform'], __import__('sys').platform)
         result = json.loads(captured['resultJson'])
+        self.assertEqual(captured['runKind'], 'analytical-screening')
+        self.assertEqual(result['runKind'], 'analytical-screening')
         self.assertTrue(result['provenance']['executionRuntime']['executable'])
         self.assertTrue(result['provenance']['executionRuntime']['numpy'])
         self.assertEqual({a['path'] for a in result['artifacts']}, {'input.json', 'capabilities.json'})

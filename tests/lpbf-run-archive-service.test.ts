@@ -15,7 +15,7 @@ import { lpbfWorker } from '../server/lpbfWorkerBridge';
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
 const jobId = 'a'.repeat(32);
 
-test('run HTTP archive resolves exact stored source revision, bytes and legacy labels', async t => {
+test('run HTTP archive resolves exact source and preserves analytical screening classification', async t => {
   const root = mkdtempSync(path.join(tmpdir(), 'lpbf-run-api-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const sourceRoot = path.join(root, 'sources'), runRoot = path.join(root, 'runs');
@@ -34,9 +34,10 @@ test('run HTTP archive resolves exact stored source revision, bytes and legacy l
 
   const job = path.join(root, 'job'); mkdirSync(job);
   writeFileSync(path.join(job, 'field.bin'), 'abc');
-  const result = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
+  const result = { schemaVersion: 1, runKind: 'analytical-screening', requestedMode: 'screening', effectiveMode: 'screening',
     fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
-    settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
+    settings: { backend: 'auto', mode: 'screening', power_W: 0 }, resolvedPhysics: { transient: false },
+    solver: { id: 'synthetic-contract-test', version: '1' },
     material: { name: 'Synthetic', quality: 'synthetic', source: 'Unit test only' },
     label: 'Screening', regime: 'test', mainRisk: 'test', recommendation: 'test', riskScope: 'test',
     metrics: { width_um: 0, depth_um: 0, length_um: 0 }, assumptions: ['Synthetic only'],
@@ -45,7 +46,7 @@ test('run HTTP archive resolves exact stored source revision, bytes and legacy l
     artifacts: [{ path: 'field.bin', size_bytes: 3, sha256: sha('abc') }] };
   const capture = { schemaVersion: 1, jobId, resultJson: JSON.stringify(result),
     inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material),
-    contractStatus: 'legacy-unbound' };
+    contractStatus: 'legacy-unbound', runKind: 'analytical-screening' as const };
   writeFileSync(path.join(job, 'result.json'), capture.resultJson);
   let captured = 0;
   t.mock.method(lpbfWorker, 'captureForArchive', async () => { captured++; return { capture, root: job }; });
@@ -73,10 +74,12 @@ test('run HTTP archive resolves exact stored source revision, bytes and legacy l
   const selected = [{ datasetId: 'synthetic', revision: 1, documentSha256: revision1.documentSha256 }];
   const preview = await post('preview', selected);
   assert.equal(preview.status, 200);
+  assert.equal(preview.body.document.capture.runKind, 'analytical-screening');
   assert.deepEqual(preview.body.document.sources, selected);
   assert.equal(preview.body.sourceBindingStatus, 'exact-revision-bound');
   const imported = await post('import', [{ datasetId: 'synthetic', revision: 1 }]);
   assert.equal(imported.status, 200);
+  assert.equal(imported.body.runKind, 'analytical-screening');
   assert.deepEqual(imported.body.document.sources, selected);
   assert.equal(imported.body.sourceBindingStatus, 'exact-revision-bound');
   const record = await (await fetch(`${endpoint}/${jobId}`)).json();
@@ -84,6 +87,8 @@ test('run HTTP archive resolves exact stored source revision, bytes and legacy l
   assert.equal(record.evidenceStatus, 'unvalidated-model');
   const listed = await (await fetch(endpoint)).json();
   assert.equal(listed[0].sourceBindingStatus, 'exact-revision-bound');
+  assert.equal(listed[0].runKind, 'analytical-screening');
+  assert.equal((await (await fetch(`${endpoint}/${jobId}`)).json()).runKind, 'analytical-screening');
 
   const legacyId = 'b'.repeat(32);
   const legacyRepo = new LpbfRunRepository(path.join(runRoot, 'runs.sqlite'));

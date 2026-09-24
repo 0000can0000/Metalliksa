@@ -25,6 +25,17 @@ test('run endpoints accept the server capture identity and unvalidated model sta
   assert.deepEqual(await getRun(jobId, signal), record);
 });
 
+test('run client accepts and preserves analytical screening kind', async t => {
+  const settings = { mode: 'screening' };
+  const material = { id: 'in718' };
+  const resultJson = JSON.stringify({ runKind: 'analytical-screening', settings, material, artifacts: [] });
+  const analytical = { ...record, runKind: 'analytical-screening' as const,
+    document: { ...document, capture: { ...capture, resultJson, inputJson: JSON.stringify(settings),
+      materialJson: JSON.stringify(material), runKind: 'analytical-screening' as const } } };
+  respond(t, analytical);
+  assert.equal((await getRun(jobId, signal)).runKind, 'analytical-screening');
+});
+
 test('run client rejects stale document identity', async t => {
   respond(t, { ...record, document: { ...document, capture: { ...capture, jobId: 'c'.repeat(32) } } });
   await assert.rejects(getRun(jobId, signal), /invalid/i);

@@ -11,7 +11,7 @@ import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
 import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
 
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
-function capture(runKind?: 'build-screening' | 'transient-thermal') {
+function capture(runKind?: 'analytical-screening' | 'build-screening' | 'transient-thermal') {
   const result: any = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
     fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
     settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
@@ -27,6 +27,10 @@ function capture(runKind?: 'build-screening' | 'transient-thermal') {
     if (runKind === 'build-screening') {
       result['settings']['jobType'] = 'build-job';
       result['verdict'] = 'screening-only';
+    }
+    if (runKind === 'analytical-screening') {
+      result['settings']['mode'] = 'screening';
+      result['resolvedPhysics'] = { transient: false };
     }
   }
   return { schemaVersion: 1, jobId: 'a'.repeat(32), resultJson: JSON.stringify(result),
@@ -68,6 +72,21 @@ test('classification follows captured result identity through preview and import
   const saved = await importRun(f.repository, f.store, raw, [], f.sources, f.job);
   assert.equal(saved.runKind, 'build-screening');
   assert.equal(f.repository.get(raw.jobId)?.runKind, 'build-screening');
+
+  const analytical = capture('analytical-screening');
+  analytical.jobId = 'd'.repeat(32);
+  writeFileSync(path.join(f.job, 'result.json'), analytical.resultJson);
+  const analyticalPreview = await dryRunRunImport(analytical, [], f.sources, f.job);
+  assert.equal(analyticalPreview.document.capture.runKind, 'analytical-screening');
+  const analyticalSaved = await importRun(f.repository, f.store, analytical, [], f.sources, f.job);
+  assert.equal(analyticalSaved.runKind, 'analytical-screening');
+  assert.equal(f.repository.get(analytical.jobId)?.runKind, 'analytical-screening');
+
+  const misclassified = JSON.parse(analytical.resultJson);
+  misclassified.runKind = 'transient-thermal';
+  assert.throws(() => validateRunDocument({ schemaVersion: 1, runId: 'c'.repeat(32),
+    capture: { ...analytical, jobId: 'c'.repeat(32), resultJson: JSON.stringify(misclassified), runKind: 'transient-thermal' },
+    sources: [] }), /classification/i);
 
   const legacyCapture = capture();
   const legacyResult = JSON.parse(legacyCapture.resultJson); delete legacyResult.runKind;

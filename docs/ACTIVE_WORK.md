@@ -824,6 +824,24 @@ docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 Next: only pursue fused GPU work if a backend profile confirms launch or
 arithmetic bottlenecks; keep P6/P7 partial.
 
+## Latest Phase 22 surface/enthalpy consistency fix — 2026-09-24
+
+The moving whole-cell surface graph could advance after the enthalpy update,
+leaving newly exposed cells hot in the published final state. A reconciliation
+kernel now resets those cells to ambient enthalpy/temperature and records the
+change once in `surface_mask_reset_J`; reported liquid volume is masked by the
+current surface graph. The integrated moving-surface regression confirms a
+nonzero reset term and relative energy closure error `2.79e-4`. Full
+`test_lpbf_transient_3d_gpu.py`: **34/34 PASS**, including execution on CPU Warp
+and RTX 4060 `cuda:0`. This is software/numerical consistency evidence, not
+experimental validation. The per-step kernel's performance cost is not yet
+measured.
+
+Next: continue the active P0–P10 LPBF goal. First resolve how to represent the
+NIST P5 source's 800°C/2 h treatment in the existing immutable dataset,
+manifest, API catalog, and archived revision chain; do not silently rewrite a
+source-bound artifact. Preserve P4 failed, P5 unavailable, and P6/P7 partial.
+
 ## Phase 22 guard GPU follow-up — 2026-09-24
 
 The lower graph-floor and projected-CFL regressions now cover CPU and explicit

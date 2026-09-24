@@ -14,6 +14,7 @@ from lpbf_transient_3d_gpu import (
     _PHASE22_MAX_COMPONENT_SPEED_M_S,
     _PHASE22_MOMENTUM_CFL_LIMIT,
     _phase22_stable_step_size,
+    _surface_liquid_mask,
     _step_count,
     _step_size,
     _average_transverse_face_component,
@@ -21,6 +22,7 @@ from lpbf_transient_3d_gpu import (
     enthalpy_3d_nonlinear_step_kernel,
     free_surface_kinematics_kernel,
     phase22_energy_ledger_step_kernel,
+    phase22_reconcile_surface_mask_kernel,
     launch_pressure_pcg,
     pressure_jacobi_kernel,
     project_velocity_kernel,
@@ -61,6 +63,50 @@ class Transient3DPhysicsContracts(unittest.TestCase):
     @staticmethod
     def _wp_array(values):
         return wp.array(np.asarray(values, dtype=np.float32), dtype=float, device="cpu")
+
+    def test_new_surface_graph_resets_exposed_enthalpy_once_and_excludes_melt(self):
+        shape = (5, 5, 5)
+        dx = dy = dz = 1e-5
+        rho, cp_solid, cp_liquid = 4420.0, 670.0, 730.0
+        solidus, liquidus, ambient, hot = 1878.0, 1928.0, 300.0, 2000.0
+        h_solidus = rho * cp_solid * solidus
+        h_liquidus = h_solidus + rho * 2.9e5 + rho * 0.5 * (cp_solid + cp_liquid) * (liquidus - solidus)
+        h_hot = h_liquidus + rho * cp_liquid * (hot - liquidus)
+        h_ambient = rho * cp_solid * ambient
+        temperature = np.full(shape, hot, dtype=np.float32)
+        enthalpy = np.full(shape, h_hot, dtype=np.float32)
+        surface = np.full(shape[:2], 2.99 * dz, dtype=np.float32)
+        devices = ["cpu"] + (["cuda:0"] if wp.get_cuda_device_count() else [])
+        previous_pch_setting = wp.config.use_precompiled_headers
+        try:
+            for device in devices:
+                with self.subTest(device=device):
+                    if device != "cpu":
+                        wp.config.use_precompiled_headers = False
+                    T = wp.array(temperature, dtype=float, device=device)
+                    H = wp.array(enthalpy, dtype=float, device=device)
+                    Z = wp.array(surface, dtype=float, device=device)
+                    reset_J = wp.zeros(shape, dtype=wp.float64, device=device)
+                    args = [T, H, Z, reset_J, *shape, dx, dy, dz, rho, 2.9e5,
+                            solidus, liquidus, cp_solid, cp_liquid, ambient, 1]
+
+                    wp.launch(phase22_reconcile_surface_mask_kernel, dim=shape,
+                              inputs=args, device=device)
+                    wp.synchronize_device(device)
+                    first = reset_J.numpy()[2, 2, 3]
+                    expected = (h_ambient - float(enthalpy[2, 2, 3])) * dx * dy * dz
+                    self.assertAlmostEqual(float(T.numpy()[2, 2, 3]), ambient, delta=1e-5)
+                    self.assertAlmostEqual(float(H.numpy()[2, 2, 3]), h_ambient, delta=64.0)
+                    self.assertAlmostEqual(float(first), expected, delta=abs(expected) * 1e-5)
+                    self.assertFalse(_surface_liquid_mask(T.numpy(), Z.numpy(), dz, liquidus)[2, 2, 3])
+                    self.assertTrue(_surface_liquid_mask(T.numpy(), Z.numpy(), dz, liquidus)[2, 2, 2])
+
+                    wp.launch(phase22_reconcile_surface_mask_kernel, dim=shape,
+                              inputs=args, device=device)
+                    wp.synchronize_device(device)
+                    self.assertEqual(float(reset_J.numpy()[2, 2, 3]), float(first))
+        finally:
+            wp.config.use_precompiled_headers = previous_pch_setting
 
     def _run_surface_forces(self, center_temperature):
         shape = (5, 5, 5)
@@ -683,10 +729,15 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         result = solver.solve_toolpath(
             {"t": [0.0, 1e-7], "x": [1e-5, 1e-5], "y": [1e-5, 1e-5], "p": [0.0, 0.0]},
             T_preheat_K=3600.0,
+            include_energy_ledger=True,
         )
         self.assertGreater(result["keyhole_depth_um"], 0.0)
         self.assertIn(result["pressure_projection_status"],
                       ("converged", "not_converged", "numerical_failure"))
+        self.assertNotEqual(
+            result["energy_ledger"]["terms_J"]["surface_mask_reset_J"], 0.0
+        )
+        self.assertLess(result["energy_ledger"]["closure"]["relative_error"], 1e-3)
 
     def _one_step(self, surface, temperature):
         wp.init()

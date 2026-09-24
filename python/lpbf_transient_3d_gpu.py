@@ -67,6 +67,14 @@ def _phase22_stable_step_size(
     momentum_dt = _PHASE22_MOMENTUM_CFL_LIMIT / momentum_rate
     return min(thermal_dt, momentum_dt)
 
+
+def _surface_liquid_mask(temperature, surface_height, dz, liquidus_K):
+    """Return liquid cells that remain below the current whole-cell surface graph."""
+    surface_index = np.trunc(surface_height / dz).astype(np.int64)
+    cell_index = np.arange(temperature.shape[2], dtype=np.int64)[None, None, :]
+    below_surface = cell_index <= surface_index[:, :, None]
+    return (temperature >= liquidus_K) & below_surface
+
 @wp.struct
 class LaserState:
     x: float
@@ -1263,6 +1271,31 @@ def phase22_energy_ledger_step_kernel(
             radiation_J[i, j, k] += wp.float64(dt * q_radiation * area_metric) * projected_area
             evaporation_J[i, j, k] += wp.float64(dt * m_dot * Lv * area_metric) * projected_area
 
+
+@wp.kernel
+def phase22_reconcile_surface_mask_kernel(
+    T: wp.array3d(dtype=float), H: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float),
+    surface_mask_reset_J: wp.array3d(dtype=wp.float64),
+    nx: int, ny: int, nz: int, dx: float, dy: float, dz: float,
+    rho: float, L_f: float, T_solidus: float, T_liquidus: float,
+    cp_solid: float, cp_liquid: float, T_amb: float, track_reset: int,
+):
+    """Reconcile final enthalpy/temperature with the advanced whole-cell graph."""
+    i, j, k = wp.tid()
+    if i > 0 and i < nx - 1 and j > 0 and j < ny - 1 and k > 0 and k < nz - 1:
+        if k > int(Z_surf[i, j] / dz):
+            h_ambient = get_enthalpy_from_temperature(
+                T_amb, rho, L_f, T_solidus, T_liquidus, cp_solid, cp_liquid
+            )
+            if track_reset != 0:
+                volume = wp.float64(dx) * wp.float64(dy) * wp.float64(dz)
+                surface_mask_reset_J[i, j, k] += (
+                    wp.float64(h_ambient - H[i, j, k]) * volume
+                )
+            T[i, j, k] = T_amb
+            H[i, j, k] = h_ambient
+
 class TransientEnthalpy3DGPU:
     def __init__(self, nx=128, ny=128, nz=64, dx=2e-6, dy=2e-6, dz=2e-6):
         self.nx = nx
@@ -1330,6 +1363,10 @@ class TransientEnthalpy3DGPU:
                     "surface_mask_reset_J",
                 )
             }
+        surface_reset_accumulator = (
+            energy_arrays["surface_mask_reset_J"] if energy_arrays is not None else
+            wp.zeros(shape=(1, 1, 1), dtype=wp.float64, device=self.device)
+        )
         
         # Hydrodynamics fields
         U = wp.zeros(shape=shape, dtype=float, device=self.device)
@@ -1516,6 +1553,20 @@ class TransientEnthalpy3DGPU:
             T_arr, T_new = T_new, T_arr
             H_arr, H_new = H_new, H_arr
             Z_surf, Z_surf_new = Z_surf_new, Z_surf
+            # The enthalpy step uses the previous whole-cell geometry. Reconcile
+            # cells crossed by the newly advanced graph before publishing or
+            # reusing this state; any energy correction is charged exactly here.
+            wp.launch(
+                kernel=phase22_reconcile_surface_mask_kernel,
+                dim=shape,
+                inputs=[
+                    T_arr, H_arr, Z_surf, surface_reset_accumulator,
+                    self.nx, self.ny, self.nz, self.dx, self.dy, self.dz,
+                    rho, L_f, T_solidus, T_liquidus, cp_solid, cp_liquid,
+                    float(T_preheat_K), 1 if energy_arrays is not None else 0,
+                ],
+                device=self.device,
+            )
             
         wp.synchronize_device(self.device)
         elapsed = time.perf_counter() - start_time
@@ -1526,7 +1577,7 @@ class TransientEnthalpy3DGPU:
         V_host = V.numpy()
         W_host = W.numpy()
         
-        melted = T_host >= T_liquidus
+        melted = _surface_liquid_mask(T_host, Z_host, self.dz, T_liquidus)
         melt_vol_um3 = np.sum(melted) * (self.dx * self.dy * self.dz) * 1e18
         max_T = np.max(T_host)
         min_z_m = np.min(Z_host)

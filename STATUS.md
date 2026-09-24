@@ -16,6 +16,12 @@
 - Faktör-2 katman-yüzeyi hizalı eşlik çalışması `9594ea4` ile önceden donduruldu. Altı koşu tamamlandı, enerji PASS (en büyük bağıl hata `1.281e-13`); ilk iki mesh W/D çifti aynı, ince çift değişimi genişlikte %33,33 ve derinlikte %20 olduğundan mesh FAILED. Üç zaman seviyesinin hücre-uzantı W/D metrikleri aynı kaldı; zaman INCONCLUSIVE. Rapor `docs/LPBF_P4_LAYER_CONFORMING_FACTOR_TWO_80W_2026-09-24.json` içinde. Eski frozen P4 ve iki eşlik sonucu birbirinden bağımsız kalır.
 - Sıradaki P10 adımı: z=0 arayüzünü koruyarak kaynak/surface hücre uyuşmazlığını fiziksel olarak çözmenin güvenli yolunu araştır; kesilmiş hücre fiziği olmadan genel grid kaydırma yapma. Diğer P0–P10 iş kollarını sürdür. Hiçbir kaynak-yakalama veya P4 kabul eşiği gevşetilmedi.
 
+## 2026-09-24 — Phase 22 serbest-yüzey/entalpi tutarlılığı
+- Serbest-yüzey grafiği bir adım ilerletildikten sonra yeni grafiğin üstünde kalan eski-yüzey entalpili hücreler artık ortam entalpisi/sıcaklığına uzlaştırılıyor; düzeltme `surface_mask_reset_J` ile enerji defterine tam bir kez yazılıyor. Son sıvı hacmi hesabı da güncel yüzey grafiğinin üstündeki hücreleri dışlıyor.
+- Regresyon yeni grafiğe maruz kalan hücreyi iki kez uzlaştırıp düzeltmenin ikinci kez yazılmadığını, yüzey dışı sıcak hücrenin eriyik hacmine katılmadığını ve hareketli yüzeyli solver koşusunda enerji kapanışının korunmasını denetliyor.
+- Doğrulama: `python/test_lpbf_transient_3d_gpu.py` **34/34 PASS**; yeni kernel CPU ve NVIDIA RTX 4060 `cuda:0` üzerinde çalıştı. Entegre sentetik hareketli-yüzey koşusunda göreli enerji artığı `2.79e-4` oldu. Bu sayısal/yazılım tutarlılığı kanıtıdır; deneysel doğrulama değildir. Her adım ek kernel maliyeti eklendi, performans etkisi ölçülmedi.
+- Sonraki iş: P0–P10 ana hedefini sürdür; NIST P5 kayıtlarındaki 800°C/2h işlem bilgisinin eksik metadata temsilini kaynak revizyonu/manifest etkileriyle düzeltme yolunu incele. P4 failed, P5 unavailable, P6/P7 partial durumları değişmedi.
+
 ## 2026-09-22 - Build-job Alaşım Kimliği Güvenlik Onarımı
 - Build-job solver artık açıkça gönderilen desteklenmeyen `alloyId` değerlerini IN718'e sessizce düşürmek yerine hata ile reddediyor; alaşım belirtilmemesi durumundaki geriye dönük IN718 varsayılanı korunuyor.
 - `Inconel 625` için desteklenmeyen surrogate hesaplamayı engelleyen Python regresyonu eklendi.

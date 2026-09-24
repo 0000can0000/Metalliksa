@@ -103,6 +103,30 @@ def test_enthalpy_matches_independent_integral_and_bounded_inverse():
         assert float(recovered) == pytest.approx(temperature, abs=2e-10)
 
 
+def test_cuda_inverse_checks_bounds_and_uses_unchecked_60_step_bisection():
+    torch = pytest.importorskip("torch")
+    target = torch.tensor([700.123456789], dtype=torch.float64)
+    calls = []
+
+    def identity_law(temperature, *, validate=True):
+        calls.append(validate)
+        return None, None, None, temperature
+
+    recovered = field._temperature_from_enthalpy_torch(
+        target, identity_law, torch.tensor(REFERENCE_TEMPERATURE_K, dtype=torch.float64),
+        torch.tensor(LIQUIDUS_K, dtype=torch.float64), torch,
+    )
+    assert recovered.item() == pytest.approx(target.item(), abs=2e-13)
+    assert calls == [False] * 60
+
+    with pytest.raises(ValueError, match="enthalpy crosses bounded IN625"):
+        field._temperature_from_enthalpy_torch(
+            torch.tensor([LIQUIDUS_K + 1.0]), identity_law,
+            torch.tensor(REFERENCE_TEMPERATURE_K, dtype=torch.float64),
+            torch.tensor(LIQUIDUS_K, dtype=torch.float64), torch,
+        )
+
+
 def test_cpu_moving_surface_source_conserves_absorbed_energy_and_metadata():
     cfg = _config()
     result = field.run_cpu(cfg)

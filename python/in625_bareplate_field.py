@@ -159,6 +159,20 @@ def _temperature_from_enthalpy_numpy(enthalpy):
     return (lo + hi) / 2.0
 
 
+def _temperature_from_enthalpy_torch(enthalpy, law, h0, h1, torch):
+    """Invert bounded CUDA enthalpy without revalidating each bisection midpoint."""
+    if (not bool(torch.isfinite(enthalpy).all())
+            or bool((enthalpy < h0).any()) or bool((enthalpy > h1).any())):
+        raise ValueError("enthalpy crosses bounded IN625 temperature interval; rejecting step")
+    lo = torch.full_like(enthalpy, REFERENCE_TEMPERATURE_K)
+    hi = torch.full_like(enthalpy, LIQUIDUS_K)
+    for _ in range(60):
+        mid = (lo + hi) / 2.0
+        below = law(mid, validate=False)[3] < enthalpy
+        lo, hi = torch.where(below, mid, lo), torch.where(below, hi, mid)
+    return (lo + hi) / 2.0
+
+
 def _conductive_power_numpy(temperature, conductivity, cfg):
     nx, ny, nz = cfg.shape_xyz
     dx, dy, dz = map(float, cfg.cell_size_m)
@@ -291,8 +305,10 @@ def run_cuda(config: BareplateConfig = BareplateConfig(), device: str = "cuda:0"
     cp_poly = torch.tensor(_SNAPSHOT["solidCpPolynomial_J_kgK"], dtype=dtype, device=dev)
     k_linear = torch.tensor(_SNAPSHOT["solidConductivityLinear_W_mK"], dtype=dtype, device=dev)
 
-    def law(t):
-        if not bool(torch.isfinite(t).all()) or bool((t < REFERENCE_TEMPERATURE_K).any()) or bool((t > LIQUIDUS_K).any()):
+    def law(t, *, validate=True):
+        if validate and (not bool(torch.isfinite(t).all())
+                         or bool((t < REFERENCE_TEMPERATURE_K).any())
+                         or bool((t > LIQUIDUS_K).any())):
             raise ValueError("temperature outside bounded IN625 enthalpy law")
         a, b, c, d = cp_poly.unbind()
         ak, bk = k_linear.unbind()
@@ -315,17 +331,13 @@ def run_cuda(config: BareplateConfig = BareplateConfig(), device: str = "cuda:0"
         cp_eff = torch.where(t <= ts, cp, cp + _SNAPSHOT["latentHeat_J_kg"] / width)
         return cp, cp_eff, k, h
 
+    # These endpoint values use the same Torch arithmetic as the field law, but
+    # are scalar constants computed once instead of full-field tensors each step.
+    h0 = law(torch.full((), REFERENCE_TEMPERATURE_K, dtype=dtype, device=dev))[3]
+    h1 = law(torch.full((), LIQUIDUS_K, dtype=dtype, device=dev))[3]
+
     def inverse(h):
-        h0 = law(torch.full_like(h, REFERENCE_TEMPERATURE_K))[3]
-        h1 = law(torch.full_like(h, LIQUIDUS_K))[3]
-        if not bool(torch.isfinite(h).all()) or bool((h < h0).any()) or bool((h > h1).any()):
-            raise ValueError("enthalpy crosses bounded IN625 temperature interval; rejecting step")
-        lo, hi = torch.full_like(h, REFERENCE_TEMPERATURE_K), torch.full_like(h, LIQUIDUS_K)
-        for _ in range(60):
-            mid = (lo + hi) / 2.0
-            below = law(mid)[3] < h
-            lo, hi = torch.where(below, mid, lo), torch.where(below, hi, mid)
-        return (lo + hi) / 2.0
+        return _temperature_from_enthalpy_torch(h, law, h0, h1, torch)
 
     def conductive_power(t, conductivity):
         net = torch.zeros_like(t)

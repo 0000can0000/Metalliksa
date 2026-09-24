@@ -1,5 +1,18 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+## Latest P6/P7 integration checkpoint — 2026-09-24
+
+Implemented a model-specific IN625 bare-substrate conduction field path with
+matching NumPy and explicit CUDA evaluators. Root owns final integration and
+proof. Scope is limited to the literature-model enthalpy interval, explicit
+absorbed-W source, fixed supplier density assumption, and adiabatic domain;
+powder-bed/full transient and experimental qualification remain unavailable.
+The focused CUDA parity and energy results are in
+`docs/IN625_BAREPLATE_GPU_SCREENING_2026-09-24.md`. The shared source-capture
+threshold now lives in `lpbf_heat_source.py` and is imported by the existing
+reference solver. No agent is currently writing. Next: inspect/commit the
+isolated solver and run the aggregate project gates without staging user docs.
+
 Latest active slice (2026-09-24): P1 now emits a composite build-job identity
 over canonical alloy, model, solver revision, and property snapshot schema/
 revision/content hash; the separate property-only hash remains stable in meaning.

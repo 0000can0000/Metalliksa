@@ -15,7 +15,8 @@ from lpbf_core_physics import property_at, enthalpy_table
 from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs, SOURCE_INTEGRATION
 from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
-from lpbf_heat_source import require_source_capture, source_limited_step, conduction_diagonal
+from lpbf_heat_source import (MINIMUM_SOURCE_CAPTURE_FRACTION, require_source_capture,
+                              source_limited_step, conduction_diagonal)
 from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_peak import (PeakMeltTracker, midtrack_bare_plate_section,
                        interpolated_midtrack_bare_plate_section,
@@ -25,9 +26,6 @@ from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
 VERSION = "enthalpy-fv-6"
-# integrated_source renormalizes captured weights to the full absorbed power;
-# this bound caps that artificial concentration to 1% for a represented domain.
-MINIMUM_SOURCE_CAPTURE_FRACTION = 1. / 1.01
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,

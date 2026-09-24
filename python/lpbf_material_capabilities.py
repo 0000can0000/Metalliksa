@@ -145,10 +145,26 @@ def _in625_capability():
             "sourceValidityRange_K": None,
             "evidenceStatus": screening["validationStatus"],
         },
+        "barePlateThermalField": {
+            "available": True,
+            "authority": "in625_bareplate_field.run_cpu/run_cuda",
+            "model": "3D bounded enthalpy conduction; bare substrate; adiabatic faces",
+            "temperatureCoverage_K": screening["temperatureCoverage_K"],
+            "density": {
+                "kg_m3": 8440.0,
+                "basis": "constant supplier-bulletin assumption; not lot-matched",
+                "source": "https://www.specialmetals.com/documents/technical-bulletins/inconel/inconel-alloy-625.pdf",
+            },
+            "sourceInput": "explicit absorbed W; no absorptivity is inferred",
+            "gpuDevicePolicy": "explicit cuda:N; no CPU fallback",
+            "experimentalValidation": False,
+            "evidenceStatus": screening["validationStatus"],
+        },
         "marangoniAdapter": {"inputsPresent": False, "modelQualification": "unavailable"},
         "inherentStrainAdapter": {"inputsPresent": False, "modelQualification": "unavailable"},
-        "samePhysicsGpuQualification": "unavailable",
-        "modelBoundary": "The solid bulletin table and Sabau/JMatPro enthalpy model are separate authorities; neither supplies a full LPBF transient material.",
+        "samePhysicsGpuQualification": "bounded-bare-plate-numerical-parity-only",
+        "samePhysicsGpuQualificationScope": "No powder-bed, full-transient, melt-flow, experimental-validation, or production qualification.",
+        "modelBoundary": "The solid bulletin table and Sabau/JMatPro enthalpy model are separate authorities; this bare-plate path is screening-only and does not admit a full LPBF transient material.",
     }
 
 

@@ -8,6 +8,8 @@ import numpy as np
 from lpbf_core_physics import (SOURCE_INTEGRATION, GAUSS_NODES, _evaluate,
                                gaussian_interval, cell_weights, integrated_source)
 
+MINIMUM_SOURCE_CAPTURE_FRACTION = 1. / 1.01
+
 
 def require_source_capture(capture, minimum_fraction):
     """Validate the shared source-capture limit before applying its renormalized field."""

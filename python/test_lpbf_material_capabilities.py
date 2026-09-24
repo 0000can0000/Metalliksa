@@ -65,6 +65,13 @@ class MaterialCapabilityAuditTests(unittest.TestCase):
         self.assertEqual(row["boundedFusionEnthalpyScreening"]["modelTemperatureCoverage_K"],
                          [273.15, 1623.15])
         self.assertIsNone(row["boundedFusionEnthalpyScreening"]["sourceValidityRange_K"])
+        self.assertTrue(row["barePlateThermalField"]["available"])
+        self.assertEqual(row["barePlateThermalField"]["temperatureCoverage_K"], [273.15, 1623.15])
+        self.assertEqual(row["barePlateThermalField"]["density"]["kg_m3"], 8440.0)
+        self.assertIn("not lot-matched", row["barePlateThermalField"]["density"]["basis"])
+        self.assertEqual(row["barePlateThermalField"]["gpuDevicePolicy"], "explicit cuda:N; no CPU fallback")
+        self.assertFalse(row["barePlateThermalField"]["experimentalValidation"])
+        self.assertEqual(row["samePhysicsGpuQualification"], "bounded-bare-plate-numerical-parity-only")
         self.assertNotEqual(row["solidBulkTable"]["source"], snapshot["source"])
         self.assertFalse(row["marangoniAdapter"]["inputsPresent"])
         self.assertFalse(row["inherentStrainAdapter"]["inputsPresent"])

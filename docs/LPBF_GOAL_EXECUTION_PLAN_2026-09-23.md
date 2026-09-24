@@ -250,3 +250,18 @@ Kullanıcı P6/P7'yi en az bir yeni alaşım için GPU termal yolu ve her alaş�
 aynı yasa ile CPU/GPU yeterliliği gerektirecek şekilde genişletti. IN625 GPU
 adaptörünün uygulanabilirliği denetleniyor. P4/P5/P6 açık; bu yazılım ve sayısal
 kontrollerden bilimsel kabul sonucu çıkarılmıyor.
+
+## 2026-09-24 — IN625 sınırlı bare-plate CPU/CUDA yolu
+
+P7 için IN625'in kaynaklı JMatPro-tabanlı sınırlı Cp/k/H yasasıyla ayrı bir
+bare-substrate 3D iletim taraması eklendi. CPU NumPy ve açık RTX 4060 `cuda:0`
+alanları küçük sabit 576 hücre/4 adımlı vakada aynı çıktı; bağımsız Cp integrali,
+enerji defteri, entalpi üst sınırı ve ortak kaynak-yakalama kapısı denetlendi.
+Model revizyonu `f47b07e4...4466f07`; durum `unvalidated-literature-model-screening`.
+Bu yalnızca model-specific numerical screening kapısını açar. NIST AMB2018-02
+çıplak IN625 plaka geometrisini destekler fakat bu test AMB verisiyle
+karşılaştırılmadı; powder-bed, genel transient ve deneysel kabul açık kalır.
+
+P6 bu yolla kısmi ilerledi, tamamlanmadı: kaynak alanı ve CPU/CUDA eşleşmesi
+yalnız küçük sentetik vakada var; ölçek/bellek-hız çalışması, bağımsız NIST
+ölçüm karşılaştırması ve uygulama UI/kalıcı kayıt akışı açık.

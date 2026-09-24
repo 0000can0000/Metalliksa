@@ -1478,3 +1478,32 @@ PASS; `git diff --check`: PASS. One root repeat of the expensive build-job
 script was interrupted after it ran over 85 seconds; the assigned agent had
 already completed that same script successfully. P6/P7 are updated to require a
 GPU thermal qualification route for at least one newly admitted alloy.
+
+## IN625 bounded bare-plate CPU/CUDA field screening — 2026-09-24
+
+Evidence artifact: `docs/IN625_BAREPLATE_GPU_SCREENING_2026-09-24.md`.
+
+The model uses the exact bounded IN625 enthalpy revision
+`f47b07e4c8288b8c7177001f069a254be3410bace43ad5ea2f73168ac4466f07` in NumPy
+and explicit RTX 4060 `cuda:0` paths. A 12×12×4 (576-cell), 4-step synthetic
+absorbed-W moving-source case produced bitwise-identical temperature and
+specific-enthalpy arrays in this environment; max CPU/CUDA energy residual was
+`1.11e-16 J`. The continuous domain source capture fraction was `0.9999987339`,
+above the shared `1/1.01` minimum. CUDA measurement: 1.325 s and 100,864 B peak
+allocated device memory, for this small smoke only.
+
+Focused verification: field + constitutive + shared source suites **36 PASS,
+1 SKIP**; material capability suite **4/4 PASS**; `py_compile` and
+`git diff --check` PASS. CUDA field tests were exercised without skips. The
+single skip is the existing platform-dependent heat-source/OpenFOAM integration
+case. The independent 64-point Cp integral checks constitutive H(T); CPU and
+CUDA reject a liquidus-crossing step, and the shared source-capture gate rejects
+truncated Gaussian input rather than renormalizing it.
+
+The density is a fixed 8,440 kg/m³ supplier-bulletin assumption and is not tied
+to the NIST AMB lot. The NIST benchmark is bare plate, but no NIST dataset was
+run or compared here. This proves numerical implementation/parity only. The
+source model is JMatPro-derived with assumed liquid/mushy values and has no
+independent source validity span or quantified uncertainty; scientific
+qualification, powder-bed support, build-job admission, P5 experiment comparison,
+and full-transient capability remain open.

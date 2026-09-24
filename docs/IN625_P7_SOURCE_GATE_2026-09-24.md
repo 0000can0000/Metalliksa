@@ -2,12 +2,13 @@
 
 ## Decision
 
-IN625 remains **partial: solid-bulk property data and bounded fusion-enthalpy
-screening only**. Available primary sources do not establish one exact LPBF
-material lot with a complete, temperature-valid set of density, conductivity,
-heat capacity, viscosity/flow, vaporization, and optical inputs through the
-solver's boiling boundary. Full transient or same-physics GPU capability stays
-closed.
+IN625 remains **partial**. A model-specific bare-substrate conduction screening
+path now exists and has CPU/CUDA numerical parity, but primary sources do not
+establish one exact LPBF material lot with a complete, temperature-valid set of
+density, conductivity, heat capacity, viscosity/flow, vaporization, and optical
+inputs through the solver's boiling boundary. Powder-bed/full-transient
+capability stays closed; the scoped bare-plate GPU result is not scientific
+qualification.
 
 ## Evidence by property
 
@@ -31,3 +32,24 @@ unsupported high-temperature extrapolation, and a powder-to-melt optical
 substitution. No such substitutions were made. A future admission requires
 source-backed validity and uncertainty for each required property, plus
 numerical checks and CPU/GPU parity on that same admitted material revision.
+
+## Scoped bare-plate screening route
+
+The project now exposes `in625_bareplate_field.run_cpu/run_cuda` for a separate
+3D bare-substrate conduction model. Its material revision is the bounded
+JMatPro-derived constitutive snapshot; density is the supplier bulletin's
+8.44 g/cm³ used as an explicitly constant, not lot-matched assumption. The
+laser input is an explicit absorbed-W boundary; this route does not infer a
+universal absorptivity or mix the separate NIST optical measurement into the
+material table. The finite-volume domain has six adiabatic faces and a moving
+normalized Gaussian surface source; a shared 1/1.01 source-capture gate rejects
+truncated sources before normalization.
+
+This is a **model-specific numerical screening admission only**. NIST
+AMB2018-02 is a bare-plate IN625 benchmark and therefore matches the geometry
+class, but the current four-step smoke did not run or compare an AMB case.
+The material source does not publish an independent validity span or
+uncertainty for the JMatPro/mushy model; the registry continues to report
+`sourceValidityRange_K: null`. No powder-bed, build-job, full transient, or
+experimental-validity claim follows. Details and current numerical values are
+in [the scoped report](IN625_BAREPLATE_GPU_SCREENING_2026-09-24.md).

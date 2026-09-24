@@ -97,12 +97,16 @@ Kıyas başlamadan modelin çıplak levha koşulunu, 4,9 ve 6,0 mm'deki ölçüm
 kesitlerini ve kaynağın `D4σ` ışın tanımını karşılayabildiği gösterilmelidir.
 [NIST'in 2025 metroloji raporu](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616) 67 µm nominal tek-iz koşulu için ölçülmüş
 Gaussian `Dg` çapını ve %5,2 birleşik standart belirsizliği verir; dairesellik
-sapması 1 µm olarak raporlanır. Uygulamanın 1/e² çapı ideal Gaussian'da `Dg`
-ile aynıdır; gerçek ışın için bu eşitlik ve nominal D4σ eşleşmesi açık bir
-yaklaşım olarak kaydedilmelidir. Raporda indirilebilir ham 2B ışınım dağılımı
-bulunmadığından ölçülmüş çap tam profil artefaktı değildir. Kaynak-baytına bağlı
-ölçüm kaydı ve çap eşleme belirsizliği arşivlenene kadar sıkı P5 profil kapısı
-kapalı kalır. Mevcut katalogda
+sapması 1 µm olarak raporlanır. Rapor ayrıca normalize edilmiş ölçülmüş sinyal
+yoğunluğunu ve merkez x/y kesitlerini Fig. 7'de, ölçülmüş beam-caustic noktaları
+ile `Dg(z)` uyumunu Fig. 8'de yayımlar. Fig. 5 ise sentetik/simüle edilmiş
+profil örneğidir. İncelenen açık kaynaklarda ham sayısal 2B kamera dizisi veya
+NIST ölçüm baytlarına bağlı tarama-özel profil kaydı bulunmadı; yayımlanmış
+grafiğin sayısallaştırılması ham ölçümün yerini tutmaz ve ayrıca
+sayısallaştırma belirsizliği taşır. Uygulamanın 1/e² çapı ideal Gaussian'da
+`Dg` ile aynıdır; gerçek ışın için bu eşitlik ve nominal D4σ eşleşmesi açık bir
+yaklaşım olarak kaydedilmelidir. Kaynak-baytına bağlı ölçüm kaydı ve çap eşleme
+belirsizliği arşivlenene kadar sıkı P5 profil kapısı kapalı kalır. Mevcut katalogda
 yer alan 40 µm katman/110 µm hatch değerleri tek iz çıplak levha ölçümü değildir;
 bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas durumu
 `unavailable` olur. Ham termografi sıcaklığı bu W/D kaynağından türetilmez.
@@ -113,11 +117,12 @@ bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas duru
 Case 0 girdileri 285 W, 960 mm/s, 67 µm spot, tek +X yönlü 10 mm çıplak levha
 izi ve 23,5 °C altlık sıcaklığı olarak alındı ([resmî yöntem belgesi](https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101)).
 67 µm, NIST'in [2025 raporundaki](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616) ölçülmüş nominal Gaussian `Dg` çapıyla
-desteklenir; rapor %5,2 birleşik standart çap belirsizliği verir. Solver bunu
+desteklenir; rapor %5,2 birleşik standart çap belirsizliği verir, normalize
+ölçülmüş profil grafiğini ve merkez kesitlerini de yayımlar. Solver bunu
 ideal-Gaussian 1/e² girdisi olarak kullanabilir; `Dg`–D4σ eşleşmesi ise yalnız
-ideal/çok yakın Gaussian yaklaşımıdır. Ham 2B ışınım dağılımı ve source-byte
-bağlı ölçüm kaydı eksiktir; ölçülmüş çap tam profil SHA'sı sayılmaz ve tek
-başına P5 kapısını açmaz.
+ideal/çok yakın Gaussian yaklaşımıdır. Ham sayısal 2B ışınım dizisi ve
+source-byte bağlı, tarama-özel ölçüm kaydı incelenen açık kaynaklarda bulunmadı;
+ölçülmüş çap tam profil SHA'sı sayılmaz ve tek başına P5 kapısını açmaz.
 
 Mevcut `python/lpbf_simulation.py` giriş sınırı `trackLength_um <= 3000`;
 10.000 µm Case 0 girdisi çözüm başlamadan reddedilir. Alan hesabında sınırı
@@ -214,14 +219,18 @@ P6'yı veya P4/P5'i kapatmaz. CPU/GPU taramasında yeni, yüksek güvenli başka
 kusur bulunmadı; OpenFOAM IN718 ve yüksek-sıcaklık akış/arayüz sınırlamaları
 ayrıca kalır.
 
-P8 browser UI archive/export/restore akışı run-kind onarımından sonra izole
-köklerde tekrarlandı. IN718 analitik screening `analytical-screening` olarak
-önizlendi/arşivlendi ve exact Table 4 revision 1 bağı korundu. NIST optical
-karşılaştırması, transient olmayan model için unavailable döndü. Bir-run/one-
-source bundle üretildi, doğrulandı ve ayrı kopyaya geri yüklendi; canlı arşivin
-değişmediği UI'da doğrulandı. Odaklı testler Python 10/10, TypeScript 35/35,
-lint ve diff check PASS. P8 yazılım akışı kabul edildi; bilimsel kıyas ve P5
-model geçerliliği hâlâ açık.
+P8 için en güncel kayıtlı canlı UI kanıtı `PROOF.md` içindeki 2026-09-24
+“Core physics + IN625 UI/archive integration” bölümüdür: yerel türetilmiş IN625
+screening kaynak revizyonu 2 önizlendi/içe alındı/bayt doğrulandı; aynı
+konfigürasyon CPU ve açık RTX 4060 `cuda:0` üzerinde hesaplandı ve arayüzde
+karşılaştırıldı; CUDA koşusu tam kaynak revizyonuyla arşivlendi; bundle
+doğrulandı ve ayrı kopyaya geri yüklendi, canlı arşiv değişmedi. Bu, temel
+seç→hesapla→CPU/CUDA karşılaştır→dışa aktar→geri yükle yazılım akışını destekler.
+Arşivlenmiş IN625 koşusunun core contract'ı `legacy-unbound`, modeli
+`unvalidated-literature-model-screening`; NIST kıyası `unavailable` kaldı.
+Önceki IN718 analitik-screening P8 kaydı geçmiş kanıttır, en güncel kabul kanıtı
+değildir. P8 yazılım akışı için kayıtlı kabul sürer; bilimsel kıyas ve P5 model
+geçerliliği açık kalır.
 
 ## 2026-09-24 — P1 kimliği, P7 IN625 oracle'ı, P10 buharlaşma kapanışı
 

@@ -6,6 +6,12 @@
 - **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
 - **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.
 
+## 2026-09-24 - LPBF devam noktası: P4/P5/P8
+- P4 frozen 80 W sonucu değişmedi: genel durum `failed`; mesh genişliği trendi `inconclusive`, derinliğin son çift farkı %17,1875, zaman geometrisi `inconclusive`. Rapor yalnızca toplu sonuçları saklıyor. Geçmiş koşuların teşhisi için bugünkü solver ile aynı seviyeleri tekrar üretme denemesi, yeni %99 Gaussian kaynak-yakalama eşiğinde kaba ağda (%86,763 yakalama) durdu; bu eski koşunun yeniden üretimi değildir. Eşiği veya kabul ölçütlerini gevşetme.
+- NIST 2025 beam raporunda normalize edilmiş ölçülmüş ışın profili ve merkez x/y kesit grafiği (Fig. 7) vardır; Fig. 5 simüledir. İncelenen açık kayıtlarda ham sayısal 2B kamera dizisi ve tarama-özel kaynak-bayt bağı bulunmadı. `Dg`–`D4σ` eşitliği ideal-Gaussian varsayımı olarak kalır. P5 `unavailable`.
+- P8 için en yeni kayıtlı canlı UI akışı `PROOF.md` içindeki IN625 preview/import/byte-verify → açık CPU/CUDA compute/compare → exact-source archive → bundle verify/isolated restore kanıtıdır. Bu yazılım akışını destekler; run `legacy-unbound`, IN625 unvalidated screening, NIST kıyası unavailable.
+- Sıradaki adım: eski P4 solver uygulaması güvenli izole checkout'ta bulunup aynı rapor değerlerini yeniden üretmeye elverişli mi belirle. Mümkün değilse frozen P4 `failed` kalsın; yeni 80 W çözünürlük vektörü ancak aynı süreç/model/kriterlerle önceden dondurulduktan sonra başlatılsın. Geniş P0–P10 goal aktiftir.
+
 ## 2026-09-22 - Build-job Alaşım Kimliği Güvenlik Onarımı
 - Build-job solver artık açıkça gönderilen desteklenmeyen `alloyId` değerlerini IN718'e sessizce düşürmek yerine hata ile reddediyor; alaşım belirtilmemesi durumundaki geriye dönük IN718 varsayılanı korunuyor.
 - `Inconel 625` için desteklenmeyen surrogate hesaplamayı engelleyen Python regresyonu eklendi.

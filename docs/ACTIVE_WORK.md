@@ -1,5 +1,42 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+## Continuation checkpoint — P4 forensic boundary + NIST beam correction (2026-09-24)
+
+NIST's 2025 beam report includes a normalized measured signal-intensity
+profile and central x/y sections in Fig. 7, plus measured caustic points and a
+`Dg(z)` fit in Fig. 8; Fig. 5 is simulated. The public sources reviewed so far
+do not expose the raw numeric 2D camera array or a scan-specific source-byte
+binding. A digitized plot would be derived data with its own uncertainty, not
+the original measured field. `Dg`/`D4σ` equality remains an explicit ideal-
+Gaussian assumption. The active plan has been corrected; P5 remains
+`unavailable`.
+
+P4 remains frozen `failed`: width trend inconclusive, depth finest-pair change
+17.1875%, timestep geometry inconclusive. Its report stores aggregate rows, not
+the original runs' full thermal history or field series. The current solver
+can expose sampled history and peak diagnostics, but an exact-vector
+reconstruction attempt stopped at the coarse-mesh source gate: captured
+Gaussian power was 86.763%, below today's 99% minimum. This is a newer guard
+boundary, so it does not reproduce the historical run. Do not change the
+capture gate or acceptance limits to force a replay. Next, determine whether an
+isolated checkout of the historical solver implementation can reproduce the
+recorded rows and expose peak-time diagnostics; otherwise keep P4 failed until
+a genuinely new same-scope vector is frozen prospectively. The completed 75 W
+vectors are exhausted and cannot be reused as prospective levels.
+
+P8's strongest recorded live UI evidence is the IN625 flow in `PROOF.md` §
+“Core physics + IN625 UI/archive integration”: source revision 2
+preview/import/byte verification; explicit CPU/CUDA calculation and UI
+comparison; exact-source run archive; bundle verification; and isolated restore
+with the live archive unchanged. This supports software flow only. That run is
+`legacy-unbound`, IN625 remains unvalidated screening, and NIST comparison is
+unavailable. Older references below to the IN718 `e8e…` run and bundle are
+historical, not the latest flow.
+
+The broad P0–P10 goal stays active. Preserve user-owned `docs/README.md`,
+`sonkayıtlar/LOG.md`, `docs/SCIENTIFIC_RESEARCH_VISION.md`, and
+`.tmp-phase22-review-cache/`; stage only explicitly owned checkpoint files.
+
 ## Latest checkpoint — IN625 mushy-range CUDA witness (2026-09-24)
 
 User explicitly widened this goal to include evidenced physics defects in the
@@ -194,8 +231,10 @@ The versioned section operator is now committed as `7e5437e`; it emits separate
 Next: measure corridor-width sensitivity, then plan an affordable independent
 3+3 with three separately identified simulated/experimental lines. NIST's 2025
 beam report provides a measured nominal 67 µm Gaussian `Dg` diameter with 5.2%
-combined standard uncertainty, but no downloadable raw 2D irradiance profile.
-Keep P5 unavailable until a source-byte-bound beam record with explicit
+combined standard uncertainty and a plotted measured normalized profile with
+central x/y sections (Fig. 7); Fig. 5 is simulated. The reviewed public sources
+do not expose a raw numeric 2D irradiance array or scan-specific source-byte
+binding. Keep P5 unavailable until measurement/proxy provenance, explicit
 `Dg`/D4σ-to-model mapping and uncertainty, line identities, and the optical
 section operator are present.
 The original 3 mm track bound rejected the NIST 10 mm baseline; the square
@@ -264,11 +303,12 @@ The official NIST workbook/sidecar SHA is verified; all 42 BP1 source rows
 reproduce the seven local Table 4 aggregate rows at 0.1 µm. The new workbook
 source is a distinct dataset; the existing transcription and run link persist.
 
-P8 live browser flow: local Table 4 revision 1 imported/verified; IN718 30 W
+Earlier P8 browser flow: local Table 4 revision 1 imported/verified; IN718 30 W
 powder-layer short pilot archived as run `e8e26ffea4784e6288f7ddab5839de01`;
 bundle `46c140da2e984c0ba00468eec09bdaf6` exported/verified and restored as
 isolated copy `1ac0729abd5a47928c80f2ed8bfe71ec`. The run is intentionally
-not NIST condition-matched. P9 checks: Python 91 PASS/3 Windows OpenFOAM skips;
+not NIST condition-matched. Newer IN625 archive/bundle flow is recorded in
+`PROOF.md` and summarized above. P9 checks: Python 91 PASS/3 Windows OpenFOAM skips;
 Ubuntu/OpenFOAM engineering 29 PASS; latest TypeScript unit 232 PASS, lint and
 build PASS; new Python source audit 3 PASS. Browser tab 2 and local dev server
 session 29665 are live. Official workbook source preview/import/revision-1

@@ -20,6 +20,12 @@ projections and close scalar parity, but no full-field parity, energy closure,
 performance, mesh/time convergence, or experiment qualification. Max absolute
 post-projection divergence differs (0.078125 vs 0.15625 s^-1) and remains
 reported. Warp's system PCH temp cleanup emitted WinError 5 after exit code 0.
+The follow-on full-field diagnostic is in `python/test_lpbf_phase22_full_field_cuda_parity.py` and
+`docs/PHASE22_FULL_FIELD_CPU_CUDA_PARITY_2026-09-24.md`: all final T/H/U/V/W/P/surface arrays
+passed the frozen CPU/explicit-`cuda:0` tolerances for the same small case (3/3
+focused PASS); opt-in output is capped at 100,000 cells and defaults remain
+unchanged. No auditable energy ledger is exposed, so energy closure remains
+unavailable and P6 remains partial.
 The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
 tests; standalone build-job checks and TypeScript typecheck also pass. The
 TypeScript session behavior runner passed 11 focused tests in the elevated

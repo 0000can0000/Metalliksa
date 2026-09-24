@@ -1071,7 +1071,14 @@ class TransientEnthalpy3DGPU:
               rho=4420.0, L_f=2.9e5, T_solidus=1878.0, T_liquidus=1928.0,
               P0=101325.0, Lv=9.7e6, Rs=173.93, Tv=3533.0,
               cp_solid=670.0, cp_liquid=730.0, k_solid=15.0, k_liquid=25.0,
-              mu=0.005, d_gamma_dT=-0.0003, beta=1e-4):
+              mu=0.005, d_gamma_dT=-0.0003, beta=1e-4,
+              include_diagnostic_fields=False):
+
+        if type(include_diagnostic_fields) is not bool:
+            raise ValueError("include_diagnostic_fields must be a boolean")
+        diagnostic_cell_count = self.nx * self.ny * self.nz
+        if include_diagnostic_fields and diagnostic_cell_count > 100_000:
+            raise ValueError("Full-field diagnostics are limited to 100000 cells")
         
         # Unpack Toolpath dict: t, x, y, p
         tp_t = wp.array(toolpath['t'], dtype=float, device=self.device)
@@ -1308,7 +1315,7 @@ class TransientEnthalpy3DGPU:
             pressure_projection_converged = None
             pressure_projection_status = "not_run"
         
-        return {
+        result = {
             "melt_volume_um3": float(melt_vol_um3),
             "max_temperature_K": float(max_T),
             "max_velocity_m_s": float(max_V),
@@ -1331,6 +1338,17 @@ class TransientEnthalpy3DGPU:
             "pressure_projection_post_divergence_max_s_inv": pressure_post_divergence_max,
             "pressure_projection_post_residual_scope": "last timestep; linear gate accumulated over all timesteps" if steps else "not_run"
         }
+        if include_diagnostic_fields:
+            result["diagnostic_fields"] = {
+                "temperature_K": T_host.copy(),
+                "enthalpy_J_m3": H_arr.numpy(),
+                "velocity_x_m_s": U_host.copy(),
+                "velocity_y_m_s": V_host.copy(),
+                "velocity_z_m_s": W_host.copy(),
+                "pressure_Pa": P.numpy(),
+                "surface_z_m": Z_host.copy(),
+            }
+        return result
 
 if __name__ == "__main__":
     print("Initializing Phase 25 Multi-Track GPU FDM Solver (Marangoni + Recoil Hydrodynamics)...")

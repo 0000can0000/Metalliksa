@@ -1300,3 +1300,16 @@ remains reported as `0.078125` / `0.15625 s^-1`. Full-field comparison, energy
 closure, performance, mesh/time convergence, and experimental validation are
 not available from this smoke. See
 `docs/PHASE22_CPU_CUDA_MULTISTEP_SMOKE_2026-09-24.md`.
+
+## 2026-09-24 — Phase 22 full-field CPU/CUDA parity
+
+With an explicit opt-in diagnostic capped at 100,000 cells, the frozen
+five-step production case exposed final temperature, enthalpy, velocity,
+pressure, and surface-height arrays. CPU versus RTX 4060 `cuda:0` passed all
+pre-set field tolerances (focused suite 3/3 PASS). Maximum temperature
+difference was `2.4414e-4 K`; enthalpy relative L2 `1.96e-8`; pressure relative
+L2 `6.92e-7`; surface-height difference zero. The default response stays
+unchanged. No auditable total-energy ledger exists in this solver, so energy
+closure remains unavailable. This is small-case numerical parity, not
+analytical, convergence, performance, or experimental validation. See
+`docs/PHASE22_FULL_FIELD_CPU_CUDA_PARITY_2026-09-24.md`.

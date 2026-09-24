@@ -1507,3 +1507,47 @@ source model is JMatPro-derived with assumed liquid/mushy values and has no
 independent source validity span or quantified uncertainty; scientific
 qualification, powder-bed support, build-job admission, P5 experiment comparison,
 and full-transient capability remain open.
+
+## Core physics + IN625 UI/archive integration — 2026-09-24
+
+User-authorized core-engine physics fixes were added to Phase 22: the surface
+temperature gradient for Marangoni forcing is projected with the height-graph
+metric into tangential components, eliminating the spurious normal component
+on a sloped interface. Recoil impulse now follows the inward local graph
+normal, with the flat-surface limit preserving the prior vertical direction.
+Focused Phase 22 Python suite: **29/29 PASS**; CPU/CUDA full-field,
+multistep, and manufactured pressure groups: **5/5 PASS**, including RTX 4060
+`cuda:0` test groups. Warp's Windows PCH temp cleanup reported `WinError 5`
+after successful test process exit; this does not count as solver validation.
+
+The IN625 client reads final temperature artifacts as little-endian binary
+float64, checks content type, byte count, and manifest SHA-256, and compares
+decoded arrays. Same-configuration live UI runs used 16×12×6 cells, 11 steps,
+20 W absorbed power, and explicit CPU / `cuda:0`. Both had field SHA-256
+`90670c1176da50ec2014a62076f057ebac6e39635e29beb390227a1598f58354`; displayed
+comparison was 1,152 cells, maximum absolute difference **0 K**, RMS **0 K**.
+Peak temperature was 300.432 K on each backend, final enthalpy 1.56 J, energy
+residual 0 J, source capture 0.993615, and input/stored energy 0.0022 J; scalar
+differences were zero. This is bounded numerical parity only.
+
+The UI previewed, imported, and byte-verified local derived IN625 screening
+source revision 2 (two artifacts, 1,938 bytes; document SHA-256
+`be3286b30b3ec3a6970b577cd9050b19de716cbf8754c7ac2355cf20d5cea655`). The
+CUDA run `587632c4976349e0b0d2a11718f62d3e` was archived with three artifacts
+and the exact source revision. One-run/one-source server-local bundle
+`ccfc76e23c544788ac8d11038c1754c3` passed verify and restored as isolated copy
+`8622c0e102304cc980d0e04b5f22e701`. Archive preview initially failed because
+the capture record has no `requestSummary`; the parser now reconstructs the
+temporary validation envelope from authenticated `result.settings` without
+loosening artifact/material/settings checks. Run HTTP preview round-trip
+regression: **2/2 PASS**. The archived bounded screening run intentionally
+has an unbound core contract; NIST comparison remains unavailable.
+
+Source/client suites: **10/10 PASS**; adjacent archive/import/API suites:
+**16/16 PASS**; IN625 client/UI tests: **6/6 PASS**; TypeScript, lint and
+`git diff --check`: **PASS**. Root's sandboxed Python worker test attempt was
+blocked by Windows ACL errors opening SQLite/temp paths; the agent's actual
+small CPU worker→capture exercise passed. No OpenFOAM build/run was performed.
+The source inputs remain locally derived/model-based, density is not lot-
+matched, and nothing here establishes scientific validation or qualification.
+Implementation and evidence checkpoint committed locally as `cd456d2`.

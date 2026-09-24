@@ -191,5 +191,80 @@ export function nistOpticalOfficialWorkbookCatalogEntry(root = path.resolve('dat
             temperature_conversion_missing_reason: 'Not applicable to optical cross-section geometry.' },
           split: 'unassigned', unresolved: ['Optical section operator is not implemented by the model.',
             'Publisher workbook measurements do not establish model validation.'] } });
+  } };
+}
+
+/**
+ * A local screening-input archive, not publisher raw data or an experimental
+ * benchmark. The thermal JSON is emitted by in625_lpbf_thermal_snapshot(); a
+ * separate fixed density assumption is pinned to the supplier bulletin.
+ */
+export function in625BareplateScreeningCatalogEntry(root = path.resolve('data/benchmark/in625-bareplate-screening')): LpbfSourceCatalogEntry {
+  const datasetId = 'in625-bareplate-screening-local-v1';
+  const thermalPath = 'in625-thermal-snapshot-v1.json';
+  const densityPath = 'density-assumption-v1.json';
+  const thermalUrl = 'https://doi.org/10.1007/s11663-020-01808-w';
+  const densityUrl = 'https://www.specialmetals.com/documents/technical-bulletins/inconel/inconel-alloy-625.pdf';
+  const thermalSha = '27220ec4738b4a85dfc5bb130ccd92931bc4ffeea4fb9d9186f49a981ff86a48';
+  const densitySha = '135cb88f6c0398dc4df05b5c9e238b86fc98827732f5d5c20ac7172a14cfbc9e';
+  const readPinnedArtifact = (file: any, expected: { path: string; url: string; bytes: number; sha256: string }) => {
+    if (file?.path !== expected.path || file?.source_url !== expected.url
+      || file?.bytes !== expected.bytes || file?.sha256 !== expected.sha256) {
+      throw new Error('IN625 screening manifest artifact identity mismatch');
+    }
+    const filename = path.join(artifactDirectory(root), expected.path);
+    const stat = lstatSync(filename);
+    if (stat.isSymbolicLink() || !stat.isFile() || stat.size !== expected.bytes || stat.size > 1024 * 1024) {
+      throw new Error('IN625 screening artifact size mismatch');
+    }
+    const bytes = readFileSync(filename);
+    if (createHash('sha256').update(bytes).digest('hex') !== expected.sha256) {
+      throw new Error('IN625 screening artifact hash mismatch');
+    }
+    return JSON.parse(bytes.toString('utf8'));
+  };
+  return { datasetId, title: 'IN625 bare-plate screening inputs · local derived snapshot', sourceRoot: root,
+    loadDocument() {
+      const manifest = readJson(root, 'manifest.json');
+      const context = readJson(root, 'source-context.json');
+      const files = manifest.files;
+      if (manifest.schema_version !== 1 || manifest.dataset_id !== datasetId || manifest.version !== '1.0.0'
+        || manifest.material !== 'IN625' || manifest.process_scope !== 'bare-plate-screening-inputs'
+        || manifest.artifact_kind !== 'derived-local-screening-input-snapshot'
+        || manifest.evidence_status !== 'unreviewed-source-archive'
+        || !Array.isArray(files) || files.length !== 2
+        || context.schema_version !== 1 || context.dataset_id !== datasetId || context.source_version !== manifest.version
+        || context.provenance_class !== 'derived-local-transcription-of-literature-model-and-separate-supplier-assumption'
+        || context.evidence_status !== 'unreviewed-source-archive'
+        || context.experiment?.material !== 'IN625' || context.experiment?.experimental_dataset !== false
+        || context.experiment?.experimental_validation !== false) {
+        throw new Error('IN625 screening manifest/context identity mismatch');
+      }
+      const thermal = readPinnedArtifact(files[0], { path: thermalPath, url: thermalUrl, bytes: 1389, sha256: thermalSha });
+      const density = readPinnedArtifact(files[1], { path: densityPath, url: densityUrl, bytes: 549, sha256: densitySha });
+      if (thermal.schemaVersion !== 1 || thermal.materialId !== 'in625'
+        || thermal.capability !== 'bounded-fusion-enthalpy-screening'
+        || thermal.validationStatus !== 'unvalidated-literature-model-screening'
+        || thermal.provenanceClass !== 'literature-constitutive-model' || thermal.source !== thermalUrl
+        || thermal.materialRevisionSha256 !== 'f47b07e4c8288b8c7177001f069a254be3410bace43ad5ea2f73168ac4466f07'
+        || density.schemaVersion !== 1 || density.kind !== 'fixed-supplier-bulletin-density-assumption'
+        || density.material !== 'IN625' || density.density_kg_m3 !== 8440 || density.density_g_cm3 !== 8.44
+        || density.source !== densityUrl || density.sourceLocator !== 'Special Metals, INCONEL alloy 625 technical bulletin (2013), Table 2, page 2'
+        || density.validationStatus !== 'unvalidated-source-archive'
+        || context.thermal_model?.artifact_path !== thermalPath
+        || context.thermal_model?.material_revision_sha256 !== thermal.materialRevisionSha256
+        || context.thermal_model?.artifact_is_raw_publisher_data !== false
+        || context.density_assumption?.artifact_path !== densityPath || context.density_assumption?.density_kg_m3 !== 8440
+        || context.density_assumption?.fixed !== true || context.density_assumption?.lot_matched !== false
+        || context.density_assumption?.measured_for_this_model !== false
+        || !Array.isArray(context.unresolved) || !context.unresolved.some((item: unknown) => typeof item === 'string' && /full-transient admission/i.test(item))) {
+        throw new Error('IN625 screening artifact/context content identity mismatch');
+      }
+      return validateSourceDocument({ schemaVersion: 1, datasetId, materialId: 'in625', processScope: 'bare-plate',
+        source: { url: thermalUrl, citation: manifest.citation, version: manifest.version, terms: null,
+          termsMissingReason: 'Reuse terms for these locally derived screening inputs were not established from the cited literature and supplier bulletin.' },
+        artifacts: files.map((file: any) => ({ relativePath: file.path, sha256: file.sha256,
+          byteSize: file.bytes, sourceUrl: file.source_url })),
+        sourceContext: context });
     } };
 }

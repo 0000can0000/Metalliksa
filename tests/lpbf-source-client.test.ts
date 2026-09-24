@@ -43,6 +43,18 @@ test('preview is invalidated by concurrent metadata revision', async t => {
   responses(t, [{ body: preview }, { body: { current: revision } }]);
   await assert.rejects(sourceAction(id, 'preview', new AbortController().signal), /changed/i);
 });
+test('IN625 screening source preview is accepted without upgrading its evidence status', async t => {
+  const in625Id = 'in625-bareplate-screening-local-v1';
+  const in625Document = { ...document, datasetId: in625Id, materialId: 'in625',
+    sourceContext: { evidence_status: 'unreviewed-source-archive', density_assumption: { lot_matched: false } } } as const;
+  const in625Preview: SourcePreview = { document: in625Document, documentSha256: hash, expectedRevision: 0,
+    artifactCount: 1, byteSize: 12, evidenceStatus: 'unreviewed-source-archive', artifactIntegrity: 'verified-at-dry-run' };
+  responses(t, [{ body: in625Preview }, { body: { current: null } }]);
+  const result = await sourceAction(in625Id, 'preview', new AbortController().signal);
+  assert.equal(result.preview?.document.materialId, 'in625');
+  assert.equal(result.preview?.evidenceStatus, 'unreviewed-source-archive');
+  assert.equal(result.preview?.document.sourceContext?.evidence_status, 'unreviewed-source-archive');
+});
 test('HTTP failure exposes actionable status and never returns cached success', async t => {
   responses(t, [{ body: { error: 'Source or stored revision changed.' }, status: 409 }]);
   await assert.rejects(sourceAction(id, 'import', new AbortController().signal, preview), /409.*[Pp]review/);

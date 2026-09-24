@@ -1,5 +1,32 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+## Latest checkpoint — core-physics + IN625 UI/archive slice (2026-09-24)
+
+User explicitly widened this goal to include evidenced physics defects in the
+core engines. Phase 22 surface Marangoni gradients are now metric-projected
+into tangential U/V/W components, and recoil points inward along the local
+height-graph normal. The IN625 screen UI now decodes and checks the binary
+float64 temperature fields and displays CPU/CUDA field parity. Its local
+source and run archive path passed preview/import/verify, archive, and
+server-local bundle export/verify/restore. Details and exact evidence are in
+`STATUS.md` and `PROOF.md`.
+
+Focused evidence: Phase 22 Python 29/29 plus CPU/CUDA field/multistep/pressure
+groups 5/5; IN625 binary/client tests 6/6; source/API groups 10/10 and 16/16;
+run preview round-trip 2/2; TypeScript, lint, and diff checks passed. Live UI
+used 1,152 cells × 11 steps on CPU and explicit RTX 4060 `cuda:0`: maximum
+field difference 0 K, RMS 0 K, and zero scalar/energy-ledger differences.
+IN625 remains unvalidated literature-model screening; its run has a legacy
+unbound core contract, and no experimental comparison is admitted.
+
+Next: continue the still-open P4/P5/P6/P7 acceptance work from the active plan;
+in particular retain the frozen P4 failure and P5 unavailable status, and
+finish the remaining full-scale/convergence/physics evidence gates. Do not
+claim goal completion from this integration slice. No push. Root owns
+checkpoint docs; preserve the user-owned `docs/README.md`, `sonkayıtlar/LOG.md`,
+and `docs/SCIENTIFIC_RESEARCH_VISION.md` changes. This slice is committed as
+`cd456d2`.
+
 ## Latest P6/P7 integration checkpoint — 2026-09-24
 
 Implemented a model-specific IN625 bare-substrate conduction field path with

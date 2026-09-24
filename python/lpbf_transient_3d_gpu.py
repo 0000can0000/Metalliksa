@@ -367,20 +367,41 @@ def velocity_advection_forces_kernel(
                 dT_dx = (T[i + 1, j, k_xp] - T[i - 1, j, k_xm]) / (2.0 * dx)
                 dT_dy = (T[i, j + 1, k_yp] - T[i, j - 1, k_ym]) / (2.0 * dy)
 
+                # Convert graph-coordinate temperature derivatives to the
+                # ambient surface gradient. This keeps the applied shear
+                # tangent to a sloped height graph instead of injecting a
+                # spurious normal component into U/V.
+                h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
+                h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
+                metric_det = 1.0 + h_x * h_x + h_y * h_y
+                grad_x = ((1.0 + h_y * h_y) * dT_dx - h_x * h_y * dT_dy) / metric_det
+                grad_y = ((1.0 + h_x * h_x) * dT_dy - h_x * h_y * dT_dx) / metric_det
+                grad_z = h_x * grad_x + h_y * grad_y
+
                 # tau = d_gamma/dT * grad_s(T), mu * du_t/dn = tau.
-                u_marangoni = U[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dx
-                v_marangoni = V[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dy
+                shear_scale = dz * (d_gamma_dT / mu)
+                u_marangoni = U[i, j, k-1] + shear_scale * grad_x
+                v_marangoni = V[i, j, k-1] + shear_scale * grad_y
+                w_marangoni = W[i, j, k-1] + shear_scale * grad_z
 
                 u_new_val = u_marangoni
                 v_new_val = v_marangoni
+                w_new_val = w_marangoni
 
-            # Recoil pressure acts normally only above the boiling temperature.
+            # Recoil acts into the material along the local graph normal only
+            # above the boiling temperature. The height metric converts the
+            # normal traction to projected-cell volume before division by dz;
+            # its flat-surface limit is the previous vertical impulse.
             if T_c > Tv:
                 P_sat = get_psat(T_c, P0, Lv, Rs, Tv)
                 P_recoil = 0.54 * P_sat
                 if P_recoil > 1e6: P_recoil = 1e6 # Clamp recoil pressure
-                w_recoil_impulse = - (P_recoil / rho) * (dt / dz)
-                w_new_val += w_recoil_impulse
+                h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
+                h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
+                recoil_scale = (P_recoil / rho) * (dt / dz)
+                u_new_val += recoil_scale * h_x
+                v_new_val += recoil_scale * h_y
+                w_new_val -= recoil_scale
             
         # Hard clamp velocity for CFL stability
         max_vel = 5.0

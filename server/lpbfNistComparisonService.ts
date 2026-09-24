@@ -75,6 +75,9 @@ export class LpbfNistComparisonService {
     if (record.runKind === 'build-screening' || result.settings?.jobType === 'build-job') {
       return unavailable(caseNumber, ['Build-job screening captures are not eligible for NIST optical comparison.']);
     }
+    if (record.runKind === 'bounded-material-screening') {
+      return unavailable(caseNumber, ['The bounded IN625 bare-plate field model has no matched IN718 Table 4 comparison contract.']);
+    }
     if (record.document.capture.contractStatus !== 'core-v1-bound') {
       return unavailable(caseNumber, ['Archived run has no executed core contract; legacy runs cannot be compared to optical Table 4.']);
     }

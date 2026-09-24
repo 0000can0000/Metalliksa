@@ -4,6 +4,7 @@ import { LpbfPhysicsDiagnostics } from "./LpbfPhysicsDiagnostics";
 import { ResolvedThermalViewer } from "./ResolvedThermalViewer";
 import React, { useEffect, useRef, useState } from "react";
 import { LpbfJobArchiver } from "../LpbfRunArchivePanel";
+import { In625BareplatePanel } from "../In625BareplatePanel";
 import { simulationApi, gpuPilotApi, buildGpuPilotInput, type GpuPilotJob, SimulationInput, SimulationJob, SimulationMode, SimulationCapabilities, ResourceEstimate, SimulationResult } from "../../services/lpbfSimulationService";
 import { useMaterialSpecimenStore } from "../../store/useMaterialSpecimenStore";
 
@@ -351,6 +352,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   return <section aria-label="LPBF engineering simulation" className="min-w-0 rounded-3xl border border-slate-700/60 bg-[#090f1b] p-4 md:p-7 space-y-6 text-slate-200 font-sans [&_button]:transition-colors [&_button]:duration-150 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-sky-300 [&_button:focus-visible]:outline-offset-4 [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-sky-300 [&_summary]:rounded-md [&_summary]:py-2 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-sky-300 motion-reduce:[&_*]:transition-none">
     <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-[10px] tracking-[.3em] uppercase text-slate-400">Metalliksa / Advanced manufacturing</p><h3 className="text-3xl font-medium tracking-tight mt-2">LPBF <span className="text-slate-400">/</span> Melt Pool</h3><p className="mt-2 text-sm text-slate-400">Thermal response, process screening and traceable evidence.</p></div><Badge tone={caps?.openfoamThermal?"active":"neutral"}>{caps?caps.openfoamThermal?"OpenFOAM thermal worker available":"Reference worker · OpenFOAM unavailable":"Connecting to worker…"}</Badge></header>
     <GpuThermalPilotPanel input={input} settings={settings} material={material||input.material} properties={properties} strategy={resolvedStrategy} caps={caps} blocked={busy||active||missingMaterial||invalidControls||invalidProcess}/>
+    <In625BareplatePanel />
     <ResultHeader job={job} material={material||input.material} availability={caps?`${caps.openfoamVersion||"Unavailable"} · free-surface ${caps.freeSurfaceSolver?"reported available":"unavailable"}`:"Checking…"} stale={resultSignature!==signature} elapsed={elapsed} cancel={cancel} cancelling={cancelling}/>
     {active&&submittedSignature!==signature&&<p role="status" className="text-sm text-amber-200">Inputs changed — the running job uses submitted settings. Local changes apply to the next run.</p>}
     {(error||job?.error)&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200 whitespace-pre-wrap">{error||job?.error}</p>}

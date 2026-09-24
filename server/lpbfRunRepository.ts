@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync, backup } from 'node:sqlite';
-import { parseSimulationJob } from '../src/services/lpbfSimulationService';
+import { parseIn625BareplateJob, parseSimulationJob } from '../src/services/lpbfSimulationService';
 import { artifactRelativePath } from './lpbfArtifactStore';
 
 export interface RunCapture {
@@ -12,7 +12,7 @@ export interface RunCapture {
   contractStatus: 'core-v1-bound' | 'legacy-unbound';
   runKind?: RunKind;
 }
-export type RunKind = 'analytical-screening' | 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
+export type RunKind = 'analytical-screening' | 'build-screening' | 'transient-thermal' | 'bounded-material-screening' | 'legacy-unspecified';
 export interface RunSourceLink { datasetId: string; revision: number; documentSha256: string }
 export interface RunDocument { schemaVersion: 1; runId: string; capture: RunCapture; sources: RunSourceLink[] }
 export interface RunRecord { document: RunDocument; documentSha256: string; createdAt: string; evidenceStatus: 'unvalidated-model'; runKind: RunKind }
@@ -61,17 +61,26 @@ export function validateRunDocument(raw: unknown): RunDocument {
   const resolvedPhysics = result.resolvedPhysics ?? result.coreContract?.resolvedPhysics;
   const analyticalScreening = settings?.mode === 'screening' && resolvedPhysics?.transient === false;
   if (typeof capturedRunKind !== 'string'
-    || !['analytical-screening', 'build-screening', 'transient-thermal', 'legacy-unspecified'].includes(capturedRunKind)
+    || !['analytical-screening', 'build-screening', 'transient-thermal', 'bounded-material-screening', 'legacy-unspecified'].includes(capturedRunKind)
     || (result.runKind === undefined) !== (c.runKind === undefined)
     || (c.runKind !== undefined && c.runKind !== capturedRunKind)
     || (capturedRunKind === 'build-screening' && result.settings?.jobType !== 'build-job')
     || (capturedRunKind === 'analytical-screening' && !analyticalScreening)
     || (capturedRunKind === 'transient-thermal'
-      && (!['transient-thermal', undefined].includes(result.settings?.jobType) || analyticalScreening))) {
+      && (!['transient-thermal', undefined].includes(result.settings?.jobType) || analyticalScreening))
+    || (capturedRunKind === 'bounded-material-screening'
+      && (result.settings?.jobType !== 'in625-bareplate-field' || result.jobType !== 'in625-bareplate-field'))) {
     throw new Error('Invalid captured run classification');
   }
   if (!result.verdict) { // Not a build-job
-    parseSimulationJob({ id: c.jobId, status: 'completed', progress: 1, log: '', error: null, result });
+    const job = { id: c.jobId, status: 'completed', progress: 1, log: '', error: null, result };
+    if (result.jobType === 'in625-bareplate-field') {
+      // Reconstitute the worker queue envelope expected by the public job parser.
+      // The archive capture stores the authenticated result/settings snapshots,
+      // not the transient queue requestSummary wrapper.
+      parseIn625BareplateJob({ ...job, requestSummary: result.settings });
+    }
+    else parseSimulationJob(job);
   }
   if (!isDeepStrictEqual(snapshot(c.inputJson), result.settings)
     || !isDeepStrictEqual(snapshot(c.materialJson), result.material)) throw new Error('Run snapshot identity mismatch');

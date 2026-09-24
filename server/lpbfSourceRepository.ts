@@ -42,7 +42,7 @@ function documentJson(raw: unknown): string {
   const value = JSON.parse(serialized);
   keys(value, ['schemaVersion', 'datasetId', 'materialId', 'processScope', 'source', 'artifacts', 'sourceContext']);
   identifier(value.datasetId);
-  if (value.schemaVersion !== 1 || !['ti6al4v', 'ss316l', 'alsi10mg', 'in718'].includes(value.materialId)
+  if (value.schemaVersion !== 1 || !['ti6al4v', 'ss316l', 'alsi10mg', 'in718', 'in625'].includes(value.materialId)
     || !['bare-plate', 'powder-bed', 'unknown'].includes(value.processScope)) throw new Error('Unsupported source archive schema, material or process scope');
   keys(value.source, ['url', 'citation', 'version', 'terms', 'termsMissingReason']);
   https(value.source.url);

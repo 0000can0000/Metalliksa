@@ -428,3 +428,205 @@ export const gpuPilotApi = {
     return parseGpuPilotJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`, { method: 'DELETE' }));
   },
 };
+
+/** Separate IN625 bare-substrate contract; it is not a generic transient material. */
+export interface In625BareplateConfig {
+  shapeXYZ: [number, number, number];
+  cellSizeM: [number, number, number];
+  initialTemperatureK: number;
+  dtS: number;
+  steps: number;
+  absorbedPowerW: number;
+  spotSigmaM: number;
+  scanStartXM: number;
+  scanYM: number;
+  scanVelocityXMS: number;
+}
+export interface In625BareplateInput {
+  jobType: 'in625-bareplate-field';
+  backend: 'cpu' | `cuda:${number}`;
+  config: In625BareplateConfig;
+}
+export interface In625BareplateResult {
+  schemaVersion: 1;
+  jobType: 'in625-bareplate-field';
+  requestedMode: 'screening';
+  effectiveMode: 'screening';
+  fallbackReason: null;
+  settings: In625BareplateInput;
+  material: { schemaVersion: number; materialId: 'in625'; materialRevisionSha256: string;
+    temperatureCoverage_K: [number, number]; validationStatus: 'unvalidated-literature-model-screening';
+    [key: string]: unknown };
+  solver: { id: 'in625-bareplate-field-v1'; modelId: 'in625-bareplate-enthalpy-conduction-v1';
+    revision: '1'; actualBackend: 'cpu' | `cuda:${number}`; device: string; dtype: 'float64' };
+  validationStatus: 'unvalidated-literature-model-screening'; productionReady: false;
+  confidence: 'low'; label: string;
+  modelScope: string;
+  metrics: { cells: number; peakTemperature_K: number; finalTime_s: number; finalEnthalpy_J: number;
+    energyResidual_J: number; minimumSourceCaptureFraction: number };
+  energyHistory: Array<{ time_s: number; totalEnthalpy_J: number; peakTemperature_K: number; energyResidual_J: number }>;
+  energyBalance: { input_J: number; losses_J: number; stored_J: number; relativeError: number; scope: string };
+  field: { artifact: 'in625-temperature-field-f64le.bin'; shapeXYZ: [number, number, number]; dtype: 'float64';
+    encoding: 'little-endian'; byteOrder: 'little-endian'; arrayOrder: 'z,y,x'; sha256: string;
+    scope: 'final cell-centered temperature field only; no interface interpolation' };
+  numericalDiagnostics: { sourceCaptureFractionMinimum: number; temperatureBounds_K: [number, number];
+    density_kg_m3: 8440; densityBasis: string };
+  provenance: { inputSha256: string; implementationIdentity: { modelId: string; solverRevision: string;
+    materialRevisionSha256: string; backend: string; device: string };
+    deviceEvidence: { name: string; index: number | null; computeCapability?: number[];
+      torch?: string; cudaRuntime?: string; synchronizedAfterSolve: true } };
+  artifacts: Array<{ path: string; size_bytes: number; sha256: string }>;
+  assumptions: string[];
+  runKind?: 'bounded-material-screening';
+}
+export interface In625BareplateJob {
+  id: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timed_out';
+  requestSummary: { jobType: 'in625-bareplate-field'; backend: 'cpu' | `cuda:${number}` };
+  progress: number; log: string; error: string | null;
+  cacheHit?: boolean; deduplicated?: boolean;
+  result?: In625BareplateResult;
+}
+
+const in625Backend = (value: unknown): value is 'cpu' | `cuda:${number}` =>
+  value === 'cpu' || typeof value === 'string' && /^cuda:[0-9]+$/.test(value);
+const in625Config = (value: unknown): value is In625BareplateConfig => object(value)
+  && Array.isArray(value.shapeXYZ) && value.shapeXYZ.length === 3
+  && value.shapeXYZ.every(n => typeof n === 'number' && Number.isSafeInteger(n) && n >= 2)
+  && Array.isArray(value.cellSizeM) && value.cellSizeM.length === 3
+  && value.cellSizeM.every(n => typeof n === 'number' && Number.isFinite(n) && n > 0)
+  && ['initialTemperatureK', 'dtS', 'absorbedPowerW', 'spotSigmaM', 'scanStartXM', 'scanYM', 'scanVelocityXMS']
+    .every(key => typeof value[key] === 'number' && Number.isFinite(value[key]))
+  && typeof value.steps === 'number' && Number.isSafeInteger(value.steps) && value.steps > 0 && value.steps <= 25_000
+  && Number.isSafeInteger(value.shapeXYZ[0] * value.shapeXYZ[1] * value.shapeXYZ[2])
+  && value.shapeXYZ[0] * value.shapeXYZ[1] * value.shapeXYZ[2] <= 1_000_000
+  && Number.isSafeInteger(value.shapeXYZ[0] * value.shapeXYZ[1] * value.shapeXYZ[2] * value.steps)
+  && value.shapeXYZ[0] * value.shapeXYZ[1] * value.shapeXYZ[2] * value.steps <= 2_000_000;
+
+export function parseIn625BareplateJob(value: unknown): In625BareplateJob {
+  if (!object(value) || !finiteTree(value) || typeof value.id !== 'string' || !/^[a-f0-9]{32}$/.test(value.id)
+    || !['queued', 'running', 'completed', 'failed', 'cancelled', 'timed_out'].includes(String(value.status))
+    || typeof value.progress !== 'number' || value.progress < 0 || value.progress > 1
+    || typeof value.log !== 'string' || !(value.error === null || typeof value.error === 'string')
+    || !object(value.requestSummary) || value.requestSummary.jobType !== 'in625-bareplate-field'
+    || !in625Backend(value.requestSummary.backend)) {
+    throw new Error('Invalid IN625 bare-plate job response');
+  }
+  if (value.status !== 'completed') {
+    if (value.result !== undefined) throw new Error('Unfinished IN625 bare-plate job must not contain a result');
+    return value as unknown as In625BareplateJob;
+  }
+  const r = value.result;
+  if (!object(r) || r.schemaVersion !== 1 || r.jobType !== 'in625-bareplate-field'
+    || r.requestedMode !== 'screening' || r.effectiveMode !== 'screening' || r.fallbackReason !== null
+    || r.validationStatus !== 'unvalidated-literature-model-screening' || r.productionReady !== false
+    || r.confidence !== 'low' || typeof r.label !== 'string' || typeof r.modelScope !== 'string'
+    || !object(r.settings) || r.settings.jobType !== 'in625-bareplate-field'
+    || r.settings.backend !== value.requestSummary.backend || !in625Config(r.settings.config)
+    || !object(r.material) || r.material.materialId !== 'in625'
+    || r.material.validationStatus !== 'unvalidated-literature-model-screening'
+    || !Array.isArray(r.material.temperatureCoverage_K)
+    || r.material.temperatureCoverage_K[0] !== 273.15 || r.material.temperatureCoverage_K[1] !== 1623.15
+    || typeof r.material.materialRevisionSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(r.material.materialRevisionSha256)
+    || !object(r.solver) || r.solver.modelId !== 'in625-bareplate-enthalpy-conduction-v1'
+    || r.solver.id !== 'in625-bareplate-field-v1' || r.solver.revision !== '1'
+    || r.solver.actualBackend !== value.requestSummary.backend || r.solver.device !== value.requestSummary.backend
+    || r.solver.dtype !== 'float64'
+    || !object(r.metrics) || !['cells', 'peakTemperature_K', 'finalTime_s', 'finalEnthalpy_J', 'energyResidual_J', 'minimumSourceCaptureFraction']
+      .every(key => typeof r.metrics[key] === 'number')
+    || !Array.isArray(r.energyHistory) || !r.energyHistory.length || !r.energyHistory.every(row => object(row)
+      && ['time_s', 'totalEnthalpy_J', 'peakTemperature_K', 'energyResidual_J'].every(key => typeof row[key] === 'number'))
+    || !object(r.energyBalance) || !['input_J', 'losses_J', 'stored_J', 'relativeError']
+      .every(key => typeof r.energyBalance[key] === 'number')
+    || typeof r.energyBalance.losses_J !== 'number' || typeof r.energyBalance.relativeError !== 'number'
+    || r.energyBalance.losses_J !== 0 || r.energyBalance.relativeError > .01
+    || !object(r.field) || r.field.artifact !== 'in625-temperature-field-f64le.bin'
+    || r.field.encoding !== 'little-endian' || r.field.dtype !== 'float64'
+    || r.field.byteOrder !== 'little-endian' || r.field.arrayOrder !== 'z,y,x'
+    || r.field.scope !== 'final cell-centered temperature field only; no interface interpolation'
+    || typeof r.field.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(r.field.sha256)
+    || !Array.isArray(r.field.shapeXYZ) || r.field.shapeXYZ.length !== 3
+    || !object(r.numericalDiagnostics) || r.numericalDiagnostics.density_kg_m3 !== 8440
+    || !Array.isArray(r.numericalDiagnostics.temperatureBounds_K)
+    || r.numericalDiagnostics.temperatureBounds_K[0] !== 273.15 || r.numericalDiagnostics.temperatureBounds_K[1] !== 1623.15
+    || typeof r.numericalDiagnostics.densityBasis !== 'string'
+    || !object(r.provenance) || typeof r.provenance.inputSha256 !== 'string'
+    || !object(r.provenance.implementationIdentity)
+    || r.provenance.implementationIdentity.modelId !== r.solver.modelId
+    || r.provenance.implementationIdentity.solverRevision !== r.solver.revision
+    || r.provenance.implementationIdentity.materialRevisionSha256 !== r.material.materialRevisionSha256
+    || r.provenance.implementationIdentity.backend !== value.requestSummary.backend
+    || !object(r.provenance.deviceEvidence) || r.provenance.deviceEvidence.selected !== value.requestSummary.backend
+    || r.provenance.deviceEvidence.thermalEvolution !== value.requestSummary.backend
+    || r.provenance.deviceEvidence.noCpuFallback !== true
+    || typeof r.provenance.deviceEvidence.name !== 'string'
+    || r.provenance.deviceEvidence.synchronizedAfterSolve !== true
+    || !Array.isArray(r.artifacts) || !r.artifacts.some(a => object(a)
+      && a.path === 'in625-temperature-field-f64le.bin'
+      && a.sha256 === (r.field as Record<string, unknown>).sha256 && typeof a.size_bytes === 'number')
+    || !Array.isArray(r.assumptions) || !r.assumptions.every(item => typeof item === 'string')
+    || r.runKind !== 'bounded-material-screening') {
+    throw new Error('Invalid IN625 bare-plate result identity');
+  }
+  const energyBalance = r.energyBalance as In625BareplateResult['energyBalance'];
+  const metrics = r.metrics as In625BareplateResult['metrics'];
+  const settings = r.settings as unknown as In625BareplateInput;
+  const field = r.field as In625BareplateResult['field'];
+  const expectedCells = settings.config.shapeXYZ[0] * settings.config.shapeXYZ[1] * settings.config.shapeXYZ[2];
+  if (energyBalance.input_J < 0 || energyBalance.stored_J < 0 || energyBalance.relativeError < 0
+    || metrics.cells !== expectedCells || JSON.stringify(field.shapeXYZ) !== JSON.stringify(settings.config.shapeXYZ)) {
+    throw new Error('Inconsistent IN625 bare-plate result');
+  }
+  const fieldEntry = (r.artifacts as Array<Record<string, unknown>>).find(a => a.path === field.artifact);
+  if (!fieldEntry || fieldEntry.size_bytes !== expectedCells * Float64Array.BYTES_PER_ELEMENT
+    || fieldEntry.sha256 !== field.sha256) throw new Error('Invalid IN625 bare-plate field manifest');
+  return value as unknown as In625BareplateJob;
+}
+
+export const in625BareplateApi = {
+  async submit(input: In625BareplateInput) {
+    return parseIn625BareplateJob(await request('/api/lpbf/jobs', { method: 'POST', body: JSON.stringify(input) }));
+  },
+  async get(id: string) {
+    return parseIn625BareplateJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`));
+  },
+  async cancel(id: string) {
+    return parseIn625BareplateJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+  },
+};
+
+export async function fetchIn625BareplateTemperatureField(jobId: string, result: In625BareplateResult) {
+  const response = await fetch(
+    `/api/lpbf/jobs/${encodeURIComponent(jobId)}/artifacts/${encodeURIComponent(result.field.artifact)}`,
+    { signal: AbortSignal.timeout(25000), headers: { Accept: 'application/octet-stream' }, cache: 'no-store' },
+  );
+  if (!response.ok) {
+    let message = `LPBF HTTP ${response.status}`;
+    try {
+      const payload: unknown = await response.json();
+      if (object(payload) && typeof payload.error === 'string') message = payload.error;
+    } catch { /* Binary or empty error responses use the HTTP status. */ }
+    throw new Error(message);
+  }
+  if (!response.headers.get('content-type')?.toLowerCase().startsWith('application/octet-stream')) {
+    throw new Error('Invalid IN625 temperature-field artifact content type');
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const expectedBytes = result.field.shapeXYZ.reduce((product, count) => product * count, 1) * Float64Array.BYTES_PER_ELEMENT;
+  const artifact = result.artifacts.find(entry => entry.path === result.field.artifact);
+  if (!artifact || bytes.byteLength !== expectedBytes || artifact.size_bytes !== expectedBytes
+    || artifact.sha256 !== result.field.sha256) throw new Error('IN625 field artifact size/manifest mismatch');
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  const actualSha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  if (actualSha256 !== result.field.sha256) throw new Error('IN625 field artifact SHA-256 mismatch');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const temperaturesK = new Float64Array(expectedBytes / Float64Array.BYTES_PER_ELEMENT);
+  for (let index = 0; index < temperaturesK.length; index += 1) {
+    const temperature = view.getFloat64(index * Float64Array.BYTES_PER_ELEMENT, true);
+    if (!Number.isFinite(temperature) || temperature < 273.15 || temperature > 1623.15) {
+      throw new Error('IN625 field contains a nonfinite or out-of-range temperature');
+    }
+    temperaturesK[index] = temperature;
+  }
+  return { shapeXYZ: result.field.shapeXYZ, temperaturesK, sha256: actualSha256 };
+}

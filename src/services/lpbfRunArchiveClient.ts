@@ -49,7 +49,7 @@ const bindingStatus = (value: unknown): value is RunSourceBindingStatus =>
   value === 'exact-revision-bound' || value === 'legacy-unlinked';
 const runKind = (value: unknown): value is RunKind =>
   value === 'analytical-screening' || value === 'build-screening'
-  || value === 'transient-thermal' || value === 'legacy-unspecified';
+  || value === 'transient-thermal' || value === 'bounded-material-screening' || value === 'legacy-unspecified';
 const opticalCases = new Set<string>(['0', '1.1', '1.2', '2.1', '2.2', '3.1', '3.2']);
 const opticalDatasetId = 'nist-amb2022-03-optical-table4-local-v1';
 const opticalArtifactSha = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';

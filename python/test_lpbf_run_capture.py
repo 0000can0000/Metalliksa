@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from lpbf_simulation import run
 from lpbf_run_capture import capture_run
+from in625_thermal_material import in625_lpbf_thermal_snapshot
 
 
 class CaptureTests(unittest.TestCase):
@@ -130,6 +131,50 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(result['settings']['jobType'], 'build-job')
         self.assertNotIn('coreContract', result)
         self.assertEqual(captured['contractStatus'], 'legacy-unbound')
+
+    def test_bounded_in625_field_capture_checks_scoped_result_and_full_field_bytes(self):
+        folder = self.root/'bareplate'
+        folder.mkdir()
+        payload = bytes(8 * 8)
+        field_name = 'in625-temperature-field-f64le.bin'
+        (folder/field_name).write_bytes(payload)
+        digest = hashlib.sha256(payload).hexdigest()
+        settings = {
+            'jobType': 'in625-bareplate-field', 'backend': 'cpu',
+            'config': {'shapeXYZ': [2, 2, 2], 'cellSizeM': [0.00025]*3,
+                       'initialTemperatureK': 298.15, 'dtS': 1e-8, 'steps': 1,
+                       'absorbedPowerW': 0.0, 'spotSigmaM': 0.0004,
+                       'scanStartXM': 0.00025, 'scanYM': 0.00025,
+                       'scanVelocityXMS': 0.0},
+        }
+        result = {
+            'schemaVersion': 1, 'jobType': 'in625-bareplate-field',
+            'runKind': 'bounded-material-screening',
+            'validationStatus': 'unvalidated-literature-model-screening', 'productionReady': False,
+            'settings': settings, 'material': in625_lpbf_thermal_snapshot(),
+            'solver': {'id': 'in625-bareplate-field-v1', 'modelId': 'in625-bareplate-enthalpy-conduction-v1',
+                       'revision': 'test', 'actualBackend': 'cpu'},
+            'metrics': {'cells': 8, 'peakTemperature_K': 298.15, 'finalTime_s': 1e-8},
+            'energyBalance': {'input_J': 0.0, 'losses_J': 0.0, 'stored_J': 0.0, 'relativeError': 0.0},
+            'field': {'artifact': field_name, 'shapeXYZ': [2, 2, 2], 'dtype': 'float64',
+                      'encoding': 'little-endian', 'sha256': digest,
+                      'arrayOrder': 'z,y,x',
+                      'scope': 'final cell-centered temperature field only; no interface interpolation'},
+            'artifacts': [{'path': field_name, 'size_bytes': len(payload), 'sha256': digest}],
+            'provenance': {'executionRuntime': {'python': 'test'},
+                           'implementationIdentity': {'modelId': 'in625-bareplate-enthalpy-conduction-v1',
+                               'solverRevision': '1',
+                               'materialRevisionSha256': in625_lpbf_thermal_snapshot()['materialRevisionSha256'],
+                               'backend': 'cpu', 'device': 'cpu'}},
+        }
+        (folder/'result.json').write_text(json.dumps(result), encoding='utf-8')
+        captured = capture_run(folder, 'a'*32)
+        self.assertEqual(captured['runKind'], 'bounded-material-screening')
+        self.assertEqual(json.loads(captured['materialJson']), result['material'])
+        payload = b'corrupt!'
+        (folder/field_name).write_bytes(payload)
+        with self.assertRaisesRegex(ValueError, 'manifest mismatch|integrity'):
+            capture_run(folder, 'a'*32)
 
 
 if __name__ == '__main__': unittest.main()

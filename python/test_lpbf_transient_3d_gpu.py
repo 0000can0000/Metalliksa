@@ -308,6 +308,76 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         # different phase temperatures on the same-z neighboring cells.
         self.assertAlmostEqual(fields[3].numpy()[2, 2, 3], 0.0, delta=1e-7)
 
+    def test_marangoni_shear_is_tangent_to_sloped_height_graph(self):
+        shape = (7, 7, 7)
+        dx = dy = dz = 1.0e-3
+        surface = np.empty(shape[:2], dtype=np.float32)
+        temperature = np.full(shape, 300.0, dtype=np.float32)
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                surface[i, j] = (3.5 + 0.25 * (i - 3) + 0.125 * (j - 3)) * dz
+                k_surface = int(surface[i, j] / dz)
+                temperature[i, j, k_surface] = 2400.0 + 10.0 * (i - 3) + 20.0 * (j - 3)
+
+        hx, hy = 0.25, 0.125
+        dT_dx, dT_dy = 10.0 / dx, 20.0 / dy
+        denominator = 1.0 + hx * hx + hy * hy
+        grad_x = ((1.0 + hy * hy) * dT_dx - hx * hy * dT_dy) / denominator
+        grad_y = ((1.0 + hx * hx) * dT_dy - hx * hy * dT_dx) / denominator
+        grad_z = hx * grad_x + hy * grad_y
+        scale = dz * (-0.0003 / 0.005)
+        expected = scale * np.array([grad_x, grad_y, grad_z])
+        devices = ["cpu"] + (["cuda:0"] if wp.get_cuda_device_count() else [])
+        for device in devices:
+            if device != "cpu":
+                wp.config.use_precompiled_headers = False
+            fields = [wp.zeros(shape, dtype=float, device=device) for _ in range(6)]
+            wp.launch(
+                kernel=velocity_advection_forces_kernel, dim=shape,
+                inputs=[*fields[:3], *fields[3:], wp.array(temperature, dtype=float, device=device),
+                        wp.array(surface, dtype=float, device=device), *shape, dx, dy, dz,
+                        1.0e-6, 0.005, 4420.0, -0.0003, 0.0,
+                        1928.0, 1878.0, 101325.0, 9.7e6, 173.93, 3533.0],
+                device=device,
+            )
+            wp.synchronize_device(device)
+            actual = np.array([field.numpy()[3, 3, 3] for field in fields[3:]])
+            np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-7, err_msg=device)
+            self.assertAlmostEqual(float(np.dot(actual, [-hx, -hy, 1.0])), 0.0, delta=1e-6)
+
+    def test_recoil_impulse_follows_local_height_graph_normal(self):
+        shape = (7, 7, 7)
+        dx = dy = dz = 1.0e-5
+        dt = 1.0e-7
+        rho = 4420.0
+        surface = np.empty(shape[:2], dtype=np.float32)
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                surface[i, j] = (3.5 + 0.25 * (i - 3) - 0.125 * (j - 3)) * dz
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        temperature[3, 3, int(surface[3, 3] / dz)] = 3600.0
+        p_sat = 101325.0 * np.exp((9.7e6 / 173.93) * (1.0 / 3533.0 - 1.0 / 3600.0))
+        recoil_scale = (0.54 * p_sat / rho) * (dt / dz)
+        expected = recoil_scale * np.array([0.25, -0.125, -1.0])
+        devices = ["cpu"] + (["cuda:0"] if wp.get_cuda_device_count() else [])
+        for device in devices:
+            if device != "cpu":
+                wp.config.use_precompiled_headers = False
+            fields = [wp.zeros(shape, dtype=float, device=device) for _ in range(6)]
+            wp.launch(
+                kernel=velocity_advection_forces_kernel, dim=shape,
+                inputs=[*fields[:3], *fields[3:], wp.array(temperature, dtype=float, device=device),
+                        wp.array(surface, dtype=float, device=device), *shape, dx, dy, dz, dt,
+                        0.005, rho, -0.0003, 0.0, 1928.0, 1878.0,
+                        101325.0, 9.7e6, 173.93, 3533.0],
+                device=device,
+            )
+            wp.synchronize_device(device)
+            actual = np.array([field.numpy()[3, 3, 3] for field in fields[3:]])
+            np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-7, err_msg=device)
+            self.assertAlmostEqual(float(actual[0] + 0.25 * actual[2]), 0.0, delta=1e-7)
+            self.assertAlmostEqual(float(actual[1] - 0.125 * actual[2]), 0.0, delta=1e-7)
+
     @staticmethod
     def _pressure_cell_class_host(temperature, surface, i, j, k, dz, solidus=1000.0):
         nx, ny, nz = temperature.shape

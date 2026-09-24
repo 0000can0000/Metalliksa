@@ -5,8 +5,10 @@ Normally launched inside WSL by the Node bridge. No browser-supplied shell comma
 import hashlib
 import base64
 import json
+import math
 import os
 from pathlib import Path
+import re
 import signal
 import sqlite3
 import subprocess
@@ -37,11 +39,270 @@ from stl_voxelizer import STLVoxelizer
 
 ROOT = Path(os.environ.get("METALLIKSA_JOB_ROOT", str(Path(__file__).resolve().parents[1]/".lpbf-jobs")))
 DEFAULT_JOB_TIMEOUT_S = 300.0
+IN625_BAREPLATE_JOB_TYPE = "in625-bareplate-field"
+IN625_BAREPLATE_MODEL_ID = "in625-bareplate-enthalpy-conduction-v1"
+IN625_BAREPLATE_SOLVER_ID = "in625-bareplate-field-v1"
+IN625_BAREPLATE_SOLVER_REVISION = "1"
+IN625_BAREPLATE_ARTIFACT = "in625-temperature-field-f64le.bin"
+IN625_BAREPLATE_MAX_CELLS = 1_000_000
+IN625_BAREPLATE_MAX_CELL_STEPS = 2_000_000
+IN625_BAREPLATE_MAX_STEPS = 25_000
+
+
+def _validate_in625_bareplate_request(raw):
+    """Strictly normalize the worker API payload for the bounded IN625 solver."""
+    from in625_bareplate_field import BareplateConfig, _validate
+
+    if not isinstance(raw, dict) or raw.get("jobType") != IN625_BAREPLATE_JOB_TYPE:
+        raise ValueError("Invalid IN625 bareplate job type")
+    if set(raw) - {"jobType", "backend", "config"}:
+        raise ValueError("Unknown IN625 bareplate request fields")
+    backend = raw.get("backend")
+    if backend != "cpu" and (not isinstance(backend, str) or not re.fullmatch(r"cuda:[0-9]+", backend)):
+        raise ValueError("backend must be 'cpu' or an explicit CUDA device such as 'cuda:0'")
+    config_raw = raw.get("config", {})
+    if not isinstance(config_raw, dict):
+        raise ValueError("config must be an object")
+    defaults = BareplateConfig()
+    aliases = {
+        "shape_xyz": "shapeXYZ", "cell_size_m": "cellSizeM",
+        "initial_temperature_K": "initialTemperatureK", "dt_s": "dtS",
+        "steps": "steps", "absorbed_power_W": "absorbedPowerW",
+        "spot_sigma_m": "spotSigmaM", "scan_start_x_m": "scanStartXM",
+        "scan_y_m": "scanYM", "scan_velocity_x_m_s": "scanVelocityXMS",
+    }
+    # The worker-facing API is camelCase; reject accidental snake_case aliases.
+    allowed = set(aliases.values())
+    if set(config_raw) - allowed:
+        raise ValueError("Unknown IN625 bareplate config fields")
+    config_values = {}
+    for field_name, api_name in aliases.items():
+        value = config_raw.get(api_name, getattr(defaults, field_name))
+        if field_name in ("shape_xyz", "cell_size_m"):
+            if not isinstance(value, (list, tuple)) or len(value) != 3:
+                raise ValueError(f"{api_name} must contain exactly three values")
+            if field_name == "shape_xyz":
+                if any(type(v) is not int or v < 2 for v in value):
+                    raise ValueError("shapeXYZ must contain integers >= 2")
+                config_values[field_name] = tuple(value)
+            else:
+                if any(type(v) not in (int, float) or not math.isfinite(v) or v <= 0 for v in value):
+                    raise ValueError("cellSizeM must contain positive finite numbers")
+                config_values[field_name] = tuple(float(v) for v in value)
+        else:
+            if field_name == "steps":
+                if type(value) is not int or value < 1:
+                    raise ValueError("steps must be a positive integer")
+            elif type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError(f"{api_name} must be a finite number")
+            config_values[field_name] = value
+    config = BareplateConfig(**config_values)
+    cells = math.prod(config.shape_xyz)
+    if cells > IN625_BAREPLATE_MAX_CELLS:
+        raise ValueError(f"IN625 bareplate cell count exceeds {IN625_BAREPLATE_MAX_CELLS}")
+    if config.steps > IN625_BAREPLATE_MAX_STEPS:
+        raise ValueError(f"IN625 bareplate step count exceeds {IN625_BAREPLATE_MAX_STEPS}")
+    if cells * config.steps > IN625_BAREPLATE_MAX_CELL_STEPS:
+        raise ValueError(f"IN625 bareplate work exceeds {IN625_BAREPLATE_MAX_CELL_STEPS} cell-steps")
+    _validate(config)
+    normalized_config = {api_name: (list(config_values[field_name]) if field_name in ("shape_xyz", "cell_size_m")
+                                     else config_values[field_name])
+                         for field_name, api_name in aliases.items()}
+    request = {"jobType": IN625_BAREPLATE_JOB_TYPE, "backend": backend, "config": normalized_config}
+    return request, config
+
+
+def _check_in625_bareplate_cuda_device(device):
+    """Preflight the exact requested CUDA device; never substitute a backend."""
+    try:
+        import torch
+    except ImportError as error:
+        raise RuntimeError("PyTorch is required for the explicit CUDA path") from error
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is unavailable; explicit CUDA path cannot run")
+    index = int(device.split(":", 1)[1])
+    if index >= torch.cuda.device_count():
+        raise ValueError(f"requested CUDA device index is unavailable: {device}")
+
+
+def _write_deterministic_bareplate_field(path, result):
+    """Write final temperature as deterministic little-endian float64 raw bytes."""
+    import numpy as np
+    temperature = result.temperature_K
+    if hasattr(temperature, "detach"):
+        temperature = temperature.detach().to(device="cpu").numpy()
+    np.asarray(temperature, dtype="<f8", order="C").tofile(path)
+
+
+def _bareplate_result_to_json(raw, config, output, folder):
+    """Adapt BareplateResult into a bounded, finite JSON result and archive artifact."""
+    import numpy as np
+    from in625_thermal_material import in625_lpbf_thermal_snapshot
+
+    snapshot = in625_lpbf_thermal_snapshot()
+    def array(value):
+        if hasattr(value, "detach"):
+            value = value.detach().to(device="cpu").numpy()
+        result = np.asarray(value, dtype=np.float64)
+        if not np.isfinite(result).all():
+            raise ValueError("IN625 bareplate solver returned nonfinite values")
+        return result
+
+    temperature = array(output.temperature_K)
+    enthalpy = array(output.specific_enthalpy_J_kg)
+    times = array(output.time_s)
+    total = array(output.total_enthalpy_J)
+    peaks = array(output.peak_temperature_K)
+    residuals = array(output.energy_residual_J)
+    if temperature.shape != (config.shape_xyz[2], config.shape_xyz[1], config.shape_xyz[0]):
+        raise ValueError("IN625 bareplate final field shape mismatch")
+    if enthalpy.shape != temperature.shape or any(v.ndim != 1 or len(v) != config.steps
+                                                    for v in (times, total, peaks, residuals)):
+        raise ValueError("IN625 bareplate history shape mismatch")
+    if not (np.diff(times) > 0).all() or (temperature < 273.15).any() or (temperature > 1623.15).any():
+        raise ValueError("IN625 bareplate field or time history is outside its model bounds")
+
+    artifact_path = Path(folder) / IN625_BAREPLATE_ARTIFACT
+    _write_deterministic_bareplate_field(artifact_path, output)
+    canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    input_hash = hashlib.sha256(canonical.encode()).hexdigest()
+    material = snapshot
+    device = raw["backend"]
+    device_evidence = {"selected": device, "thermalEvolution": device, "noCpuFallback": True}
+    if device.startswith("cuda:"):
+        import torch
+        cuda_index = int(device.split(":", 1)[1])
+        actual = torch.device(device)
+        torch.cuda.synchronize(actual)
+        properties = torch.cuda.get_device_properties(actual)
+        device_evidence.update(name=properties.name, index=cuda_index,
+                               computeCapability=list(torch.cuda.get_device_capability(actual)),
+                               torch=torch.__version__, cudaRuntime=torch.version.cuda,
+                               synchronizedAfterSolve=True)
+    else:
+        device_evidence.update(name="NumPy CPU", index=None, synchronizedAfterSolve=True)
+
+    initial_total = float(total[0] - config.absorbed_power_W * config.dt_s)
+    input_energy = float(config.absorbed_power_W * config.dt_s * config.steps)
+    stored_energy = float(total[-1] - initial_total)
+    energy_relative_error = abs(stored_energy-input_energy) / max(input_energy, 1e-30)
+    if energy_relative_error > 0.01:
+        raise ValueError(f"IN625 bareplate energy closure failed ({energy_relative_error:.6g})")
+    digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+    return {
+        "schemaVersion": 1,
+        "jobType": IN625_BAREPLATE_JOB_TYPE,
+        "runKind": "bounded-material-screening",
+        "requestedMode": "screening",
+        "effectiveMode": "screening",
+        "fallbackReason": None,
+        "settings": raw,
+        "material": material,
+        "solver": {"id": IN625_BAREPLATE_SOLVER_ID, "modelId": IN625_BAREPLATE_MODEL_ID,
+                   "revision": IN625_BAREPLATE_SOLVER_REVISION, "actualBackend": device,
+                   "device": device, "dtype": "float64"},
+        "validationStatus": "unvalidated-literature-model-screening",
+        "productionReady": False,
+        "confidence": "low",
+        "label": "IN625 bare-substrate conduction screening",
+        "modelScope": "3D bounded enthalpy conduction on bare substrate; all faces adiabatic; no powder, melt pool, absorptivity, vapor, flow, or free-surface physics",
+        "metrics": {"cells": int(temperature.size), "peakTemperature_K": float(temperature.max()),
+                    "finalTime_s": float(times[-1]), "finalEnthalpy_J": float(total[-1]),
+                    "energyResidual_J": float(residuals[-1]),
+                    "minimumSourceCaptureFraction": float(output.metadata["sourceCaptureFractionMinimum"])},
+        "energyHistory": [{"time_s": float(t), "totalEnthalpy_J": float(e),
+                           "peakTemperature_K": float(p), "energyResidual_J": float(r)}
+                          for t, e, p, r in zip(times, total, peaks, residuals)],
+        "energyBalance": {"input_J": input_energy, "losses_J": 0.0, "stored_J": stored_energy,
+                          "relativeError": energy_relative_error,
+                          "scope": "adiabatic bareplate enthalpy accounting; not melt-pool or interface closure"},
+        "field": {"artifact": IN625_BAREPLATE_ARTIFACT, "shapeXYZ": list(config.shape_xyz),
+                  "dtype": "float64", "encoding": "little-endian",
+                  "byteOrder": "little-endian", "arrayOrder": "z,y,x", "sha256": digest,
+                  "scope": "final cell-centered temperature field only; no interface interpolation"},
+        "numericalDiagnostics": {"sourceCaptureFractionMinimum": float(output.metadata["sourceCaptureFractionMinimum"]),
+                                 "temperatureBounds_K": [273.15, 1623.15],
+                                 "density_kg_m3": output.metadata["density_kg_m3"],
+                                 "densityBasis": output.metadata["densityBasis"]},
+        "provenance": {"inputSha256": input_hash,
+                       "implementationIdentity": {"modelId": IN625_BAREPLATE_MODEL_ID,
+                                                   "solverRevision": IN625_BAREPLATE_SOLVER_REVISION,
+                                                   "materialRevisionSha256": snapshot["materialRevisionSha256"],
+                                                   "backend": device, "device": device},
+                       "deviceEvidence": device_evidence},
+        "artifacts": [],
+        "assumptions": ["Constant 8440 kg/m^3 supplier-bulletin density assumption; not lot-matched.",
+                        "Source input is absorbed power in W; no optical absorptivity is inferred.",
+                        "Constitutive law is bounded to 273.15..1623.15 K and remains unvalidated literature-model screening."],
+    }
+
+
+def _enforce_bareplate_result(result, settings, folder=None):
+    """Verify queue/cache identity and the custom bareplate result contract."""
+    from in625_thermal_material import in625_lpbf_thermal_snapshot
+
+    if (not isinstance(result, dict) or not isinstance(settings, dict)
+            or result.get("jobType") != IN625_BAREPLATE_JOB_TYPE
+            or result.get("settings") != settings or result.get("validationStatus") != "unvalidated-literature-model-screening"
+            or result.get("productionReady") is not False):
+        raise ValueError("Invalid IN625 bareplate result identity")
+    backend = settings.get("backend")
+    material = result.get("material")
+    solver = result.get("solver")
+    provenance = result.get("provenance")
+    field = result.get("field")
+    if not isinstance(solver, dict) or not isinstance(provenance, dict) or not isinstance(field, dict):
+        raise ValueError("IN625 bareplate result is missing solver/provenance/field identity")
+    identity = provenance.get("implementationIdentity")
+    expected = in625_lpbf_thermal_snapshot()
+    if (material != expected or solver.get("id") != IN625_BAREPLATE_SOLVER_ID
+            or solver.get("modelId") != IN625_BAREPLATE_MODEL_ID
+            or solver.get("revision") != IN625_BAREPLATE_SOLVER_REVISION
+            or solver.get("actualBackend") != backend
+            or identity != {"modelId": IN625_BAREPLATE_MODEL_ID,
+                            "solverRevision": IN625_BAREPLATE_SOLVER_REVISION,
+                            "materialRevisionSha256": expected["materialRevisionSha256"],
+                            "backend": backend, "device": backend}
+            or field.get("artifact") != IN625_BAREPLATE_ARTIFACT):
+        raise ValueError("IN625 bareplate model/material/backend identity mismatch")
+    energy = result.get("energyBalance", {})
+    if not isinstance(energy, dict):
+        raise ValueError("Invalid IN625 bareplate energy accounting")
+    values = [energy.get(name) for name in ("input_J", "losses_J", "stored_J", "relativeError")]
+    if any(type(value) not in (int, float) or not math.isfinite(value) for value in values):
+        raise ValueError("Invalid IN625 bareplate energy accounting")
+    if values[1] != 0 or values[3] < 0 or values[3] > 0.01:
+        raise ValueError("IN625 bareplate energy closure failed")
+    if folder is not None:
+        refs = result.get("artifacts")
+        if (not isinstance(refs, list) or any(not isinstance(item, dict)
+                                              or set(item) != {"path", "size_bytes", "sha256"}
+                                              for item in refs)):
+            raise ValueError("IN625 bareplate artifact manifest missing")
+        entry = next((item for item in refs if item.get("path") == IN625_BAREPLATE_ARTIFACT), None)
+        path = Path(folder) / IN625_BAREPLATE_ARTIFACT
+        if (not entry or not path.is_file() or path.stat().st_size != entry.get("size_bytes")
+                or hashlib.sha256(path.read_bytes()).hexdigest() != entry.get("sha256")
+                or entry.get("sha256") != field.get("sha256")):
+            raise ValueError("IN625 bareplate field artifact integrity failed")
+
+
+def _run_in625_bareplate_job(raw, folder):
+    from in625_bareplate_field import run_cpu, run_cuda
+    request, config = _validate_in625_bareplate_request(raw)
+    output = run_cpu(config) if request["backend"] == "cpu" else run_cuda(config, request["backend"])
+    result = _bareplate_result_to_json(request, config, output, folder)
+    from lpbf_evidence import write_artifacts
+    write_artifacts(result, folder)
+    _enforce_bareplate_result(result, request, folder)
+    return result
 
 
 def _archive_run_kind(job_type, result=None):
     if job_type == "gpu-thermal-pilot":
         return None  # Its archive contract is intentionally unavailable.
+    if job_type == IN625_BAREPLATE_JOB_TYPE:
+        return "bounded-material-screening"
     if job_type == "build-job":
         return "build-screening"
     if isinstance(result, dict):
@@ -66,6 +327,14 @@ def capabilities():
                 version = "OpenFOAM-14"
         except (OSError, subprocess.TimeoutExpired):
             pass
+    cuda = dict(selection="backend=cuda:N", availability="checked-on-submit", cpuAlternative="backend=cpu",
+                evidenceScope="IN625 bareplate bounded enthalpy-conduction screening only")
+    try:
+        import torch
+        cuda.update(runtimeAvailable=bool(torch.cuda.is_available()), deviceCount=int(torch.cuda.device_count()),
+                    torchVersion=str(torch.__version__), cudaRuntime=torch.version.cuda)
+    except ImportError:
+        cuda.update(runtimeAvailable=False, deviceCount=0, torchVersion=None, cudaRuntime=None)
     return dict(openfoamVersion=version, openfoamThermal=bool(version and BINARY.is_file()),
                 binaryHash=hashlib.sha256(BINARY.read_bytes()).hexdigest() if BINARY.is_file() else None,
                 freeSurfaceSolver=bool(version and (Path(__file__).parent/"openfoam/bin/metalliksaMeltPoolFoam").is_file()), platform=sys.platform,
@@ -73,6 +342,10 @@ def capabilities():
                 cudaThermalPilot=dict(selection="jobType=gpu-thermal-pilot; backend=cuda:N",
                     availability="checked-on-submit", cpuAlternative="backend=reference",
                     evidenceScope="same-model numerical parity only"),
+                in625BareplateField=dict(jobType=IN625_BAREPLATE_JOB_TYPE, cpuAvailable=True,
+                    cuda=cuda, alloyId="in625", modelId=IN625_BAREPLATE_MODEL_ID,
+                    validationStatus="unvalidated-literature-model-screening", productionReady=False,
+                    maximumCells=IN625_BAREPLATE_MAX_CELLS, maximumCellSteps=IN625_BAREPLATE_MAX_CELL_STEPS),
                 limitation="No qualified LPBF free-surface CFD solver. High-Fidelity requests return explicitly labelled analytical screening.")
 
 
@@ -126,12 +399,16 @@ class Queue:
         out = dict(row)
         settings = json.loads((self.root/job/"input.json").read_text())
         out["requestSummary"] = {k:settings.get(k) for k in ("jobType","mode","backend","material")}
+        if settings.get("jobType") == IN625_BAREPLATE_JOB_TYPE:
+            out["requestSummary"] = {k:settings.get(k) for k in ("jobType", "backend", "config")}
         if out["status"] == "completed":
             try:
                 out["result"] = json.loads((self.root/job/"result.json").read_text())
                 if settings.get("jobType") == "gpu-thermal-pilot":
                     from lpbf_gpu_thermal import enforce_gpu_pilot_result
                     enforce_gpu_pilot_result(out["result"])
+                elif settings.get("jobType") == IN625_BAREPLATE_JOB_TYPE:
+                    _enforce_bareplate_result(out["result"], settings, self.root/job)
                 else:
                     enforce_thermal_balances(out["result"])
             except (OSError, ValueError) as error:
@@ -157,7 +434,7 @@ class Queue:
         state = self.get(payload["id"])
         name = payload.get("name")
         import re
-        allowed = isinstance(name, str) and (name in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv", "field-series.json", "field-coordinates.bin") or re.fullmatch(r"field-frame-[0-9]{3}\.bin", name))
+        allowed = isinstance(name, str) and (name in ("temperature-slice.svg", "phase-slice.svg", "thermal-history.csv", "field-series.json", "field-coordinates.bin", IN625_BAREPLATE_ARTIFACT) or re.fullmatch(r"field-frame-[0-9]{3}\.bin", name))
         if state["status"] != "completed" or not allowed:
             raise ValueError("Artifact unavailable")
         entry = next((a for a in state["result"].get("artifacts",[]) if a["path"] == name),None)
@@ -175,12 +452,26 @@ class Queue:
         elif job_type == "gpu-thermal-pilot":
             from lpbf_gpu_thermal import validate_pilot_request
             p, m = validate_pilot_request(raw)
+        elif job_type == IN625_BAREPLATE_JOB_TYPE:
+            p, _ = _validate_in625_bareplate_request(raw)
+            if p["backend"].startswith("cuda:"):
+                _check_in625_bareplate_cuda_device(p["backend"])
+            from in625_thermal_material import in625_lpbf_thermal_snapshot
+            m = in625_lpbf_thermal_snapshot()
         else:
             p, m = validate(raw)
         # A rebuilt binary must invalidate a long-lived worker's cache identity.
         self.caps["binaryHash"] = hashlib.sha256(BINARY.read_bytes()).hexdigest() if BINARY.is_file() else None
         self.caps["openfoamThermal"] = bool(self.caps["openfoamVersion"] and self.caps["binaryHash"])
-        key = hashlib.sha256((fingerprint(p, m)+json.dumps(self.caps, sort_keys=True)).encode()).hexdigest()
+        if job_type == IN625_BAREPLATE_JOB_TYPE:
+            identity = {"request": p, "materialRevisionSha256": m["materialRevisionSha256"],
+                        "modelId": IN625_BAREPLATE_MODEL_ID,
+                        "solverRevision": IN625_BAREPLATE_SOLVER_REVISION,
+                        "backend": p["backend"], "device": p["backend"], "capabilities": self.caps}
+            key_payload = json.dumps(identity, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        else:
+            key_payload = fingerprint(p, m)+json.dumps(self.caps, sort_keys=True)
+        key = hashlib.sha256(key_payload.encode()).hexdigest()
         with self.lock, self.connect() as c:
             row = c.execute("SELECT id FROM jobs WHERE cache_key=? AND status IN ('queued','running','completed') ORDER BY created DESC LIMIT 1", (key,)).fetchone()
             if row:
@@ -285,6 +576,8 @@ class Queue:
                         if params.get("jobType") == "gpu-thermal-pilot":
                             from lpbf_gpu_thermal import enforce_gpu_pilot_result
                             enforce_gpu_pilot_result(result)
+                        elif params.get("jobType") == IN625_BAREPLATE_JOB_TYPE:
+                            _enforce_bareplate_result(result, params, folder)
                         else:
                             enforce_thermal_balances(result)
                         self.finish_running(job, status="completed", progress=1., log=final_log)
@@ -318,6 +611,8 @@ def main():
             if job_type == "gpu-thermal-pilot":
                 from lpbf_gpu_thermal import run_queued_pilot
                 result = run_queued_pilot(input_data)
+            elif job_type == IN625_BAREPLATE_JOB_TYPE:
+                result = _run_in625_bareplate_job(input_data, folder)
             elif job_type == "build-job":
                 from lpbf_build_job_solver import solve_lpbf_build_job
                 result = solve_lpbf_build_job(input_data)

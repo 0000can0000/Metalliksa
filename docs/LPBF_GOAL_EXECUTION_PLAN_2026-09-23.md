@@ -307,3 +307,14 @@ recession at the solidus; existing above-solidus area and mass matching still
 passes. The Phase 22 Python suite passes 30/30 on CPU Warp. This repair closes
 only an internal model-contract inconsistency, not the missing experimental
 validation or P4/P5/P6/P7 gates.
+
+## 2026-09-24 — Phase 22 explicit momentum timestep bound
+
+The selected time step previously satisfied a thermal diffusion limit only,
+although momentum advection and viscous diffusion are explicit updates. It now
+also satisfies a conservative joint momentum rate bound based on the 5 m/s
+per-component clamp and `nu=mu/rho`, while preserving the thermal limit and
+exact requested end time. The new synthetic low-alpha test makes the momentum
+bound active. The full Phase 22 suite passes 31/31 on CPU Warp. This repair
+covers explicit-update stability under configured limits; physical
+qualification remains open.

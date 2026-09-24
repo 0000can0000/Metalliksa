@@ -1614,3 +1614,20 @@ CPU Warp. Pytest cache writes and Warp's process-exit temporary-directory
 cleanup emitted Windows ACL warnings; the Warp kernel tests themselves passed.
 This is an internal physics-contract consistency fix, not experimental
 qualification; P4/P5/P6/P7 retain their existing statuses.
+
+## Phase 22 explicit momentum time-step stability (2026-09-24)
+
+The solver selected `dt` from thermal diffusion alone, while the momentum
+predictor advances upwind advection and the viscosity Laplacian explicitly.
+The selected step now takes the minimum of the existing thermal limit and a
+conservative combined momentum bound using the documented 5 m/s per-component
+velocity clamp and kinematic viscosity `mu/rho`:
+`dt * sum(|u_a|/h_a + 2 nu/h_a^2) <= 0.5`.
+
+A low-thermal-diffusivity test with each velocity component at the clamp
+verifies the momentum bound controls the selected step and the end-time
+scheduler preserves the requested duration. Full Phase 22 suite:
+**31/31 passed** on CPU Warp. Local pytest/Warp temporary-directory ACL
+warnings occurred after the passing checks. This stabilizes the explicit
+numerical update for the configured velocity cap; it does not validate the
+heuristic momentum or free-surface physics experimentally.

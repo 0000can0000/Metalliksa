@@ -8,6 +8,8 @@ _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE = 1.0e-3
 _PRESSURE_STATUS_CONVERGED = 1
 _PRESSURE_STATUS_NUMERICAL_FAILURE = 2
 _PRESSURE_STATUS_BUDGET_EXHAUSTED = 3
+_PHASE22_MAX_COMPONENT_SPEED_M_S = 5.0
+_PHASE22_MOMENTUM_CFL_LIMIT = 0.5
 import numpy as np
 
 # Phase 25: Thermo-Morphological Keyhole 3D GPU Solver with Hydrodynamics
@@ -36,6 +38,34 @@ def _step_size(sim_time_s: float, nominal_dt_s: float, step: int) -> float:
     """Clip the last update so integration never continues beyond the toolpath."""
     remaining = sim_time_s - step * nominal_dt_s
     return max(0.0, min(nominal_dt_s, remaining))
+
+
+def _phase22_stable_step_size(
+    dx: float, dy: float, dz: float, rho: float, mu: float,
+    k_max: float, cp_min: float,
+) -> float:
+    """Bound explicit heat diffusion, momentum advection, and viscosity steps."""
+    spacings = (dx, dy, dz)
+    if any(not math.isfinite(h) or h <= 0.0 for h in spacings):
+        raise ValueError("Grid spacing must be finite and positive")
+    if not math.isfinite(rho) or rho <= 0.0:
+        raise ValueError("Density must be finite and positive")
+    if not math.isfinite(mu) or mu < 0.0:
+        raise ValueError("Dynamic viscosity must be finite and nonnegative")
+    if not math.isfinite(k_max) or k_max <= 0.0:
+        raise ValueError("Maximum conductivity must be finite and positive")
+    if not math.isfinite(cp_min) or cp_min <= 0.0:
+        raise ValueError("Minimum heat capacity must be finite and positive")
+
+    alpha_max = k_max / (rho * cp_min)
+    thermal_dt = 0.12 * min(spacings) ** 2 / alpha_max
+    nu = mu / rho
+    momentum_rate = sum(
+        _PHASE22_MAX_COMPONENT_SPEED_M_S / h + 2.0 * nu / (h * h)
+        for h in spacings
+    )
+    momentum_dt = _PHASE22_MOMENTUM_CFL_LIMIT / momentum_rate
+    return min(thermal_dt, momentum_dt)
 
 @wp.struct
 class LaserState:
@@ -419,6 +449,7 @@ def velocity_advection_forces_kernel(
                 w_new_val -= recoil_scale
             
         # Hard clamp velocity for CFL stability
+        # Keep the per-component cap aligned with the host-side stability bound.
         max_vel = 5.0
         if u_new_val > max_vel: u_new_val = max_vel
         elif u_new_val < -max_vel: u_new_val = -max_vel
@@ -1242,10 +1273,9 @@ class TransientEnthalpy3DGPU:
         
         k_max = max(k_solid, k_liquid)
         cp_min = min(cp_solid, cp_liquid)
-        alpha_max = k_max / (rho * cp_min)
-        
-        dx_min = min(self.dx, self.dy, self.dz)
-        dt = 0.12 * (dx_min**2) / alpha_max # Reduced CFL for hydrodynamics stability
+        dt = _phase22_stable_step_size(
+            self.dx, self.dy, self.dz, rho, mu, k_max, cp_min
+        )
         steps = _step_count(sim_time_s, dt)
         
         print(f"[Phase 25 Multi-Track FDM + Marangoni] Toolpath Pts: {num_pts}. Duration: {sim_time_s*1e6:.1f}us. Steps: {steps}")

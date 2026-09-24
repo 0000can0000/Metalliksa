@@ -1,3 +1,4 @@
+import math
 import unittest
 
 import numpy as np
@@ -10,6 +11,9 @@ from lpbf_transient_3d_gpu import (
     _PRESSURE_STATUS_NUMERICAL_FAILURE,
     _PRESSURE_RELATIVE_DIVERGENCE_TOLERANCE,
     TransientEnthalpy3DGPU,
+    _PHASE22_MAX_COMPONENT_SPEED_M_S,
+    _PHASE22_MOMENTUM_CFL_LIMIT,
+    _phase22_stable_step_size,
     _step_count,
     _step_size,
     _average_transverse_face_component,
@@ -572,6 +576,24 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         sizes = [_step_size(0.25, dt, step) for step in range(3)]
         self.assertEqual(sizes, [0.1, 0.1, 0.04999999999999999])
         self.assertAlmostEqual(sum(sizes), 0.25)
+
+    def test_phase22_step_size_bounds_explicit_advection_and_viscosity(self):
+        dx = dy = dz = 2.0e-6
+        rho, mu, k_max, cp_min = 8190.0, 0.01, 10.0, 500.0
+        dt = _phase22_stable_step_size(dx, dy, dz, rho, mu, k_max, cp_min)
+        spacings = (dx, dy, dz)
+        nu = mu / rho
+        momentum_rate = sum(
+            _PHASE22_MAX_COMPONENT_SPEED_M_S / h + 2.0 * nu / (h * h)
+            for h in spacings
+        )
+        thermal_dt = 0.12 * min(spacings) ** 2 / (k_max / (rho * cp_min))
+
+        self.assertLess(dt, thermal_dt)
+        self.assertLessEqual(
+            dt * momentum_rate, _PHASE22_MOMENTUM_CFL_LIMIT + 1e-12
+        )
+        self.assertEqual(_step_count(1e-6, dt), math.ceil(1e-6 / dt))
 
     def test_zero_duration_single_point_toolpath_does_not_heat(self):
         solver = TransientEnthalpy3DGPU(nx=4, ny=4, nz=4, dx=1e-5, dy=1e-5, dz=1e-5)

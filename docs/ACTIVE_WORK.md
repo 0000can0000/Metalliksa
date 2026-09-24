@@ -645,3 +645,15 @@ run for this slice. Windows pytest-cache and Warp PCH-temp cleanup ACL warnings
 occurred after passing kernel checks. Experimental/model qualification does
 not change. Next physics review: bound the explicit momentum predictor's time
 step by advection and viscosity stability as well as thermal diffusion.
+
+## Latest numerical physics fix — explicit momentum time step (2026-09-24)
+
+`solve_toolpath` now limits its nominal step by both thermal diffusion and the
+combined explicit advection/viscosity rate, conservatively assuming the
+existing 5 m/s per-component velocity clamp. The bound is
+`dt * sum(5/h_a + 2*(mu/rho)/h_a^2) <= 0.5`. The synthetic low-alpha case
+confirms the momentum limit controls, and exact-end-time scheduling remains
+intact. The full Phase 22 Python suite passes **31/31 on CPU Warp**. This is
+numerical stability coverage, not experimental validation. Next: continue the
+separate alloy data gate and P4/P5 model/data blockers without changing their
+recorded outcomes.

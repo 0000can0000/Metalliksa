@@ -21,7 +21,10 @@ def fake_solver(payload):
     width = [120., 105., 101.25][index]
     depth = [60., 52.5, 50.625][index]
     return {"effectiveMode": "standard", "solver": {"id": "enthalpy-fv-6", "version": "enthalpy-fv-6"},
-            "coreContract": {"modelId": "stationary-enthalpy-conduction-v1",
+            "coreContract": {"modelId": (
+                                 "stationary-enthalpy-conduction-layer-conforming-v1"
+                                 if payload.get("powderGridPolicy") == "layer-conforming"
+                                 else "stationary-enthalpy-conduction-v1"),
                              "actualBackend": "numpy-reference", "solverId": "enthalpy-fv-6"},
             "discretization": {"mesh_m": mesh * 1e-6, "cells": 1000,
                                "meanDt_s": dt, "minimumDt_s": dt, "steps": 50},
@@ -57,6 +60,14 @@ class ConvergenceStudy(unittest.TestCase):
         self.assertEqual(report["meshStudy"]["levels"][0]["material"]["materialId"], "in718")
         self.assertEqual(report["meshStudy"]["levels"][0]["model"]["actualBackend"], "numpy-reference")
         self.assertEqual(report["meshStudy"]["assessment"]["metrics"]["width_um"]["convergence"]["status"], "numerically-converging")
+
+    def test_layer_conforming_model_is_accepted_only_under_its_own_identity(self):
+        with patch("lpbf_convergence_study.run", side_effect=fake_solver):
+            report = study({**CASE, "powderGridPolicy": "layer-conforming"},
+                           [80, 40, 20], [4e-7, 2e-7, 1e-7])
+        self.assertEqual(report["status"], "pass")
+        self.assertEqual(report["meshStudy"]["levels"][0]["model"]["modelId"],
+                         "stationary-enthalpy-conduction-layer-conforming-v1")
 
     def test_flat_geometry_is_inconclusive(self):
         def flat(payload):

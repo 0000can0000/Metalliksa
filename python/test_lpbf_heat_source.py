@@ -8,12 +8,56 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
 import numpy as np
+from lpbf_core_physics import calculate_mesh_domain
 from lpbf_heat_source import (require_source_capture, gaussian_interval, cell_weights, integrated_source,
                               source_limited_step, conduction_diagonal)
-from lpbf_simulation import MINIMUM_SOURCE_CAPTURE_FRACTION
+from lpbf_simulation import MINIMUM_SOURCE_CAPTURE_FRACTION, validate
 
 
 class HeatSourceVerification(unittest.TestCase):
+    def test_layer_conforming_powder_grid_aligns_surfaces_and_captures_source(self):
+        for requested_mesh in (36.7, 13.34, 6.667):
+            with self.subTest(requested_mesh=requested_mesh):
+                raw = dict(mode="standard", backend="reference", material="Inconel 718",
+                           power_W=80, speed_mm_s=1200, beamDiameter_um=80,
+                           layer_um=80, mesh_um=requested_mesh, trackLength_um=200,
+                           tracks=1, layers=3, powderGridPolicy="layer-conforming")
+                p, _ = validate(raw)
+                domain = calculate_mesh_domain(p)
+                dx = domain["dx"]
+                layer_m = p["layer_um"]*1e-6
+                substrate_cells = domain["substrate_depth"]/dx
+                self.assertLessEqual(dx*1e6, requested_mesh*(1+1e-12))
+                requested_span = p["trackLength_um"]*1e-6+6*domain["radius"]
+                self.assertGreaterEqual(domain["span"], requested_span)
+                self.assertLess(domain["span"]-requested_span, dx*(1+1e-12))
+                self.assertAlmostEqual(substrate_cells, round(substrate_cells), places=10)
+                self.assertAlmostEqual(domain["span"]/dx, round(domain["span"]/dx), places=10)
+                for layer_index in range(1, p["layers"]+1):
+                    face_index = (domain["substrate_depth"]+layer_index*layer_m)/dx
+                    self.assertAlmostEqual(face_index, round(face_index), places=10)
+
+                axis = (np.arange(domain["nx"])+.5)*dx-domain["span"]/2
+                z = (np.arange(domain["nz"])+.5)*dx-domain["substrate_depth"]
+                captures = [2*float(cell_weights(axis, z, dx, [x, 0.], layer_m,
+                                                    domain["radius"], layer_m).sum())
+                            for x in np.linspace(-100e-6, 100e-6, 11)]
+                self.assertGreaterEqual(min(captures), MINIMUM_SOURCE_CAPTURE_FRACTION)
+
+    def test_legacy_powder_grid_stays_unchanged_without_explicit_policy(self):
+        p, _ = validate(dict(mode="standard", backend="reference", mesh_um=36.7,
+                             trackLength_um=200, beamDiameter_um=80, layer_um=80))
+        domain = calculate_mesh_domain(p)
+        self.assertEqual(domain["nxy"], 12)
+        self.assertAlmostEqual(domain["dx"]*1e6, 36.6666666667, places=8)
+        self.assertAlmostEqual(domain["substrate_depth"]*1e6, 330., places=8)
+
+    def test_layer_conforming_policy_rejects_unimplemented_modes(self):
+        base = dict(mode="standard", backend="reference", surfaceMode="bare-plate",
+                    sourcePenetration_um=40, powderGridPolicy="layer-conforming")
+        with self.assertRaisesRegex(ValueError, "requires standard/reference powder-layer mode"):
+            validate(base)
+
     def test_capture_gate_uses_shared_one_percent_limit(self):
         self.assertEqual(require_source_capture(MINIMUM_SOURCE_CAPTURE_FRACTION,
                                                MINIMUM_SOURCE_CAPTURE_FRACTION),

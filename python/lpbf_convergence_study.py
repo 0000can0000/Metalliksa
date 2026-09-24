@@ -45,10 +45,13 @@ def _case_result(scenario, key, requested):
     try:
         result = run(payload)
         core = result["coreContract"]
+        expected_model = ("stationary-enthalpy-conduction-layer-conforming-v1"
+                          if payload.get("powderGridPolicy") == "layer-conforming"
+                          else "stationary-enthalpy-conduction-v1")
         if (result["effectiveMode"] != "standard"
                 or result["solver"]["id"] != "enthalpy-fv-6"
                 or core["actualBackend"] != "numpy-reference"
-                or core["modelId"] != "stationary-enthalpy-conduction-v1"
+                or core["modelId"] != expected_model
                 or core["solverId"] != result["solver"]["id"]):
             raise ValueError("CPU transient reference backend was not executed")
         if (not result["material"].get("materialId")

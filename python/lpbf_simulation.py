@@ -44,7 +44,7 @@ BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 5
 
 
 def validate(raw):
-    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity", "corridorWidth_um"}:
+    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity", "corridorWidth_um", "powderGridPolicy"}:
         raise ValueError("Unknown simulation input fields")
     finite_tree(raw)
     p = {**DEFAULTS, **raw}
@@ -64,6 +64,12 @@ def validate(raw):
         raise ValueError("Unknown LPBF surface mode")
     if p["barePlateGeometry"] not in ("square", "rectangular-corridor"):
         raise ValueError("barePlateGeometry must be 'square' or 'rectangular-corridor'")
+    if "powderGridPolicy" in raw:
+        if raw["powderGridPolicy"] != "layer-conforming":
+            raise ValueError("powderGridPolicy must be 'layer-conforming'")
+        if (p["surfaceMode"] != "powder-layer" or p["mode"] != "standard"
+                or p["backend"] != "reference"):
+            raise ValueError("layer-conforming powder grid requires standard/reference powder-layer mode")
     if p["barePlateGeometry"] == "rectangular-corridor" and p["surfaceMode"] != "bare-plate":
         raise ValueError("rectangular-corridor geometry is only supported for bare-plate mode")
     if "corridorWidth_um" in raw and p["barePlateGeometry"] != "rectangular-corridor":

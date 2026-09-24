@@ -3,6 +3,7 @@ export interface SimulationInput {
   material: string; power_W: number; speed_mm_s: number; beamDiameter_um: number;
   preheat_C: number; layer_um: number; hatch_um: number;
   mode?: SimulationMode; backend?: "auto" | "reference" | "openfoam-thermal";
+  powderGridPolicy?: "layer-conforming";
   mesh_um?: number; maxDt_s?: number; tracks?: number; layers?: number;
   strategy?: "meander" | "unidirectional" | "stripe" | "island"; stripeWidth_um?: number; islandSize_um?: number; scanAngle_deg?: number; layerRotation_deg?: number;
   dwell_s?: number; trackLength_um?: number; cooling_s?: number; timeout_s?: number;
@@ -20,7 +21,8 @@ export interface ResourceEstimate {
 const CORE_UNITS = { power: 'W', speed: 'mm/s', length: 'um', preheat: 'degC', temperature: 'K', internalLength: 'm', time: 's', energy: 'J', beamDiameter: '1/e2-intensity' } as const;
 export interface CoreContract {
   schemaVersion: 1;
-  modelId: 'analytical-conduction-screening-v1' | 'stationary-enthalpy-conduction-v1';
+  modelId: 'analytical-conduction-screening-v1' | 'stationary-enthalpy-conduction-v1'
+    | 'stationary-enthalpy-conduction-layer-conforming-v1';
   actualBackend: 'analytical' | 'numpy-reference' | 'openfoam-thermal';
   requestedBackend: 'auto' | 'reference' | 'openfoam-thermal';
   effectiveMode: 'screening' | 'standard' | 'calibration';
@@ -113,12 +115,22 @@ function checkCoreContract(result: Record<string, unknown>): void {
     if (requested !== 'auto' && requested !== (backend === 'numpy-reference' ? 'reference' : 'openfoam-thermal')) return fail();
   } else return fail();
   if (typeof requested !== 'string' || !['auto', 'reference', 'openfoam-thermal'].includes(requested)) return fail();
+  const gridPolicy = result.settings.powderGridPolicy;
+  if (gridPolicy !== undefined && gridPolicy !== 'layer-conforming') return fail();
+  if (gridPolicy === 'layer-conforming'
+    && (backend !== 'numpy-reference' || requested !== 'reference'
+      || result.settings.surfaceMode !== 'powder-layer' || mode !== 'standard')) return fail();
+  const modelId = transient
+    ? gridPolicy === 'layer-conforming'
+      ? 'stationary-enthalpy-conduction-layer-conforming-v1'
+      : 'stationary-enthalpy-conduction-v1'
+    : 'analytical-conduction-screening-v1';
   // Structural check only. Python verifies these hashes against full resolved snapshots.
   if (![c.inputSha256, c.materialSha256].every(v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v))) return fail();
   if (!literalFields(c.units, CORE_UNITS) || !literalFields(c.resolvedPhysics, {
     conduction: true, transient, latentHeat: transient, momentum: false, freeSurface: false, evaporation: false,
   }) || !literalFields(c, {
-    schemaVersion: 1, modelId: transient ? 'stationary-enthalpy-conduction-v1' : 'analytical-conduction-screening-v1',
+    schemaVersion: 1, modelId,
     actualBackend: backend, requestedBackend: requested, effectiveMode: mode, solverId: solver,
     inputSha256: c.inputSha256, materialSha256: c.materialSha256, units: c.units,
     resolvedPhysics: c.resolvedPhysics, evidenceClass: 'unvalidated-model',

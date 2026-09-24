@@ -64,6 +64,25 @@ for (const [actualBackend, solverId] of [['numpy-reference', 'enthalpy-fv-6'], [
   const opposite = actualBackend === 'numpy-reference' ? 'openfoam-thermal' : 'reference';
   assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {...r, settings: {backend: opposite}, coreContract: {...c, requestedBackend: opposite}}}), /core contract/);
 }
+const layerConformingContract = {
+  ...coreContract,
+  modelId: 'stationary-enthalpy-conduction-layer-conforming-v1',
+  actualBackend: 'numpy-reference', requestedBackend: 'reference',
+  effectiveMode: 'standard', solverId: 'enthalpy-fv-6',
+  resolvedPhysics: {...coreContract.resolvedPhysics, transient: true, latentHeat: true},
+};
+const layerConformingResult = {
+  ...thermal, solver: {id: 'enthalpy-fv-6', version: 'enthalpy-fv-6'},
+  settings: {backend: 'reference', mode: 'standard', surfaceMode: 'powder-layer', powderGridPolicy: 'layer-conforming'},
+  coreContract: layerConformingContract,
+};
+assert.doesNotThrow(() => parseSimulationJob({...base, status: 'completed', result: layerConformingResult}));
+assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {
+  ...layerConformingResult, coreContract: {...layerConformingContract, modelId: 'stationary-enthalpy-conduction-v1'},
+}}), /core contract/);
+assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {
+  ...layerConformingResult, settings: {...layerConformingResult.settings, backend: 'auto'},
+}}), /core contract/);
 for (const effectiveMode of [undefined, null, "standrad", "high-fidelity", ["screening"]]) {
   assert.throws(() => parseSimulationJob(completed({ effectiveMode })), /execution mode/);
 }

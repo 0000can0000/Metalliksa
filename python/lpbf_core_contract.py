@@ -49,7 +49,13 @@ def build_core_contract(settings, material, solver_id, effective_mode):
         expected = 'reference' if backend == 'numpy-reference' else 'openfoam-thermal'
         if requested not in ('auto', expected):
             raise ValueError('LPBF core contract requested/executed backend mismatch')
-        model, transient = 'stationary-enthalpy-conduction-v1', True
+        if settings.get('powderGridPolicy') == 'layer-conforming':
+            if backend != 'numpy-reference' or requested != 'reference':
+                raise ValueError('Layer-conforming powder grid requires the NumPy reference backend')
+            model = 'stationary-enthalpy-conduction-layer-conforming-v1'
+        else:
+            model = 'stationary-enthalpy-conduction-v1'
+        transient = True
     else:
         raise ValueError('LPBF core contract has unknown solver/mode combination')
     return dict(schemaVersion=1, modelId=model, actualBackend=backend,

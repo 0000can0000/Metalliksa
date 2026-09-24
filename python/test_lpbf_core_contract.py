@@ -5,8 +5,9 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from lpbf_simulation import run
+from lpbf_simulation import run, validate
 from lpbf_evidence import enforce_thermal_balances
+from lpbf_core_contract import build_core_contract
 
 
 class CoreContractTests(unittest.TestCase):
@@ -30,6 +31,12 @@ class CoreContractTests(unittest.TestCase):
         # Recorded pre-change CPU profile, unchanged numerical acceptance.
         self.assertAlmostEqual(self.thermal['metrics']['peakTemperature_K'], 2119.81011401591, places=8)
         self.assertAlmostEqual(self.thermal['metrics']['volume_um3'], 192000, places=6)
+
+    def test_layer_conforming_grid_has_separate_model_identity(self):
+        settings, material = validate(dict(
+            mode='standard', backend='reference', powderGridPolicy='layer-conforming'))
+        contract = build_core_contract(settings, material, 'enthalpy-fv-6', 'standard')
+        self.assertEqual(contract['modelId'], 'stationary-enthalpy-conduction-layer-conforming-v1')
 
     def test_result_boundary_detects_changed_inputs_and_properties(self):
         for kind in ('settings', 'material', 'solver'):

@@ -60,6 +60,7 @@ def calculate_mesh_domain(p):
     radius = p["beamDiameter_um"] * 0.5e-6
     dx_requested = p["mesh_um"] * 1e-6
     span = p["trackLength_um"] * 1e-6 + (p["tracks"] - 1) * p["hatch_um"] * 1e-6 + 6 * radius
+    layer_conforming = p.get("powderGridPolicy") == "layer-conforming"
     rectangular_corridor = (p.get("surfaceMode", "powder-layer") == "bare-plate"
                             and p.get("barePlateGeometry", "square") == "rectangular-corridor")
     if rectangular_corridor:
@@ -73,6 +74,20 @@ def calculate_mesh_domain(p):
         if ny % 2 == 0:
             ny += 1  # keep y=0 on a cell center for the centered single-track source
         nxy = nx  # compatibility alias for the legacy square-domain field
+    elif layer_conforming:
+        # Preserve whole-cell material semantics by placing z=0 and every
+        # equal-thickness powder-layer surface on a cell face. Pad X/Y by less
+        # than one cell when necessary so the grid remains cubic and centered.
+        layer_m = p["layer_um"] * 1e-6
+        layer_cells = max(1, int(math.ceil(layer_m / dx_requested - 1e-12)))
+        dx = layer_m / layer_cells
+        nxy_ratio = span / dx
+        nxy_nearest = round(nxy_ratio)
+        nxy = (int(nxy_nearest) if math.isclose(nxy_ratio, nxy_nearest, rel_tol=1e-12, abs_tol=1e-12)
+               else int(math.ceil(nxy_ratio)))
+        span = nxy * dx
+        nx = ny = nxy
+        span_y = span
     else:
         nxy = int(math.ceil(span / dx_requested))
         dx = span / nxy
@@ -80,7 +95,8 @@ def calculate_mesh_domain(p):
         span_y = span
     substrate_depth = math.ceil(max(300e-6, 4 * radius) / dx) * dx
     height = 0. if p.get("surfaceMode", "powder-layer") == "bare-plate" else p["layers"] * p["layer_um"] * 1e-6
-    nz = int(math.ceil((substrate_depth + height) / dx))
+    nz_ratio = (substrate_depth + height) / dx
+    nz = int(round(nz_ratio)) if layer_conforming else int(math.ceil(nz_ratio))
     
     return {
         "radius": radius,

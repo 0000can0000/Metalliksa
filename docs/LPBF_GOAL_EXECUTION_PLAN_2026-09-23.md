@@ -318,3 +318,18 @@ exact requested end time. The new synthetic low-alpha test makes the momentum
 bound active. The full Phase 22 suite passes 31/31 on CPU Warp. This repair
 covers explicit-update stability under configured limits; physical
 qualification remains open.
+
+## 2026-09-24 — Hastelloy X alternate-alloy gate
+
+The evaluated sources do not pass the full melting-range data gate. Scheel et
+al. provides useful as-deposited LPBF Cp/enthalpy, but its liquid conductivity
+is modeled with a 15× factor, density is a fixed room-temperature measurement,
+and the complete uncertainty-bounded property set is absent. NASA AM records
+and NIMS liquid-density metadata do not close or match the missing properties.
+No runtime alloy admission follows. Keep any bounded pilot source-labelled,
+with unmeasured liquid inputs explicit as assumptions. See
+docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
+
+P4 remains failed, P5 unavailable, and P6 partial. Next work remains physically
+closed model development and larger same-physics GPU performance/crossover
+analysis; CPU/CUDA agreement does not establish process validity.

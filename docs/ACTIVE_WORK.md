@@ -657,3 +657,18 @@ intact. The full Phase 22 Python suite passes **31/31 on CPU Warp**. This is
 numerical stability coverage, not experimental validation. Next: continue the
 separate alloy data gate and P4/P5 model/data blockers without changing their
 recorded outcomes.
+
+## Latest P7 source decision — Hastelloy X (2026-09-24)
+
+The source review does not clear a complete melting-range data gate. Scheel
+et al. gives useful as-deposited LPBF Cp/enthalpy coverage, but liquid
+conductivity is a 15× model assumption, density is a fixed room-temperature
+measurement, and uncertainty is incomplete. NASA AM context and NIMS
+liquid-density evidence do not combine into a chemistry/state-matched property
+revision. Keep P7 and runtime admission closed; a bounded pilot may be considered
+only with measured properties separated from explicit assumptions. Detailed
+source limits and citations: docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
+
+P4 remains failed, P5 unavailable, and P6 partial. Continue physics closure and
+same-physics GPU scale/crossover analysis; numerical parity alone is not
+qualification.

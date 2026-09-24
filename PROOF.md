@@ -1147,3 +1147,17 @@ contributing once. Focused Warp CPU regression: **1/1 PASS**; complete
 PASS. CUDA execution was not tested. This repairs the update coupling in the
 height-graph solver; it does not model interface breakup/reformation, resolved
 plume dynamics, or experimental agreement.
+
+## 2026-09-24 — Phase 22 surface-kernel CUDA smoke
+
+The production `free_surface_kinematics_kernel` was invoked directly through
+Warp 1.17 on CPU and `cuda:0` (NVIDIA RTX 4060 Laptop GPU), using the same
+small 5×5×5 temperature/velocity field, surface graph, and physical inputs.
+The sampled center height was `2.5191626264131628e-05 m` on both devices;
+maximum absolute output difference was `0`. Kernel compilation and execution
+completed on both devices. The temporary harness was removed after the run.
+
+This is a single-kernel execution/parity smoke. It does not establish CUDA
+execution or parity for the coupled Phase 22 pressure projection, momentum,
+recoil, and surface update, and it provides no performance or physical
+validation. The earlier 24/24 Phase 22 Warp suite remains CPU evidence only.

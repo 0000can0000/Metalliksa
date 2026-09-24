@@ -69,6 +69,27 @@ execution, interface breakup/reformation, and plume dynamics remain unverified
 or out of scope. Preserve the P7 source-data gate.
 Root alone changes checkpoint documents.
 
+User widened the active goal to repair evidenced physics defects in the core
+engines as well as the planned alloy/GPU/data work. Three parallel tasks are
+currently active: `phase_enthalpy_physics` owns `python/lpbf_gpu_thermal.py`
+and its direct phase/enthalpy tests; `advection_momentum_physics` owns
+`python/lpbf_transient_3d_gpu.py` and its direct flow/projection tests;
+`gpu_alloy_validity_path` owns `python/lpbf_material_registry.py` plus related
+service/UI/tests, excluding the thermal solver. Root owns integration and
+checkpoint docs. Each task must keep source validity distinct from model
+capability, preserve other agents' edits, run targeted checks, and report any
+physics limitation it cannot resolve.
+
+Latest bounded CPU benchmark: the 1 mm, 20 µm bare-plate corridor completed
+4,267 steps across 25,200 cells in 24.47 s with relative energy error
+`6.53e-14`; a 10 mm run was not executed. The requested-width input now varies
+the corridor's transverse cell count; full P5 width sensitivity and NIST
+comparison remain open. A direct CPU/CUDA smoke of the production
+`free_surface_kinematics_kernel` on `cuda:0` produced identical center height
+(`2.5191626264131628e-05 m`, max absolute error 0). This validates that kernel
+on the small smoke field only, not the coupled Phase 22 projection/recoil
+solver on CUDA.
+
 P4 frozen 80 W IN718 3-mesh/3-timestep report is
 `docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json`: all six completed, energy
 PASS, mesh width inconclusive, mesh depth FAILED at 17.1875% finest-pair change,

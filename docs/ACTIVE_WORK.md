@@ -1,4 +1,42 @@
-# Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
+# Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
+
+## Continuation checkpoint — P7 evidence matrix, engine audit, and P8 build (2026-09-25)
+
+The goal remains active. User explicitly authorizes scientific fixes or a Python
+engine rebuild when evidence shows the current result is inadequate. Do not
+weaken acceptance gates or describe numerical/device parity as experimental
+validation.
+
+P7: `docs/IN625_P7_PROPERTY_EVIDENCE_MATRIX_2026-09-25.md` now maps chemistry,
+lot/state, evidence type, range, uncertainty, gate status and missing evidence
+for each required IN625 property. IN625 remains thermal-screening-only;
+`fullTransient` and `buildJob` remain closed. Sources for powder and substrate
+are distinct benchmark scopes; no cross-lot property splicing is admitted.
+
+Physics audit: Phase 21's `TransientEnthalpyFDMSolver` is deliberately a
+stationary 2D screening model: `speed_m_s` is ignored, beam radius/absorptivity
+are fixed, and the 2D source has no out-of-plane power normalization. The
+worker still exposes the named RPC, but the service method has no indexed UI
+caller. Preserve its screening label and do not present it as a scan-resolved
+melt pool. A future traveling-source solver would need its own model contract,
+power normalization, conservation checks and validation scope. P4 tied-peak
+endpoint selection is a plausible discrete-observable sensitivity (439/300/25
+equal endpoints by mesh), not a proven cause of the frozen failed result.
+P5 stays unavailable because the current model lacks matching melt flow,
+evaporation mass transfer and mass/latent-energy closure.
+
+P8: current source built successfully with `npm run build`; Vite reports a
+large-chunk warning for Three.js. The freshly built server and Python worker
+started locally and `/api/health` returned `status: ok`. Fresh CUA access to the
+localhost UI then failed on CDP `Emulation.setFocusEmulationEnabled`; no fresh
+keyboard/select/compute/archive/restore interaction was verified. Existing
+2026-09-24 `PROOF.md` evidence remains historical software-flow evidence only.
+
+Next: retry the fresh P8 browser and keyboard acceptance on the rebuilt app;
+then continue P4 tied-peak diagnostic design without changing the frozen
+acceptance protocol and keep P7 full-transient/build-job closed until source
+evidence passes admission. Preserve user-owned changes and stage only files
+explicitly owned by this work.
 
 ## Continuation checkpoint — layer-conforming P4 v2 result (2026-09-24)
 

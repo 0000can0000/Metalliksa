@@ -17,8 +17,10 @@ yüklenir. Aynı sınırlandırılmış termal problem açıkça seçilen GPU ci
 çalışır ve önceden dondurulmuş CPU/GPU sayısal karşılaştırma kapısından geçer.
 Dört mevcut alaşım için model yeterlilik ve veri boşluğu matrisi yayımlanır;
 en az bir yeni alaşım (öncelik IN625) kaynaklı özellik ve model veri kapısından
-geçerek desteklendiği yeteneklerde kullanılır. Başarısız bilimsel kapı başarılı
-gibi etiketlenmez.
+geçerek desteklendiği yeteneklerde kullanılır. Her yeni termal modelin GPU
+kabiliyeti ayrıca aynı özellik yasası ve sınır koşullarıyla CPU karşılaştırmasına
+tabi tutulur; en az bir yeni alaşım için GPU termal yolu doğrulanır. Başarısız
+bilimsel kapı başarılı gibi etiketlenmez.
 
 ## Paketler ve bağımlılıklar
 
@@ -30,8 +32,8 @@ gibi etiketlenmez.
 | P3 | Kaynak/run kalıcılığı ve uygulama API'si | P0, P1 | Tam snapshot, exact kaynak revizyonu, manifest ve bayt doğrulaması; çakışma/bozuk veri/legacy durumu; mevcut iş kuyruğu korunur |
 | P4 | CPU termal sayısal kapısı | P2 | Analitik korunum ve sınır testleri; en az üç ağ ve üç zaman seviyesi; sonuç öncesi sabitlenmiş toleranslarla yakınsama raporu; OpenFOAM kapsamı açık |
 | P5 | IN718 deney/ölçüm karşılaştırması | P3, P4 | Kaynak ve ölçüm operatörü, gerçek proses/geometri, tekrar grubu, belirsizlik ve kalibrasyon/holdout ayrımı bağlıdır; sonuç/eksik veri dürüstçe raporlanır |
-| P6 | GPU termal eşleşmesi | P2, P4 | Açık cihaz seçimi, aynı fizik/girdi/boundary, CPU karşılaştırması, bağımsız analitik kontrol, enerji/alan metrikleri ve bellek/süre profili |
-| P7 | Alaşım genişlemesi | P2, P4 | Dört alaşım yeterlilik matrisi; en az bir yeni alaşımın kaynaklı özellik revizyonu, sıcaklık kapsamı, model kabiliyeti ve ayrı sayısal kontrolleri |
+| P6 | GPU termal eşleşmesi ve alaşım adaptörleri | P2, P4, P7 | Açık cihaz seçimi; her GPU'ya açılan alaşımda aynı fizik/girdi/boundary; CPU karşılaştırması, bağımsız analitik kontrol, enerji/alan metrikleri ve bellek/süre profili; en az bir yeni alaşım GPU yolu |
+| P7 | Alaşım genişlemesi | P2, P4 | Dört alaşım yeterlilik matrisi; en az bir yeni alaşımın kaynaklı özellik revizyonu, sıcaklık kapsamı, CPU model kabiliyeti, GPU adaptör kararı ve ayrı sayısal kontrolleri |
 | P8 | Bütünleşik ürün akışı | P3, P5, P6, P7 | Seç→hesapla→karşılaştır→dışa aktar→geri yükle; eski sonuç ve başarısız/eksik durumları görünür; gerçek tarayıcı/klavye kontrolü |
 | P9 | Son entegrasyon kapısı | P0–P8, P10 | İlgili Python/TypeScript/sayısal/tarayıcı kontrolleri; değişiklik kapsamı, kanıt ve sınırlamalar; STATUS/PROOF ve bitiş kararı |
 | P10 | Çekirdek fizik kusurlarının giderilmesi | P0, ilgili motorun kanıt sınırı | Somut başarısız örnekten hareketle entalpi, enerji, sınır akısı, birim ve zaman adımı kusurlarını motor bazında düzelt; ilgili analitik/sayısal testleri ve değişen benchmark'ları çalıştır; çözülemeyen fizik ve deney sınırlarını çıktıda açık tut |
@@ -220,3 +222,31 @@ source bundle üretildi, doğrulandı ve ayrı kopyaya geri yüklendi; canlı ar
 değişmediği UI'da doğrulandı. Odaklı testler Python 10/10, TypeScript 35/35,
 lint ve diff check PASS. P8 yazılım akışı kabul edildi; bilimsel kıyas ve P5
 model geçerliliği hâlâ açık.
+
+## 2026-09-24 — P1 kimliği, P7 IN625 oracle'ı, P10 buharlaşma kapanışı
+
+P1 bileşik `buildJobIdentity` artık kanonik alaşımı, model kimliğini, solver
+revizyonunu, özellik snapshot şema/revizyonunu ve ayrı özellik SHA-256'sını
+bağlıyor. Başarılı sonuçta üretiliyor, cache anahtarına katılıyor ve cache hit
+sırasında doğrulanıyor. TypeScript oturumu eksik/tutarsız kimlikli başarılı
+sonucu reddediyor. Alias eşitliği ile model/revizyon/şema değişimleri odaklı
+testlerle kapsanıyor.
+
+P7 IN625 sınırlı füzyon-entalpi uygulaması için H(T), gizli ısı katkısı,
+süreklilik, monotonluk ve dH/dT değerlerini bağımsız Gauss-Legendre Cp
+integrasyonuyla denetleyen oracle eklendi. Bu yalnız sayısal uygulama tutarlılığı
+kanıtıdır; JMatPro/literatür modeli deneysel olarak doğrulanmamıştır, kaynak
+geçerlilik aralığı bilinmiyor ve build-job/tam transient kabulü kapalıdır.
+
+P10 incelemesi, OpenFOAM'ın VOF/süreklilik kütle aktarımı olmadan buharlaşma
+enerji kaybı ve geri tepme/plume kuvveti uyguladığını buldu. Üretilen çok-fizikli
+vakalar ve örtük C++ model varsayılanı artık bu terimleri kapatıyor; açık recoil
+formül fikstürü yalnızca formül kanıtı olarak açık kalıyor. Tanı çıktısı
+buharlaşma kütle aktarımı kapanışının olmadığını ve modelin nitelenmediğini
+belirtiyor. Bu güvenli bir yetenek sınırıdır; tam evaporatif VOF düzeltmesi
+değildir. OpenFOAM derleme/yürütme doğrulanmadı.
+
+Kullanıcı P6/P7'yi en az bir yeni alaşım için GPU termal yolu ve her alaşımda
+aynı yasa ile CPU/GPU yeterliliği gerektirecek şekilde genişletti. IN625 GPU
+adaptörünün uygulanabilirliği denetleniyor. P4/P5/P6 açık; bu yazılım ve sayısal
+kontrollerden bilimsel kabul sonucu çıkarılmıyor.

@@ -1,22 +1,27 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
-Latest physics slice adds the independent Phase 22 manufactured thermal oracle
-in `docs/PHASE22_MANUFACTURED_THERMAL_2026-09-24.md`: the production heat kernel
-matches a closed-form 3D diffusion field and exact integrated energy on CPU
-9³/17³/33³ and explicit RTX 4060 `cuda:0` 33³; focused tests pass 2/2. This
-closes that P6 subcheck only. Independent CPU, CUDA/Warp, and phase/flux audits
-found no additional high-confidence core-physics defect to patch; OpenFOAM
-evaporation mass closure and back-condensation remain unqualified scope limits.
-The archive contract now classifies `mode=screening` with
-`resolvedPhysics.transient=false` as `analytical-screening`. A fresh isolated UI
-flow ran IN718 Case 0 parameters, archived it with exact Table 4 revision 1,
-confirmed NIST comparison unavailable for analytical screening, then exported,
-verified, and restored a one-run/one-source bundle. Targeted validation: Python
-10/10, TypeScript 35/35, lint and diff checks pass. P6 remains partial; P4 tied-
-endpoint diagnostics are diagnostic-only, 75 W is inconclusive and frozen 80 W
-remains failed.
-Root owns report integration, the build-job archive boundary, and the next
-predeclared numerical/source gates; preserve all frozen acceptance criteria.
+Latest active slice (2026-09-24): P1 now emits a composite build-job identity
+over canonical alloy, model, solver revision, and property snapshot schema/
+revision/content hash; the separate property-only hash remains stable in meaning.
+The full identity participates in cache keys and successful TypeScript results
+are rejected when identity fields are missing or inconsistent. An independent
+IN625 enthalpy quadrature oracle passes, but the model remains unvalidated and
+build-job/full-transient admission stays closed.
+
+P10 found a high-confidence OpenFOAM closure defect: evaporation energy and
+recoil/plume sources had no corresponding VOF/continuity mass transfer. The
+generated multiphysics case and implicit C++ default now disable those sources;
+the explicit recoil-formula fixture remains enabled and is labeled as formula-
+only evidence. Diagnostics report absent mass-transfer closure. This does not
+implement a fully coupled evaporating VOF model. Focused validation: build-job
+identity script PASS, IN625/OpenFOAM gate 7/7, TypeScript session 12/12,
+`npm run lint` PASS, Python syntax check PASS; OpenFOAM compile not run. A GPU
+feasibility audit is active because P6/P7 now require a qualifying GPU thermal
+path for at least one newly admitted alloy. P4/P5/P6 remain open.
+
+Root owns report integration and the next GPU feasibility/integration gates;
+preserve frozen acceptance criteria and current user edits in `docs/README.md`,
+`sonkayıtlar/LOG.md`, and `docs/SCIENTIFIC_RESEARCH_VISION.md`.
 P5 Case 0's 480 µm run stopped at the fixed-material boiling guard after 133
 steps (0.1024% of scan). CPU enthalpy-FV lacks evaporation/free-surface/momentum;
 Phase 22 height-graph terms are heuristic and OpenFOAM defaults are not IN718-

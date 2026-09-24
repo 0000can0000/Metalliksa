@@ -1980,6 +1980,25 @@ export interface PythonLpbfBuildJobResult {
   engine: string;
   modelId: string;
   solverRevision?: string;
+  materialPropertySchemaVersion?: number;
+  materialPropertyRevision?: string;
+  materialPropertySha256?: string;
+  materialPropertySnapshot?: {
+    schemaVersion: number;
+    alloyId: string;
+    thermal: Record<string, unknown>;
+    slicer: Record<string, unknown>;
+  };
+  buildJobIdentity?: {
+    schemaVersion: number;
+    alloyId: string;
+    modelId: string;
+    solverRevision: string;
+    materialPropertySchemaVersion: number;
+    materialPropertyRevision: string;
+    materialPropertySha256: string;
+    sha256: string;
+  };
   assumptions: string[];
   alloyId: string;
   processSeed?: number;

@@ -11,9 +11,48 @@ const initialSpecimen = useMaterialSpecimenStore.getState().activeSpecimen;
 const initialBuild = useLpbfBuildJobStore.getState();
 const originalSolve = pythonComputationService.solveLpbfBuildJob;
 let calls = 0;
-const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => ({
-  success: true, modelId: "synthetic-session-fixture", solverRevision: BUILD_JOB_SOLVER_REVISION, uq: null, ambench: null, ...extra,
-}) as unknown as PythonLpbfBuildJobResult;
+const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => {
+  const result = {
+    success: true,
+    modelId: "synthetic-session-fixture",
+    solverRevision: BUILD_JOB_SOLVER_REVISION,
+    alloyId: "in718",
+    materialPropertySchemaVersion: 1,
+    materialPropertyRevision: "build-job-effective-properties-v1",
+    materialPropertySha256: "a".repeat(64),
+    uq: null,
+    ambench: null,
+    ...extra,
+  };
+  const alloyId = result.alloyId ?? "in718";
+  const modelId = result.modelId ?? "synthetic-session-fixture";
+  const solverRevision = result.solverRevision ?? BUILD_JOB_SOLVER_REVISION;
+  const propertySchemaVersion = result.materialPropertySchemaVersion ?? 1;
+  const propertyRevision = result.materialPropertyRevision ?? "build-job-effective-properties-v1";
+  const propertySha256 = result.materialPropertySha256 ?? "a".repeat(64);
+  const defaultIdentity = {
+    schemaVersion: 1,
+    alloyId,
+    modelId,
+    solverRevision,
+    materialPropertySchemaVersion: propertySchemaVersion,
+    materialPropertyRevision: propertyRevision,
+    materialPropertySha256: propertySha256,
+    sha256: "b".repeat(64),
+  };
+  return {
+    ...result,
+    materialPropertySnapshot: {
+      schemaVersion: propertySchemaVersion,
+      alloyId,
+      thermal: {},
+      slicer: {},
+    },
+    buildJobIdentity: Object.prototype.hasOwnProperty.call(extra, "buildJobIdentity")
+      ? extra.buildJobIdentity
+      : defaultIdentity,
+  } as unknown as PythonLpbfBuildJobResult;
+};
 
 beforeEach(() => {
   useMaterialSpecimenStore.setState({ activeSpecimen: initialSpecimen });
@@ -52,6 +91,31 @@ test("a backend result from a different solver revision is rejected", async () =
   pythonComputationService.solveLpbfBuildJob = async () => fixture({ solverRevision: "old-solver-revision" });
   await requestLpbfBuildJob();
   assert.match(useLpbfBuildJobStore.getState().error ?? "", /solver revision mismatch/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
+});
+
+test("successful results require a consistent material and model identity", async () => {
+  pythonComputationService.solveLpbfBuildJob = async () => fixture({
+    buildJobIdentity: undefined,
+  });
+  await requestLpbfBuildJob();
+  assert.match(useLpbfBuildJobStore.getState().error ?? "", /material\/model identity/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
+
+  pythonComputationService.solveLpbfBuildJob = async () => fixture({
+    buildJobIdentity: {
+      schemaVersion: 1,
+      alloyId: "in718",
+      modelId: "wrong-model",
+      solverRevision: BUILD_JOB_SOLVER_REVISION,
+      materialPropertySchemaVersion: 1,
+      materialPropertyRevision: "build-job-effective-properties-v1",
+      materialPropertySha256: "a".repeat(64),
+      sha256: "b".repeat(64),
+    },
+  });
+  await requestLpbfBuildJob();
+  assert.match(useLpbfBuildJobStore.getState().error ?? "", /material\/model identity/);
   assert.equal(useLpbfBuildJobStore.getState().job, null);
 });
 

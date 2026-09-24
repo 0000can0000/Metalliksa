@@ -19,9 +19,16 @@ from four_alloy_materials import (
 from lpbf_build_job_schema import LpbfBuildJobRequest
 from lpbf_build_job_material_snapshot import (
     build_ambench_material_property_snapshot,
+    build_build_job_identity,
     build_material_property_snapshot,
 )
-from lpbf_job_cache import BUILD_JOB_SOLVER_REVISION, build_cache_key, cache_get, cache_put
+from lpbf_job_cache import (
+    BUILD_JOB_MODEL_ID,
+    BUILD_JOB_SOLVER_REVISION,
+    build_cache_key,
+    cache_get,
+    cache_put,
+)
 from lpbf_screening_uq import apply_uq_prop_scales, run_screening_uq
 from lpbf_thermal_solver import calculate_meltpool_physics
 from murakami_fatigue_screening import (
@@ -373,6 +380,13 @@ def solve_lpbf_build_job(data):
         material_snapshot, material_property_sha256 = build_material_property_snapshot(
             alloy_id, thermal_mat, slicer_mat
         )
+        build_job_identity = build_build_job_identity(
+            alloy_id,
+            BUILD_JOB_MODEL_ID,
+            BUILD_JOB_SOLVER_REVISION,
+            material_property_sha256,
+            material_snapshot["schemaVersion"],
+        )
         ambench_snapshot, ambench_property_sha256 = (
             build_ambench_material_property_snapshot(IN625_VALIDATION_PROPS)
             if data.get("includeAmbench", False) else (None, None)
@@ -386,6 +400,7 @@ def solve_lpbf_build_job(data):
     cache_data["thermalMaterial"] = thermal_mat
     cache_data["slicerMaterial"] = slicer_mat
     cache_data["materialPropertySha256"] = material_property_sha256
+    cache_data["buildJobIdentity"] = build_job_identity
     cache_data["amBenchMaterialPropertySha256"] = ambench_property_sha256
     try:
         cache_key = build_cache_key(cache_data)
@@ -397,6 +412,7 @@ def solve_lpbf_build_job(data):
             cached is not None
             and cached.get("success") is True
             and cached.get("solverRevision") == BUILD_JOB_SOLVER_REVISION
+            and cached.get("buildJobIdentity") == build_job_identity
             and cached.get("alloyId") == alloy_id
             and cached.get("materialPropertySha256") == material_property_sha256
             and cached.get("materialPropertySnapshot") == material_snapshot
@@ -591,8 +607,9 @@ def solve_lpbf_build_job(data):
     result = {
         "success": True,
         "engine": "lpbf_build_job",
-        "modelId": "rosenthal-screening-v1",
+        "modelId": BUILD_JOB_MODEL_ID,
         "solverRevision": BUILD_JOB_SOLVER_REVISION,
+        "buildJobIdentity": build_job_identity,
         "assumptions": assumptions,
         "alloyId": alloy_id,
         "materialPropertySchemaVersion": material_snapshot["schemaVersion"],

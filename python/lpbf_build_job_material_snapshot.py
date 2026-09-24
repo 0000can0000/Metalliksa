@@ -7,10 +7,12 @@ import hashlib
 import json
 import math
 
-from four_alloy_materials import slicer_props, thermal_props
+from four_alloy_materials import resolve_alloy_id, slicer_props, thermal_props
 
 
 MATERIAL_PROPERTY_SCHEMA_VERSION = 1
+MATERIAL_PROPERTY_REVISION = "build-job-effective-properties-v1"
+BUILD_JOB_IDENTITY_SCHEMA_VERSION = 1
 
 # Keep this list aligned with property reads in lpbf_thermal_solver. Optional
 # properties are materialized with the same defaults as that solver.
@@ -68,6 +70,42 @@ def build_material_property_snapshot(alloy_id, thermal_name, slicer_name):
         "slicer": {"density_gcm3": density},
     }
     return snapshot, _digest(snapshot)
+
+
+def build_build_job_identity(
+    alloy_id,
+    model_id,
+    solver_revision,
+    material_property_sha256,
+    material_property_schema_version=MATERIAL_PROPERTY_SCHEMA_VERSION,
+    material_property_revision=MATERIAL_PROPERTY_REVISION,
+):
+    """Hash canonical model and effective-property identity independently of properties."""
+    canonical_alloy_id = resolve_alloy_id(alloy_id)
+    if canonical_alloy_id is None:
+        raise ValueError(f"Unsupported LPBF alloy identity: {alloy_id!r}")
+    for field, value in (("modelId", model_id), ("solverRevision", solver_revision),
+                         ("materialPropertyRevision", material_property_revision)):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Invalid build-job identity {field}")
+    if (isinstance(material_property_schema_version, bool)
+            or not isinstance(material_property_schema_version, int)
+            or material_property_schema_version < 1):
+        raise ValueError("Invalid material property snapshot schema version")
+    if (not isinstance(material_property_sha256, str)
+            or len(material_property_sha256) != 64
+            or any(char not in "0123456789abcdef" for char in material_property_sha256)):
+        raise ValueError("Invalid material property snapshot SHA-256")
+    identity = {
+        "schemaVersion": BUILD_JOB_IDENTITY_SCHEMA_VERSION,
+        "alloyId": canonical_alloy_id,
+        "modelId": model_id,
+        "solverRevision": solver_revision,
+        "materialPropertySchemaVersion": material_property_schema_version,
+        "materialPropertyRevision": material_property_revision,
+        "materialPropertySha256": material_property_sha256,
+    }
+    return {**identity, "sha256": _digest(identity)}
 
 
 def build_ambench_material_property_snapshot(in625_props):

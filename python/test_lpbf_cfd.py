@@ -15,6 +15,8 @@ import math
 import os
 import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from lpbf_cfd import (
     CFD_MODEL_ID,
@@ -26,6 +28,7 @@ from lpbf_cfd import (
     read_foam_vector_field,
     run_cfd_simulation,
     setup_darcy_damping_case,
+    setup_cfd_multiphysics_case,
     setup_droplet_case,
     setup_marangoni_case,
     setup_recoil_case,
@@ -34,6 +37,50 @@ from lpbf_cfd import (
     stefan_analytical_solution,
     verify_cfd_capability,
 )
+
+
+class TestEvaporationMassClosureGate(unittest.TestCase):
+    """Keep unclosed evaporation disabled in production case generation."""
+
+    def test_production_multiphysics_case_disables_evaporation_sources(self):
+        p = {
+            "beamDiameter_um": 20.0,
+            "trackLength_um": 100.0,
+            "tracks": 1,
+            "hatch_um": 80.0,
+            "mesh_um": 20.0,
+            "layers": 1,
+            "layer_um": 40.0,
+            "maxDt_s": 1e-6,
+        }
+        m = {"solidus_K": 1877.0, "liquidus_K": 1928.0,
+             "boiling_K": 3560.0, "absorptivity": 0.4}
+        segment = {
+            "start_s": 0.0, "end_s": 1e-6,
+            "start": (0.0, 0.0), "end": (100e-6, 0.0), "layer": 0,
+        }
+        with tempfile.TemporaryDirectory(prefix="test_cfd_evap_gate_", dir=Path(__file__).parent) as td:
+            with patch("lpbf_simulation.scan_segments", return_value=([segment], 1e-6)), \
+                 patch("powder_packer.generate_powder_bed", return_value=[]), \
+                 patch("powder_packer.compute_powder_bed_statistics", return_value={}):
+                setup_cfd_multiphysics_case(p, m, td)
+            thermal = (Path(td) / "constant" / "thermalProperties").read_text()
+        self.assertIn("active          false;", thermal)
+
+    def test_recoil_formula_verification_fixture_remains_explicitly_enabled(self):
+        with tempfile.TemporaryDirectory(prefix="test_recoil_formula_", dir=Path(__file__).parent) as td:
+            setup_recoil_case(td)
+            thermal = (Path(td) / "constant" / "thermalProperties").read_text()
+        self.assertIn("active          true;", thermal)
+
+    def test_cpp_evaporation_default_is_inactive_and_reports_missing_closure(self):
+        root = Path(__file__).parent
+        model = (root / "openfoam" / "meltPoolFoam" / "evaporationModel.H").read_text()
+        solver = (root / "openfoam" / "meltPoolFoam" / "metalliksaMeltPoolFoam.C").read_text()
+        self.assertIn('lookupOrDefault<bool>("active", false)', model)
+        self.assertIn("evaporativeMassTransferClosure", solver)
+        self.assertIn("evaporativeMassTransferClosureAvailable", solver)
+        self.assertIn("unqualified-mass-transfer-closure-absent", solver)
 
 
 class TestLpbfCfdPhase1(unittest.TestCase):

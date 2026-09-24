@@ -92,6 +92,22 @@ def main():
     assert ti["materialPropertySchemaVersion"] == 1
     assert len(ti["materialPropertySha256"]) == 64
     assert ti["materialPropertySnapshot"]["alloyId"] == "ti6al4v"
+    from lpbf_build_job_material_snapshot import build_build_job_identity
+
+    assert ti["buildJobIdentity"] == {
+        "schemaVersion": 1,
+        "alloyId": "ti6al4v",
+        "modelId": ti["modelId"],
+        "solverRevision": ti["solverRevision"],
+        "materialPropertySchemaVersion": ti["materialPropertySchemaVersion"],
+        "materialPropertyRevision": "build-job-effective-properties-v1",
+        "materialPropertySha256": ti["materialPropertySha256"],
+        "sha256": build_build_job_identity(
+            "Ti-6Al-4V", ti["modelId"], ti["solverRevision"],
+            ti["materialPropertySha256"], ti["materialPropertySchemaVersion"],
+        )["sha256"],
+    }
+    assert len(ti["buildJobIdentity"]["sha256"]) == 64
     assert "gates" in ti["verdict"] and len(ti["verdict"]["gates"]) >= 7
 
     # Same-alloy aliases are accepted but normalized before solver invocation.
@@ -130,6 +146,7 @@ def main():
     assert aliased_ti["success"]
     assert received_materials == {"thermal": "Ti-6Al-4V", "slicer": "Ti-6Al-4V ELI"}
     assert aliased_ti["materialPropertySha256"] == ti["materialPropertySha256"]
+    assert aliased_ti["buildJobIdentity"] == ti["buildJobIdentity"]
 
     # Hash cache hit on identical request
     clear_cache()
@@ -170,6 +187,7 @@ def main():
                            "layerThickness_um": 40, "hatchSpacing_um": 110})
         assert changed["cache"]["hit"] is False
         assert changed["materialPropertySha256"] != a["materialPropertySha256"]
+        assert changed["buildJobIdentity"]["sha256"] != a["buildJobIdentity"]["sha256"]
         assert changed["materialPropertySnapshot"]["thermal"]["thermal_conductivity_W_mK"] == old_conductivity + 1.0
         assert changed["thermal"]["processParameters"]["effectiveConductivity_W_mK"] != a["thermal"]["processParameters"]["effectiveConductivity_W_mK"]
     finally:
@@ -207,6 +225,34 @@ def main():
     assert revision_key == build_cache_key({})
     with patch.object(lpbf_job_cache, "BUILD_JOB_SOLVER_REVISION", "next-implementation"):
         assert build_cache_key({}) != revision_key
+
+    base_identity = a["buildJobIdentity"]
+    identity_inputs = (
+        base_identity["alloyId"], base_identity["modelId"], base_identity["solverRevision"],
+        base_identity["materialPropertySha256"], base_identity["materialPropertySchemaVersion"],
+    )
+    model_identity = build_build_job_identity(
+        identity_inputs[0], "next-model", *identity_inputs[2:]
+    )
+    solver_identity = build_build_job_identity(
+        identity_inputs[0], identity_inputs[1], "next-solver", *identity_inputs[3:]
+    )
+    snapshot_schema_identity = build_build_job_identity(
+        *identity_inputs[:4], identity_inputs[4] + 1
+    )
+    snapshot_revision_identity = build_build_job_identity(
+        *identity_inputs[:4], identity_inputs[4], "build-job-effective-properties-v2"
+    )
+    assert model_identity["materialPropertySha256"] == base_identity["materialPropertySha256"]
+    assert solver_identity["materialPropertySha256"] == base_identity["materialPropertySha256"]
+    assert len({
+        base_identity["sha256"], model_identity["sha256"], solver_identity["sha256"],
+        snapshot_schema_identity["sha256"], snapshot_revision_identity["sha256"],
+    }) == 5
+    keyed = {"buildJobIdentity": base_identity}
+    base_identity_key = build_cache_key(keyed)
+    for variant in (model_identity, solver_identity, snapshot_schema_identity, snapshot_revision_identity):
+        assert build_cache_key({"buildJobIdentity": variant}) != base_identity_key
 
     # UQ must carry the whole frozen base, even when a sample changes only one
     # property and the live registry changes after the base solve.

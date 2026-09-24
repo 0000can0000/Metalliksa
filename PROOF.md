@@ -1446,3 +1446,35 @@ currently uses an evaporative energy sink/recoil term without a demonstrated
 metal mass/VOF closure; its back-condensation assumption and IN718 applicability
 remain unverified, so that branch is not treated as a qualified free-surface
 model. P6 remains partial; do not remove the CPU boiling guard or claim P5.
+
+## 2026-09-24 — Build-job identity and physics gate evidence
+
+Successful build-job results now carry a composite SHA-256 over canonical
+`alloyId`, `modelId`, `solverRevision`, property-snapshot schema/revision, and
+the unchanged property-only SHA-256. Alias, model/revision/schema, property
+change, cache-key, and stale-cache checks are in `python/test_lpbf_build_job.py`;
+the TypeScript build session also rejects missing/inconsistent identity fields.
+The dedicated Python script completed successfully in the identity worker;
+focused TypeScript session tests passed 12/12.
+
+The IN625 bounded fusion-enthalpy screen now has an independent 12-point
+Gauss-Legendre Cp-integration oracle. It checks H(T), continuity, monotonicity,
+latent contribution (290 kJ/kg), and dH/dT. Together with the material and
+capability checks, 7/7 focused Python tests passed. This is numerical formula
+verification only; source-validity range and experimental model validity stay
+unknown, and build-job/full transient remain unavailable.
+
+OpenFOAM code inspection confirmed that its evaporation flux contributed to
+latent energy and recoil/plume sources without a matching VOF/continuity mass
+transfer. The production case generator and C++ default now disable this
+unclosed source group; the recoil formula fixture remains explicitly enabled
+for equation/force-direction checks only. Three focused tests passed. Solver
+diagnostics record absent mass-transfer closure and unqualified status. No
+OpenFOAM build/runtime verification was available, and full evaporating-VOF
+mass/energy/momentum closure remains unfinished.
+
+TypeScript session tests: 12/12 PASS; `npm run lint`: PASS; Python syntax checks:
+PASS; `git diff --check`: PASS. One root repeat of the expensive build-job
+script was interrupted after it ran over 85 seconds; the assigned agent had
+already completed that same script successfully. P6/P7 are updated to require a
+GPU thermal qualification route for at least one newly admitted alloy.

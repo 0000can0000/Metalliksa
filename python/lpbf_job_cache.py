@@ -23,6 +23,7 @@ _MAX_ENTRIES = 64
 # Increment when build-job solver behavior changes so a warm worker cannot
 # return results produced by an earlier implementation for identical inputs.
 BUILD_JOB_SOLVER_REVISION = "lpbf-build-job-core-peak-field-v2"
+BUILD_JOB_MODEL_ID = "rosenthal-screening-v1"
 
 
 def cache_stats() -> Dict[str, Any]:
@@ -65,11 +66,16 @@ def build_cache_key(data: Dict[str, Any]) -> str:
         defects_norm = [round(float(x), 6) for x in defects]
     else:
         defects_norm = None
+    build_job_identity = data.get("buildJobIdentity")
+    build_job_identity_sha256 = (
+        build_job_identity.get("sha256") if isinstance(build_job_identity, dict) else None
+    )
     payload = {
         "alloyId": data.get("alloyId") or "in718",
         "thermalMaterial": data.get("thermalMaterial"),
         "slicerMaterial": data.get("slicerMaterial"),
         "materialPropertySha256": data.get("materialPropertySha256"),
+        "buildJobIdentitySha256": build_job_identity_sha256,
         "amBenchMaterialPropertySha256": data.get("amBenchMaterialPropertySha256") if include_amb else None,
         "P": round(float(data.get("laserPower_W", 0)), 6),
         "v": round(float(data.get("scanSpeed_mm_s", data.get("scanSpeed_mms", 0))), 6),

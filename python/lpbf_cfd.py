@@ -1802,7 +1802,11 @@ def setup_recoil_case(
     end_time: float = 2e-7,
     dt: float = 5e-8,
 ):
-    """Set up a 2D recoil pressure verification case.
+    """Set up a 2D recoil-formula verification case.
+
+    This fixture explicitly enables the recoil/evaporation source to verify
+    the pressure formula and force direction only. It does not verify an
+    evaporating free surface or mass-transfer closure.
 
     Geometry:
       - x in [0, lx], y in [0, ly], 1 cell deep in z.
@@ -1986,7 +1990,7 @@ dSigmaDT        -2.6e-4;
 Tref_sigma      1928.0;
 interfaceThreshold 1e3;
 
-// Phase 3: Evaporation and recoil parameters
+// Phase 3: Formula-verification fixture only; not an evaporating VOF model.
 active          true;
 latentHeatVap   {latent_heat_vap:.6e};
 boiling_T       {boiling_T:.6g};
@@ -2490,7 +2494,8 @@ dSigmaDT        -2.6e-4;
 Tref_sigma      {m["liquidus_K"]};
 interfaceThreshold 1e3;
 
-active          true;
+// Evaporation/recoil/plume remain disabled until VOF mass transfer is closed.
+active          false;
 latentHeatVap   7.4e6;
 boiling_T       {m["boiling_K"]};
 molarMass       0.046;

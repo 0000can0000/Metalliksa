@@ -218,6 +218,30 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
       if (job.solverRevision !== BUILD_JOB_SOLVER_REVISION) {
         throw new Error("LPBF build-job solver revision mismatch; update the Python solver before using this result.");
       }
+      const identity = job.buildJobIdentity;
+      const snapshot = job.materialPropertySnapshot;
+      if (
+        !identity ||
+        !snapshot ||
+        !snapshot.thermal || typeof snapshot.thermal !== "object" || Array.isArray(snapshot.thermal) ||
+        !snapshot.slicer || typeof snapshot.slicer !== "object" || Array.isArray(snapshot.slicer) ||
+        !Number.isSafeInteger(job.materialPropertySchemaVersion) ||
+        !Number.isSafeInteger(snapshot.schemaVersion) ||
+        identity.schemaVersion !== 1 ||
+        identity.alloyId !== job.alloyId ||
+        snapshot.alloyId !== job.alloyId ||
+        identity.modelId !== job.modelId ||
+        identity.solverRevision !== job.solverRevision ||
+        identity.materialPropertySchemaVersion !== job.materialPropertySchemaVersion ||
+        snapshot.schemaVersion !== job.materialPropertySchemaVersion ||
+        identity.materialPropertyRevision !== job.materialPropertyRevision ||
+        typeof job.materialPropertyRevision !== "string" ||
+        !/^[a-f0-9]{64}$/.test(job.materialPropertySha256 ?? "") ||
+        identity.materialPropertySha256 !== job.materialPropertySha256 ||
+        !/^[a-f0-9]{64}$/.test(identity.sha256)
+      ) {
+        throw new Error("LPBF build-job material/model identity is missing or inconsistent; update the Python solver before using this result.");
+      }
       if (useLpbfBuildJobStore.getState().seq !== seq) return;
       const prev = useLpbfBuildJobStore.getState();
       const sameEvidence = prev.sessionEvidenceKey === evidenceKey;

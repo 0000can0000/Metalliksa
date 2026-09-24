@@ -82,19 +82,29 @@ unowned.
 
 Latest bounded CPU benchmark: the 1 mm, 20 µm bare-plate corridor completed
 4,267 steps across 25,200 cells in 24.47 s with relative energy error
-`6.53e-14`; a 10 mm run was not executed. The requested-width input now varies
-the corridor's transverse cell count; full P5 width sensitivity and NIST
-comparison remain open. A direct CPU/CUDA smoke of the production
-`free_surface_kinematics_kernel` on `cuda:0` produced identical center height
-(`2.5191626264131628e-05 m`, max absolute error 0). This validates that kernel
-on the small smoke field only, not the coupled Phase 22 projection/recoil
-solver on CUDA.
+`6.53e-14`. The full Phase 22 `solve_toolpath` path then ran a deterministic
+one-step case on both CPU and actual RTX 4060 `cuda:0`; both pressure solves
+converged in seven PCG iterations. Maximum-temperature difference was
+0.000244 K and maximum-velocity difference was 1.69e-8 m/s, with identical melt
+volume and keyhole depth. This verifies a tiny coupled-device smoke, not full
+workload parity or performance. The 10 mm bare-plate CPU attempt stopped at the
+documented boiling-validity boundary before completing a scan; see
+`docs/p5_case0_10mm_480um_validity_stop.json`.
 
-Current separate task: `corridor_sensitivity_feasibility` is preparing and
-running an exploratory 10 mm, 20 µm mesh width-sensitivity matrix at 320/480/640
-µm for the NIST Case 0 process inputs under the ideal-Gaussian assumption.
-It owns only a new protocol/result document. This does not use a measured beam
-profile or experimental line identities and cannot make P5 available.
+`corridor_sensitivity_feasibility` completed a preregistered three-width
+feasibility audit (`a065b77`); all estimated CPU runs exceeded the reference
+worker's 300 s timeout, so no solve was initially launched. Root then tried the
+480 µm case directly on the local CPU reference solver. It stopped after 133
+source-step evaluations at the documented boiling-validity boundary because
+the fixed-material solver has no evaporation/free-surface model. See
+`docs/p5_case0_10mm_480um_validity_stop.json`. No section or comparison result
+was emitted. The ideal-Gaussian input and absent experimental line identities
+still prevent P5 qualification.
+
+A separate primary-source audit of IN625 is recorded in
+`docs/IN625_P7_SOURCE_GATE_2026-09-24.md`. It found no matched full-range table
+that can pass P7 without unsupported material-state transfer or extrapolation;
+the current screening capability and full-transient/GPU gate are unchanged.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is
 `docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json`: all six completed, energy

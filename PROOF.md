@@ -1243,3 +1243,40 @@ the same monotone enthalpy table, fusion interval, fixed reference density, and
 within `1e-8 K`; actual CUDA pilot checks, including IN718 and the existing
 estimated-legacy 316L snapshot, passed. This is numerical parity and contract
 evidence, not material-data or experimental qualification.
+
+## 2026-09-24 — Coupled Phase 22 CUDA smoke and NIST Case 0 validity stop
+
+On Warp 1.17.0 and the actual RTX 4060 Laptop GPU (`cuda:0`), the complete
+`TransientEnthalpy3DGPU.solve_toolpath` path ran the same deterministic
+positive-duration one-step case on CPU and CUDA. Both pressure projections
+converged in seven PCG iterations. CPU/CUDA differences were `0.000244 K` in
+maximum temperature, `1.69e-8 m/s` in maximum velocity, and zero in reported
+melt volume and keyhole depth. Post-projection relative L2 divergence was
+`6.227e-5` CPU and `6.221e-5` CUDA against the `1e-3` target. This proves
+device execution and close parity only for that tiny smoke; the API did not
+report an energy metric, and this is not full-solver workload parity or
+performance qualification.
+
+The preregistered 10 mm, 480 µm corridor case was attempted directly on the
+local CPU reference solver. After 133 source-step evaluations (7.23 s wall
+time), it stopped at the declared boiling-enthalpy limit with
+`Thermal model validity exceeded (boiling or nonphysical enthalpy);
+evaporation/free-surface CFD required`. The last attempted step began at
+10.691 µs of a 10.437 ms scan and captured 99.999999998% of the source; domain
+truncation did not cause the stop. The fixed-material solver has no evaporation
+mass/energy sink or moving free surface, so no full-track section, energy
+balance, or comparison residual was produced. Exact attempt evidence is in
+`docs/p5_case0_10mm_480um_validity_stop.json`. P5 remains `unavailable`.
+
+## 2026-09-24 — IN625 P7 source gate
+
+A targeted primary-source audit found separate IN625 evidence for solid Cp and
+thermal diffusivity with 95% uncertainties (Georgia Tech Gen3 CSP; conductivity
+is derived using a constant density), liquid density/viscosity/surface tension
+for BÖHLER L625, powder DRS absorptivity at 1070 nm, and an identified NIST
+AM-Bench powder lot. The BÖHLER composition is not the NIST lot; powder DRS is
+not a hot molten-surface law; none of the combined evidence gives the required
+same-lot, uncertainty-bounded full table through boiling. IN625 therefore stays
+limited to its current unvalidated fusion-enthalpy screening; full transient
+and GPU admission remain closed. Source details and direct citations are in
+`docs/IN625_P7_SOURCE_GATE_2026-09-24.md`.

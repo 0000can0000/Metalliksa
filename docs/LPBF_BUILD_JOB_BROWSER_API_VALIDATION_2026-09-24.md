@@ -30,7 +30,15 @@ Local UI `http://localhost:3000/?lpbfStage=comparison#/3d-distortion-lab` loaded
 
 ## Current integration boundary
 
-The source/run archive currently archives transient simulation worker captures. The LPBF build-job screening request is a separate endpoint and its result is not represented by that transient run capture. Consequently, the existing passing API fixtures plus this UI observation do **not** prove a single build-job → evidence comparison → export → restore/reload chain with the selected build-job's material-property snapshot.
+The durable run archive now labels captures as `build-screening` or
+`transient-thermal`; old v1 captures remain readable as `legacy-unspecified`.
+Build-job classification is bound to the worker result plus captured
+`settings.jobType`, and the NIST optical gate stays unavailable for current and
+legacy build-job results. The archive UI displays the kind. Focused tests cover
+real queue execution through capture, preview/import classification,
+get/list, and bundle kind preservation through restore. They do not yet prove a
+single live selected-build-job browser session all the way through evidence
+comparison, bundle export, isolated restore, and reloaded display.
 
 ## Current-checkout follow-up
 
@@ -46,7 +54,6 @@ completed build job, labeled `legacy-unbound`; the run/source repository import,
 export, and isolated restore path has not been exercised for this result.
 
 The browser observation used the old `/api/python/lpbf-build-job` route and a
-different local service. Current checkout API execution is now verified, but
-this does not close the durable build-job archive/compare/export/restore chain:
-the archive service still captures transient worker runs, and no build-job
-screening archive contract has been accepted or exercised.
+different local service. Current checkout API execution and the separate
+build-screening archive contract are now verified. The combined selected UI
+workflow through bundle export/isolated restore/reload remains open.

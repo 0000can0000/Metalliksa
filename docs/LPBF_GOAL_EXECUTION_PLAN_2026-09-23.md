@@ -139,6 +139,17 @@ Nominal Gaussian sonuçları ayrı, açıkça unvalidated tarama olarak kalır;
 ölçülmüş profil, altı kesit gözlemi ve geçen bağımsız 3+3 kapı olmadan NIST
 residual üretilmez.
 
+2026-09-24 physics follow-up adds a hard model-validity stop: the 10 mm CPU
+Case 0 attempt reaches the fixed-material boiling boundary after 133 source
+steps, at only 0.1024% of the scan. Do not remove the guard, rerun the same
+solver, or infer a complete melt pool. `enthalpy-fv-6` currently has no
+evaporation, surface-mass recession, recoil, or melt-flow equations; Phase 22's
+height-graph terms are heuristic and the available OpenFOAM defaults are not
+IN718-qualified. P5 stays unavailable until a new, source-bounded material/beam
+model revision passes independent manufactured conservation and force/energy
+checks, then receives a new prospective 3-mesh × 3-timestep protocol. This
+prerequisite does not change any existing P4/P5 threshold.
+
 ## Değişmez sözleşmeler
 
 - `four_alloy_materials.py` mevcut dört alaşımın ortak malzeme otoritesidir.

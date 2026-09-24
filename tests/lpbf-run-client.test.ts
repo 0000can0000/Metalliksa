@@ -13,7 +13,7 @@ const document = { schemaVersion: 1, runId: jobId, capture, sources: [] } as con
 const source = { datasetId: 'source-1', revision: 1, documentSha256: 'c'.repeat(64) };
 const boundDocument = { ...document, sources: [source] };
 const record = { document, documentSha256: hash, createdAt: '2026-09-23T00:00:00Z',
-  evidenceStatus: 'unvalidated-model', sourceBindingStatus: 'legacy-unlinked' } as const;
+  evidenceStatus: 'unvalidated-model', sourceBindingStatus: 'legacy-unlinked', runKind: 'legacy-unspecified' } as const;
 const signal = new AbortController().signal;
 
 function respond(t: any, body: unknown) {
@@ -42,19 +42,19 @@ test('run client rejects a source binding status inconsistent with its document'
 
 test('run list accepts current server rows', async t => {
   respond(t, [{ runId: jobId, createdAt: record.createdAt, evidenceStatus: record.evidenceStatus,
-    sourceBindingStatus: record.sourceBindingStatus }]);
+    sourceBindingStatus: record.sourceBindingStatus, runKind: record.runKind }]);
   assert.equal((await listRuns(signal))[0].runId, jobId);
 });
 
 test('run list requires the server evidence status', async t => {
   respond(t, [{ runId: jobId, createdAt: record.createdAt, evidenceStatus: 'unreviewed-run-archive',
-    sourceBindingStatus: record.sourceBindingStatus }]);
+    sourceBindingStatus: record.sourceBindingStatus, runKind: record.runKind }]);
   await assert.rejects(listRuns(signal), /invalid/i);
 });
 
 test('run list requires a recognized source binding status', async t => {
   respond(t, [{ runId: jobId, createdAt: record.createdAt, evidenceStatus: record.evidenceStatus,
-    sourceBindingStatus: 'unspecified' }]);
+    sourceBindingStatus: 'unspecified', runKind: record.runKind }]);
   await assert.rejects(listRuns(signal), /invalid/i);
 });
 

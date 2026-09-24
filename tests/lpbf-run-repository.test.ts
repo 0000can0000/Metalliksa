@@ -11,8 +11,8 @@ import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
 import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
 
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
-function capture() {
-  const result = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
+function capture(runKind?: 'build-screening' | 'transient-thermal') {
+  const result: any = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
     fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
     settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
     material: { name: 'Synthetic', quality: 'synthetic', source: 'Unit test only' },
@@ -22,9 +22,16 @@ function capture() {
     provenance: { executionRuntime: null },
     artifacts: [{ path: 'case/empty', size_bytes: 0, sha256: sha('') },
       { path: 'peak-field.npz', size_bytes: 3, sha256: sha('abc') }] };
+  if (runKind) {
+    result['runKind'] = runKind;
+    if (runKind === 'build-screening') {
+      result['settings']['jobType'] = 'build-job';
+      result['verdict'] = 'screening-only';
+    }
+  }
   return { schemaVersion: 1, jobId: 'a'.repeat(32), resultJson: JSON.stringify(result),
     inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material),
-    contractStatus: 'legacy-unbound' };
+    contractStatus: 'legacy-unbound', ...(runKind ? { runKind } : {}) };
 }
 function fixture(t: TestContext) {
   const root = mkdtempSync(path.join(tmpdir(), 'lpbf-run-test-'));
@@ -51,6 +58,26 @@ test('dry run writes nothing; full import preserves empty/nested bytes and detac
   assert.notEqual(f.repository.get(raw.jobId)!.document.capture.materialJson, '{}');
   assert.equal((await f.store.verify({ sha256: sha(''), byteSize: 0 })).byteSize, 0);
   await assert.rejects(importRun(f.repository, f.store, capture(), [], f.sources, f.job), /conflict/i);
+});
+
+test('classification follows captured result identity through preview and import; old v1 records read as unspecified', async t => {
+  const f = fixture(t), raw = capture('build-screening');
+  writeFileSync(path.join(f.job, 'result.json'), raw.resultJson);
+  const preview = await dryRunRunImport(raw, [], f.sources, f.job);
+  assert.equal(preview.document.capture.runKind, 'build-screening');
+  const saved = await importRun(f.repository, f.store, raw, [], f.sources, f.job);
+  assert.equal(saved.runKind, 'build-screening');
+  assert.equal(f.repository.get(raw.jobId)?.runKind, 'build-screening');
+
+  const legacyCapture = capture();
+  const legacyResult = JSON.parse(legacyCapture.resultJson); delete legacyResult.runKind;
+  legacyCapture.resultJson = JSON.stringify(legacyResult);
+  const oldDocument = { schemaVersion: 1 as const, runId: 'b'.repeat(32),
+    capture: { ...legacyCapture, jobId: 'b'.repeat(32) }, sources: [] };
+  const oldSaved = f.repository.save(oldDocument);
+  assert.equal(oldSaved.runKind, 'legacy-unspecified');
+  assert.equal(Object.hasOwn(oldSaved.document.capture, 'runKind'), false);
+  assert.equal(f.repository.get(oldSaved.document.runId)?.runKind, 'legacy-unspecified');
 });
 
 test('reopen and metadata-only restore preserve hashes; tampered rows fail', async t => {

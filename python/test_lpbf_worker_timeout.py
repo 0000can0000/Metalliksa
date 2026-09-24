@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from lpbf_worker import Queue
+from lpbf_worker import Queue, _archive_run_kind
 
 
 class _CompletedChild:
@@ -21,6 +21,11 @@ class _CompletedChild:
 
 
 class WorkerTimeout(unittest.TestCase):
+    def test_worker_run_kind_is_explicit_and_keeps_gpu_archive_closed(self):
+        self.assertEqual(_archive_run_kind("build-job"), "build-screening")
+        self.assertEqual(_archive_run_kind(None), "transient-thermal")
+        self.assertIsNone(_archive_run_kind("gpu-thermal-pilot"))
+
     def test_build_job_without_timeout_uses_bounded_worker_default(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as root:
             queue = Queue(root=root, start=False)

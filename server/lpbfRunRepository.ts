@@ -10,10 +10,12 @@ import { artifactRelativePath } from './lpbfArtifactStore';
 export interface RunCapture {
   schemaVersion: 1; jobId: string; resultJson: string; inputJson: string; materialJson: string;
   contractStatus: 'core-v1-bound' | 'legacy-unbound';
+  runKind?: RunKind;
 }
+export type RunKind = 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
 export interface RunSourceLink { datasetId: string; revision: number; documentSha256: string }
 export interface RunDocument { schemaVersion: 1; runId: string; capture: RunCapture; sources: RunSourceLink[] }
-export interface RunRecord { document: RunDocument; documentSha256: string; createdAt: string; evidenceStatus: 'unvalidated-model' }
+export interface RunRecord { document: RunDocument; documentSha256: string; createdAt: string; evidenceStatus: 'unvalidated-model'; runKind: RunKind }
 const MAX_BYTES = 32 * 1024 * 1024;
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 const hash = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -42,11 +44,27 @@ export function validateRunDocument(raw: unknown): RunDocument {
   if (Buffer.byteLength(json) > MAX_BYTES) throw new Error('Run document too large');
   const d = JSON.parse(json);
   keys(d, ['schemaVersion', 'runId', 'capture', 'sources']);
-  keys(d.capture, ['schemaVersion', 'jobId', 'resultJson', 'inputJson', 'materialJson', 'contractStatus']);
+  if (!d.capture || typeof d.capture !== 'object' || Array.isArray(d.capture)) throw new Error('Invalid run fields');
+  const captureFields = Object.keys(d.capture);
+  if (captureFields.length !== 6 && captureFields.length !== 7
+    || ['schemaVersion', 'jobId', 'resultJson', 'inputJson', 'materialJson', 'contractStatus']
+      .some(key => !Object.hasOwn(d.capture, key))
+    || captureFields.some(key => !['schemaVersion', 'jobId', 'resultJson', 'inputJson', 'materialJson', 'contractStatus', 'runKind'].includes(key))) {
+    throw new Error('Invalid run fields');
+  }
   const c = d.capture;
   if (d.schemaVersion !== 1 || c.schemaVersion !== 1 || typeof d.runId !== 'string'
     || !/^[a-f0-9]{32}$/.test(d.runId) || d.runId !== c.jobId) throw new Error('Invalid run identity');
   const result = snapshot(c.resultJson);
+  const capturedRunKind = result.runKind === undefined ? 'legacy-unspecified' : result.runKind;
+  if (typeof capturedRunKind !== 'string'
+    || !['build-screening', 'transient-thermal', 'legacy-unspecified'].includes(capturedRunKind)
+    || (result.runKind === undefined) !== (c.runKind === undefined)
+    || (c.runKind !== undefined && c.runKind !== capturedRunKind)
+    || (capturedRunKind === 'build-screening' && result.settings?.jobType !== 'build-job')
+    || (capturedRunKind === 'transient-thermal' && !['transient-thermal', undefined].includes(result.settings?.jobType))) {
+    throw new Error('Invalid captured run classification');
+  }
   if (!result.verdict) { // Not a build-job
     parseSimulationJob({ id: c.jobId, status: 'completed', progress: 1, log: '', error: null, result });
   }
@@ -84,7 +102,8 @@ function decode(row: any): RunRecord {
       || !Number.isFinite(Date.parse(row.created_at))) throw new Error('Invalid row');
     const document = validateRunDocument(JSON.parse(row.document_json));
     if (document.runId !== row.run_id) throw new Error('Identity mismatch');
-    return { document, documentSha256: row.document_sha256, createdAt: row.created_at, evidenceStatus: 'unvalidated-model' };
+    return { document, documentSha256: row.document_sha256, createdAt: row.created_at,
+      evidenceStatus: 'unvalidated-model', runKind: document.capture.runKind ?? 'legacy-unspecified' };
   } catch { throw new Error('Run metadata integrity failed; existing records preserved'); }
 }
 
@@ -132,7 +151,8 @@ export class LpbfRunRepository {
       if (this.get(document.runId)) throw new Error('Run identity conflict; immutable record already exists');
       const createdAt = new Date().toISOString(), documentSha256 = digest(json);
       this.db.prepare('INSERT INTO lpbf_runs VALUES (?, ?, ?, ?)').run(document.runId, json, documentSha256, createdAt);
-      this.db.exec('COMMIT'); return { document, documentSha256, createdAt, evidenceStatus: 'unvalidated-model' };
+      this.db.exec('COMMIT'); return { document, documentSha256, createdAt,
+        evidenceStatus: 'unvalidated-model', runKind: document.capture.runKind ?? 'legacy-unspecified' };
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
   async backupMetadata(directory: string): Promise<{ path: string; artifactPayloadsIncluded: false }> {

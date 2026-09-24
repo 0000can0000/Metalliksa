@@ -11,7 +11,10 @@ export interface RunCapture {
   inputJson: string;
   materialJson: string;
   contractStatus: 'core-v1-bound' | 'legacy-unbound';
+  runKind?: RunKind;
 }
+
+export type RunKind = 'build-screening' | 'transient-thermal' | 'legacy-unspecified';
 
 export interface RunDocument {
   schemaVersion: 1;
@@ -28,6 +31,7 @@ export interface RunRecord {
   createdAt: string;
   evidenceStatus: 'unvalidated-model';
   sourceBindingStatus: RunSourceBindingStatus;
+  runKind: RunKind;
 }
 
 export type NistOpticalCaseNumber = '0' | '1.1' | '1.2' | '2.1' | '2.2' | '3.1' | '3.2';

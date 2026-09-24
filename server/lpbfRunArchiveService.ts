@@ -55,14 +55,14 @@ export class LpbfRunArchiveService {
     return new LpbfSourceRepository(filename, { readOnly: true });
   }
 
-  list(): { runId: string; createdAt: string; evidenceStatus: string; sourceBindingStatus: RunSourceBindingStatus }[] {
+  list(): { runId: string; createdAt: string; evidenceStatus: string; sourceBindingStatus: RunSourceBindingStatus; runKind: RunRecord['runKind'] }[] {
     const repository = this.runRepository(true);
     if (!repository) return [];
     try {
       const runs = [];
       for (const record of repository.allRuns()) {
         runs.push({ runId: record.document.runId, createdAt: record.createdAt,
-          evidenceStatus: record.evidenceStatus, sourceBindingStatus: bindingStatus(record) });
+          evidenceStatus: record.evidenceStatus, sourceBindingStatus: bindingStatus(record), runKind: record.runKind });
       }
       return runs;
     } finally { repository.close(); }

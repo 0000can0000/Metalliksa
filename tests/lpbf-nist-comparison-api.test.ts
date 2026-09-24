@@ -54,20 +54,30 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
     resolvedPhysics: { conduction: true, transient: false, latentHeat: false,
       momentum: false, freeSurface: false, evaporation: false },
     inputSha256: sha(JSON.stringify(baseResult.settings)), materialSha256: sha(JSON.stringify(baseResult.material)) };
-  function saveRun(runId: string, sourcesForRun: typeof exactLink[], bound: boolean) {
-    const result: any = { ...baseResult };
-    if (bound) result.coreContract = core;
+  function saveRun(runId: string, sourcesForRun: typeof exactLink[], bound: boolean,
+    runKind?: 'build-screening' | 'transient-thermal', buildJob = false) {
+    const result: any = { ...baseResult, settings: { ...baseResult.settings } };
+    if (buildJob) { result.settings.jobType = 'build-job'; result.verdict = 'screening-only'; }
+    if (runKind) {
+      result.runKind = runKind;
+    }
+    if (bound) result.coreContract = { ...core, inputSha256: sha(JSON.stringify(result.settings)) };
     const capture = { schemaVersion: 1 as const, jobId: runId, resultJson: JSON.stringify(result),
       inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material),
-      contractStatus: (bound ? 'core-v1-bound' : 'legacy-unbound') as 'core-v1-bound' | 'legacy-unbound' };
+      contractStatus: (bound ? 'core-v1-bound' : 'legacy-unbound') as 'core-v1-bound' | 'legacy-unbound',
+      ...(runKind ? { runKind } : {}) };
     runs.save({ schemaVersion: 1, runId, capture, sources: sourcesForRun });
   }
   const boundId = 'a'.repeat(32), legacyId = 'b'.repeat(32), staleId = 'c'.repeat(32);
   const unlinkedId = 'd'.repeat(32), floatId = 'e'.repeat(32);
+  const buildId = 'f'.repeat(32);
+  const legacyBuildId = '9'.repeat(32);
   saveRun(boundId, [exactLink], true);
   saveRun(legacyId, [exactLink], false);
   saveRun(staleId, [{ ...exactLink, documentSha256: sha('stale') }], true);
   saveRun(unlinkedId, [], true);
+  saveRun(buildId, [exactLink], false, 'build-screening', true);
+  saveRun(legacyBuildId, [exactLink], true, undefined, true);
   // These are Python-canonical snapshot bytes: JSON.parse/JSON.stringify changes
   // floatValue:1.0 to 1 and invalidates both the material revision and core hash.
   const materialJson = '{"floatValue":1.0,"materialId":"in718","materialIdentitySchemaVersion":1,"materialRevisionSha256":"1cb5d6833bedd0a8eb9e29606cf0c08b78c4f391f0e89c97c405b8f3e255dba7","name":"Synthetic","provenanceClass":"estimated-legacy","quality":"synthetic","source":"Unit test only"}';
@@ -118,6 +128,12 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
   const unlinked = await post(unlinkedId, { caseNumber: '0' });
   assert.equal(unlinked.status, 200); assert.equal(unlinked.body.errors, null);
   assert.match(unlinked.body.reasons.join(' '), /not bound/i);
+  const build = await post(buildId, { caseNumber: '0' });
+  assert.equal(build.status, 200); assert.equal(build.body.status, 'unavailable');
+  assert.match(build.body.reasons.join(' '), /build-job screening captures are not eligible/i);
+  const legacyBuild = await post(legacyBuildId, { caseNumber: '0' });
+  assert.equal(legacyBuild.status, 200); assert.equal(legacyBuild.body.status, 'unavailable');
+  assert.match(legacyBuild.body.reasons.join(' '), /build-job screening captures are not eligible/i);
 
   const extra = await post(boundId, { caseNumber: '0', documentSha256: sha('fake') });
   assert.equal(extra.status, 400);

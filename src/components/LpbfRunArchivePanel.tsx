@@ -30,7 +30,7 @@ export function LpbfRunArchivePanel() {
     {error ? <div><p role="alert" className="text-rose-300">{error}</p><button className={`${button} mt-3`} onClick={() => setAttempt(value => value + 1)}>Retry run archive</button></div>
       : runs === null ? <p role="status">Loading run archive…</p>
       : runs.length === 0 ? <p>No simulation runs archived yet.</p>
-      : <><label className="block text-sm">Archived run<select aria-label="Archived run" className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300" value={selected} onChange={event => setSelected(event.target.value)}>{runs.map(item => <option key={item.runId} value={item.runId}>{item.runId.slice(0,8)}... · {item.createdAt}</option>)}</select></label>
+      : <><label className="block text-sm">Archived run<select aria-label="Archived run" className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300" value={selected} onChange={event => setSelected(event.target.value)}>{runs.map(item => <option key={item.runId} value={item.runId}>{item.runId.slice(0,8)}... · {item.runKind} · {item.createdAt}</option>)}</select></label>
         {selected && <ArchivedRunRecord key={selected} runId={selected}/>}</>}
     <RunBundleControls />
   </section>;
@@ -117,6 +117,7 @@ function ArchivedRunRecord({ runId }: { runId: string }) {
     {record && <div className="text-sm space-y-1">
       <p>Created at {record.createdAt}</p>
       <p>Model status: Unvalidated model</p>
+      <p>Run kind: {record.runKind}</p>
       <p>Contract: {record.document.capture.contractStatus === 'legacy-unbound' ? 'Legacy run · core contract unbound' : 'Core v1 bound'}</p>
       <p>Source binding: {record.sourceBindingStatus === 'exact-revision-bound' ? 'Exact archived source revision' : 'Legacy run · no archived source revision'}</p>
       <p>Job ID: {record.document.capture.jobId}</p>
@@ -156,6 +157,7 @@ export function NistOpticalComparison({ record }: { record: RunRecord }) {
     <div><h4 className="font-medium">NIST AMB2022-03 · optical Table 4</h4>
       <p className="text-xs text-amber-200">Literature-model screening · unvalidated. Table 4 is a local transcription of published aggregate measurements.</p></div>
     <p>Run: <span className="font-mono">{record.document.runId}</span></p>
+    <p>Run kind: {record.runKind}</p>
     <p>Core contract: {record.document.capture.contractStatus === 'core-v1-bound' ? 'Bound' : 'Legacy unbound'}</p>
     <p>Archived Table 4 link: {link ? <>revision {link.revision} · document SHA-256 <span className="font-mono break-all">{link.documentSha256}</span></>
       : 'Unavailable · this run has no Table 4 source revision link'}</p>
@@ -283,6 +285,7 @@ export function LpbfJobArchiver({ jobId }: { jobId: string }) {
     {task.error && <p className="text-xs text-rose-300">{task.error}</p>}
     {preview && <div className="text-xs text-slate-300 space-y-1">
       <p>Preview ready: {preview.artifactCount} artifacts, {(preview.byteSize / 1024 / 1024).toFixed(2)} MB.</p>
+      <p>Run kind: {preview.document.capture.runKind ?? 'legacy-unspecified'}.</p>
       <p>{preview.document.capture.contractStatus === 'legacy-unbound' ? 'Legacy run: core contract unbound.' : 'Core v1 contract bound.'} Model remains unvalidated.</p>
       {preview.quota.approachingLimit && <p className="text-amber-300">Warning: Archive is approaching its capacity limit.</p>}
       <p className="text-slate-500">Archive size: {(preview.quota.totalArchiveSizeBytes / 1024 / 1024 / 1024).toFixed(2)} GB / 15 GB</p>

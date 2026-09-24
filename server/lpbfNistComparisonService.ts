@@ -69,6 +69,9 @@ export class LpbfNistComparisonService {
     }
     const record = this.runs.get(runId);
     const result = JSON.parse(record.document.capture.resultJson);
+    if (record.runKind === 'build-screening' || result.settings?.jobType === 'build-job') {
+      return unavailable(caseNumber, ['Build-job screening captures are not eligible for NIST optical comparison.']);
+    }
     if (record.document.capture.contractStatus !== 'core-v1-bound') {
       return unavailable(caseNumber, ['Archived run has no executed core contract; legacy runs cannot be compared to optical Table 4.']);
     }

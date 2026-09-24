@@ -11,6 +11,7 @@ from lpbf_evidence import enforce_thermal_balances
 
 MAX_JSON_BYTES = 16 * 1024 * 1024
 EXCLUDED = {'result.json', 'result.tmp', 'progress.log'}
+RUN_KINDS = {'build-screening', 'transient-thermal', 'legacy-unspecified'}
 
 
 def _directory(folder):
@@ -40,6 +41,16 @@ def capture_run(folder, job_id):
         raise ValueError('Invalid capture result file')
     result_json = result_path.read_bytes().decode('utf-8')
     result = json.loads(result_json)
+    run_kind = result.get('runKind')
+    if run_kind is not None and (not isinstance(run_kind, str) or run_kind not in RUN_KINDS):
+        raise ValueError('Invalid captured run kind')
+    settings = result.get('settings')
+    if run_kind == 'build-screening' and (not isinstance(settings, dict)
+            or settings.get('jobType') != 'build-job'):
+        raise ValueError('Build screening classification requires captured build-job settings')
+    if run_kind == 'transient-thermal' and (not isinstance(settings, dict)
+            or settings.get('jobType') not in (None, 'transient-thermal')):
+        raise ValueError('Transient thermal classification conflicts with captured settings')
     enforce_thermal_balances(result)
     refs = result.get('artifacts')
     if not isinstance(refs, list) or len(refs) > 10000:
@@ -83,4 +94,5 @@ def capture_run(folder, job_id):
         raise ValueError('Capture result changed during verification')
     return dict(schemaVersion=1, jobId=job_id, resultJson=result_json,
                 inputJson=encoded(result['settings']), materialJson=encoded(result['material']),
-                contractStatus='core-v1-bound' if 'coreContract' in result else 'legacy-unbound')
+                contractStatus='core-v1-bound' if 'coreContract' in result else 'legacy-unbound',
+                **({'runKind': run_kind} if run_kind is not None else {}))

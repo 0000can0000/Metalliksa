@@ -1,4 +1,4 @@
-import type { RunRecord, RunSourceLink, RunDocument, RunSourceBindingStatus,
+import type { RunRecord, RunSourceLink, RunDocument, RunSourceBindingStatus, RunKind,
   NistOpticalCaseNumber, NistOpticalReport } from '../types/lpbfRun';
 
 export interface RunPreview {
@@ -14,7 +14,7 @@ export interface RunPreview {
   };
 }
 
-export type RunArchiveList = { runId: string; createdAt: string; evidenceStatus: 'unvalidated-model'; sourceBindingStatus: RunSourceBindingStatus }[];
+export type RunArchiveList = { runId: string; createdAt: string; evidenceStatus: 'unvalidated-model'; sourceBindingStatus: RunSourceBindingStatus; runKind: RunKind }[];
 
 export interface RunBundleManifest {
   schemaVersion: 1;
@@ -47,6 +47,8 @@ const count = (value: unknown): value is number => Number.isSafeInteger(value) &
 const date = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const bindingStatus = (value: unknown): value is RunSourceBindingStatus =>
   value === 'exact-revision-bound' || value === 'legacy-unlinked';
+const runKind = (value: unknown): value is RunKind =>
+  value === 'build-screening' || value === 'transient-thermal' || value === 'legacy-unspecified';
 const opticalCases = new Set<string>(['0', '1.1', '1.2', '2.1', '2.2', '3.1', '3.2']);
 const opticalDatasetId = 'nist-amb2022-03-optical-table4-local-v1';
 const opticalArtifactSha = 'dcefd9c8c998e516eb81769cbe7b13014dfcb1c38e69c838a62475e79beac518';
@@ -63,12 +65,18 @@ function documentIdentity(value: unknown, expectedJobId?: string): asserts value
     || !jobId(value.capture.jobId) || value.runId !== value.capture.jobId
     || (expectedJobId !== undefined && value.runId !== expectedJobId)
     || !['core-v1-bound', 'legacy-unbound'].includes(value.capture.contractStatus as string)
+    || (value.capture.runKind !== undefined && !runKind(value.capture.runKind))
     || !['resultJson', 'inputJson', 'materialJson'].every(field => typeof value.capture[field] === 'string')
     || !Array.isArray(value.sources) || value.sources.some(source => !object(source)
       || typeof source.datasetId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(source.datasetId)
       || !Number.isSafeInteger(source.revision) || (source.revision as number) < 1 || !sha(source.documentSha256))) throw invalid();
   try {
-    for (const field of ['resultJson', 'inputJson', 'materialJson']) JSON.parse(value.capture[field] as string);
+    const result: unknown = JSON.parse(value.capture.resultJson as string);
+    JSON.parse(value.capture.inputJson as string); JSON.parse(value.capture.materialJson as string);
+    const capturedKind = object(result) && result.runKind === undefined ? 'legacy-unspecified'
+      : object(result) ? result.runKind : undefined;
+    if (!runKind(capturedKind) || (value.capture.runKind !== undefined && value.capture.runKind !== capturedKind)
+      || (value.capture.runKind === undefined) !== (capturedKind === 'legacy-unspecified' && object(result) && result.runKind === undefined)) throw invalid();
   } catch { throw invalid(); }
 }
 
@@ -76,6 +84,8 @@ function recordIdentity(value: unknown, expectedJobId: string): asserts value is
   if (!object(value)) throw invalid();
   documentIdentity(value.document, expectedJobId);
   if (!sha(value.documentSha256) || !date(value.createdAt) || value.evidenceStatus !== 'unvalidated-model'
+    || !runKind(value.runKind)
+    || value.runKind !== (value.document.capture.runKind ?? 'legacy-unspecified')
     || !bindingStatus(value.sourceBindingStatus)
     || value.sourceBindingStatus !== (value.document.sources.length ? 'exact-revision-bound' : 'legacy-unlinked')) throw invalid();
 }
@@ -141,6 +151,7 @@ export async function listRuns(signal: AbortSignal): Promise<RunArchiveList> {
   const result: unknown = await request('', signal);
   if (!Array.isArray(result) || result.some(item => !object(item) || !jobId(item.runId)
     || !date(item.createdAt) || item.evidenceStatus !== 'unvalidated-model'
+    || !runKind(item.runKind)
     || !bindingStatus(item.sourceBindingStatus))) throw invalid();
   return result;
 }

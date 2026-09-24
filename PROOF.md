@@ -1349,3 +1349,46 @@ screening-only and is not evidence about the shared CPU core.
 checkout's live HTTP API then completed two IN718 build jobs, each with the
 resolved material snapshot SHA-256. Archive/restore for this build-job result
 remains unverified.
+
+## 2026-09-24 — P5 Case 0 physics feasibility
+
+The official NIST AMB2022-03 Case 0 is 285 W, 960 mm/s, nominal 67 µm
+rotational Gaussian, one +X 10 mm bare-plate track, and 23.5 ± 1 °C starting
+temperature. NIST's cross-section paper reports six values per case from three
+tracks and two sections per track; sections are described as approximately at
+mid-track, so the application's exact 4.9/6.0 mm choices are not source-bound.
+NIST reports a Case 0 width/depth aspect ratio of 2.1. Sources:
+[AMB2022-03 methods](https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101),
+[cross-section study](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=957295).
+
+The current `enthalpy-fv-6` run stopped at its boiling validity guard after 133
+source steps and 7.23 s, covering only 0.1024% of the scan. It produced no
+complete run, energy closure, optical section, or comparison residual; repeating
+it or changing corridor width cannot satisfy P5. Keep the result unavailable.
+The next defensible path is a new model revision that handles the above-boiling
+response, energy/mass-consistent evaporation and evolving free surface; assess
+whether recoil/keyhole physics is required, then preregister a new 3-mesh ×
+3-timestep comparison. This is a proposed prerequisite, not a validated model.
+NIST 2025 beam metrology may support a nominal 67 µm Gaussian with uncertainty,
+but not the strict byte-bound two-dimensional profile requirement:
+[NIST AMS 100-67](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616).
+
+The CPU `enthalpy-fv-6` path is fixed-surface conduction/phase change and does
+not solve evaporation, surface mass loss, recoil, or melt flow. Phase 22 adds
+some of these as height-graph heuristics; the available OpenFOAM VOF route uses
+Ti-6Al-4V evaporation defaults and has no established IN718 mass/energy coupling.
+None is currently qualified for Case 0. Preserve the CPU boiling guard; do not
+retry the same solve or describe an exploratory run as a NIST comparison.
+
+## 2026-09-24 — Durable run-kind identity
+
+Worker results now carry a trusted top-level `runKind`; the queue capture binds
+it to its own result bytes and requires `settings.jobType=build-job` for
+`build-screening`. `transient-thermal` is kept distinct, while historical v1
+records without a kind remain byte-identical and read as `legacy-unspecified`.
+The archive API/UI and bundle path preserve the kind. Build-job NIST optical
+comparisons return unavailable for both new and legacy captures; no
+`coreContract` is fabricated. Verification: Python capture and real queue
+execution 7/7, focused archive/NIST/client/bundle TypeScript 31/31, lint PASS.
+The complete selected-browser build-job → comparison → export → isolated restore
+chain is still open.

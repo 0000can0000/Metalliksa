@@ -36,7 +36,7 @@ async function fixture(t: TestContext) {
   source.source.version = '2'; sources.save(source, 1);
   const job = path.join(root, 'job'); mkdirSync(job);
   writeFileSync(path.join(job, 'field.bin'), 'abc');
-  const result = { schemaVersion: 1, requestedMode: 'screening', effectiveMode: 'screening',
+  const result = { schemaVersion: 1, runKind: 'transient-thermal', requestedMode: 'screening', effectiveMode: 'screening',
     fallbackReason: null, validationStatus: 'unvalidated', productionReady: false, confidence: 'low',
     settings: { backend: 'auto', power_W: 0 }, solver: { id: 'synthetic-contract-test', version: '1' },
     material: { name: 'Synthetic', quality: 'synthetic', source: 'Unit test only' },
@@ -45,7 +45,8 @@ async function fixture(t: TestContext) {
     analyticalComparison: { goldak: { width_um: 0, depth_um: 0, length_um: 0 } },
     provenance: { executionRuntime: null }, artifacts: [{ path: 'field.bin', size_bytes: 3, sha256: sha('abc') }] };
   const capture = { schemaVersion: 1, jobId: 'a'.repeat(32), resultJson: JSON.stringify(result),
-    inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material), contractStatus: 'legacy-unbound' };
+    inputJson: JSON.stringify(result.settings), materialJson: JSON.stringify(result.material), contractStatus: 'legacy-unbound',
+    runKind: 'transient-thermal' as const };
   writeFileSync(path.join(job, 'result.json'), capture.resultJson);
   const record = await importRun(runs, runStore, capture,
     [{ datasetId: 'synthetic', revision: 1, documentSha256: revision.documentSha256 }], sources, job);
@@ -88,7 +89,8 @@ test('HTTP export, verify and isolated restore preserve live bytes and historica
   const restoredRuns = new LpbfRunRepository(path.join(restoredRoot, 'runs.sqlite'), { readOnly: true });
   const restoredSources = new LpbfSourceRepository(path.join(restoredRoot, 'sources/metadata.sqlite'), { readOnly: true });
   try {
-    assert.deepEqual(restoredRuns.get(f.record.document.runId), f.record);
+  assert.deepEqual(restoredRuns.get(f.record.document.runId), f.record);
+    assert.equal(restoredRuns.get(f.record.document.runId)?.runKind, 'transient-thermal');
     assert.equal(restoredSources.revision('synthetic', 1)?.documentSha256, f.record.document.sources[0].documentSha256);
     assert.equal(restoredSources.current('synthetic')?.revision, 2);
   } finally { restoredRuns.close(); restoredSources.close(); }

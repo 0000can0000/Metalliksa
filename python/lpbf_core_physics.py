@@ -34,10 +34,64 @@ def cell_weights(axis, z, dx, position, surface, radius, penetration, axis_y=Non
     return gx[:, None, None]*gy[None, :, None]*gz[None, None, :]
 
 
-def integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetration, power, axis_y=None):
+def _oblique_cell_weights(axis, z, axis_y, dx, position, surface, radius, penetration,
+                          incidence_angle_deg, incidence_azimuth_deg):
+    """Approximate oblique Gaussian cell masses with tensor Gauss-Legendre quadrature."""
+    theta = math.radians(incidence_angle_deg)
+    azimuth = math.radians(incidence_azimuth_deg)
+    cos_theta = math.cos(theta)
+    sin_azimuth, cos_azimuth = math.sin(azimuth), math.cos(azimuth)
+    radius_parallel = radius/cos_theta
+    effective_penetration = penetration*cos_theta
+    density_scale = (math.sqrt(2/math.pi)/radius_parallel
+                     * math.sqrt(2/math.pi)/radius
+                     * math.sqrt(2/math.pi)/effective_penetration)
+    # Five points accurately resolve the projected Gaussian for the supported mesh sizes.
+    nodes, quadrature_weights = np.polynomial.legendre.leggauss(5)
+    x_samples = axis[:, None] + nodes[None, :]*(dx/2)
+    y_samples = axis_y[:, None] + nodes[None, :]*(dx/2)
+    result = np.zeros((len(axis), len(axis_y), len(z)))
+    for k, z_center in enumerate(z):
+        lower = z_center-dx/2
+        upper = min(z_center+dx/2, surface)
+        if z_center >= surface or upper <= lower:
+            continue
+        z_samples = (lower+upper)/2 + nodes*(upper-lower)/2
+        # Integrate the normal-profile density and moving lateral footprint together.
+        for z_node, wz in zip(z_samples, quadrature_weights):
+            depth = surface-z_node
+            center_x = position[0] + depth*math.tan(theta)*cos_azimuth
+            center_y = position[1] + depth*math.tan(theta)*sin_azimuth
+            for ix, x_node in enumerate(nodes):
+                x = x_samples[:, ix, None]
+                for iy, y_node in enumerate(nodes):
+                    y = y_samples[None, :, iy]
+                    along = (x-center_x)*cos_azimuth + (y-center_y)*sin_azimuth
+                    across = -(x-center_x)*sin_azimuth + (y-center_y)*cos_azimuth
+                    density = density_scale*np.exp(-2*((along/radius_parallel)**2+(across/radius)**2
+                                                        +(depth/effective_penetration)**2))
+                    result[:, :, k] += (wz*quadrature_weights[ix]*quadrature_weights[iy]
+                                         * density*((upper-lower)/2)*(dx/2)**2)
+    return result
+
+
+def integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetration, power, axis_y=None,
+                      incidence_angle_deg=0.0, incidence_azimuth_deg=0.0):
     """Time-averaged volumetric power [W/m³] and minimum captured half-space mass."""
     axis_y = axis if axis_y is None else np.asarray(axis_y)
     source = np.zeros((len(axis), len(axis_y), len(z)))
+    if (isinstance(incidence_angle_deg, (bool, np.bool_))
+            or not isinstance(incidence_angle_deg, (int, float, np.number))
+            or not math.isfinite(float(incidence_angle_deg))
+            or not 0 <= float(incidence_angle_deg) < 90):
+        raise ValueError("Incidence angle must be finite and in [0, 90) degrees")
+    if (isinstance(incidence_azimuth_deg, (bool, np.bool_))
+            or not isinstance(incidence_azimuth_deg, (int, float, np.number))
+            or not math.isfinite(float(incidence_azimuth_deg))
+            or not 0 <= float(incidence_azimuth_deg) < 360):
+        raise ValueError("Incidence azimuth must be finite and in [0, 360) degrees")
+    incidence_angle_deg = float(incidence_angle_deg)
+    incidence_azimuth_deg = float(incidence_azimuth_deg)
     if segment is None:
         return source, 1.
     if dt <= 0 or time < segment["start_s"]-1e-13 or time+dt > segment["end_s"]+1e-13:
@@ -47,7 +101,11 @@ def integrated_source(axis, z, dx, segment, time, dt, surface, radius, penetrati
     for node in GAUSS_NODES:
         fraction = np.clip((time+node*dt-segment["start_s"])/(segment["end_s"]-segment["start_s"]), 0., 1.)
         position = start+fraction*(stop-start)
-        weights = cell_weights(axis, z, dx, position, surface, radius, penetration, axis_y)
+        if incidence_angle_deg == 0:
+            weights = cell_weights(axis, z, dx, position, surface, radius, penetration, axis_y)
+        else:
+            weights = _oblique_cell_weights(axis, z, axis_y, dx, position, surface, radius,
+                                             penetration, incidence_angle_deg, incidence_azimuth_deg)
         total = float(weights.sum())
         if not math.isfinite(total) or total <= 0:
             raise ValueError("Gaussian source is outside the represented active domain")

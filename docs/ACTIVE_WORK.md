@@ -892,3 +892,7 @@ NIST identifies the AMB2022-03 coupon dimensions (25.4 × 25.4 × 3.17 mm), 800 
 The profile source hunt found no AMB2022-03 measured irradiance array/map in the official source packages or the NIST beam-metrology report. Reported beam diameter/caustic and a rotationally symmetric Gaussian description are not the measured spatial profile bytes required by the current evidence gate. A beam CSV from AMB2022-01 belongs to different apparatus/conditions and is not transferable.
 
 Next: complete the v2 contract design with explicit known coupon/process facts, and treat SS304 thickness/contact conductance/boundary as provenance-bound unknowns or sensitivity-only parameters. Keep the measured-profile gate closed; no source-matched P5 result can be reported until both the missing hardware metadata and exact profile artifact are resolved. Do not weaken the existing acceptance gate.
+
+## Layered-plate v2 scaffold
+
+A standalone `lpbf_ss304_support_material.py` now provides a hashed, generic AISI 304 literature-property snapshot and bounded Cp/k/density/enthalpy evaluator for sensitivity-model development. It is deliberately not runtime alloy admission and is not the specimen's exact support revision; temperature evaluation outside 273.15–1473.15 K fails closed. Focused tests pass 4/4. Next, integrate only through a separate opt-in layered solver identity and retain the NIST source-match gate as unavailable until backing thickness, contact/bottom boundary evidence and measured AMB2022-03 beam-profile bytes are available.

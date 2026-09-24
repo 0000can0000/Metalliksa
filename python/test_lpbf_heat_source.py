@@ -105,6 +105,53 @@ class HeatSourceVerification(unittest.TestCase):
         self.assertGreater(capture, 0)
         self.assertLessEqual(capture, 1)
 
+    def test_oblique_source_zero_angle_is_exact_legacy_parity(self):
+        axis = (np.arange(18)+.5)*.1-.9
+        z = (np.arange(14)+.5)*.1-1.3
+        segment = dict(start_s=0., end_s=1., start=[-.2, .1], end=[.2, -.1])
+        legacy, legacy_capture = integrated_source(axis, z, .1, segment, .1, .7, 0., .35, .3, 40.)
+        explicit, explicit_capture = integrated_source(
+            axis, z, .1, segment, .1, .7, 0., .35, .3, 40.,
+            incidence_angle_deg=0., incidence_azimuth_deg=37.)
+        np.testing.assert_array_equal(explicit, legacy)
+        self.assertEqual(explicit_capture, legacy_capture)
+
+    def test_oblique_source_normalizes_on_large_domain_and_rotates_with_azimuth(self):
+        dx = .1
+        axis = (np.arange(40)+.5)*dx-2.
+        z = (np.arange(20)+.5)*dx-2.
+        segment = dict(start_s=0., end_s=1., start=[0., 0.], end=[0., 0.])
+        along_x, capture_x = integrated_source(
+            axis, z, dx, segment, 0., .2, 0., .45, .4, 70.,
+            incidence_angle_deg=30., incidence_azimuth_deg=0.)
+        along_y, capture_y = integrated_source(
+            axis, z, dx, segment, 0., .2, 0., .45, .4, 70.,
+            incidence_angle_deg=30., incidence_azimuth_deg=90.)
+        self.assertAlmostEqual(float(along_x.sum())*dx**3, 70., delta=1e-11)
+        self.assertAlmostEqual(float(along_y.sum())*dx**3, 70., delta=1e-11)
+        self.assertAlmostEqual(capture_x, 1., delta=2e-3)
+        self.assertAlmostEqual(capture_y, 1., delta=2e-3)
+        np.testing.assert_allclose(along_y, along_x.transpose(1, 0, 2), rtol=2e-12, atol=1e-12)
+        xx = axis[:, None, None]
+        shallow = z > -.5
+        deep = z < -1.2
+        centroid_shallow = float((along_x[:, :, shallow]*xx).sum()/along_x[:, :, shallow].sum())
+        centroid_deep = float((along_x[:, :, deep]*xx).sum()/along_x[:, :, deep].sum())
+        self.assertGreater(centroid_deep, centroid_shallow)
+
+    def test_oblique_source_rejects_invalid_angles(self):
+        axis = np.array([-.5, .5])
+        z = np.array([-.5])
+        segment = dict(start_s=0., end_s=1., start=[0., 0.], end=[0., 0.])
+        for angle in (-1., 90., math.inf, math.nan, True):
+            with self.subTest(angle=angle), self.assertRaisesRegex(ValueError, "Incidence angle"):
+                integrated_source(axis, z, 1., segment, 0., .1, 0., .5, .5, 1.,
+                                  incidence_angle_deg=angle)
+        for azimuth in (-1., 360., math.inf, math.nan, True):
+            with self.subTest(azimuth=azimuth), self.assertRaisesRegex(ValueError, "Incidence azimuth"):
+                integrated_source(axis, z, 1., segment, 0., .1, 0., .5, .5, 1.,
+                                  incidence_azimuth_deg=azimuth)
+
     def test_moving_quadrature_beats_left_endpoint_and_reverses(self):
         axis = (np.arange(16)+.5)*.2-1.6
         z = (np.arange(8)+.5)*.2-1.6

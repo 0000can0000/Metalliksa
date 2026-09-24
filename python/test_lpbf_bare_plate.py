@@ -175,6 +175,21 @@ class BarePlate(unittest.TestCase):
                                    "beamDiameter_um": 120})
         self.assertEqual(larger_beam["corridorWidth_um"], 720)
 
+    def test_truncated_gaussian_is_rejected_and_wide_corridors_report_capture(self):
+        narrow = {**CASE, "barePlateGeometry": "rectangular-corridor", "mesh_um": 20,
+                  "corridorWidth_um": 20, "sourcePenetration_um": 20}
+        with self.assertRaisesRegex(ValueError, "Gaussian source capture .* below the 99% minimum"):
+            run(narrow)
+
+        for width_um in (320, 480):
+            with self.subTest(width_um=width_um):
+                result = run({**narrow, "power_W": 40, "sourcePenetration_um": 40,
+                              "corridorWidth_um": width_um,
+                              "trackLength_um": 200, "maxDt_s": 2e-7})
+                diagnostics = result["numericalDiagnostics"]
+                self.assertGreaterEqual(diagnostics["minimumCapturedSourceFraction"], 1. / 1.01)
+                self.assertLessEqual(diagnostics["maximumSourceRenormalization"], 1.01)
+
     def test_corridor_width_rejects_other_geometries_invalid_values_and_over_budget_meshes(self):
         with self.assertRaisesRegex(ValueError, "only supported for rectangular-corridor"):
             validate({**CASE, "corridorWidth_um": 480})

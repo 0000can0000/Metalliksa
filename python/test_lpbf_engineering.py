@@ -200,6 +200,12 @@ class Verification(unittest.TestCase):
         self.assertEqual(r["energyBalance"]["stored_J"], 0)
         self.assertAlmostEqual(r["metrics"]["peakTemperature_K"], p["preheat_C"]+273.15)
 
+    def test_source_domain_truncation_fails_closed_before_power_renormalization(self):
+        p, m = validate({**CASE, "power_W": 10, "tracks": 2, "layers": 2,
+                         "hatch_um": 100, "dwell_s": .00002})
+        with self.assertRaisesRegex(ValueError, "Gaussian source capture .* below the 99% minimum"):
+            transient(p, m)
+
     def test_scan_rotation_and_dwell(self):
         p, _ = validate({"tracks": 2, "layers": 2, "layerRotation_deg": 90})
         scans, end = scan_segments(p)
@@ -210,7 +216,8 @@ class Verification(unittest.TestCase):
         self.assertAlmostEqual(scans[2]["end"][0], scans[2]["start"][0])
 
     def test_multiple_tracks_layers_energy(self):
-        p, m = validate({**CASE, "power_W": 10, "tracks": 2, "layers": 2, "dwell_s": .00002})
+        p, m = validate({**CASE, "power_W": 10, "tracks": 2, "layers": 2,
+                         "hatch_um": 80, "dwell_s": .00002})
         r = transient(p, m)
         duration = p["trackLength_um"]*1e-6/(p["speed_mm_s"]*.001)*4
         self.assertAlmostEqual(r["energyBalance"]["input_J"], p["power_W"]*m["absorptivity"]*duration, places=9)

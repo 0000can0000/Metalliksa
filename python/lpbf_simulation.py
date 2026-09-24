@@ -25,6 +25,9 @@ from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
 VERSION = "enthalpy-fv-6"
+# integrated_source renormalizes captured weights to the full absorbed power;
+# this bound caps that artificial concentration to 1% for a represented domain.
+MINIMUM_SOURCE_CAPTURE_FRACTION = 1. / 1.01
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
@@ -291,6 +294,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             axis, z, dx, seg, time, dt, surface, radius,
             p["sourcePenetration_um"]*1e-6 if bare else layer_m,
             absorbed_power_W, rate, rho*cp, axis_y=axis_y)
+        if capture < MINIMUM_SOURCE_CAPTURE_FRACTION:
+            raise ValueError(
+                f"Gaussian source capture {capture:.3%} is below "
+                f"the {MINIMUM_SOURCE_CAPTURE_FRACTION:.0%} minimum; expand the represented domain"
+            )
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
         max_increment = max(max_increment, float(np.max(dt*np.abs(rate)/(rho*cp))))

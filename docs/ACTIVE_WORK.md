@@ -689,3 +689,17 @@ public metadata exposes no chemistry ID, numerical values/uncertainty, or
 specimen-specific surface-tension/viscosity fits. See
 docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md. P4 failed, P5 unavailable, P6
 partial, and P7 closed remain unchanged.
+
+## IN625 repeated timing checkpoint — 2026-09-24
+
+A post-change timing campaign used a warm-up and five alternating CPU/CUDA
+repeats at each frozen mushy-range resolution. Median CUDA/CPU ratios were
+24.6× slower at 128 cells and 14.1× slower at 1,024 cells; temperature-field
+differences remained below 9.1e-13 K. The focused suite passed 12/12 after the
+synchronization reduction. This direct solver timing excludes UI/API transport
+and is not a paired before/after campaign, so it establishes neither speedup nor
+crossover. Details: docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
+
+Next: keep this path as explicit numerical CPU/CUDA parity evidence and profile
+larger same-physics workloads before attempting fused kernels. P6/P7 remain
+partial; IN625 remains unvalidated.

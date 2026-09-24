@@ -250,3 +250,8 @@
 - NIMS experiment 264's public page does not expose specimen chemistry IDs, numeric density values/uncertainty, or sample-specific surface-tension/viscosity fits. NIMS documents those outputs for its method generally, but this record does not establish them. No files were downloaded. Detailed source boundary: docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
 - Next: run a warm-up plus repeated, alternating CPU/CUDA timings on the same IN625 workload; separate solver and end-to-end timing, and make no speedup claim before that evidence.
 
+
+## 2026-09-24 — IN625 warmed repeated CPU/CUDA timing
+- After CUDA enthalpy inversion synchronization reduction (150e604), one warm-up per backend and five alternating repeats gave median CPU/CUDA times of 0.198/4.877 s at 128 cells and 1.359/19.099 s at 1,024 cells. CUDA remained 24.6× and 14.1× slower respectively; temperature differences stayed below 9.1e-13 K.
+- The focused field suite passed 12/12 after the change. This measurement includes direct solver/result construction, excludes UI/API transport, and is not a paired before/after campaign. It supports no speedup or crossover claim. Full method and ranges: docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
+- Next: retain CUDA for explicit numerical parity only; profile larger same-physics workloads before pursuing kernel fusion. P6/P7 remain partial and alloy qualification remains closed.

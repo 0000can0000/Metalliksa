@@ -350,3 +350,16 @@ NIMS experiment 264 is a separate molten-density lead. Public metadata lacks
 the sample-specific chemistry, numerical values/uncertainty, and surface-
 tension/viscosity fits needed to combine it with Scheel data. Detailed source
 limits: docs/HASTELLOY_X_P7_SOURCE_HUNT_2026-09-24.md.
+
+## 2026-09-24 — IN625 repeated CPU/CUDA timing
+
+After the bounded CUDA inversion-check reduction, one warm-up and five
+alternating repeats produced median CUDA/CPU ratios of 24.6× slower at 128
+cells and 14.1× slower at 1,024 cells. Temperature-field differences remained
+below 9.1e-13 K, and the focused field suite passed 12/12. Direct solver timings
+exclude UI/API transport and are not a paired before/after campaign, so no
+speedup or crossover is claimed. Full ranges and method:
+docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
+
+P6/P7 remain partial. Next step is to profile a larger same-physics workload
+before considering fused GPU kernels; this screening alloy remains unqualified.

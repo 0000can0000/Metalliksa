@@ -83,6 +83,43 @@ assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {
 assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {
   ...layerConformingResult, settings: {...layerConformingResult.settings, backend: 'auto'},
 }}), /core contract/);
+const layeredV2 = {
+  ...thermal,
+  solver: { id: 'layered-enthalpy-fv-1', version: 'layered-enthalpy-fv-1' },
+  settings: { backend: 'reference', mode: 'standard', thermalModelId: 'layered-plate-enthalpy-v1',
+    surfaceMode: 'bare-plate', barePlateGeometry: 'square', scanAngle_deg: 0, layers: 1, tracks: 1, study: 'none',
+    plateThickness_um: 3170, supportThickness_um: 1000, contactResistance_m2K_W: 0,
+    supportBottomBoundary: 'adiabatic', incidenceAngle_deg: 5, incidenceAzimuth_deg: 0,
+    beamProfileModelId: 'assumed-oblique-gaussian-normal-plane-v1', sourcePenetration_um: 25 },
+  coreContract: {
+    schemaVersion: 2, modelId: 'layered-plate-enthalpy-v1', actualBackend: 'numpy-reference',
+    requestedBackend: 'reference', effectiveMode: 'standard', solverId: 'layered-enthalpy-fv-1',
+    inputSha256: 'a'.repeat(64), materialSha256: 'b'.repeat(64), evidenceClass: 'unvalidated-model',
+    units: { power: 'W', speed: 'mm/s', length: 'um', preheat: 'degC', temperature: 'K', internalLength: 'm',
+      time: 's', energy: 'J', beamDiameter: '1/e2-intensity', incidenceAngle: 'deg', incidenceAzimuth: 'deg',
+      contactResistance: 'm2-K/W' },
+    resolvedPhysics: { conduction: true, transient: true, latentHeat: true, momentum: false, freeSurface: false,
+      evaporation: false, layeredMaterials: true, interfaceModelId: 'planar-series-resistance-v1',
+      contactResistanceModelId: 'explicit-area-specific-resistance', supportMaterialRevisionSha256: 'c'.repeat(64),
+      beamSourceModelId: 'assumed-oblique-gaussian-normal-plane-v1', supportBottomBoundaryId: 'adiabatic' },
+  },
+};
+assert.doesNotThrow(() => parseSimulationJob({...base, status: 'completed', result: layeredV2}));
+for (const patch of [
+  { schemaVersion: 1 }, { modelId: 'stationary-enthalpy-conduction-v1' }, { actualBackend: 'cuda:0' },
+  { resolvedPhysics: { ...layeredV2.coreContract.resolvedPhysics, supportBottomBoundaryId: 'isothermal-at-preheat' } },
+  { resolvedPhysics: { ...layeredV2.coreContract.resolvedPhysics, supportMaterialRevisionSha256: 'bad-hash' } },
+]) {
+  assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {
+    ...layeredV2, coreContract: { ...layeredV2.coreContract, ...patch },
+  }}), /core contract/);
+}
+for (const patch of [{ contactResistance_m2K_W: -1 }, { sourcePenetration_um: 151 },
+  { beamProfileModelId: 'measured-profile' }, { scanAngle_deg: 1 }, { barePlateGeometry: 'rectangular-corridor' }]) {
+  assert.throws(() => parseSimulationJob({...base, status: 'completed', result: {
+    ...layeredV2, settings: { ...layeredV2.settings, ...patch },
+  }}), /core contract/);
+}
 for (const effectiveMode of [undefined, null, "standrad", "high-fidelity", ["screening"]]) {
   assert.throws(() => parseSimulationJob(completed({ effectiveMode })), /execution mode/);
 }

@@ -38,6 +38,44 @@ class CoreContractTests(unittest.TestCase):
         contract = build_core_contract(settings, material, 'enthalpy-fv-6', 'standard')
         self.assertEqual(contract['modelId'], 'stationary-enthalpy-conduction-layer-conforming-v1')
 
+    def test_layered_plate_contract_binds_ordered_support_model_and_assumed_beam(self):
+        from lpbf_core_contract import enforce_core_contract
+        from lpbf_material_registry import material
+        from lpbf_ss304_support_material import ss304_support_thermal_snapshot
+
+        settings = dict(
+            mode='standard', backend='reference', surfaceMode='bare-plate', scanAngle_deg=0,
+            layers=1, tracks=1, study='none', thermalModelId='layered-plate-enthalpy-v1',
+            plateThickness_um=3170, supportThickness_um=1000, contactResistance_m2K_W=0,
+            supportBottomBoundary='adiabatic', incidenceAngle_deg=5, incidenceAzimuth_deg=0,
+            beamProfileModelId='assumed-oblique-gaussian-normal-plane-v1', sourcePenetration_um=25,
+        )
+        plate = material('Inconel 718')
+        support = ss304_support_thermal_snapshot()
+        contract = build_core_contract(settings, plate, 'layered-enthalpy-fv-1', 'standard')
+        self.assertEqual(contract['schemaVersion'], 2)
+        self.assertEqual(contract['modelId'], 'layered-plate-enthalpy-v1')
+        self.assertEqual(contract['resolvedPhysics']['supportMaterialRevisionSha256'],
+                         support['materialRevisionSha256'])
+        self.assertEqual(contract['resolvedPhysics']['beamSourceModelId'],
+                         'assumed-oblique-gaussian-normal-plane-v1')
+        self.assertNotEqual(contract['materialSha256'], plate['materialRevisionSha256'])
+
+        result = dict(settings=settings, material=plate,
+                      solver={'id': 'layered-enthalpy-fv-1'}, effectiveMode='standard',
+                      coreContract=contract)
+        enforce_core_contract(result)
+        result['coreContract']['resolvedPhysics']['supportMaterialRevisionSha256'] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'core contract'):
+            enforce_core_contract(result)
+
+    def test_layered_plate_contract_rejects_mismatched_solver_selection(self):
+        settings, plate = validate({'mode': 'standard', 'backend': 'reference'})
+        settings.update(thermalModelId='layered-plate-enthalpy-v1',
+                        surfaceMode='bare-plate', supportBottomBoundary='adiabatic')
+        with self.assertRaisesRegex(ValueError, 'thermal model'):
+            build_core_contract(settings, plate, 'enthalpy-fv-6', 'standard')
+
     def test_result_boundary_detects_changed_inputs_and_properties(self):
         for kind in ('settings', 'material', 'solver'):
             with self.subTest(kind=kind):

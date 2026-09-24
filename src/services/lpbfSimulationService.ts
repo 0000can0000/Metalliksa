@@ -4,6 +4,12 @@ export interface SimulationInput {
   preheat_C: number; layer_um: number; hatch_um: number;
   mode?: SimulationMode; backend?: "auto" | "reference" | "openfoam-thermal";
   powderGridPolicy?: "layer-conforming";
+  thermalModelId?: 'layered-plate-enthalpy-v1';
+  plateThickness_um?: number; supportThickness_um?: number; contactResistance_m2K_W?: number;
+  supportBottomBoundary?: 'adiabatic' | 'isothermal-at-preheat';
+  incidenceAngle_deg?: number; incidenceAzimuth_deg?: number;
+  beamProfileModelId?: 'assumed-oblique-gaussian-normal-plane-v1';
+  sourcePenetration_um?: number;
   mesh_um?: number; maxDt_s?: number; tracks?: number; layers?: number;
   strategy?: "meander" | "unidirectional" | "stripe" | "island"; stripeWidth_um?: number; islandSize_um?: number; scanAngle_deg?: number; layerRotation_deg?: number;
   dwell_s?: number; trackLength_um?: number; cooling_s?: number; timeout_s?: number;
@@ -19,7 +25,8 @@ export interface ResourceEstimate {
   cellBudget: number; exceedsCellBudget: boolean; runtimeEstimate: string; note: string;
 }
 const CORE_UNITS = { power: 'W', speed: 'mm/s', length: 'um', preheat: 'degC', temperature: 'K', internalLength: 'm', time: 's', energy: 'J', beamDiameter: '1/e2-intensity' } as const;
-export interface CoreContract {
+const LAYERED_CORE_UNITS = { ...CORE_UNITS, incidenceAngle: 'deg', incidenceAzimuth: 'deg', contactResistance: 'm2-K/W' } as const;
+export interface CoreContractV1 {
   schemaVersion: 1;
   modelId: 'analytical-conduction-screening-v1' | 'stationary-enthalpy-conduction-v1'
     | 'stationary-enthalpy-conduction-layer-conforming-v1';
@@ -31,6 +38,18 @@ export interface CoreContract {
   resolvedPhysics: { conduction: true; transient: boolean; latentHeat: boolean; momentum: false; freeSurface: false; evaporation: false };
   evidenceClass: 'unvalidated-model';
 }
+export interface CoreContractV2 {
+  schemaVersion: 2; modelId: 'layered-plate-enthalpy-v1';
+  actualBackend: 'numpy-reference'; requestedBackend: 'reference';
+  effectiveMode: 'standard'; solverId: 'layered-enthalpy-fv-1';
+  inputSha256: string; materialSha256: string; evidenceClass: 'unvalidated-model';
+  units: typeof LAYERED_CORE_UNITS;
+  resolvedPhysics: { conduction: true; transient: true; latentHeat: true; momentum: false; freeSurface: false;
+    evaporation: false; layeredMaterials: true; interfaceModelId: 'planar-series-resistance-v1';
+    contactResistanceModelId: 'explicit-area-specific-resistance'; supportMaterialRevisionSha256: string;
+    beamSourceModelId: 'assumed-oblique-gaussian-normal-plane-v1'; supportBottomBoundaryId: 'adiabatic' | 'isothermal-at-preheat' };
+}
+export type CoreContract = CoreContractV1 | CoreContractV2;
 export interface SimulationResult {
   coreContract?: CoreContract;
   numericalDiagnostics?: {
@@ -104,6 +123,50 @@ function checkCoreContract(result: Record<string, unknown>): void {
   const requested = result.settings.backend;
   const mode = result.effectiveMode;
   const solver = result.solver.id;
+  if (c.schemaVersion === 2) {
+    const settings = result.settings;
+    const physics = c.resolvedPhysics;
+    const settingInRange = (key: string, minimum: number, maximum: number) =>
+      typeof settings[key] === 'number' && Number.isFinite(settings[key])
+      && settings[key] >= minimum && settings[key] <= maximum;
+    if (mode !== 'standard' || solver !== 'layered-enthalpy-fv-1'
+      || requested !== 'reference'
+      || result.settings.mode !== 'standard'
+      || result.settings.thermalModelId !== 'layered-plate-enthalpy-v1'
+      || result.settings.surfaceMode !== 'bare-plate'
+      || result.settings.barePlateGeometry !== 'square'
+      || result.settings.scanAngle_deg !== 0 || result.settings.layers !== 1 || result.settings.tracks !== 1
+      || result.settings.study !== 'none' || result.settings.measurements
+      || result.settings.beamProfileModelId !== 'assumed-oblique-gaussian-normal-plane-v1'
+      || !settingInRange('plateThickness_um', 5, 10000)
+      || !settingInRange('supportThickness_um', 5, 10000)
+      || !settingInRange('contactResistance_m2K_W', 0, 1)
+      || !settingInRange('incidenceAngle_deg', 0, 89.9)
+      || !settingInRange('incidenceAzimuth_deg', 0, 359.999999999)
+      || !settingInRange('sourcePenetration_um', 5, 150)
+      || !['adiabatic', 'isothermal-at-preheat'].includes(String(result.settings.supportBottomBoundary))
+      || typeof c.inputSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(c.inputSha256)
+      || typeof c.materialSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(c.materialSha256)
+      || !object(physics) || typeof physics.supportMaterialRevisionSha256 !== 'string'
+      || !/^[a-f0-9]{64}$/.test(physics.supportMaterialRevisionSha256)
+      || physics.supportBottomBoundaryId !== settings.supportBottomBoundary
+      || !literalFields(c.units, LAYERED_CORE_UNITS)
+      || !literalFields(physics, {
+        conduction: true, transient: true, latentHeat: true, momentum: false, freeSurface: false,
+        evaporation: false, layeredMaterials: true, interfaceModelId: 'planar-series-resistance-v1',
+        contactResistanceModelId: 'explicit-area-specific-resistance',
+        supportMaterialRevisionSha256: physics.supportMaterialRevisionSha256,
+        beamSourceModelId: 'assumed-oblique-gaussian-normal-plane-v1',
+        supportBottomBoundaryId: settings.supportBottomBoundary,
+      })
+      || !literalFields(c, {
+        schemaVersion: 2, modelId: 'layered-plate-enthalpy-v1', actualBackend: 'numpy-reference',
+        requestedBackend: requested, effectiveMode: 'standard', solverId: 'layered-enthalpy-fv-1',
+        inputSha256: c.inputSha256, materialSha256: c.materialSha256, units: c.units,
+        resolvedPhysics: c.resolvedPhysics, evidenceClass: 'unvalidated-model',
+      })) return fail();
+    return;
+  }
   let backend: CoreContract['actualBackend'];
   let transient: boolean;
   if (mode === 'screening' && solver === 'rosenthal+goldak') {

@@ -893,6 +893,14 @@ The profile source hunt found no AMB2022-03 measured irradiance array/map in the
 
 Next: complete the v2 contract design with explicit known coupon/process facts, and treat SS304 thickness/contact conductance/boundary as provenance-bound unknowns or sensitivity-only parameters. Keep the measured-profile gate closed; no source-matched P5 result can be reported until both the missing hardware metadata and exact profile artifact are resolved. Do not weaken the existing acceptance gate.
 
+## Layered plate v2 numerical pilot — 2026-09-24
+
+Added an opt-in `layered-plate-enthalpy-v1` CPU reference path for one bare IN718 plate over a generic SS304 support. Plate/support thickness, area-specific interface resistance, support-bottom boundary, oblique assumed-Gaussian source geometry and source penetration are explicit inputs and are bound in `coreContract` schema v2. The finite-volume interface operator conserves face transfers; the support has a separately hashed, bounded generic literature snapshot. Existing v1 model identity remains unchanged.
+
+Focused verification: layered plate + heat source + layered conduction **24 PASS / 1 platform skip**; two v2 core-contract tests **2/2 PASS**; Python compile, TypeScript typecheck and `git diff --check` PASS. The TypeScript runtime test is blocked by Windows Node/esbuild `spawn EPERM`. One broader saved-binding test is blocked by Windows SQLite temp-directory ACL errors. These are stated validation limits, not solver passes.
+
+This path is an unvalidated sensitivity model, not a source-matched AMB2022-03 reproduction. Generic SS304 properties and assumed contact/bottom boundary values are not specimen measurements; no measured AMB2022-03 irradiance map was found. Keep NIST P5 unavailable. The layered-model package is ready for a local commit; the independent GPU inversion-kernel parity/timing experiment continues afterward.
+
 ## Layered-plate v2 scaffold
 
 A standalone `lpbf_ss304_support_material.py` now provides a hashed, generic AISI 304 literature-property snapshot and bounded Cp/k/density/enthalpy evaluator for sensitivity-model development. It is deliberately not runtime alloy admission and is not the specimen's exact support revision; temperature evaluation outside 273.15–1473.15 K fails closed. Focused tests pass 4/4. Next, integrate only through a separate opt-in layered solver identity and retain the NIST source-match gate as unavailable until backing thickness, contact/bottom boundary evidence and measured AMB2022-03 beam-profile bytes are available.

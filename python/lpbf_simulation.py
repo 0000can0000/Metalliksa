@@ -17,6 +17,11 @@ from lpbf_core_contract import build_core_contract
 from lpbf_verification import compare, convergence
 from lpbf_heat_source import (MINIMUM_SOURCE_CAPTURE_FRACTION, require_source_capture,
                               source_limited_step, conduction_diagonal)
+from lpbf_layered_conduction import conduction_heat_rate
+from lpbf_ss304_support_material import (ss304_support_thermal_fields,
+                                          ss304_support_thermal_snapshot,
+                                          REFERENCE_TEMPERATURE_K,
+                                          MAXIMUM_TEMPERATURE_K)
 from lpbf_defect_diagnostics import defect_diagnostics
 from lpbf_peak import (PeakMeltTracker, midtrack_bare_plate_section,
                        interpolated_midtrack_bare_plate_section,
@@ -44,10 +49,41 @@ BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 5
 
 
 def validate(raw):
-    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity", "corridorWidth_um", "powderGridPolicy"}:
+    layered_fields = {"thermalModelId", "plateThickness_um", "supportThickness_um",
+                      "contactResistance_m2K_W", "supportBottomBoundary",
+                      "incidenceAngle_deg", "incidenceAzimuth_deg", "beamProfileModelId",
+                      "sourcePenetration_um"}
+    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity", "corridorWidth_um", "powderGridPolicy"}-layered_fields:
         raise ValueError("Unknown simulation input fields")
     finite_tree(raw)
     p = {**DEFAULTS, **raw}
+    layered = "thermalModelId" in raw
+    if layered:
+        required_layered = layered_fields
+        if ((set(raw) & layered_fields) != required_layered
+                or raw.get("thermalModelId") != "layered-plate-enthalpy-v1"):
+            raise ValueError("Layered-plate model requires all explicit versioned sensitivity inputs")
+        if (p["mode"] != "standard" or p["backend"] != "reference"
+                or p["surfaceMode"] != "bare-plate" or p["barePlateGeometry"] != "square"
+                or p["study"] != "none" or p["layers"] != 1 or p["tracks"] != 1
+                or p["scanAngle_deg"] != 0 or p.get("measurements")):
+            raise ValueError("Layered-plate sensitivity requires standard/reference bare-plate single +X track without measurements or study")
+        numeric_layered = ("plateThickness_um", "supportThickness_um",
+                           "contactResistance_m2K_W", "incidenceAngle_deg", "incidenceAzimuth_deg")
+        limits = {"plateThickness_um": (5., 10000.), "supportThickness_um": (5., 10000.),
+                  "contactResistance_m2K_W": (0., 1.), "incidenceAngle_deg": (0., 90.),
+                  "incidenceAzimuth_deg": (0., 360.)}
+        for key in numeric_layered:
+            value = raw[key]
+            lo, hi = limits[key]
+            upper_ok = value < hi if key in ("incidenceAngle_deg", "incidenceAzimuth_deg") else value <= hi
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or not lo <= value or not upper_ok):
+                raise ValueError(f"{key} must be finite in [{lo}, {hi}]")
+        if raw["beamProfileModelId"] != "assumed-oblique-gaussian-normal-plane-v1":
+            raise ValueError("Unsupported layered-plate beam profile model")
+        if raw["supportBottomBoundary"] not in ("adiabatic", "isothermal-at-preheat"):
+            raise ValueError("Unknown support bottom boundary")
     if p["backend"] not in ("auto", "reference", "openfoam-thermal"):
         raise ValueError("Unknown thermal backend")
     for k, (lo, hi) in BOUNDS.items():
@@ -93,6 +129,8 @@ def validate(raw):
     elif p["sourcePenetration_um"] is not None:
         raise ValueError("sourcePenetration_um is only supported for bare-plate mode")
     m = material(p["material"], p.get("properties"))
+    if layered and m.get("materialId") != "in718":
+        raise ValueError("Layered-plate sensitivity currently requires Inconel 718")
     if p["preheat_C"]+273.15 >= m["solidus_K"]:
         raise ValueError("Baseplate preheat must be below solidus")
     if "absorptivity" in p:
@@ -221,7 +259,16 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     speed_m_s = thermal_inputs["speed_m_s"]
     absorbed_power_W = thermal_inputs["absorbed_power_W"]
     dx_requested = p["mesh_um"]*1e-6
+    layered = p.get("thermalModelId") == "layered-plate-enthalpy-v1"
     domain = calculate_mesh_domain(p)
+    if layered:
+        plate_cells = max(1, int(math.ceil(p["plateThickness_um"]*1e-6/domain["dx"]-1e-12)))
+        support_cells = max(1, int(math.ceil(p["supportThickness_um"]*1e-6/domain["dx"]-1e-12)))
+        domain["plate_cells"], domain["support_cells"] = plate_cells, support_cells
+        domain["plate_depth"] = plate_cells*domain["dx"]
+        domain["support_depth"] = support_cells*domain["dx"]
+        domain["substrate_depth"] = domain["plate_depth"]+domain["support_depth"]
+        domain["nz"] = plate_cells+support_cells
     radius, span, nx, ny, nz, dx, substrate = (domain[k] for k in ("radius", "span", "nx", "ny", "nz", "dx", "substrate_depth"))
     cell_count = nx*ny*nz
     if cell_count > 600000:
@@ -242,6 +289,18 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     h0 = np.interp(t0, tt, hh)
     # Fixed reference mass: avoids nonconservative rho(T)*h update on an immobile grid.
     rho = float(property_at(m, t0, 1))*np.where(zz > 0, p["packingFraction"], 1.)
+    support_cells = domain.get("support_cells", 0)
+    support_mask = np.broadcast_to((np.arange(nz) < support_cells)[None, None, :], T.shape) if layered else None
+    in718_mask = ~support_mask if layered else None
+    if layered:
+        rho = np.where(support_mask, 7920.0, rho)
+        _, ss_cp_table, _, ss_h_table = ss304_support_thermal_fields(
+            np.linspace(REFERENCE_TEMPERATURE_K, MAXIMUM_TEMPERATURE_K, 4097))
+        ss_t_table = np.linspace(REFERENCE_TEMPERATURE_K, MAXIMUM_TEMPERATURE_K, 4097)
+        h0_ss = float(np.interp(t0, ss_t_table, ss_h_table))
+        h0_field = np.where(support_mask, h0_ss, h0)
+    else:
+        h0_field = h0
     H = np.zeros_like(T)
     ever = np.zeros_like(T, dtype=bool)
     midpoint_plane = int(np.argmin(np.abs(axis))) if bare else None
@@ -266,6 +325,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     max_dt = max_increment = surface_offset = 0.
     minimum_capture, source_retries = 1., 0
     cp_floor = min(row[3] for row in m["table"])
+    if layered:
+        cp_floor = min(cp_floor, float(np.min(ss_cp_table)))
+        interface_z = np.zeros((nz-1, ny, nx), dtype=bool)
+        interface_z[support_cells-1, :, :] = True
+        support_snapshot = ss304_support_thermal_snapshot()
     while time < end:
         seg = next((s for s in segments if s["start_s"] <= time+1e-14 and time < s["end_s"]-1e-14), None)
         active_layer = max([s["layer"] for s in segments if s["start_s"] <= time+1e-14] or [0])
@@ -274,22 +338,36 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         top_index = int(np.flatnonzero(z < surface)[-1])
         k = property_at(m, T, 2)*np.where((zz > 0)&~ever, p["powderConductivityRatio"], 1.)
         cp = property_at(m, T, 3)
+        if layered:
+            ss_rho, ss_cp, ss_k, _ = ss304_support_thermal_fields(T[support_mask])
+            k[support_mask] = ss_k
+            cp[support_mask] = ss_cp
         dt = min(p["maxDt_s"], .12*dx*dx/float(np.max(k/(rho*cp))), radius/(4*speed_m_s), end-time)
         # End exactly on scan/deposition events: never smear laser-on into a dwell.
         events = [s[v]-time for s in segments for v in ("start_s", "end_s") if s[v] > time+1e-14]
         if events:
             dt = min(dt, min(events))
-        rate = conduction_rate(T,k,active,dx)
-        # Isothermal baseplate bottom at half-cell distance. Other side faces insulated.
-        bottom = 2*k[:, :, 0]*(T[:, :, 0]-t0)/dx**2
-        rate[:, :, 0] -= bottom
+        if layered:
+            face_power = conduction_heat_rate(T.transpose(2, 1, 0), k.transpose(2, 1, 0), dx,
+                contact_resistance_m2K_W=p["contactResistance_m2K_W"],
+                interface_z=interface_z, active_cells=active.transpose(2, 1, 0))
+            rate = face_power.transpose(2, 1, 0)/dx**3
+        else:
+            rate = conduction_rate(T,k,active,dx)
+        # Explicit support-base boundary; legacy v1 retains its fixed-temperature base.
+        bottom = np.zeros((nx, ny))
+        isothermal_bottom = (not layered or p["supportBottomBoundary"] == "isothermal-at-preheat")
+        if isothermal_bottom:
+            bottom = 2*k[:, :, 0]*(T[:, :, 0]-t0)/dx**2
+            rate[:, :, 0] -= bottom
         surface_loss = (p["convection_W_m2K"]*(T[:, :, top_index]-t0)
                         +m["emissivity"]*5.670374419e-8*(T[:, :, top_index]**4-t0**4))/dx
         rate[:, :, top_index] -= surface_loss
         # A local row-sum bound includes heterogeneous faces and boundary cooling.
         # The table minimum cp is a lower bound on enthalpy capacity across a step.
         diagonal = conduction_diagonal(k, active, dx)
-        diagonal[:, :, 0] += 2*k[:, :, 0]/dx**2
+        if isothermal_bottom:
+            diagonal[:, :, 0] += 2*k[:, :, 0]/dx**2
         top_temperature = T[:, :, top_index]
         diagonal[:, :, top_index] += (p["convection_W_m2K"]+m["emissivity"]*5.670374419e-8
             *(top_temperature+t0)*(top_temperature**2+t0**2))/dx
@@ -297,7 +375,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         dt, source, rate, capture, retries = source_limited_step(
             axis, z, dx, seg, time, dt, surface, radius,
             p["sourcePenetration_um"]*1e-6 if bare else layer_m,
-            absorbed_power_W, rate, rho*cp, axis_y=axis_y)
+            absorbed_power_W, rate, rho*cp, axis_y=axis_y,
+            incidence_angle_deg=p.get("incidenceAngle_deg", 0.),
+            incidence_azimuth_deg=p.get("incidenceAzimuth_deg", 0.))
         require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
@@ -307,14 +387,25 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
         surface_offset = max(surface_offset, abs(z[top_index]+dx/2-surface)*1e6)
         old = T.copy()
         H += dt*rate
-        h = H/rho+h0
-        if not np.isfinite(h).all() or float(h.min()) < hh[0]-1e-8 or float(h.max()) >= np.interp(m["boiling_K"], tt, hh):
-            raise ValueError("Thermal model validity exceeded (boiling or nonphysical enthalpy); evaporation/free-surface CFD required")
-        T = np.interp(h, hh, tt)
+        h = H/rho+h0_field
+        if layered:
+            if (not np.isfinite(h).all() or float(h[~support_mask].min()) < hh[0]-1e-8
+                    or float(h[~support_mask].max()) >= np.interp(m["boiling_K"], tt, hh)
+                    or float(h[support_mask].min()) < ss_h_table[0]-1e-8
+                    or float(h[support_mask].max()) > ss_h_table[-1]):
+                raise ValueError("Thermal model validity exceeded (IN718 boiling or SS304 fit range)")
+            T[~support_mask] = np.interp(h[~support_mask], hh, tt)
+            T[support_mask] = np.interp(h[support_mask], ss_h_table, ss_t_table)
+        else:
+            if not np.isfinite(h).all() or float(h.min()) < hh[0]-1e-8 or float(h.max()) >= np.interp(m["boiling_K"], tt, hh):
+                raise ValueError("Thermal model validity exceeded (boiling or nonphysical enthalpy); evaporation/free-surface CFD required")
+            T = np.interp(h, hh, tt)
         time += dt; step += 1
         energy_in += float(source.sum())*dx**3*dt
         energy_out += (float(bottom.sum())+float(surface_loss.sum()))*dx**3*dt
         melt = (T >= m["liquidus_K"])&active
+        if layered:
+            melt &= in718_mask
         remelt |= melt&ever&~previous_melt
         ever |= melt
         if bare:
@@ -348,6 +439,12 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     if balance > .01:
         raise ValueError(f"Energy balance failed: {balance:.3%}")
     discretization = dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step)
+    if layered:
+        discretization.update(requestedPlateThickness_um=p["plateThickness_um"],
+            effectivePlateThickness_um=domain["plate_depth"]*1e6,
+            requestedSupportThickness_um=p["supportThickness_um"],
+            effectiveSupportThickness_um=domain["support_depth"]*1e6,
+            plateCells=int(domain["plate_cells"]), supportCells=int(domain["support_cells"]))
     if rectangular_corridor:
         discretization.update(requestedCorridorWidth_um=p["corridorWidth_um"],
                               effectiveCorridorWidth_um=domain["effective_span_y"]*1e6)
@@ -381,6 +478,16 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 energyBalance=dict(input_J=energy_in, losses_J=energy_out, stored_J=stored, relativeError=balance),
                 discretization=discretization,
                 scanPath=segments,
+                **({"supportMaterial": support_snapshot,
+                    "supportDiagnostics": dict(maximumTemperature_K=float(np.max(T[support_mask])),
+                        storedThermalEnergy_J=float(H[support_mask].sum())*dx**3,
+                        supportCellsExcludedFromMeltGeometry=True),
+                    "layeredSensitivity": dict(interfaceModelId="planar-series-resistance-v1",
+                        contactResistance_m2K_W=p["contactResistance_m2K_W"],
+                        supportBottomBoundary=p["supportBottomBoundary"],
+                        beamProfileModelId=p["beamProfileModelId"],
+                        evidenceNote="Explicit sensitivity assumptions; not AMB2022-03 measured contact, support boundary, or irradiance-map evidence.")}
+                   if layered else {}),
                 **thermal_audits(np.column_stack([x.ravel(),y.ravel(),zz.ravel()]), np.full(T.size,dx**3), p,m,
                     (np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)*active).ravel()))
 
@@ -403,7 +510,8 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
         from lpbf_cfd import cfd_multiphysics
         thermal_solver = cfd_multiphysics
     result = dict(schemaVersion=1, requestedMode=p["mode"], effectiveMode="screening" if fallback else p["mode"],
-                  solver=dict(id="rosenthal+goldak" if p["mode"] == "screening" or fallback else VERSION,
+                  solver=dict(id=("layered-enthalpy-fv-1" if p.get("thermalModelId") == "layered-plate-enthalpy-v1"
+                                  else "rosenthal+goldak" if p["mode"] == "screening" or fallback else VERSION),
                               version=VERSION, openfoam=(capabilities or {}).get("openfoamVersion")),
                   settings=p, material=m, confidence="low", validationStatus="unvalidated", productionReady=False,
                   label="Screening only" if p["mode"] == "screening" or fallback else "Unvalidated transient thermal",

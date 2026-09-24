@@ -63,11 +63,10 @@ def calculate_mesh_domain(p):
     rectangular_corridor = (p.get("surfaceMode", "powder-layer") == "bare-plate"
                             and p.get("barePlateGeometry", "square") == "rectangular-corridor")
     if rectangular_corridor:
-        # One +X track: preserve the full scan history and use a fixed, centered
-        # transverse frame extending six beam radii on either side. This is
-        # deliberately wider than the source normalization support so nearby
-        # insulated lateral boundaries do not pinch the fixed-frame corridor.
-        span_y = 12 * radius
+        # One +X track: preserve the full scan history in a centered frame.
+        # The default retains twelve beam radii total; explicit widths support
+        # bounded transverse-width sensitivity without changing the square path.
+        span_y = (p.get("corridorWidth_um") or 12 * radius * 1e6) * 1e-6
         nx = int(math.ceil(span / dx_requested))
         dx = span / nx
         ny = int(math.ceil(span_y / dx))
@@ -88,6 +87,7 @@ def calculate_mesh_domain(p):
         "span": span,
         "span_x": span,
         "span_y": span_y,
+        "effective_span_y": ny * dx,
         "nx": nx,
         "ny": ny,
         "nxy": nxy,

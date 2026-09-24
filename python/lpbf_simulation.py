@@ -43,7 +43,7 @@ BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 5
 
 
 def validate(raw):
-    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity"}:
+    if not isinstance(raw, dict) or set(raw)-set(DEFAULTS)-{"properties", "measurements", "absorptivity", "emissivity", "corridorWidth_um"}:
         raise ValueError("Unknown simulation input fields")
     finite_tree(raw)
     p = {**DEFAULTS, **raw}
@@ -65,6 +65,17 @@ def validate(raw):
         raise ValueError("barePlateGeometry must be 'square' or 'rectangular-corridor'")
     if p["barePlateGeometry"] == "rectangular-corridor" and p["surfaceMode"] != "bare-plate":
         raise ValueError("rectangular-corridor geometry is only supported for bare-plate mode")
+    if "corridorWidth_um" in raw and p["barePlateGeometry"] != "rectangular-corridor":
+        raise ValueError("corridorWidth_um is only supported for rectangular-corridor geometry")
+    if p["barePlateGeometry"] == "rectangular-corridor":
+        width = p.get("corridorWidth_um")
+        if width is None:
+            # Preserve the historical fixed-frame width: twelve beam radii total.
+            width = 6 * p["beamDiameter_um"]
+        if (isinstance(width, bool) or not isinstance(width, (int, float))
+                or not math.isfinite(width) or width <= 0):
+            raise ValueError("corridorWidth_um must be a positive finite number")
+        p["corridorWidth_um"] = float(width)
     if p["surfaceMode"] == "bare-plate":
         penetration = p["sourcePenetration_um"]
         if (p["mode"] != "standard" or p["backend"] != "reference" or p["layers"] != 1
@@ -328,6 +339,10 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     balance = abs(energy_in-energy_out-stored)/max(energy_in, 1e-12)
     if balance > .01:
         raise ValueError(f"Energy balance failed: {balance:.3%}")
+    discretization = dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step)
+    if rectangular_corridor:
+        discretization.update(requestedCorridorWidth_um=p["corridorWidth_um"],
+                              effectiveCorridorWidth_um=domain["effective_span_y"]*1e6)
     G, R, cooling = (np.sum(fronts, axis=0)[:3]/np.sum(fronts, axis=0)[3]).tolist() if fronts else (None, None, None)
     best, peak_diagnostics = peak_tracker.finish(artifact_dir, step)
     interpolated_peak = peak_diagnostics.pop("interpolatedPeakMeltPool")
@@ -356,7 +371,7 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,
                     maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment, sourceTimestepRetries=source_retries),
                 energyBalance=dict(input_J=energy_in, losses_J=energy_out, stored_J=stored, relativeError=balance),
-                discretization=dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step),
+                discretization=discretization,
                 scanPath=segments,
                 **thermal_audits(np.column_stack([x.ravel(),y.ravel(),zz.ravel()]), np.full(T.size,dx**3), p,m,
                     (np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)*active).ravel()))

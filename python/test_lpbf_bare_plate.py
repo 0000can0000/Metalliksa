@@ -81,6 +81,9 @@ class BarePlate(unittest.TestCase):
         domain = calculate_mesh_domain(validate(rectangular)[0])
         self.assertGreater(domain["nx"], domain["ny"])
         self.assertEqual(result["discretization"]["cells"], domain["nx"]*domain["ny"]*domain["nz"])
+        self.assertEqual(result["discretization"]["requestedCorridorWidth_um"], 480)
+        self.assertAlmostEqual(result["discretization"]["effectiveCorridorWidth_um"],
+                               domain["effective_span_y"]*1e6)
         self.assertLess(result["energyBalance"]["relativeError"], .01)
         self.assertEqual(result["midTrackCrossSection"]["status"], "thermal-proxy")
         with patch("lpbf_simulation.rectangular_corridor_section_observations", return_value=[]):
@@ -149,6 +152,44 @@ class BarePlate(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, r"requires [\d,]+ cells, above the 600000-cell"):
                 run({**CASE, "barePlateGeometry": "rectangular-corridor",
                      "trackLength_um": 10000, "mesh_um": mesh_um})
+
+    def test_rectangular_corridor_width_is_explicit_and_defaults_to_twelve_radii(self):
+        base = {**CASE, "barePlateGeometry": "rectangular-corridor", "mesh_um": 20,
+                "trackLength_um": 10000}
+        p, _ = validate(base)
+        self.assertEqual(p["corridorWidth_um"], 480)
+        default_domain = calculate_mesh_domain(p)
+        self.assertEqual(default_domain["ny"], 25)
+        self.assertAlmostEqual(default_domain["effective_span_y"], default_domain["ny"]*default_domain["dx"])
+
+        for width_um, expected_ny in ((320, 17), (480, 25), (640, 33)):
+            p, m = validate({**base, "corridorWidth_um": width_um})
+            domain = calculate_mesh_domain(p)
+            estimate = resource_estimate(p, m)
+            self.assertEqual(domain["ny"], expected_ny)
+            self.assertEqual(estimate["cells"], domain["nx"]*expected_ny*domain["nz"])
+            self.assertAlmostEqual(domain["span_y"], width_um*1e-6)
+            self.assertAlmostEqual(domain["effective_span_y"], expected_ny*domain["dx"])
+
+        larger_beam, _ = validate({**CASE, "barePlateGeometry": "rectangular-corridor",
+                                   "beamDiameter_um": 120})
+        self.assertEqual(larger_beam["corridorWidth_um"], 720)
+
+    def test_corridor_width_rejects_other_geometries_invalid_values_and_over_budget_meshes(self):
+        with self.assertRaisesRegex(ValueError, "only supported for rectangular-corridor"):
+            validate({**CASE, "corridorWidth_um": 480})
+        for width in (0, -1, True, float("nan"), float("inf"), "480"):
+            with self.assertRaises(ValueError):
+                validate({**CASE, "barePlateGeometry": "rectangular-corridor",
+                          "corridorWidth_um": width})
+
+        wide = {**CASE, "barePlateGeometry": "rectangular-corridor", "trackLength_um": 10000,
+                "mesh_um": 20, "corridorWidth_um": 2000}
+        p, m = validate(wide)
+        estimate = resource_estimate(p, m)
+        self.assertGreater(estimate["cells"], 600000)
+        with self.assertRaisesRegex(ValueError, r"requires [\d,]+ cells, above the 600000-cell"):
+            run(wide)
 
     def test_bare_plate_square_default_is_unchanged_by_explicit_square(self):
         implicit = run(CASE)

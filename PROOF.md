@@ -1583,14 +1583,16 @@ power for 33 steps at 1e-4 s. This high initial state is deliberate numerical
 coverage, not an LPBF preheat or process claim. Source capture is 0.9982844950;
 the material revision remains `f47b07e4c8288b8c7177001f069a254be3410bace43ad5ea2f73168ac4466f07`.
 
-`python -m pytest -q test_in625_bareplate_field.py`: **10 passed** on an RTX
-4060 host (pytest cache ACL warning only). CPU and `cuda:0` both reached
-1565.4608746 K, with 4 mushy cells and no liquidus clipping. Maximum field
-deltas were 4.55e-13 K and 2.33e-10 J/kg; both ledger residual maxima were
+`python -m pytest -q test_in625_bareplate_field.py`: **11 passed** on an RTX
+4060 host (pytest cache ACL warning only). The 128-cell vector reached
+1565.4608746 K and 4 mushy cells; the refined 1,024-cell vector reached
+1577.3396719 K and 32 mushy cells. At each resolution CPU and `cuda:0` agreed
+within 9.10e-13 K and 3.50e-10 J/kg; both ledger residual maxima were
 5.33e-15 J. Independent 64-point Cp integration and global enthalpy balance
-passed on each backend. One run measured CPU 0.289 s, CUDA 9.196 s and 24,576 B
-incremental CUDA allocation; this tiny case is slower on GPU and makes no
-performance claim. Full context and limits: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`.
+passed at both resolutions. One-run CPU/CUDA timings were 0.289/9.196 s
+(128 cells) and 1.316/23.254 s (1,024 cells); incremental CUDA allocations
+were 24,576/176,128 B. CUDA was 31.8× and 17.7× slower respectively; no speedup
+claim. Full context and limitations: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`.
 
 This closes field-level coverage of the implemented IN625 screening law's
 mushy interval for one synthetic vector; it does not admit the source data or

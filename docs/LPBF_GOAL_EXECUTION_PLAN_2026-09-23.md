@@ -274,9 +274,12 @@ steps, both CPU and explicit RTX 4060 `cuda:0` reached 1565.4608746 K and four
 mushy cells; maximum temperature and enthalpy differences were 4.55e-13 K and
 2.33e-10 J/kg. A 64-point independent Cp integral and whole-domain energy
 balance passed; the maximum ledger residual was 5.33e-15 J. The focused suite
-passes 10/10. One-run profile: CPU 0.289 s, CUDA 9.196 s, and 24,576 B
-incremental allocated memory. The tiny CUDA case is slower and is not a
-performance claim. This closes only field-level exercise of the current
+passes 11/11. A 16×16×4 refinement keeps the same 2×2×0.5 mm domain, 3.3 ms
+duration, 0.099 J source and boundary conditions; both backends reach 1577.34 K
+with 32 mushy cells. CPU/CUDA differences remain below 9.10e-13 K and
+3.50e-10 J/kg, with ledger residual `5.33e-15 J`. Single-run CUDA/CPU times
+are 9.196/0.289 s at 128 cells and 23.254/1.316 s at 1,024 cells; CUDA is
+slower at both sizes. This closes only field-level exercise of the current
 screening constitutive law; it does not change IN625's `unvalidated` status or
 source gate. P6/P7 remain partial; frozen P4 stays `failed`, P5 stays
 `unavailable`. Details: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`.

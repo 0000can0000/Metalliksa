@@ -56,17 +56,25 @@ def _mushy_config():
                    scan_y_m=0.001, scan_velocity_x_m_s=0.0)
 
 
+def _refined_mushy_config():
+    """Same physical domain and input, with twofold spatial refinement."""
+    return _config(shape_xyz=(16, 16, 4), cell_size_m=(1.25e-4,)*3,
+                   initial_temperature_K=1500.0, dt_s=2.5e-5, steps=132,
+                   absorbed_power_W=30.0, scan_start_x_m=0.001,
+                   scan_y_m=0.001, scan_velocity_x_m_s=0.0)
+
+
 def _as_numpy(value):
     return value.detach().cpu().numpy() if hasattr(value, "detach") else np.asarray(value)
 
 
-def _assert_mushy_field_energy(result, config):
+def _assert_mushy_field_energy(result, config, expected_mushy_cells):
     temperature = _as_numpy(result.temperature_K)
     enthalpy = _as_numpy(result.specific_enthalpy_J_kg)
     snap = in625_lpbf_thermal_snapshot()
     assert np.any(temperature > snap["solidus_K"])
     assert np.all(temperature < LIQUIDUS_K)
-    assert int(np.count_nonzero(temperature > snap["solidus_K"])) == 4
+    assert int(np.count_nonzero(temperature > snap["solidus_K"])) == expected_mushy_cells
 
     independent_h = np.array([_independent_h_gauss(float(t)) for t in temperature.flat])
     independent_h = independent_h.reshape(temperature.shape)
@@ -115,7 +123,7 @@ def test_cpu_moving_surface_source_conserves_absorbed_energy_and_metadata():
 def test_cpu_field_enters_mushy_range_and_matches_independent_enthalpy_energy_oracle():
     cfg = _mushy_config()
     result = field.run_cpu(cfg)
-    _assert_mushy_field_energy(result, cfg)
+    _assert_mushy_field_energy(result, cfg, expected_mushy_cells=4)
 
 
 def test_liquidus_crossing_rejects_without_clipping_or_superheat():
@@ -177,8 +185,26 @@ def test_cuda_mushy_field_matches_cpu_and_independent_oracles():
     cfg = _mushy_config()
     cpu = field.run_cpu(cfg)
     gpu = field.run_cuda(cfg, "cuda:0")
-    _assert_mushy_field_energy(cpu, cfg)
-    _assert_mushy_field_energy(gpu, cfg)
+    _assert_mushy_field_energy(cpu, cfg, expected_mushy_cells=4)
+    _assert_mushy_field_energy(gpu, cfg, expected_mushy_cells=4)
+    assert gpu.metadata["device"] == "cuda:0"
+    np.testing.assert_allclose(_as_numpy(gpu.temperature_K), cpu.temperature_K,
+                               rtol=0, atol=2e-10)
+    np.testing.assert_allclose(_as_numpy(gpu.specific_enthalpy_J_kg),
+                               cpu.specific_enthalpy_J_kg, rtol=0, atol=2e-7)
+    np.testing.assert_allclose(_as_numpy(gpu.energy_residual_J),
+                               cpu.energy_residual_J, rtol=0, atol=2e-10)
+    np.testing.assert_allclose(_as_numpy(gpu.peak_temperature_K),
+                               cpu.peak_temperature_K, rtol=0, atol=2e-10)
+
+
+@pytest.mark.skipif(not CUDA_AVAILABLE, reason="CUDA device is not available")
+def test_cuda_refined_mushy_field_matches_cpu_and_independent_oracles():
+    cfg = _refined_mushy_config()
+    cpu = field.run_cpu(cfg)
+    gpu = field.run_cuda(cfg, "cuda:0")
+    _assert_mushy_field_energy(cpu, cfg, expected_mushy_cells=32)
+    _assert_mushy_field_energy(gpu, cfg, expected_mushy_cells=32)
     assert gpu.metadata["device"] == "cuda:0"
     np.testing.assert_allclose(_as_numpy(gpu.temperature_K), cpu.temperature_K,
                                rtol=0, atol=2e-10)

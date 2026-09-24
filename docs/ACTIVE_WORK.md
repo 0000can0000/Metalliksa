@@ -12,14 +12,13 @@ with CPU and actual RTX 4060 `cuda:0` test coverage. The alloy capability
 matrix is recorded at
 `docs/LPBF_ALLOY_CAPABILITY_MATRIX_2026-09-24.md`.
 
-New P6 witness: `python/test_in625_bareplate_field.py` now exercises the
-bounded IN625 enthalpy solver from a synthetic 1500 K initial state through
-the mushy interval on CPU and explicit RTX 4060 `cuda:0`. Both backends reached
-1565.4608746 K with four mushy cells; max field deltas were 4.55e-13 K and
-2.33e-10 J/kg, and max ledger residual was 5.33e-15 J. The 128-cell/33-step
-profile was CPU 0.289 s, CUDA 9.196 s and +24,576 bytes incremental allocated
-memory. This is a model-law numerical witness, not process validation; the
-tiny CUDA run is slower.
+New P6 witness: `python/test_in625_bareplate_field.py` exercises the bounded
+IN625 enthalpy solver from a synthetic 1500 K initial state through the mushy
+interval at two resolutions. The 128- and 1,024-cell CPU/CUDA pairs match to
+max 9.10e-13 K and 3.50e-10 J/kg; each energy residual is 5.33e-15 J. CUDA
+times are 9.196 s and 23.254 s versus CPU 0.289 s and 1.316 s, with incremental
+memory 24,576 and 176,128 B. This is model-law numerical evidence, not process
+validation or a GPU speedup.
 
 Focused evidence: Phase 22 Python 29/29 plus CPU/CUDA field/multistep/pressure
 groups 5/5; IN625 binary/client tests 6/6; source/API groups 10/10 and 16/16;
@@ -29,9 +28,11 @@ field difference 0 K, RMS 0 K, and zero scalar/energy-ledger differences.
 IN625 remains unvalidated literature-model screening; its run has a legacy
 unbound core contract, and no experimental comparison is admitted.
 
-Next: integrate the P4/P5/P7 audits; keep frozen P4 `failed` and P5
-`unavailable`; identify whether a supported GPU workload can outperform CPU at
-larger sizes without changing the tested physics. P6 and P7 remain partial.
+Next: use the completed P4/P5/P6/P7 audits to scope physics/data work; keep
+frozen P4 `failed` and P5 `unavailable`. P6's two tests show the current
+PyTorch CUDA path is slower at both tested sizes, so profile/refactor only if a
+larger same-physics workload can justify it. Archive and evaluate the nearest
+Hastelloy X sources before any runtime alloy admission. P6/P7 remain partial.
 No goal-completion claim yet. The Marangoni package is committed as `fbe47df`.
 Preserve user-owned `docs/README.md`,
 `sonkayıtlar/LOG.md`, and `docs/SCIENTIFIC_RESEARCH_VISION.md` edits; do not

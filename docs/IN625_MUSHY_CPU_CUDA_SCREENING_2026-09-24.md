@@ -31,22 +31,30 @@ solidus 1563.15 K, liquidus 1623.15 K, and status
   independently summed total enthalpy closes against initial H plus absorbed
   energy to relative error below 1e-9.
 
-The focused `python/test_in625_bareplate_field.py` suite passes **10/10** on
-the RTX 4060 host, including both new phase-crossing backend tests. The case
-reached 1565.4608746 K and placed four cells in the mushy interval. CPU and GPU
-had the same peak and mushy-cell count; maximum absolute field differences
-were 4.55e-13 K and 2.33e-10 J/kg. Maximum CPU and GPU ledger residuals were
-both 5.33e-15 J. The independent enthalpy and integrated-energy oracles passed
-on each backend.
+The focused `python/test_in625_bareplate_field.py` suite passes **11/11** on
+the RTX 4060 host, including both phase-crossing backend cases. On the 128-cell
+grid, CPU and GPU reached 1565.4608746 K and 4 mushy cells; maximum absolute
+field differences were 4.55e-13 K and 2.33e-10 J/kg. On the refined grid, both
+reached 1577.3396719 K and 32 mushy cells; maximum differences were 9.09e-13 K
+and 3.49e-10 J/kg. Both grid levels had CPU and CUDA ledger residual maxima of
+5.33e-15 J. The 64-point enthalpy and independent integrated-energy oracles
+passed at both resolutions.
 
-## One-run profile and limitations
+## Two-resolution profile and limitations
 
-One local wall-clock observation measured CPU at 0.289 s and RTX 4060 `cuda:0`
-at 9.196 s for 128 cells × 33 steps. Incremental CUDA peak allocated memory
-was 24,576 bytes above the already initialized context baseline. These are
-single-run host/API timings, not a benchmark or scale-up claim; this tiny case
-is slower on CUDA. The extra-memory value excludes CUDA context and previously
-allocated memory.
+Both resolutions use the same 2 mm × 2 mm × 0.5 mm domain, 3.3 ms duration,
+0.099 J input, source location/profile/power, initial temperature and adiabatic
+boundaries. Only mesh and stable timestep were refined. Each row is one
+CPU/CUDA wall-clock measurement, not a benchmark campaign:
+
+| Grid | Steps × Δt | CPU | RTX 4060 `cuda:0` | Incremental peak allocation | CUDA/CPU |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 128 cells (8×8×2) | 33 × 1e-4 s | 0.289 s | 9.196 s | 24,576 B | 31.8× slower |
+| 1,024 cells (16×16×4) | 132 × 2.5e-5 s | 1.316 s | 23.254 s | 176,128 B | 17.7× slower |
+
+Allocated-memory peaks are deltas above the initialized context baseline; they
+exclude CUDA context and pre-existing allocations. The measured CUDA path is
+slower at both tested sizes, so no GPU speedup or crossover is claimed.
 
 This closes the field-level phase-range coverage gap for the *implemented
 screening law*. It does not close the IN625 source/uncertainty gate or qualify

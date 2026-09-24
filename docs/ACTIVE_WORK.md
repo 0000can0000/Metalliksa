@@ -1,5 +1,29 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
+## Continuation checkpoint — layer-conforming P4 v2 result (2026-09-24)
+
+The third, separately frozen one-layer 80 W IN718 companion used the opt-in
+`layer-conforming` grid and its distinct model ID. Protocol/scenario were
+committed before execution in `e439a56`; the scenario SHA-256 is
+`80c3d4e1c58e28559914ff3a02fc6edc762b8ffe21336466f60b2826fe388ecc`. All six
+CPU runs completed and passed the existing source guard and energy closure
+(maximum relative error `1.286e-13`). Actual mesh spacing was 26.6667, 13.3333,
+and 6.6667 µm (factor two); actual mean timestep levels were 99.982, 49.991,
+and 24.996 ns (factor two). Mesh assessment is `inconclusive`: discrete
+width/depth are identical on the finest pair and the three-level oracle
+reports unresolved/identical discrete geometry. Timestep assessment is also
+`inconclusive`: all levels report identical discrete width/depth. The report
+is `docs/LPBF_P4_LAYER_CONFORMING_V2_80W_2026-09-24.json` (SHA-256
+`873ea698d00d7deb5db06ad241028b42161ea24e9d6385d3f6953164e270c4ec`). It is
+CPU numerical evidence only, not experimental validation, and does not change
+the original frozen P4 or either prior companion outcome.
+
+Next: preserve all three companion outcomes, then continue the remaining P0–P10
+work. Investigate the discrete-melt geometry plateau as a model/observable
+limitation without changing frozen acceptance or retuning this campaign. P5
+remains unavailable; GPU qualification/performance and alloy admission remain
+open. Do not claim scientific validation from energy closure or contour proxies.
+
 ## Continuation checkpoint — factor-two P4 companion (2026-09-24)
 
 The second separately frozen layer-conforming campaign is committed as

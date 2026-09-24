@@ -1631,3 +1631,47 @@ scheduler preserves the requested duration. Full Phase 22 suite:
 warnings occurred after the passing checks. This stabilizes the explicit
 numerical update for the configured velocity cap; it does not validate the
 heuristic momentum or free-surface physics experimentally.
+
+## P8 fresh UI archive acceptance and IN625 CPU/CUDA parity (2026-09-25)
+
+The current checkout was built with `npm run build`; Vite emitted its existing
+large Three.js chunk warning. The built local server and Python worker started,
+and `/api/health` returned `status: ok`. In the live LPBF UI, a bounded IN625
+bare-plate case used a 16×12×6 (1,152-cell) grid, 10 × 10 µs steps, 20 W
+absorbed power, 0.4 mm Gaussian sigma, and zero scan velocity. CPU job
+`0433a86abc094529a185de09fb47766c` and CUDA `cuda:0` job
+`c724230219f7489b83d1f80ca6552a11` used model
+`in625-bareplate-enthalpy-conduction-v1` rev 1 and material snapshot SHA-256
+`f47b07e4c8288b8c7177001f069a254be3410bace43ad5ea2f73168ac4466f07`.
+Both completed with peak temperature 300.226 K; final enthalpy difference was
+`2.22045e-16 J`, energy residuals were `2.22045e-16 J` and zero, minimum
+source capture was 0.993615, and the final temperature-field maximum absolute
+difference was `1.13687e-13 K` (RMS `5.44234e-14 K`). These are descriptive
+same-configuration CPU/CUDA parity results; the UI supplies no tolerance
+pass/fail and they are not experimental validation. The model is explicitly
+unvalidated literature-model screening, has no powder/absorption evolution,
+vaporization, flow, or free surface, and its density is an assumed 8440 kg/m³
+not matched to a material lot. Its bounded property interval is 273.15–1623.15
+K; this result does not admit IN625 to full transient or build-job use.
+
+The associated local-derived input source was previewed/imported and its
+archived bytes verified at that time: revision 1 SHA-256
+`be3286b30b3ec3a6970b577cd9050b19de716cbf8754c7ac2355cf20d5cea655` (2 files,
+1,938 bytes). This is not raw publisher data or an experimental dataset; it
+derives from Sabau et al. 2020 plus a fixed density assumption. The CUDA job
+was archived against this exact source revision; its run remains legacy core
+contract-unbound. A fresh IN718 30 W / 1,200 mm/s transient job
+`aad3bc4b6ceb4abbbc56942554f202cb` also completed (29,988 cells, 9.484 s),
+but its 40/20/60 µm melt geometry was flagged under-resolved, and the model is
+unvalidated with no free-surface flow. Comparing the IN625 run with NIST
+AMB2022-03 Table 4 correctly returned unavailable because the material and
+process contracts do not match; the local Table 4 transcription revision SHA
+was `b312cc286ccf7cd41c2ff8bc2bea3c0cf183af432125f402dfbebdf71b235ee0`.
+
+The archive UI keyboard selector was exercised with ArrowUp/ArrowDown and
+returned to the original IN625 run. Server-local bundle
+`5c86ac62fed64f9b93c9a53b8d6817a9` contained 3 runs, 132 run artifacts, and 3
+source links; bundle verification passed. Isolated restore
+`58d94b80d0904a53bb11f5bab73eac51` completed and the UI confirmed the live
+archive was unchanged. This verifies software archive integrity and workflow,
+not the physical model. No changes were made to the frozen P4/P5/P7 gates.

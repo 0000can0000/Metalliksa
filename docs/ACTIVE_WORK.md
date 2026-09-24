@@ -1,6 +1,6 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
 
-## Continuation checkpoint — P7 evidence matrix, engine audit, and P8 build (2026-09-25)
+## Continuation checkpoint — P8 archive acceptance and physics continuation (2026-09-25)
 
 The goal remains active. User explicitly authorizes scientific fixes or a Python
 engine rebuild when evidence shows the current result is inadequate. Do not
@@ -25,18 +25,31 @@ equal endpoints by mesh), not a proven cause of the frozen failed result.
 P5 stays unavailable because the current model lacks matching melt flow,
 evaporation mass transfer and mass/latent-energy closure.
 
-P8: current source built successfully with `npm run build`; Vite reports a
-large-chunk warning for Three.js. The freshly built server and Python worker
-started locally and `/api/health` returned `status: ok`. Fresh CUA access to the
-localhost UI then failed on CDP `Emulation.setFocusEmulationEnabled`; no fresh
-keyboard/select/compute/archive/restore interaction was verified. Existing
-2026-09-24 `PROOF.md` evidence remains historical software-flow evidence only.
+P8: the current source built with `npm run build`; Vite reported a large
+Three.js chunk warning. The freshly built server and Python worker started
+locally and `/api/health` returned `status: ok`. A fresh UI pass computed the
+bounded IN625 bare-plate screening job on CPU and CUDA with matching revision
+and material snapshot identity. Peak temperature matched at 300.226 K, final
+enthalpy differed by `2.22e-16 J`, and the temperature-field maximum absolute
+difference was `1.14e-13 K`. This is same-input numerical/device parity, not
+experimental validation. The IN625 run was archived with exact local-derived
+source revision SHA-256
+`be3286b30b3ec3a6970b577cd9050b19de716cbf8754c7ac2355cf20d5cea655`; its run
+contract remains legacy/unbound. A fresh IN718 transient job was also archived;
+its 40/20/60 µm melt geometry remains under-resolved and unvalidated. The
+IN625-vs-IN718 NIST Table 4 comparison correctly returned unavailable due to
+the unmatched material/process contract. UI keyboard selection of the archived
+run passed (ArrowUp/ArrowDown changed and restored the selection). Server-local
+bundle `5c86ac62fed64f9b93c9a53b8d6817a9` was created with 3 runs, 132 run
+artifacts, and 3 source links; verification passed and isolated restore
+`58d94b80d0904a53bb11f5bab73eac51` completed while the live archive remained
+unchanged. This is software workflow/integrity evidence only.
 
-Next: retry the fresh P8 browser and keyboard acceptance on the rebuilt app;
-then continue P4 tied-peak diagnostic design without changing the frozen
-acceptance protocol and keep P7 full-transient/build-job closed until source
-evidence passes admission. Preserve user-owned changes and stage only files
-explicitly owned by this work.
+Next: continue P4 tied-peak diagnostic design without changing the frozen
+acceptance protocol; prioritize a separately contracted moving-source thermal
+engine with explicit beam/power normalization and conservation, and retain P7
+full-transient/build-job and P5 gates as closed until evidence passes admission.
+Preserve user-owned changes and stage only files explicitly owned by this work.
 
 ## Continuation checkpoint — layer-conforming P4 v2 result (2026-09-24)
 

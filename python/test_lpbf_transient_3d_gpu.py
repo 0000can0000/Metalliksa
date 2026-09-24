@@ -151,6 +151,42 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertTrue(np.isclose(evaporated_mass_from_enthalpy,
                                    evaporated_mass_from_height, rtol=0.01))
 
+    def test_convection_and_radiation_losses_use_graph_surface_area_once(self):
+        shape = (5, 5, 7)
+        dx = dy = dz = 1.0e-4
+        dt = 1.0e-5
+        temperature = np.full(shape, 2000.0, dtype=np.float32)
+        surface = np.full(shape[:2], 3.5 * dz, dtype=np.float32)
+        for i in range(shape[0]):
+            surface[i, :] = (3.5 + 0.5 * (i - 2)) * dz
+
+        old_enthalpy = np.full(shape, 1.0e9, dtype=np.float32)
+        new_enthalpy = wp.zeros(shape, dtype=float, device="cpu")
+        new_temperature = wp.zeros(shape, dtype=float, device="cpu")
+        zero_velocity = wp.zeros(shape, dtype=float, device="cpu")
+        empty_toolpath = self._wp_array([0.0])
+        wp.launch(
+            kernel=enthalpy_3d_nonlinear_step_kernel, dim=shape,
+            inputs=[self._wp_array(temperature), self._wp_array(old_enthalpy),
+                    zero_velocity, zero_velocity, zero_velocity,
+                    new_temperature, new_enthalpy, self._wp_array(surface),
+                    *shape, dx, dy, dz, dt, 0.0, 4420.0, 2.9e5,
+                    1878.0, 1928.0, empty_toolpath, empty_toolpath,
+                    empty_toolpath, empty_toolpath, 0, 30e-6, 0.0,
+                    10.0, 0.35, 300.0, 0.0, 9.7e6, 173.93, 3533.0,
+                    670.0, 730.0, 15.0, 25.0],
+            device="cpu",
+        )
+        wp.synchronize()
+
+        i = j = 2
+        k = int(float(surface[i, j]) / dz)
+        q_loss = 10.0 * (2000.0 - 300.0) + 0.35 * 5.67e-8 * (2000.0**4 - 300.0**4)
+        graph_area_metric = np.sqrt(1.0 + 0.5**2)
+        expected_delta = -dt * q_loss * graph_area_metric / dz
+        actual_delta = float(new_enthalpy.numpy()[i, j, k] - old_enthalpy[i, j, k])
+        self.assertAlmostEqual(actual_delta, expected_delta, delta=abs(expected_delta) * 0.01)
+
     def _update_surface(self, surface, temperature, U, V, W, dt, dx, dy, dz):
         nx, ny = surface.shape
         nz = temperature.shape[2]

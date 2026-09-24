@@ -1041,23 +1041,132 @@ def enthalpy_3d_nonlinear_step_kernel(
             r2 = (x_pos - l_state.x)*(x_pos - l_state.x) + (y_pos - l_state.y)*(y_pos - l_state.y)
             
             q_laser = (2.0 * eta * l_state.power / (3.14159265 * radius * radius)) * wp.exp(-2.0 * r2 / (radius * radius))
-            q_loss = h_c * (T_c - T_amb) + epsilon * 5.67e-8 * (T_c*T_c*T_c*T_c - T_amb*T_amb*T_amb*T_amb)
+            q_loss = (h_c * (T_c - T_amb)
+                      + epsilon * 5.67e-8 * (T_c*T_c*T_c*T_c - T_amb*T_amb*T_amb*T_amb))
             
             m_dot_evap = get_evaporation_mass_flux(T_c, P0, Lv, Rs, Tv)
             h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
             h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
             surface_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)
             # H is volumetric and the update below divides surface flux by dz.
-            # Match the actual graph area used by the kinematic mass recession.
-            q_evap = m_dot_evap * Lv * surface_metric
+            # Keep the flux per actual area here; apply the surface metric
+            # once, together with convection and radiation, below.
+            q_evap = m_dot_evap * Lv
             
-            h_val_new = h_val_new + dt * (q_laser - q_loss - q_evap) / dz
+            # Laser input is per projected x-y area; environmental losses act
+            # on actual graph area, like the evaporation mass/energy flux.
+            h_val_new = h_val_new + dt * (
+                q_laser - (q_loss + q_evap) * surface_metric
+            ) / dz
 
         H_new[i, j, k] = h_val_new
         T_new[i, j, k] = get_temperature_from_enthalpy(h_val_new, rho, L_f, T_solidus, T_liquidus, cp_solid, cp_liquid)
     else:
         H_new[i, j, k] = H[i, j, k]
         T_new[i, j, k] = T[i, j, k]
+
+
+@wp.kernel
+def phase22_energy_ledger_step_kernel(
+    T: wp.array3d(dtype=float), H: wp.array3d(dtype=float),
+    U: wp.array3d(dtype=float), V: wp.array3d(dtype=float), W: wp.array3d(dtype=float),
+    Z_surf: wp.array2d(dtype=float),
+    laser_J: wp.array3d(dtype=wp.float64),
+    conduction_J: wp.array3d(dtype=wp.float64),
+    advection_J: wp.array3d(dtype=wp.float64),
+    convection_J: wp.array3d(dtype=wp.float64),
+    radiation_J: wp.array3d(dtype=wp.float64),
+    evaporation_J: wp.array3d(dtype=wp.float64),
+    surface_mask_reset_J: wp.array3d(dtype=wp.float64),
+    nx: int, ny: int, nz: int,
+    dx: float, dy: float, dz: float, dt: float, current_t: float,
+    rho: float, L_f: float, T_solidus: float, T_liquidus: float,
+    tp_t: wp.array(dtype=float), tp_x: wp.array(dtype=float),
+    tp_y: wp.array(dtype=float), tp_p: wp.array(dtype=float), num_pts: int,
+    radius: float, eta: float, h_c: float, epsilon: float, T_amb: float,
+    P0: float, Lv: float, Rs: float, Tv: float,
+    cp_solid: float, cp_liquid: float, k_solid: float, k_liquid: float
+):
+    """Integrate the implemented enthalpy terms into independent per-cell ledgers."""
+    i, j, k = wp.tid()
+    if i > 0 and i < nx - 1 and j > 0 and j < ny - 1 and k > 0 and k < nz - 1:
+        z_surf = Z_surf[i, j]
+        k_surf = int(z_surf / dz)
+        volume = wp.float64(dx) * wp.float64(dy) * wp.float64(dz)
+
+        if k > k_surf:
+            h_ambient = get_enthalpy_from_temperature(
+                T_amb, rho, L_f, T_solidus, T_liquidus, cp_solid, cp_liquid
+            )
+            surface_mask_reset_J[i, j, k] += (
+                wp.float64(h_ambient - H[i, j, k]) * volume
+            )
+            return
+
+        T_c = T[i, j, k]
+        k_c = get_k(T_c, T_solidus, T_liquidus, k_solid, k_liquid)
+        k_xp = 0.0
+        if k <= int(Z_surf[i + 1, j] / dz):
+            k_xp = 0.5 * (k_c + get_k(T[i + 1, j, k], T_solidus, T_liquidus,
+                                      k_solid, k_liquid))
+        k_xm = 0.0
+        if k <= int(Z_surf[i - 1, j] / dz):
+            k_xm = 0.5 * (k_c + get_k(T[i - 1, j, k], T_solidus, T_liquidus,
+                                      k_solid, k_liquid))
+        k_yp = 0.0
+        if k <= int(Z_surf[i, j + 1] / dz):
+            k_yp = 0.5 * (k_c + get_k(T[i, j + 1, k], T_solidus, T_liquidus,
+                                      k_solid, k_liquid))
+        k_ym = 0.0
+        if k <= int(Z_surf[i, j - 1] / dz):
+            k_ym = 0.5 * (k_c + get_k(T[i, j - 1, k], T_solidus, T_liquidus,
+                                      k_solid, k_liquid))
+        k_zp = 0.0 if k == k_surf else 0.5 * (
+            k_c + get_k(T[i, j, k + 1], T_solidus, T_liquidus, k_solid, k_liquid)
+        )
+        k_zm = 0.5 * (k_c + get_k(T[i, j, k - 1], T_solidus, T_liquidus,
+                                  k_solid, k_liquid))
+        q_cond = (
+            (k_xp * (T[i + 1, j, k] - T_c) - k_xm * (T_c - T[i - 1, j, k])) / (dx * dx)
+            + (k_yp * (T[i, j + 1, k] - T_c) - k_ym * (T_c - T[i, j - 1, k])) / (dy * dy)
+            + (k_zp * (T[i, j, k + 1] - T_c) - k_zm * (T_c - T[i, j, k - 1])) / (dz * dz)
+        )
+        fx_p = _enthalpy_face_flux(H, T, Z_surf, U[i, j, k],
+                                   i, j, k, i + 1, j, k, nx, ny, nz, dz, T_solidus)
+        fx_m = _enthalpy_face_flux(H, T, Z_surf, U[i - 1, j, k],
+                                   i - 1, j, k, i, j, k, nx, ny, nz, dz, T_solidus)
+        fy_p = _enthalpy_face_flux(H, T, Z_surf, V[i, j, k],
+                                   i, j, k, i, j + 1, k, nx, ny, nz, dz, T_solidus)
+        fy_m = _enthalpy_face_flux(H, T, Z_surf, V[i, j - 1, k],
+                                   i, j - 1, k, i, j, k, nx, ny, nz, dz, T_solidus)
+        fz_p = _enthalpy_face_flux(H, T, Z_surf, W[i, j, k],
+                                   i, j, k, i, j, k + 1, nx, ny, nz, dz, T_solidus)
+        fz_m = _enthalpy_face_flux(H, T, Z_surf, W[i, j, k - 1],
+                                   i, j, k - 1, i, j, k, nx, ny, nz, dz, T_solidus)
+        q_adv = -((fx_p - fx_m) / dx + (fy_p - fy_m) / dy + (fz_p - fz_m) / dz)
+        scale = wp.float64(dt) * volume
+        conduction_J[i, j, k] += scale * wp.float64(q_cond)
+        advection_J[i, j, k] += scale * wp.float64(q_adv)
+
+        if k == k_surf:
+            l_state = get_laser_state(current_t, tp_t, tp_x, tp_y, tp_p, num_pts)
+            x_pos = float(i) * dx
+            y_pos = float(j) * dy
+            r2 = (x_pos - l_state.x) * (x_pos - l_state.x) + (y_pos - l_state.y) * (y_pos - l_state.y)
+            q_laser = (2.0 * eta * l_state.power / (3.14159265 * radius * radius)) * wp.exp(-2.0 * r2 / (radius * radius))
+            q_convection = h_c * (T_c - T_amb)
+            q_radiation = epsilon * 5.67e-8 * (
+                T_c * T_c * T_c * T_c - T_amb * T_amb * T_amb * T_amb
+            )
+            m_dot = get_evaporation_mass_flux(T_c, P0, Lv, Rs, Tv)
+            h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
+            h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
+            area_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)
+            projected_area = wp.float64(dx) * wp.float64(dy)
+            laser_J[i, j, k] += wp.float64(dt * q_laser) * projected_area
+            convection_J[i, j, k] += wp.float64(dt * q_convection * area_metric) * projected_area
+            radiation_J[i, j, k] += wp.float64(dt * q_radiation * area_metric) * projected_area
+            evaporation_J[i, j, k] += wp.float64(dt * m_dot * Lv * area_metric) * projected_area
 
 class TransientEnthalpy3DGPU:
     def __init__(self, nx=128, ny=128, nz=64, dx=2e-6, dy=2e-6, dz=2e-6):
@@ -1072,13 +1181,15 @@ class TransientEnthalpy3DGPU:
               P0=101325.0, Lv=9.7e6, Rs=173.93, Tv=3533.0,
               cp_solid=670.0, cp_liquid=730.0, k_solid=15.0, k_liquid=25.0,
               mu=0.005, d_gamma_dT=-0.0003, beta=1e-4,
-              include_diagnostic_fields=False):
+              include_diagnostic_fields=False, include_energy_ledger=False):
 
-        if type(include_diagnostic_fields) is not bool:
-            raise ValueError("include_diagnostic_fields must be a boolean")
+        if type(include_diagnostic_fields) is not bool or type(include_energy_ledger) is not bool:
+            raise ValueError("diagnostic options must be booleans")
         diagnostic_cell_count = self.nx * self.ny * self.nz
         if include_diagnostic_fields and diagnostic_cell_count > 100_000:
             raise ValueError("Full-field diagnostics are limited to 100000 cells")
+        if include_energy_ledger and diagnostic_cell_count > 1_000_000:
+            raise ValueError("Energy-ledger diagnostics are limited to 1000000 cells")
         
         # Unpack Toolpath dict: t, x, y, p
         tp_t = wp.array(toolpath['t'], dtype=float, device=self.device)
@@ -1115,6 +1226,16 @@ class TransientEnthalpy3DGPU:
         H_arr = wp.full(shape=shape, value=float(h_init), dtype=float, device=self.device)
         T_new = wp.zeros_like(T_arr)
         H_new = wp.zeros_like(H_arr)
+        energy_arrays = None
+        if include_energy_ledger:
+            energy_arrays = {
+                key: wp.zeros(shape=shape, dtype=wp.float64, device=self.device)
+                for key in (
+                    "laser_absorbed_in_J", "conduction_net_J", "advection_net_J",
+                    "convection_out_J", "radiation_out_J", "evaporation_out_J",
+                    "surface_mask_reset_J",
+                )
+            }
         
         # Hydrodynamics fields
         U = wp.zeros(shape=shape, dtype=float, device=self.device)
@@ -1238,6 +1359,26 @@ class TransientEnthalpy3DGPU:
                 device=self.device
             )
 
+            if energy_arrays is not None:
+                wp.launch(
+                    kernel=phase22_energy_ledger_step_kernel,
+                    dim=shape,
+                    inputs=[
+                        T_arr, H_arr, U, V, W, Z_surf,
+                        energy_arrays["laser_absorbed_in_J"],
+                        energy_arrays["conduction_net_J"], energy_arrays["advection_net_J"],
+                        energy_arrays["convection_out_J"], energy_arrays["radiation_out_J"],
+                        energy_arrays["evaporation_out_J"], energy_arrays["surface_mask_reset_J"],
+                        self.nx, self.ny, self.nz, self.dx, self.dy, self.dz,
+                        step_dt, current_t, rho, L_f, T_solidus, T_liquidus,
+                        tp_t, tp_x, tp_y, tp_p, num_pts,
+                        30e-6, 0.4, 10.0, 0.35, float(T_preheat_K),
+                        P0, Lv, Rs, Tv, float(cp_solid), float(cp_liquid),
+                        float(k_solid), float(k_liquid),
+                    ],
+                    device=self.device,
+                )
+
             # 6. Advance the graph interface after projection, using the
             # projected liquid velocity and the enthalpy kernel's same
             # evaporation mass flux. The new mask is active next step.
@@ -1338,6 +1479,69 @@ class TransientEnthalpy3DGPU:
             "pressure_projection_post_divergence_max_s_inv": pressure_post_divergence_max,
             "pressure_projection_post_residual_scope": "last timestep; linear gate accumulated over all timesteps" if steps else "not_run"
         }
+        if energy_arrays is not None:
+            energy_terms = {
+                key: float(np.sum(value.numpy(), dtype=np.float64))
+                for key, value in energy_arrays.items()
+            }
+            initial_total = float(h_init * diagnostic_cell_count * self.dx * self.dy * self.dz)
+            final_total = float(np.sum(H_arr.numpy(), dtype=np.float64) * self.dx * self.dy * self.dz)
+            latent_fraction = np.clip((T_host - T_solidus) / (T_liquidus - T_solidus), 0.0, 1.0)
+            final_latent = float(np.sum(rho * L_f * latent_fraction, dtype=np.float64)
+                                 * self.dx * self.dy * self.dz)
+            initial_fraction = min(1.0, max(0.0, (T_preheat_K - T_solidus)
+                                             / (T_liquidus - T_solidus)))
+            initial_latent = float(rho * L_f * initial_fraction
+                                   * diagnostic_cell_count * self.dx * self.dy * self.dz)
+            enthalpy_change = final_total - initial_total
+            modeled_change = (
+                energy_terms["laser_absorbed_in_J"]
+                + energy_terms["conduction_net_J"]
+                + energy_terms["advection_net_J"]
+                - energy_terms["convection_out_J"]
+                - energy_terms["radiation_out_J"]
+                - energy_terms["evaporation_out_J"]
+                + energy_terms["surface_mask_reset_J"]
+            )
+            residual = enthalpy_change - modeled_change
+            expected_absorbed = float(0.4 * np.trapezoid(toolpath["p"], toolpath["t"]))
+            result["energy_ledger"] = {
+                "terms_J": energy_terms,
+                "enthalpy_J": {
+                    "initial_total": initial_total,
+                    "final_total": final_total,
+                    "change_total": enthalpy_change,
+                    "initial_sensible": initial_total - initial_latent,
+                    "final_sensible": final_total - final_latent,
+                    "initial_latent": initial_latent,
+                    "final_latent": final_latent,
+                    "change_sensible": (final_total - final_latent) - (initial_total - initial_latent),
+                    "change_latent": final_latent - initial_latent,
+                },
+                "closure": {
+                    "modeled_change_J": modeled_change,
+                    "residual_J": residual,
+                    "relative_error": abs(residual) / max(
+                        abs(energy_terms["laser_absorbed_in_J"])
+                        + abs(energy_terms["conduction_net_J"])
+                        + abs(energy_terms["advection_net_J"])
+                        + abs(energy_terms["convection_out_J"])
+                        + abs(energy_terms["radiation_out_J"])
+                        + abs(energy_terms["evaporation_out_J"])
+                        + abs(energy_terms["surface_mask_reset_J"]),
+                        1e-30,
+                    ),
+                },
+                "laser_reference": {
+                    "nominal_absorbed_J": expected_absorbed,
+                    "domain_capture_fraction": (
+                        energy_terms["laser_absorbed_in_J"] / expected_absorbed
+                        if expected_absorbed > 0.0 else None
+                    ),
+                    "quadrature": "per-step laser field integrated over interior top cells; nominal input uses trapezoidal toolpath power",
+                },
+                "scope": "thermal enthalpy only; conduction includes fixed-shell exchange, advection is a shared-face internal flux, and surface-mask resets are explicit; pressure/viscous work is not coupled into enthalpy",
+            }
         if include_diagnostic_fields:
             result["diagnostic_fields"] = {
                 "temperature_K": T_host.copy(),

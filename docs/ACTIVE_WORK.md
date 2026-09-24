@@ -70,15 +70,15 @@ or out of scope. Preserve the P7 source-data gate.
 Root alone changes checkpoint documents.
 
 User widened the active goal to repair evidenced physics defects in the core
-engines as well as the planned alloy/GPU/data work. Three parallel tasks are
-currently active: `phase_enthalpy_physics` owns `python/lpbf_gpu_thermal.py`
-and its direct phase/enthalpy tests; `advection_momentum_physics` owns
-`python/lpbf_transient_3d_gpu.py` and its direct flow/projection tests;
-`gpu_alloy_validity_path` owns `python/lpbf_material_registry.py` plus related
-service/UI/tests, excluding the thermal solver. Root owns integration and
-checkpoint docs. Each task must keep source validity distinct from model
-capability, preserve other agents' edits, run targeted checks, and report any
-physics limitation it cannot resolve.
+engines as well as the planned alloy/GPU/data work. Completed packages on this
+continuation: `39a6f8f` fixes sloped-interface Marangoni temperature sampling;
+`52b51cb` matches evaporative energy and height loss to the same interface
+area; `ee730ec` rejects severe Gaussian source truncation in the CPU reference;
+`46b9be6` applies the same capture gate to CPU and explicit CUDA pilot;
+`9325765` separates optional claimed source-validity bounds from generated
+material-table coverage. The enthalpy/phase audit found no evidenced defect.
+Root owns integration and checkpoint docs; external user changes remain
+unowned.
 
 Latest bounded CPU benchmark: the 1 mm, 20 µm bare-plate corridor completed
 4,267 steps across 25,200 cells in 24.47 s with relative energy error
@@ -89,6 +89,12 @@ comparison remain open. A direct CPU/CUDA smoke of the production
 (`2.5191626264131628e-05 m`, max absolute error 0). This validates that kernel
 on the small smoke field only, not the coupled Phase 22 projection/recoil
 solver on CUDA.
+
+Current separate task: `corridor_sensitivity_feasibility` is preparing and
+running an exploratory 10 mm, 20 µm mesh width-sensitivity matrix at 320/480/640
+µm for the NIST Case 0 process inputs under the ideal-Gaussian assumption.
+It owns only a new protocol/result document. This does not use a measured beam
+profile or experimental line identities and cannot make P5 available.
 
 P4 frozen 80 W IN718 3-mesh/3-timestep report is
 `docs/LPBF_CPU_CONVERGENCE_80W_2026-09-24.json`: all six completed, energy

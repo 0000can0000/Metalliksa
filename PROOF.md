@@ -1161,3 +1161,85 @@ This is a single-kernel execution/parity smoke. It does not establish CUDA
 execution or parity for the coupled Phase 22 pressure projection, momentum,
 recoil, and surface update, and it provides no performance or physical
 validation. The earlier 24/24 Phase 22 Warp suite remains CPU evidence only.
+
+## 2026-09-24 — Phase 22 sloped-interface Marangoni gradient
+
+Commit `39a6f8f` changes the lateral temperature difference used for the
+Phase 22 surface-stress predictor to sample the height-graph interface cell in
+each neighboring column. The previous same-z stencil could compare air on one
+side with subsurface metal on the other and create a false tangential
+temperature gradient on a sloped surface. A manufactured field with uniform
+interface temperature and a phase jump on the common z-plane produces zero
+Marangoni predictor increment after the change. Focused regression: **1/1
+PASS**; complete `python/test_lpbf_transient_3d_gpu.py` at that commit:
+**25/25 PASS**.
+
+This removes that sampling artifact; it does not provide a full geometric
+surface-tangent stress law or validate the height-graph model. No CUDA
+execution was performed for this correction.
+
+## 2026-09-24 — Phase 22 evaporative mass/energy area closure
+
+The height-graph recession used actual interface area
+`dx·dy·sqrt(1+h_x²+h_y²)`, while the enthalpy latent-vaporization loss used
+only projected area `dx·dy`. Commit `52b51cb` multiplies the energy flux by the
+same surface metric. A constant-temperature, no-laser, no-conduction sloped
+graph test independently evaluates
+`rho·Δh·dx·dy`, `-ΔH·dx·dy·dz/Lv`, and
+`m_dot·sqrt(1+h_x²+h_y²)·dx·dy·dt`; the three agree within 1%. Focused
+regression: **1/1 PASS**; full Phase 22 CPU Warp suite: **26/26 PASS**.
+
+The local height/enthalpy balance is consistent for this graph update. It does
+not establish global mass conservation for breakup, droplet ejection, or a
+resolved vapor plume. Coupled Phase 22 CUDA execution remains unverified.
+
+## 2026-09-24 — Gaussian source-domain capture gate
+
+`integrated_source` scales the represented Gaussian weights to the requested
+absorbed power. If the finite domain captures too little of the profile, this
+concentrates omitted power in the remaining cells. Commit `ee730ec` makes the
+CPU transient reject source capture below `1/1.01` (a numerical cap on
+renormalization to 1.01, not a material tolerance); `46b9be6` applies the same
+single threshold and error helper to the explicit CUDA pilot. A 20 µm
+corridor/D80 source captured 38.293% and is rejected. At fixed 20 µm spacing,
+the tested 320 and 480 µm corridors passed the capture gate and retained
+minimum-capture / maximum-renormalization diagnostics. A previously accepted
+rotated multi-track case captured only 88.640% and is now rejected; its energy
+test fixture was aligned to the grid so it continues testing the intended
+energy/schedule contract.
+
+CPU focused bare-plate suite: **29 PASS, 1 OpenFOAM 14 SKIP**. CUDA pilot suite:
+**5/5 PASS**, including real RTX 4060 IN718 and estimated-legacy 316L parity;
+the low-capture GPU driver regression uses a CPU torch test double to isolate
+the gate. The shared heat-source suite is **8 PASS, 1 OpenFOAM SKIP**. This
+gate prevents severe source truncation; it does not verify the incident beam
+profile or make the exploratory ideal-Gaussian case NIST-equivalent.
+
+## 2026-09-24 — Separate material source validity from table coverage
+
+Commit `9325765` accepts optional `sourceValidityRange_K` metadata for a
+user-supplied material table. When supplied, it must cover the complete table
+and declared boiling temperature; the registry still requires the solver
+table to span 273.15 K through boiling. Generated `temperatureCoverage_K`
+continues to describe the table itself. When source validity is omitted, it
+stays unknown. Four legacy alloy snapshots and a supplied IN718 snapshot retain
+their existing revision hashes when the optional field is absent; when
+provided, it participates in the content hash. The UI exposes the ranges
+separately and describes the coverage rule.
+
+Focused registry/material checks: **2/2 PASS**; engineering suite: **32 PASS,
+1 OpenFOAM 14 SKIP**; TypeScript no-emit check PASS. Live browser accessibility
+snapshot showed `Source validity range: Unknown` when none was supplied; the
+expanded guidance was keyboard-operable. This metadata contract does not admit
+NIST SRM 316L or IN625 as a new transient alloy, and a range asserted in an
+unverified user-supplied snapshot is not independent source verification.
+
+## 2026-09-24 — Enthalpy/phase audit result
+
+An audit of `lpbf_gpu_thermal.py` and its shared material enthalpy contract
+found no evidenced phase-inversion or latent-heat defect: CPU and GPU pilot use
+the same monotone enthalpy table, fusion interval, fixed reference density, and
+`h(T)` inversion. Selected IN718 solidus/mushy/liquid round trips returned
+within `1e-8 K`; actual CUDA pilot checks, including IN718 and the existing
+estimated-legacy 316L snapshot, passed. This is numerical parity and contract
+evidence, not material-data or experimental qualification.

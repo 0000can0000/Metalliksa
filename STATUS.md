@@ -255,3 +255,8 @@
 - After CUDA enthalpy inversion synchronization reduction (150e604), one warm-up per backend and five alternating repeats gave median CPU/CUDA times of 0.198/4.877 s at 128 cells and 1.359/19.099 s at 1,024 cells. CUDA remained 24.6× and 14.1× slower respectively; temperature differences stayed below 9.1e-13 K.
 - The focused field suite passed 12/12 after the change. This measurement includes direct solver/result construction, excludes UI/API transport, and is not a paired before/after campaign. It supports no speedup or crossover claim. Full method and ranges: docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 - Next: retain CUDA for explicit numerical parity only; profile larger same-physics workloads before pursuing kernel fusion. P6/P7 remain partial and alloy qualification remains closed.
+
+## 2026-09-24 — Larger same-domain IN625 GPU screen
+- Added a 2,048-cell z-refined synthetic case over the same 2×2×0.5 mm domain, 3.3 ms, 30 W and 0.099 J input. CPU/CUDA medians: 4.013/43.617 s (3 alternated repeats; CUDA 10.87× slower). Both reached 1593.516258 K and 44 mushy cells. Independent enthalpy/energy oracles passed; max field deltas 9.10e-13 K and 4.66e-10 J/kg.
+- This verifies same-law numerical consistency at one larger, anisotropically refined screen, not process convergence, alloy qualification, or GPU crossover. Detailed method: docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
+- Current next action: decide whether to implement fused/compiled kernels only after a backend-level profile identifies launch-bound versus arithmetic-bound time; otherwise prioritize source/data and model-closure gates. P6/P7 remain partial.

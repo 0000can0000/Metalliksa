@@ -363,3 +363,17 @@ docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 
 P6/P7 remain partial. Next step is to profile a larger same-physics workload
 before considering fused GPU kernels; this screening alloy remains unqualified.
+
+## 2026-09-24 — Larger IN625 same-domain GPU screen
+
+A z-refined, 2,048-cell case kept the same domain, process source, integrated
+energy and simulated duration. The warm three-repeat medians were 4.013 s CPU
+and 43.617 s CUDA, so the GPU remained 10.87× slower. Both backend outputs
+passed the independent enthalpy and energy oracles, with matching 44 mushy
+cells and maximum temperature/enthalpy differences below 9.10e-13 K and
+4.66e-10 J/kg. This is larger same-law numerical evidence, not spatial
+convergence, process validation, alloy qualification, or a CUDA crossover.
+Full timings are in docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
+
+Next: profile backend launch and arithmetic costs before deciding on fused
+kernels; maintain P6/P7 as partial.

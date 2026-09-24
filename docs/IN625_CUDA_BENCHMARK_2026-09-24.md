@@ -29,3 +29,22 @@ crossover is claimed.
 
 This is a numerical screening law only. It does not qualify IN625, validate
 LPBF process behavior, establish a general transient path, or close P6/P7.
+
+## Larger same-domain anisotropic refinement
+
+A follow-on synthetic case doubled the cell count from 1,024 to 2,048 by
+refining z only while preserving the 2 mm × 2 mm × 0.5 mm domain, 3.3 ms
+duration, 30 W absorbed source, 0.099 J input, source profile, and 1500 K
+initial state. The grid was 16 × 16 × 8 with cell sizes
+125 × 125 × 62.5 µm, dt = 12.5 µs, and 264 steps. One warm-up per backend
+was excluded, then three CPU/CUDA timings alternated:
+
+| Grid | CPU median (range) | CUDA median (range) | CUDA / CPU median |
+| --- | ---: | ---: | ---: |
+| 2,048 cells, z-refined | 4.012762 s (3.992162–4.127304) | 43.616675 s (37.312368–43.836660) | 10.869× slower |
+
+The CPU and CUDA runs both reached 1593.516258 K and 44 mushy cells. The
+independent 64-point enthalpy and total-energy oracles passed for both outputs;
+maximum CPU/CUDA differences were 9.095e-13 K and 4.657e-10 J/kg. This
+higher-resolution synthetic case still does not qualify the material or
+process. CUDA remained slower; no crossover is demonstrated.

@@ -703,3 +703,17 @@ crossover. Details: docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
 Next: keep this path as explicit numerical CPU/CUDA parity evidence and profile
 larger same-physics workloads before attempting fused kernels. P6/P7 remain
 partial; IN625 remains unvalidated.
+
+## Larger same-domain IN625 timing screen — 2026-09-24
+
+A 2,048-cell z-refined case preserved the 2×2×0.5 mm domain, 3.3 ms
+duration, 30 W / 0.099 J source and 1500 K initial condition. Three
+alternating warmed timings had CPU/CUDA medians 4.013/43.617 s, with CUDA
+10.87× slower. Both outputs reached 1593.516258 K and 44 mushy cells; the
+independent enthalpy and energy oracles passed, with max temperature/enthalpy
+differences 9.10e-13 K / 4.66e-10 J/kg. This remains numerical screening, not
+process validation or GPU crossover. See
+docs/IN625_CUDA_BENCHMARK_2026-09-24.md.
+
+Next: only pursue fused GPU work if a backend profile confirms launch or
+arithmetic bottlenecks; keep P6/P7 partial.

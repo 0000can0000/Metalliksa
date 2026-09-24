@@ -349,8 +349,23 @@ def velocity_advection_forces_kernel(
             # Tangential Marangoni stress is applied over the liquid interval
             # from liquidus through boiling; hotter surfaces use the recoil law.
             if T_c >= T_liquidus and T_c <= Tv:
-                dT_dx = (T[i+1, j, k] - T[i-1, j, k]) / (2.0 * dx)
-                dT_dy = (T[i, j+1, k] - T[i, j-1, k]) / (2.0 * dy)
+                # Sample the neighboring interface cells, not the same z-index:
+                # on a sloped height graph that plane can cross air/metal and
+                # turn a phase jump into a spurious surface-temperature slope.
+                k_xp = int(Z_surf[i + 1, j] / dz)
+                k_xm = int(Z_surf[i - 1, j] / dz)
+                k_yp = int(Z_surf[i, j + 1] / dz)
+                k_ym = int(Z_surf[i, j - 1] / dz)
+                if k_xp < 1: k_xp = 1
+                elif k_xp > nz - 2: k_xp = nz - 2
+                if k_xm < 1: k_xm = 1
+                elif k_xm > nz - 2: k_xm = nz - 2
+                if k_yp < 1: k_yp = 1
+                elif k_yp > nz - 2: k_yp = nz - 2
+                if k_ym < 1: k_ym = 1
+                elif k_ym > nz - 2: k_ym = nz - 2
+                dT_dx = (T[i + 1, j, k_xp] - T[i - 1, j, k_xm]) / (2.0 * dx)
+                dT_dy = (T[i, j + 1, k_yp] - T[i, j - 1, k_ym]) / (2.0 * dy)
 
                 # tau = d_gamma/dT * grad_s(T), mu * du_t/dn = tau.
                 u_marangoni = U[i, j, k-1] + dz * (d_gamma_dT / mu) * dT_dx

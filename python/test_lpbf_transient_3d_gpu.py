@@ -190,6 +190,36 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         self.assertAlmostEqual(u_recoil, 0.0, delta=1e-7)
         self.assertLess(w_recoil, 0.0)
 
+    def test_marangoni_gradient_samples_neighboring_surface_cells(self):
+        shape = (5, 5, 7)
+        dx = dy = dz = 1.0e-3
+        dt = 1.0e-6
+        temperature = np.full(shape, 300.0, dtype=np.float32)
+        # The graph rises by one cell on each side. Its interface temperature
+        # is uniform, while the common z-plane crosses air on one side and
+        # sub-surface liquid on the other.
+        surface = np.full(shape[:2], 3.5 * dz, dtype=np.float32)
+        surface[1, :] = 2.5 * dz
+        surface[3, :] = 4.5 * dz
+        temperature[1, :, 2] = 2500.0
+        temperature[2, :, 3] = 2500.0
+        temperature[3, :, 4] = 2500.0
+        temperature[3, :, 3] = 2400.0
+
+        fields = [wp.zeros(shape, dtype=float, device="cpu") for _ in range(6)]
+        wp.launch(
+            kernel=velocity_advection_forces_kernel, dim=shape,
+            inputs=[*fields[:3], *fields[3:], self._wp_array(temperature),
+                    self._wp_array(surface), *shape, dx, dy, dz, dt,
+                    0.005, 4420.0, -0.0003, 0.0,
+                    1928.0, 1878.0, 101325.0, 9.7e6, 173.93, 3533.0],
+            device="cpu",
+        )
+        wp.synchronize()
+        # Uniform interface temperature has no Marangoni stress despite the
+        # different phase temperatures on the same-z neighboring cells.
+        self.assertAlmostEqual(fields[3].numpy()[2, 2, 3], 0.0, delta=1e-7)
+
     @staticmethod
     def _pressure_cell_class_host(temperature, surface, i, j, k, dz, solidus=1000.0):
         nx, ny, nz = temperature.shape

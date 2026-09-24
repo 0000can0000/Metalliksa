@@ -265,3 +265,18 @@ karşılaştırılmadı; powder-bed, genel transient ve deneysel kabul açık ka
 P6 bu yolla kısmi ilerledi, tamamlanmadı: kaynak alanı ve CPU/CUDA eşleşmesi
 yalnız küçük sentetik vakada var; ölçek/bellek-hız çalışması, bağımsız NIST
 ölçüm karşılaştırması ve uygulama UI/kalıcı kayıt akışı açık.
+
+## 2026-09-24 — IN625 mushy-range GPU witness
+
+The bounded IN625 CPU/CUDA field route was extended with one synthetic
+phase-range case at an artificial 1500 K initial state. In 8×8×2 cells and 33
+steps, both CPU and explicit RTX 4060 `cuda:0` reached 1565.4608746 K and four
+mushy cells; maximum temperature and enthalpy differences were 4.55e-13 K and
+2.33e-10 J/kg. A 64-point independent Cp integral and whole-domain energy
+balance passed; the maximum ledger residual was 5.33e-15 J. The focused suite
+passes 10/10. One-run profile: CPU 0.289 s, CUDA 9.196 s, and 24,576 B
+incremental allocated memory. The tiny CUDA case is slower and is not a
+performance claim. This closes only field-level exercise of the current
+screening constitutive law; it does not change IN625's `unvalidated` status or
+source gate. P6/P7 remain partial; frozen P4 stays `failed`, P5 stays
+`unavailable`. Details: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`.

@@ -49,6 +49,40 @@ def _config(**changes):
     return field.BareplateConfig(**values)
 
 
+def _mushy_config():
+    """Bounded synthetic witness that exercises, but does not validate, mushy H(T)."""
+    return _config(shape_xyz=(8, 8, 2), initial_temperature_K=1500.0,
+                   dt_s=1e-4, steps=33, absorbed_power_W=30.0, scan_start_x_m=0.001,
+                   scan_y_m=0.001, scan_velocity_x_m_s=0.0)
+
+
+def _as_numpy(value):
+    return value.detach().cpu().numpy() if hasattr(value, "detach") else np.asarray(value)
+
+
+def _assert_mushy_field_energy(result, config):
+    temperature = _as_numpy(result.temperature_K)
+    enthalpy = _as_numpy(result.specific_enthalpy_J_kg)
+    snap = in625_lpbf_thermal_snapshot()
+    assert np.any(temperature > snap["solidus_K"])
+    assert np.all(temperature < LIQUIDUS_K)
+    assert int(np.count_nonzero(temperature > snap["solidus_K"])) == 4
+
+    independent_h = np.array([_independent_h_gauss(float(t)) for t in temperature.flat])
+    independent_h = independent_h.reshape(temperature.shape)
+    np.testing.assert_allclose(enthalpy, independent_h, rtol=2e-12, atol=2e-7)
+
+    cell_mass = field.DENSITY_KG_M3 * math.prod(config.cell_size_m)
+    initial_total = (math.prod(config.shape_xyz) * cell_mass
+                     * _independent_h_gauss(config.initial_temperature_K))
+    input_energy = config.absorbed_power_W * config.dt_s * config.steps
+    independent_final = float(independent_h.sum() * cell_mass)
+    assert abs(independent_final - initial_total - input_energy) / input_energy < 1e-9
+    assert result.metadata["sourceCaptureFractionMinimum"] >= field.MINIMUM_SOURCE_CAPTURE_FRACTION
+    assert result.metadata["materialRevisionSha256"] == field.MATERIAL_REVISION_SHA256
+    assert result.metadata["validationStatus"] == "unvalidated-literature-model-screening"
+
+
 def test_enthalpy_matches_independent_integral_and_bounded_inverse():
     for temperature in (REFERENCE_TEMPERATURE_K, 700.0, SOLIDUS_K,
                         SOLIDUS_K+15.0, SOLIDUS_K+45.0, LIQUIDUS_K):
@@ -76,6 +110,12 @@ def test_cpu_moving_surface_source_conserves_absorbed_energy_and_metadata():
     assert result.metadata["sourceCaptureFractionMinimum"] >= field.MINIMUM_SOURCE_CAPTURE_FRACTION
     assert result.metadata["powderOrMeltPoolClaim"] is False
     assert result.metadata["materialRevisionSha256"] == in625_lpbf_thermal_snapshot()["materialRevisionSha256"]
+
+
+def test_cpu_field_enters_mushy_range_and_matches_independent_enthalpy_energy_oracle():
+    cfg = _mushy_config()
+    result = field.run_cpu(cfg)
+    _assert_mushy_field_energy(result, cfg)
 
 
 def test_liquidus_crossing_rejects_without_clipping_or_superheat():
@@ -130,6 +170,24 @@ def test_cuda_full_field_matches_cpu_and_device_is_explicit():
     assert np.allclose(gpu.peak_temperature_K.cpu().numpy(), cpu.peak_temperature_K,
                        rtol=0, atol=2e-10)
     assert gpu.metadata["materialRevisionSha256"] == cpu.metadata["materialRevisionSha256"]
+
+
+@pytest.mark.skipif(not CUDA_AVAILABLE, reason="CUDA device is not available")
+def test_cuda_mushy_field_matches_cpu_and_independent_oracles():
+    cfg = _mushy_config()
+    cpu = field.run_cpu(cfg)
+    gpu = field.run_cuda(cfg, "cuda:0")
+    _assert_mushy_field_energy(cpu, cfg)
+    _assert_mushy_field_energy(gpu, cfg)
+    assert gpu.metadata["device"] == "cuda:0"
+    np.testing.assert_allclose(_as_numpy(gpu.temperature_K), cpu.temperature_K,
+                               rtol=0, atol=2e-10)
+    np.testing.assert_allclose(_as_numpy(gpu.specific_enthalpy_J_kg),
+                               cpu.specific_enthalpy_J_kg, rtol=0, atol=2e-7)
+    np.testing.assert_allclose(_as_numpy(gpu.energy_residual_J),
+                               cpu.energy_residual_J, rtol=0, atol=2e-10)
+    np.testing.assert_allclose(_as_numpy(gpu.peak_temperature_K),
+                               cpu.peak_temperature_K, rtol=0, atol=2e-10)
 
 
 @pytest.mark.skipif(not CUDA_AVAILABLE, reason="CUDA device is not available")

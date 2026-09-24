@@ -1574,3 +1574,24 @@ CPU/CUDA screening only. After resumption, the focused suite was rerun:
 `cuda:0`. The kernel fix, test, matrix, and evidence checkpoint form a separate
 package. Frozen P4 remains `failed`, P5 remains `unavailable`, and the broad
 goal is not complete.
+
+## IN625 mushy-range CPU/CUDA witness (2026-09-24)
+
+To check that the bounded IN625 field adapter traverses its latent-enthalpy
+range, a synthetic 8×8×2 cell test starts at 1500 K and adds 30 W absorbed
+power for 33 steps at 1e-4 s. This high initial state is deliberate numerical
+coverage, not an LPBF preheat or process claim. Source capture is 0.9982844950;
+the material revision remains `f47b07e4c8288b8c7177001f069a254be3410bace43ad5ea2f73168ac4466f07`.
+
+`python -m pytest -q test_in625_bareplate_field.py`: **10 passed** on an RTX
+4060 host (pytest cache ACL warning only). CPU and `cuda:0` both reached
+1565.4608746 K, with 4 mushy cells and no liquidus clipping. Maximum field
+deltas were 4.55e-13 K and 2.33e-10 J/kg; both ledger residual maxima were
+5.33e-15 J. Independent 64-point Cp integration and global enthalpy balance
+passed on each backend. One run measured CPU 0.289 s, CUDA 9.196 s and 24,576 B
+incremental CUDA allocation; this tiny case is slower on GPU and makes no
+performance claim. Full context and limits: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`.
+
+This closes field-level coverage of the implemented IN625 screening law's
+mushy interval for one synthetic vector; it does not admit the source data or
+model as physically qualified. P6 and P7 remain partial.

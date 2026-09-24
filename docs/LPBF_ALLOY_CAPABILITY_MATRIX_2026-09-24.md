@@ -26,8 +26,12 @@ The 576-cell/4-step CPU–RTX 4060 `cuda:0` synthetic case in
 temperature and specific-enthalpy fields. The separate browser acceptance run
 used 1,152 cells and 11 steps; CPU and `cuda:0` both produced field SHA-256
 `90670c1176da50ec2014a62076f057ebac6e39635e29beb390227a1598f58354`, with
-maximum and RMS temperature differences of 0 K. These establish implementation
-parity for the bounded model and cases tested, not physical alloy qualification.
+maximum and RMS temperature differences of 0 K. A synthetic 1500 K initial-
+state witness also entered the mushy interval on both backends (128 cells,
+33 steps, 4 mushy cells, peak 1565.46 K); see
+`docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`. These establish
+implementation parity for the bounded model and cases tested, not physical
+alloy qualification.
 
 The four existing alloys retain their historical model inputs and screening
 admission. Their source-validity ranges remain unspecified and the capability

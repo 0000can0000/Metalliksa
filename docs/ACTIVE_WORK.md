@@ -1,6 +1,6 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-24
 
-## Latest checkpoint — resumed, physics/matrix package validated (2026-09-24)
+## Latest checkpoint — IN625 mushy-range CUDA witness (2026-09-24)
 
 User explicitly widened this goal to include evidenced physics defects in the
 core engines. The previously committed Phase 22 work metric-projects Marangoni
@@ -12,6 +12,15 @@ with CPU and actual RTX 4060 `cuda:0` test coverage. The alloy capability
 matrix is recorded at
 `docs/LPBF_ALLOY_CAPABILITY_MATRIX_2026-09-24.md`.
 
+New P6 witness: `python/test_in625_bareplate_field.py` now exercises the
+bounded IN625 enthalpy solver from a synthetic 1500 K initial state through
+the mushy interval on CPU and explicit RTX 4060 `cuda:0`. Both backends reached
+1565.4608746 K with four mushy cells; max field deltas were 4.55e-13 K and
+2.33e-10 J/kg, and max ledger residual was 5.33e-15 J. The 128-cell/33-step
+profile was CPU 0.289 s, CUDA 9.196 s and +24,576 bytes incremental allocated
+memory. This is a model-law numerical witness, not process validation; the
+tiny CUDA run is slower.
+
 Focused evidence: Phase 22 Python 29/29 plus CPU/CUDA field/multistep/pressure
 groups 5/5; IN625 binary/client tests 6/6; source/API groups 10/10 and 16/16;
 run preview round-trip 2/2; TypeScript, lint, and diff checks passed. Live UI
@@ -20,11 +29,11 @@ field difference 0 K, RMS 0 K, and zero scalar/energy-ledger differences.
 IN625 remains unvalidated literature-model screening; its run has a legacy
 unbound core contract, and no experimental comparison is admitted.
 
-Next: continue the still-open P4/P5/P6/P7 acceptance work from the active plan.
-The Marangoni fix, capability matrix, and this evidence checkpoint are being
-committed as a separate package after a fresh 29/29 focused run. Preserve the
-frozen P4 `failed` and P5 `unavailable` outcomes. No goal-completion claim yet.
-The previous committed package is `a5d60b6`. Preserve user-owned `docs/README.md`,
+Next: integrate the P4/P5/P7 audits; keep frozen P4 `failed` and P5
+`unavailable`; identify whether a supported GPU workload can outperform CPU at
+larger sizes without changing the tested physics. P6 and P7 remain partial.
+No goal-completion claim yet. The Marangoni package is committed as `fbe47df`.
+Preserve user-owned `docs/README.md`,
 `sonkayıtlar/LOG.md`, and `docs/SCIENTIFIC_RESEARCH_VISION.md` edits; do not
 stage them.
 

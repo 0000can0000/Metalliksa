@@ -1044,7 +1044,12 @@ def enthalpy_3d_nonlinear_step_kernel(
             q_loss = h_c * (T_c - T_amb) + epsilon * 5.67e-8 * (T_c*T_c*T_c*T_c - T_amb*T_amb*T_amb*T_amb)
             
             m_dot_evap = get_evaporation_mass_flux(T_c, P0, Lv, Rs, Tv)
-            q_evap = m_dot_evap * Lv
+            h_x = (Z_surf[i + 1, j] - Z_surf[i - 1, j]) / (2.0 * dx)
+            h_y = (Z_surf[i, j + 1] - Z_surf[i, j - 1]) / (2.0 * dy)
+            surface_metric = wp.sqrt(1.0 + h_x * h_x + h_y * h_y)
+            # H is volumetric and the update below divides surface flux by dz.
+            # Match the actual graph area used by the kinematic mass recession.
+            q_evap = m_dot_evap * Lv * surface_metric
             
             h_val_new = h_val_new + dt * (q_laser - q_loss - q_evap) / dz
 

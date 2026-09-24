@@ -99,6 +99,58 @@ class Transient3DPhysicsContracts(unittest.TestCase):
         expected = float(surface[3, 3]) - dt * m_dot / 4420.0
         self.assertAlmostEqual(updated[3, 3], expected, delta=2e-7)
 
+    def test_evaporation_energy_and_height_mass_use_same_surface_area(self):
+        shape = (5, 5, 7)
+        dx = dy = dz = 1.0e-4
+        dt = 1.0e-5
+        rho, lv = 4420.0, 9.7e6
+        temperature = np.full(shape, 3600.0, dtype=np.float32)
+        surface = np.full(shape[:2], 3.5 * dz, dtype=np.float32)
+        for i in range(shape[0]):
+            surface[i, :] = (3.5 + 0.5 * (i - 2)) * dz
+
+        old_enthalpy = np.full(shape, 1.0e10, dtype=np.float32)
+        new_enthalpy = wp.zeros(shape, dtype=float, device="cpu")
+        new_temperature = wp.zeros(shape, dtype=float, device="cpu")
+        zero_velocity = wp.zeros(shape, dtype=float, device="cpu")
+        empty_toolpath = self._wp_array([0.0])
+        wp.launch(
+            kernel=enthalpy_3d_nonlinear_step_kernel, dim=shape,
+            inputs=[self._wp_array(temperature), self._wp_array(old_enthalpy),
+                    zero_velocity, zero_velocity, zero_velocity,
+                    new_temperature, new_enthalpy, self._wp_array(surface),
+                    *shape, dx, dy, dz, dt, 0.0, rho, 2.9e5,
+                    1878.0, 1928.0, empty_toolpath, empty_toolpath,
+                    empty_toolpath, empty_toolpath, 0, 30e-6, 0.0,
+                    0.0, 0.0, 300.0, 101325.0, lv, 173.93, 3533.0,
+                    670.0, 730.0, 15.0, 25.0],
+            device="cpu",
+        )
+        wp.synchronize()
+        updated_surface = self._update_surface(
+            surface, temperature,
+            np.zeros(shape, dtype=np.float32), np.zeros(shape, dtype=np.float32),
+            np.zeros(shape, dtype=np.float32), dt, dx, dy, dz,
+        )
+
+        i = j = 2
+        k = int(float(surface[i, j]) / dz)
+        h_x = (float(surface[i + 1, j]) - float(surface[i - 1, j])) / (2.0 * dx)
+        area_metric = np.sqrt(1.0 + h_x * h_x)
+        p_sat = 101325.0 * np.exp((lv / 173.93) * (1.0 / 3533.0 - 1.0 / 3600.0))
+        m_dot = 0.54 * p_sat / np.sqrt(2.0 * np.pi * 173.93 * 3600.0 + 1e-6)
+        projected_area = dx * dy
+        evaporated_mass_from_height = rho * (float(surface[i, j]) - float(updated_surface[i, j])) * projected_area
+        evaporated_mass_from_enthalpy = -(
+            float(new_enthalpy.numpy()[i, j, k]) - float(old_enthalpy[i, j, k])
+        ) * dx * dy * dz / lv
+        expected_mass = m_dot * area_metric * projected_area * dt
+
+        self.assertTrue(np.isclose(evaporated_mass_from_height, expected_mass, rtol=0.01))
+        self.assertTrue(np.isclose(evaporated_mass_from_enthalpy, expected_mass, rtol=0.01))
+        self.assertTrue(np.isclose(evaporated_mass_from_enthalpy,
+                                   evaporated_mass_from_height, rtol=0.01))
+
     def _update_surface(self, surface, temperature, U, V, W, dt, dx, dy, dz):
         nx, ny = surface.shape
         nz = temperature.shape[2]

@@ -92,8 +92,15 @@ ortalaması ve standart sapması, yedi koşulun yerel Tablo 4 transkripsiyonunu
 0,1 µm yuvarlamada yeniden üretir; model/deney kıyası ayrı kapıda kalır.
 
 Kıyas başlamadan modelin çıplak levha koşulunu, 4,9 ve 6,0 mm'deki ölçüm
-kesitlerini ve
-kaynağın `D4σ` ışın tanımını karşılayabildiği gösterilmelidir. Mevcut katalogda
+kesitlerini ve kaynağın `D4σ` ışın tanımını karşılayabildiği gösterilmelidir.
+[NIST'in 2025 metroloji raporu](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616) 67 µm nominal tek-iz koşulu için ölçülmüş
+Gaussian `Dg` çapını ve %5,2 birleşik standart belirsizliği verir; dairesellik
+sapması 1 µm olarak raporlanır. Uygulamanın 1/e² çapı ideal Gaussian'da `Dg`
+ile aynıdır; gerçek ışın için bu eşitlik ve nominal D4σ eşleşmesi açık bir
+yaklaşım olarak kaydedilmelidir. Raporda indirilebilir ham 2B ışınım dağılımı
+bulunmadığından ölçülmüş çap tam profil artefaktı değildir. Kaynak-baytına bağlı
+ölçüm kaydı ve çap eşleme belirsizliği arşivlenene kadar sıkı P5 profil kapısı
+kapalı kalır. Mevcut katalogda
 yer alan 40 µm katman/110 µm hatch değerleri tek iz çıplak levha ölçümü değildir;
 bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas durumu
 `unavailable` olur. Ham termografi sıcaklığı bu W/D kaynağından türetilmez.
@@ -103,8 +110,12 @@ bu değerler eşleştirme için kullanılamaz. Uygun operatör yoksa kıyas duru
 2026-09-24 kaynak/hesaplanabilirlik denetiminde NIST termografi Table 1 ve 2
 Case 0 girdileri 285 W, 960 mm/s, 67 µm spot, tek +X yönlü 10 mm çıplak levha
 izi ve 23,5 °C altlık sıcaklığı olarak alındı ([resmî yöntem belgesi](https://www.nist.gov/document/amb2022-03-measurement-and-challenge-descriptions-version-101)).
-67 µm, modeldeki ideal Gaussian 1/e² çapına yalnız koşullu nominal eşlemedir;
-ölçülmüş profil SHA'sı değildir ve katı P5 kıyas kapısını açmaz.
+67 µm, NIST'in [2025 raporundaki](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616) ölçülmüş nominal Gaussian `Dg` çapıyla
+desteklenir; rapor %5,2 birleşik standart çap belirsizliği verir. Solver bunu
+ideal-Gaussian 1/e² girdisi olarak kullanabilir; `Dg`–D4σ eşleşmesi ise yalnız
+ideal/çok yakın Gaussian yaklaşımıdır. Ham 2B ışınım dağılımı ve source-byte
+bağlı ölçüm kaydı eksiktir; ölçülmüş çap tam profil SHA'sı sayılmaz ve tek
+başına P5 kapısını açmaz.
 
 Mevcut `python/lpbf_simulation.py` giriş sınırı `trackLength_um <= 3000`;
 10.000 µm Case 0 girdisi çözüm başlamadan reddedilir. Alan hesabında sınırı

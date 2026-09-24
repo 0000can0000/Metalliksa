@@ -34,5 +34,10 @@ seviye W ve D değişimi ayrı ayrı en fazla %5; son üç gerçek çözünürl�
 çevrilmez. Eski ayrık hücre W/D değerlendirmesi aynı raporda ayrıca kalır.
 
 75 W çalışması bu ayrı protokolü geçse bile sonuç yalnız sayısal termal vekil
-yakınsamasıdır. P5 için 10 mm NIST çıplak levha süreci, gerçek D4σ profili,
-4,9/6,0 mm'deki üç tekrar iz ve optik sınır operatörü ayrıca gereklidir.
+yakınsamasıdır. NIST'in 2025 beam report'u ölçülmüş nominal 67 µm Gaussian
+`Dg` çapını %5,2 birleşik standart belirsizlikle, dairesellik sapmasını da
+1 µm olarak verir; indirilebilir ham 2B ışınım artefaktı sağlamaz. Solver'ın
+1/e² çapı ideal Gaussian'da `Dg` ile aynıdır; NIST Table 4'ün nominal D4σ
+değeriyle eşleme açık bir yaklaşım ve belirsizlikle kaydedilmelidir. P5 için
+source-byte bağlı beam kaydı, 4,9/6,0 mm'deki üç tekrar iz ve optik sınır
+operatörü ayrıca gereklidir.

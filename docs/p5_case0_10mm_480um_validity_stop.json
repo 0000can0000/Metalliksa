@@ -40,6 +40,6 @@
   "evidenceLimits": [
     "The last-step source capture does not describe minimum capture across a completed run.",
     "No width/depth thermal proxy, full-track energy closure, GPU result, or NIST residual is available from this failed attempt.",
-    "The nominal D4sigma beam input remains an ideal-Gaussian screening assumption; no measured beam profile was provided."
+    "NIST reports a measured nominal 67 um Gaussian Dg diameter with 5.2% combined standard uncertainty, but no downloadable raw 2D irradiance artifact. This run used an ideal-Gaussian 1/e2 screening input; its mapping to the Table 4 nominal D4sigma value was not source-byte-bound."
   ]
 }

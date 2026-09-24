@@ -782,9 +782,13 @@ after seeing the original failure, and no independent time-axis study exists
 for this contour, so it is exploratory evidence only. P4 remains `failed`.
 
 **Experimental validity:** No numerical W/D error against NIST Table 4 is
-reported. The current model lacks the measured beam-profile mapping, matched
-10 mm bare-plate run, source-matched etched optical section operator and passing 3+3
-numerical gate. IN625 is admitted only to bounded fusion-enthalpy screening,
+reported. NIST's [2025 beam-metrology report](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=958616) provides a measured nominal 67 µm
+Gaussian `Dg` diameter (5.2% combined standard uncertainty), but no
+downloadable raw 2D irradiance artifact. The model uses a Gaussian 1/e²
+diameter; mapping it to the Table 4 nominal D4σ remains an explicit
+approximation. A source-byte-bound beam record and mapping uncertainty, a
+matched 10 mm bare-plate run, source-matched etched optical section operator
+and passing 3+3 numerical gate remain absent. IN625 is admitted only to bounded fusion-enthalpy screening,
 not full LPBF transient or build-job prediction. None of these software and
 numerical checks establish experimental validation.
 
@@ -922,9 +926,12 @@ It neither captures the NIST locations at 4.9 and 6.0 mm from track start nor
 represents the six-section mean. A narrow-band/moving-frame solver or separate
 memory-capable backend is needed to preserve those locations across the 10 mm
 track with a viable domain. The strict comparison remains `unavailable` until
-that model, measured beam-profile evidence, six-section operator, and passing
-independent 3+3 gate are present. A nominal 67 µm Gaussian run may be reported
-only as unvalidated screening and must not emit a NIST residual.
+that model, a source-byte-bound measured-`Dg` record with explicit D4σ
+mapping/uncertainty, six-section operator, and passing
+independent 3+3 gate are present. NIST reports the measured nominal 67 µm
+Gaussian diameter and uncertainty, but no raw 2D irradiance artifact. A
+nominal Gaussian run may be reported only as unvalidated screening and must not
+emit a NIST residual.
 
 ## 2026-09-24 — Build-job peak identity and Phase 22 face transport
 
@@ -1083,8 +1090,8 @@ That feasibility commit provided geometry/resource support only. Its follow-on
 section operator is recorded below and currently emits two locations for one
 simulated line; it does not provide the six records for three experimental
 lines or a NIST-equivalent etched-section operator. Corridor-width sensitivity,
-the measured beam profile, and independent 3+3 convergence evidence are also
-still absent. P5 remains `unavailable`; the rectangular option is not exposed
+source-byte-bound measured-diameter mapping, and independent 3+3 convergence
+evidence are also still absent. P5 remains `unavailable`; the rectangular option is not exposed
 through the TypeScript UI.
 
 ## 2026-09-24 — P5 thermal-proxy section coordinates
@@ -1103,7 +1110,8 @@ history, and energy output.
 
 `python -m unittest test_lpbf_bare_plate`: **11/11 PASS**; `py_compile` and
 targeted `git diff --check` PASS. No 10 mm thermal solve ran and no NIST
-comparison is emitted. P5 remains `unavailable` pending matched beam profile,
+comparison is emitted. P5 remains `unavailable` pending source-byte-bound
+measured-diameter/D4σ mapping and uncertainty,
 three experimental line identities, corridor-width sensitivity, and an
 independent 3+3 qualification.
 

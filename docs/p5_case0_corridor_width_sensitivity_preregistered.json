@@ -24,7 +24,7 @@
       "path": "data/benchmark/nist-amb2022-03-optical/manifest.json",
       "sha256": "e7914a655368fa135942a324242a1ecbc11812a1372c84601cf020717b14e781"
     },
-    "beamMapping": "The solver input beamDiameter_um=67 is only an ideal-Gaussian screening proxy for the nominal D4sigma value. The actual measured beam profile is absent, so the identity is conditional and does not establish equivalence."
+    "beamMapping": "NIST reports a measured nominal 67 um Gaussian Dg diameter with 5.2% combined standard uncertainty, but no downloadable raw 2D irradiance artifact. The solver input beamDiameter_um=67 is an ideal-Gaussian 1/e2 screening proxy; mapping it to the Table 4 nominal D4sigma value is conditional and not source-byte-bound."
   },
   "solverProvenance": {
     "repositoryRevisionBeforeReportCommit": "46b9be63fb82252573169d8e93f93187341089c0",

@@ -4,8 +4,14 @@ Root owns integration and `STATUS.md`/`PROOF.md` on
 `codex/lpbf-buildjob-material-identity`; no push. The official NIST workbook
 audit is `ef303e7`. Phase 21 stationary 2D screening physics repairs are
 `69fae9a` and `bf34aef` (6 focused Python tests PASS); P10 was added to the
-active plan in `04e0ea4`. Commits `e8f8313` and `c902700` now fix the build-job
-field-peak/cache identity and Phase 22 face transport/projection contracts.
+active plan in `04e0ea4`. Commit `13d1f05` fixes the OpenFOAM two-phase
+thermal-advection flux: metal apparent heat capacity and gas heat capacity now
+follow their own `alphaPhi` phase-volume fluxes instead of applying a
+volume-weighted `cp` to mixture `rhoPhi`. The focused static-source/numerical
+oracle passes 2 tests; it is not OpenFOAM runtime evidence. WSL
+`E_ACCESSDENIED` prevented local solver compile/integration. Commits `e8f8313`
+and `c902700` fix the build-job field-peak/cache identity and Phase 22 face
+transport/projection contracts.
 The Phase 22 CPU Warp + peak consistency + material capability suite passes 19
 tests; standalone build-job checks and TypeScript typecheck also pass. The
 TypeScript session behavior runner passed 11 focused tests in the elevated
@@ -56,14 +62,18 @@ numerical proxy without surface extrapolation or NIST section equivalence.
 The versioned section operator is now committed as `7e5437e`; it emits separate
 4.9/6.0 mm thermal-proxy records for one simulated line, with no extrapolation.
 Next: measure corridor-width sensitivity, then plan an affordable independent
-3+3 with three separately identified simulated/experimental lines. Keep P5
-unavailable until the matched beam profile and line identities are present.
+3+3 with three separately identified simulated/experimental lines. NIST's 2025
+beam report provides a measured nominal 67 µm Gaussian `Dg` diameter with 5.2%
+combined standard uncertainty, but no downloadable raw 2D irradiance profile.
+Keep P5 unavailable until a source-byte-bound beam record with explicit
+`Dg`/D4σ-to-model mapping and uncertainty, line identities, and the optical
+section operator are present.
 The original 3 mm track bound rejected the NIST 10 mm baseline; the square
 domain estimates were 4.18M/32.32M/258.27M cells at 20/10/5 µm. The rectangular
 corridor reduces this to 205,200/1,556,975/12,123,933 estimated cells, still
 exceeding the 600,000-cell guard at 10/5 µm. No 10 mm solve ran. Preserve the
-67 µm ideal-Gaussian case as a separate exploratory condition from the
-measured-profile gate. Phase 22 recoil/interface kinematics are now coupled by
+67 µm measured-diameter, ideal-Gaussian approximation as a separate exploratory
+condition from the full-profile gate. Phase 22 recoil/interface kinematics are now coupled by
 post-projection height-graph motion (`3ff4c9e`; Warp CPU 24/24), but CUDA
 execution, interface breakup/reformation, and plume dynamics remain unverified
 or out of scope. Preserve the P7 source-data gate.

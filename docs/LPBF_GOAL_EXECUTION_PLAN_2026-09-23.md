@@ -280,3 +280,15 @@ performance claim. This closes only field-level exercise of the current
 screening constitutive law; it does not change IN625's `unvalidated` status or
 source gate. P6/P7 remain partial; frozen P4 stays `failed`, P5 stays
 `unavailable`. Details: `docs/IN625_MUSHY_CPU_CUDA_SCREENING_2026-09-24.md`.
+
+Independent acceptance audit: frozen P4 remains failed under its frozen
+actual-spacing criteria; the separate 75 W continuous-contour assessment is
+inconclusive. P5 remains unavailable because Case 0 exits at the model's
+boiling-validity guard before a usable field/section result. The same
+enthalpy-FV model must not be rerun or have its guard removed; a new
+source-bounded model needs consistent free-surface mass transfer, latent-energy
+loss and force/energy controls first. P6 now covers the IN625 mushy-range field
+on CPU/CUDA for one synthetic test vector, but that alloy remains unqualified
+and CUDA is slower on the 128-cell profile. P7 source review found no complete
+alternate source package; Hastelloy X is a candidate for further data capture,
+not an admitted alloy. Preserve these statuses until new evidence is produced.

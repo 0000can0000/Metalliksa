@@ -37,6 +37,38 @@ Preserve user-owned `docs/README.md`,
 `sonkayıtlar/LOG.md`, and `docs/SCIENTIFIC_RESEARCH_VISION.md` edits; do not
 stage them.
 
+## Acceptance audit results (2026-09-24)
+
+- P4: frozen 80 W thresholds remain ≥3 levels per axis, ≤1% energy error,
+  ≤5% finest-pair W and D change, and converging trend from actual spacings.
+  The frozen report is `failed`; its 5 µm extension is not a replacement.
+  The separate preregistered 75 W contour run is `inconclusive` (mesh depth and
+  both time metrics). Do not start another P4 run until a new protocol is
+  committed with distinct model/process scope and actual-resolution rules.
+- P5: `enthalpy-fv-6` stopped at its fixed-material boiling limit after 133
+  steps (0.1024% of Case 0); it lacks melt flow, evaporation mass transfer,
+  free-surface topology and matching mass/latent-energy closure. Preserve
+  `unavailable`; do not remove the guard or repeat the same case. A new model
+  revision requires closed mass/energy/force checks and measured IN718/beam
+  inputs before a separate 3×3 plus optical-operator campaign.
+- P6: the new 1500 K synthetic IN625 witness now exercises the mushy enthalpy
+  range with CPU/CUDA field, independent enthalpy and global energy parity.
+  The tiny CUDA case is ~32× slower than CPU; scale/performance qualification
+  remains open and this does not qualify the alloy source.
+- P7: no alternate alloy source package currently clears the gate. Hastelloy X
+  is the nearest research candidate: an LPBF paper provides as-deposited Cp /
+  enthalpy and solid-state diffusivity data, but liquid conductivity in its
+  released model is a 15× approximation, so it is not admitted. CoCrMo sources
+  do not demonstrate a matched chemistry/state or complete phase-change set.
+  Keep IN625 bounded screening only until matched, uncertainty-bounded inputs
+  are archived.
+
+Immediate next work: decide a separately bounded P4 numeric campaign only
+after a new frozen protocol; for P5 define a physically closed free-surface
+model before implementing it; for P6 test a larger same-physics IN625 case and
+report crossover honestly; for P7 archive and evaluate the Hastelloy X source
+curves before any runtime alloy admission.
+
 ## Latest P6/P7 integration checkpoint — 2026-09-24
 
 Implemented a model-specific IN625 bare-substrate conduction field path with

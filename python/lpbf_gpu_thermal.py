@@ -48,12 +48,15 @@ def require_cuda(device):
     return torch, torch.device(device)
 
 
+def _model_id_for_settings(settings):
+    return ("stationary-enthalpy-conduction-layer-conforming-v1"
+            if settings.get("powderGridPolicy") == "layer-conforming" else MODEL_ID)
+
+
 def validate_pilot_request(raw):
-    """Resolve an explicit CUDA queue request to the unchanged CPU physics input."""
+    """Resolve an explicit CUDA queue request to the CPU reference physics input."""
     if not isinstance(raw, dict) or raw.get("jobType") != PILOT_JOB_TYPE:
         raise ValueError("Explicit gpu-thermal-pilot jobType required")
-    if raw.get("powderGridPolicy") == "layer-conforming":
-        raise ValueError("CUDA pilot does not support layer-conforming powder grids")
     device = raw.get("backend")
     # Check before accepting; execution checks again if the device disappears.
     require_cuda(device)
@@ -188,6 +191,7 @@ def run_gpu(raw, device="cuda:0", capture_final=False, use_cuda_source=False):
     domain = calculate_mesh_domain(p)
     radius, span, nxy, nz, dx, substrate = (domain[k] for k in
         ("radius", "span", "nxy", "nz", "dx", "substrate_depth"))
+    model_id = _model_id_for_settings(p)
     if nxy*nxy*nz > MAX_CELLS:
         raise ValueError("CUDA pilot cell budget exceeded")
     axis = (np.arange(nxy)+.5)*dx-span/2
@@ -286,7 +290,7 @@ def run_gpu(raw, device="cuda:0", capture_final=False, use_cuda_source=False):
         raise ValueError(f"CUDA energy balance failed: {closure:.3%}")
     metrics, extraction = tracker.finish(None, step)
     metrics["peakTemperature_K"] = peak
-    result = {"solver": {"id": GPU_SOLVER_ID, "modelId": MODEL_ID,
+    result = {"solver": {"id": GPU_SOLVER_ID, "modelId": model_id,
                        "actualBackend": device, "thermalEvolutionDevice": device,
                        "sourceIntegrationDevice": device if use_cuda_source else "cpu",
                        "sourceTimestepLimiterDevice": device if use_cuda_source else "cpu",
@@ -460,7 +464,7 @@ def enforce_gpu_pilot_result(result):
             or result.get("validationStatus") != "unvalidated"
             or result.get("productionReady") is not False
             or result.get("artifacts") != []
-            or solver.get("id") != GPU_SOLVER_ID or solver.get("modelId") != MODEL_ID
+            or solver.get("id") != GPU_SOLVER_ID or solver.get("modelId") != _model_id_for_settings(settings)
             or solver.get("actualBackend") != device
             or solver.get("thermalEvolutionDevice") != device
             or solver.get("sourceIntegrationDevice") not in ("cpu", device)
@@ -475,7 +479,7 @@ def enforce_gpu_pilot_result(result):
                 and evidence.get("sourceTimestepLimiter") != device)
             or evidence.get("synchronizedAfterSolve") is not True
             or pilot.get("experimentalValidation") is not False
-            or pilot.get("cpu", {}).get("coreContract", {}).get("modelId") != MODEL_ID
+            or pilot.get("cpu", {}).get("coreContract", {}).get("modelId") != _model_id_for_settings(settings)
             or pilot.get("cpu", {}).get("coreContract", {}).get("actualBackend") != "numpy-reference"
             or pilot.get("cpu", {}).get("material", {}).get("materialRevisionSha256")
                 != result.get("material", {}).get("materialRevisionSha256")):

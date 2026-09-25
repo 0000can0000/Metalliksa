@@ -201,11 +201,18 @@ class Verification(unittest.TestCase):
         self.assertEqual(r["energyBalance"]["stored_J"], 0)
         self.assertAlmostEqual(r["metrics"]["peakTemperature_K"], p["preheat_C"]+273.15)
 
-    def test_source_domain_truncation_fails_closed_before_power_renormalization(self):
-        p, m = validate({**CASE, "power_W": 10, "tracks": 2, "layers": 2,
-                         "hatch_um": 100, "dwell_s": .00002})
+    def test_source_domain_truncation_is_rejected_by_shared_capture_gate(self):
+        from lpbf_core_physics import integrated_source
+        from lpbf_heat_source import MINIMUM_SOURCE_CAPTURE_FRACTION, require_source_capture
+        dx = 40e-6
+        axis = np.array([100e-6, 140e-6])
+        z = np.array([-20e-6, 20e-6, 60e-6])
+        segment = {"start": [0., 0.], "end": [0., 0.], "start_s": 0., "end_s": 1.}
+        _, capture = integrated_source(axis, z, dx, segment, 0., 1e-6, 80e-6,
+                                       40e-6, 80e-6, 10.)
+        self.assertLess(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
         with self.assertRaisesRegex(ValueError, "Gaussian source capture .* below the 99% minimum"):
-            transient(p, m)
+            require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
 
     def test_scan_rotation_and_dwell(self):
         p, _ = validate({"tracks": 2, "layers": 2, "layerRotation_deg": 90})
@@ -241,6 +248,20 @@ class Verification(unittest.TestCase):
         self.assertEqual(r["settings"]["powderGridPolicy"], "layer-conforming")
         self.assertEqual(r["settings"]["backend"], "reference")
         self.assertEqual(r["validationStatus"], "unvalidated")
+
+    def test_standard_reference_run_aligns_powder_surface_and_source(self):
+        r = run({**CASE, "backend": "auto", "mesh_um": 25, "layer_um": 80,
+                 "layers": 3, "power_W": 60})
+        self.assertEqual(r["requestedBackend"], "auto")
+        self.assertEqual(r["settings"]["backend"], "reference")
+        self.assertEqual(r["settings"]["powderGridPolicy"], "layer-conforming")
+        self.assertEqual(r["coreContract"]["modelId"],
+                         "stationary-enthalpy-conduction-layer-conforming-v1")
+        self.assertAlmostEqual(r["discretization"]["mesh_m"], 20e-6)
+        diagnostics = r["numericalDiagnostics"]
+        self.assertAlmostEqual(diagnostics["maximumSurfaceOffset_um"], 0.0, places=10)
+        self.assertGreaterEqual(diagnostics["minimumCapturedSourceFraction"], .99)
+        self.assertLess(r["energyBalance"]["relativeError"], 1e-10)
 
     def test_failed_fine_mesh_preserves_requested_result_and_fails_study_closed(self):
         progress = []
@@ -493,11 +514,14 @@ class Verification(unittest.TestCase):
             if strategy == "island": self.assertEqual(len(scans),12)
 
     def test_unresolved_layer_rejected(self):
-        from lpbf_openfoam import generate_case
         p,m = validate({**CASE,"layer_um":30,"layers":2})
-        with self.assertRaisesRegex(ValueError,"each powder layer"): transient(p,m)
-        with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(ValueError,"each powder layer"): generate_case(p,m,tmp)
+        aligned = transient(p,m)
+        self.assertAlmostEqual(aligned["discretization"]["mesh_m"], 30e-6)
+        self.assertAlmostEqual(aligned["numericalDiagnostics"]["maximumSurfaceOffset_um"], 0., places=10)
+        legacy = dict(p)
+        legacy.pop("powderGridPolicy")
+        with self.assertRaisesRegex(ValueError,"each powder layer"):
+            transient(legacy,m)
 
     @unittest.skipUnless(os.name != "nt" and capabilities()["openfoamThermal"], "Requires compiled OpenFOAM 14 worker")
     def test_openfoam_against_independent_reference(self):

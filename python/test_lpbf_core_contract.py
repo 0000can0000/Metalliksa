@@ -8,6 +8,7 @@ import unittest
 from lpbf_simulation import run, validate
 from lpbf_evidence import enforce_thermal_balances
 from lpbf_core_contract import build_core_contract
+from lpbf_core_physics import calculate_mesh_domain
 
 
 class CoreContractTests(unittest.TestCase):
@@ -21,7 +22,7 @@ class CoreContractTests(unittest.TestCase):
         self.assertIn('coreContract', self.thermal)
         c = self.thermal['coreContract']
         self.assertEqual(c['actualBackend'], 'numpy-reference')
-        self.assertEqual(c['modelId'], 'stationary-enthalpy-conduction-v1')
+        self.assertEqual(c['modelId'], 'stationary-enthalpy-conduction-layer-conforming-v1')
         self.assertEqual(c['evidenceClass'], 'unvalidated-model')
         self.assertEqual(c['units']['beamDiameter'], '1/e2-intensity')
         self.assertTrue(c['resolvedPhysics']['latentHeat'])
@@ -37,6 +38,22 @@ class CoreContractTests(unittest.TestCase):
             mode='standard', backend='reference', powderGridPolicy='layer-conforming'))
         contract = build_core_contract(settings, material, 'enthalpy-fv-6', 'standard')
         self.assertEqual(contract['modelId'], 'stationary-enthalpy-conduction-layer-conforming-v1')
+
+    def test_standard_reference_powder_default_aligns_each_layer_surface(self):
+        settings, material = validate(dict(mode='standard', backend='reference',
+            layer_um=80, mesh_um=25))
+        self.assertEqual(settings['powderGridPolicy'], 'layer-conforming')
+        domain = calculate_mesh_domain(settings)
+        self.assertAlmostEqual(domain['dx'], 20e-6)
+        self.assertEqual(build_core_contract(settings, material, 'enthalpy-fv-6', 'standard')['modelId'],
+                         'stationary-enthalpy-conduction-layer-conforming-v1')
+
+    def test_legacy_core_identity_remains_available_for_archived_settings(self):
+        settings, material = validate(dict(mode='standard', backend='reference'))
+        settings = dict(settings)
+        settings.pop('powderGridPolicy')
+        contract = build_core_contract(settings, material, 'enthalpy-fv-6', 'standard')
+        self.assertEqual(contract['modelId'], 'stationary-enthalpy-conduction-v1')
 
     def test_layered_plate_contract_binds_ordered_support_model_and_assumed_beam(self):
         from lpbf_core_contract import enforce_core_contract
@@ -159,16 +176,17 @@ class CoreContractTests(unittest.TestCase):
         a = build_core_contract(p, m, 'enthalpy-fv-6', 'standard')
         b = build_core_contract(dict(reversed(list(p.items()))), dict(reversed(list(m.items()))), 'enthalpy-fv-6', 'standard')
         self.assertEqual(a, b)
+        legacy = {key: value for key, value in p.items() if key != 'powderGridPolicy'}
         for solver, backend in [('enthalpy-fv-6', 'numpy-reference'),
                                 ('metalliksaThermal-OpenFOAM14-6', 'openfoam-thermal')]:
-            c = build_core_contract({**p, 'backend': 'auto'}, m, solver, 'standard')
+            c = build_core_contract({**legacy, 'backend': 'auto'}, m, solver, 'standard')
             self.assertEqual(c['actualBackend'], backend)
         for solver, mode, requested in [('unknown', 'standard', 'auto'),
                 ('enthalpy-fv-6', 'screening', 'auto'), ('rosenthal+goldak', 'standard', 'auto'),
                 ('enthalpy-fv-6', 'standard', 'openfoam-thermal'),
                 ('metalliksaThermal-OpenFOAM14-6', 'standard', 'reference')]:
             with self.subTest(solver=solver, mode=mode), self.assertRaises(ValueError):
-                build_core_contract({**p, 'backend': requested}, m, solver, mode)
+                build_core_contract({**legacy, 'backend': requested}, m, solver, mode)
 
 
 if __name__ == '__main__':

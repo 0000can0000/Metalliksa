@@ -106,6 +106,12 @@ def validate(raw):
         if (p["surfaceMode"] != "powder-layer" or p["mode"] != "standard"
                 or p["backend"] != "reference"):
             raise ValueError("layer-conforming powder grid requires standard/reference powder-layer mode")
+    elif (p["surfaceMode"] == "powder-layer" and p["mode"] == "standard"
+          and p["backend"] == "reference"):
+        # Standard reference powder transients align every powder-layer top
+        # surface with a cell face. The legacy cell-center grid remains
+        # reproducible from its archived source revision and model identity.
+        p["powderGridPolicy"] = "layer-conforming"
     if p["barePlateGeometry"] == "rectangular-corridor" and p["surfaceMode"] != "bare-plate":
         raise ValueError("rectangular-corridor geometry is only supported for bare-plate mode")
     if "corridorWidth_um" in raw and p["barePlateGeometry"] != "rectangular-corridor":
@@ -516,13 +522,16 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
     requested_p, requested_m = validate(raw)
     requested_backend = requested_p["backend"]
     p, m = requested_p, requested_m
-    # The built-in powder-layer mesh study is a CPU-reference protocol.  Its
-    # z-grid must place each layer surface on a cell face; preserve the user's
-    # backend request separately instead of silently treating this as parity.
+    # Standard powder-layer reference execution uses the layer-conforming grid.
+    # Mesh studies and auto-dispatched standard powder runs use the NumPy
+    # reference even when another backend could be selected automatically.
     layer_mesh_study = (p["study"] == "mesh" and p["mode"] == "standard"
                         and p["surfaceMode"] == "powder-layer"
                         and requested_backend in ("auto", "reference"))
-    if layer_mesh_study and p.get("powderGridPolicy") != "layer-conforming":
+    automatic_reference_powder = (p["mode"] == "standard" and p["surfaceMode"] == "powder-layer"
+                                  and p["backend"] == "auto")
+    if ((layer_mesh_study or automatic_reference_powder)
+            and p.get("powderGridPolicy") != "layer-conforming"):
         execution_input = dict(raw)
         execution_input.update(backend="reference", powderGridPolicy="layer-conforming")
         p, m = validate(execution_input)

@@ -21,6 +21,7 @@ test('CUDA pilot request includes only CPU validator fields and preserves the sh
   assert.equal(pilot.mesh_um, 20);
   assert.equal(pilot.maxDt_s, 1e-6);
   assert.equal(pilot.trackLength_um, 600);
+  assert.equal(pilot.powderGridPolicy, 'layer-conforming');
   for (const key of ['legacyField', 'legacySetting', 'measurements']) {
     assert.ok(!(key in pilot), key);
   }
@@ -41,8 +42,8 @@ const completed = {
     schemaVersion: 1, jobType: 'gpu-thermal-pilot', requestedMode: 'standard', effectiveMode: 'gpu-pilot',
     validationStatus: 'unvalidated', productionReady: false, label: 'Unvalidated CUDA thermal parity pilot',
     settings: { jobType: 'gpu-thermal-pilot', backend: 'cuda:0', mode: 'standard',
-      study: 'none', surfaceMode: 'powder-layer', tracks: 1, layers: 1 },
-    solver: { id: 'enthalpy-fv-6-cuda-pilot-1', modelId: 'stationary-enthalpy-conduction-v1',
+      study: 'none', surfaceMode: 'powder-layer', powderGridPolicy: 'layer-conforming', tracks: 1, layers: 1 },
+    solver: { id: 'enthalpy-fv-6-cuda-pilot-1', modelId: 'stationary-enthalpy-conduction-layer-conforming-v1',
       actualBackend: 'cuda:0', thermalEvolutionDevice: 'cuda:0',
       sourceIntegrationDevice: 'cpu', sourceTimestepLimiterDevice: 'cpu', dtype: 'float64' },
     material: { name: 'Inconel 718', materialId: 'in718', materialRevisionSha256: sha, version: '1' },
@@ -53,7 +54,7 @@ const completed = {
     gpuPilot: { status: 'pass', scope: 'same-model CPU/GPU numerical parity only',
       experimentalValidation: false, targets,
       cpu: { solver: { id: 'enthalpy-fv-6' },
-        coreContract: { modelId: 'stationary-enthalpy-conduction-v1', actualBackend: 'numpy-reference' },
+        coreContract: { modelId: 'stationary-enthalpy-conduction-layer-conforming-v1', actualBackend: 'numpy-reference' },
         material: { materialRevisionSha256: sha },
         discretization: { cells: 1210, steps: 934, mesh_m: 40e-6 } },
       comparisons },

@@ -322,6 +322,7 @@ export interface GpuPilotInput extends Omit<SimulationInput, 'backend' | 'mode' 
   backend: `cuda:${number}`;
   mode: 'standard';
   surfaceMode: 'powder-layer';
+  powderGridPolicy: 'layer-conforming';
   study: 'none';
   tracks: 1;
   layers: 1;
@@ -344,7 +345,8 @@ export function buildGpuPilotInput(input: SimulationInput, settings: Partial<Sim
     layer_um: input.layer_um, hatch_um: input.hatch_um, strategy,
     ...(properties !== undefined ? { properties } : {}),
     jobType: 'gpu-thermal-pilot', backend: device, mode: 'standard',
-    surfaceMode: 'powder-layer', study: 'none', tracks: 1, layers: 1,
+    surfaceMode: 'powder-layer', powderGridPolicy: 'layer-conforming',
+    study: 'none', tracks: 1, layers: 1,
   };
 }
 export type GpuPilotStatus = 'pass' | 'failed' | 'inconclusive';
@@ -359,7 +361,7 @@ export interface GpuPilotResult {
   requestedMode: 'standard'; effectiveMode: 'gpu-pilot';
   validationStatus: 'unvalidated'; productionReady: false; label: string;
   settings: GpuPilotInput;
-  solver: { id: 'enthalpy-fv-6-cuda-pilot-1'; modelId: 'stationary-enthalpy-conduction-v1';
+  solver: { id: 'enthalpy-fv-6-cuda-pilot-1'; modelId: 'stationary-enthalpy-conduction-layer-conforming-v1';
     actualBackend: string; thermalEvolutionDevice: string; sourceIntegrationDevice: 'cpu' | `cuda:${number}`;
     sourceTimestepLimiterDevice: 'cpu' | `cuda:${number}`; dtype: 'float64' };
   material: { name: string; materialId: string; materialRevisionSha256: string; version: string };
@@ -369,7 +371,7 @@ export interface GpuPilotResult {
   gpuPilot: { status: GpuPilotStatus; scope: string; experimentalValidation: false;
     targets: { integralRelativeMax: number; widthDepthAbsoluteCellsMax: number;
       fieldRiseL2RelativeMax: number; fieldRiseMaxRelativeMax: number; peakMeltVolumeRelativeMax: number; source: string };
-    cpu: { solver: { id: string }; coreContract: { modelId: 'stationary-enthalpy-conduction-v1'; actualBackend: 'numpy-reference' };
+    cpu: { solver: { id: string }; coreContract: { modelId: 'stationary-enthalpy-conduction-layer-conforming-v1'; actualBackend: 'numpy-reference' };
       material: { materialRevisionSha256: string }; discretization: { cells: number; steps: number; mesh_m: number } };
     comparisons: Record<string, GpuPilotComparison> };
   provenance: { inputHash: string; implementationHash: string; materialVersion: string; createdAt: string;
@@ -427,9 +429,10 @@ export function parseGpuPilotJob(value: unknown): GpuPilotJob {
     || typeof r.label !== 'string' || !object(r.settings) || r.settings.jobType !== 'gpu-thermal-pilot'
     || r.settings.backend !== value.requestSummary.backend || r.settings.mode !== 'standard'
     || r.settings.study !== 'none' || r.settings.surfaceMode !== 'powder-layer'
+    || r.settings.powderGridPolicy !== 'layer-conforming'
     || r.settings.tracks !== 1 || r.settings.layers !== 1
     || !object(r.solver) || r.solver.id !== 'enthalpy-fv-6-cuda-pilot-1'
-    || r.solver.modelId !== 'stationary-enthalpy-conduction-v1'
+    || r.solver.modelId !== 'stationary-enthalpy-conduction-layer-conforming-v1'
     || r.solver.actualBackend !== r.settings.backend
     || r.solver.thermalEvolutionDevice !== r.settings.backend
     || r.solver.dtype !== 'float64' || !object(r.material)

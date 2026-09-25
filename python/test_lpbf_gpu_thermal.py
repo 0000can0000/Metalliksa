@@ -22,15 +22,17 @@ CASE = {"mode": "standard", "backend": "reference", "material": "Inconel 718",
 
 
 class GpuThermal(unittest.TestCase):
-    def test_pilot_rejects_layer_conforming_grid_before_device_or_mesh_work(self):
+    def test_pilot_accepts_layer_conforming_grid_for_shared_model(self):
         request = {**CASE, "jobType": "gpu-thermal-pilot", "backend": "cuda:0",
                    "powderGridPolicy": "layer-conforming"}
         with patch("lpbf_gpu_thermal.require_cuda") as require_device, \
-             patch("lpbf_gpu_thermal.calculate_mesh_domain") as calculate_domain:
-            with self.assertRaisesRegex(ValueError, "does not support layer-conforming"):
-                validate_pilot_request(request)
-        require_device.assert_not_called()
-        calculate_domain.assert_not_called()
+             patch("lpbf_gpu_thermal.calculate_mesh_domain",
+                   return_value={"nxy": 1, "nz": 1}) as calculate_domain:
+            settings, material = validate_pilot_request(request)
+        require_device.assert_called_once_with("cuda:0")
+        calculate_domain.assert_called_once()
+        self.assertEqual(settings["powderGridPolicy"], "layer-conforming")
+        self.assertEqual(material["materialId"], "in718")
 
     def test_pilot_accepts_standard_reference_request(self):
         request = {**CASE, "jobType": "gpu-thermal-pilot", "backend": "cuda:0"}
@@ -40,7 +42,7 @@ class GpuThermal(unittest.TestCase):
         self.assertEqual(settings["backend"], "cuda:0")
         self.assertEqual(settings["mode"], "standard")
         self.assertEqual(settings["study"], "none")
-        self.assertNotIn("powderGridPolicy", settings)
+        self.assertEqual(settings["powderGridPolicy"], "layer-conforming")
         self.assertEqual(material["materialId"], "in718")
 
     def test_cuda_source_field_capture_and_limited_dt_match_shared_cpu_source(self):
@@ -142,13 +144,13 @@ class GpuThermal(unittest.TestCase):
                    "length_um": 100., "volume_um3": 1000.}
         energy = {"input_J": 1., "losses_J": .2, "stored_J": .8}
         disc = {"cells": 2, "mesh_m": 1e-5, "steps": 1}
-        cpu = {"coreContract": {"modelId": "stationary-enthalpy-conduction-v1"},
+        cpu = {"coreContract": {"modelId": "stationary-enthalpy-conduction-layer-conforming-v1"},
                "material": {"name": "Inconel 718", "materialId": "in718",
                             "materialRevisionSha256": "a" * 64, "version": "lpbf-materials-1"},
                "settings": settings, "metrics": metrics, "energyBalance": energy,
                "discretization": disc, "thermalHistory": [{"time_s": end}],
                "solver": {"id": "enthalpy-fv-6"}}
-        gpu = {"solver": {"modelId": "stationary-enthalpy-conduction-v1"},
+        gpu = {"solver": {"modelId": "stationary-enthalpy-conduction-layer-conforming-v1"},
                "material": copy.deepcopy(cpu["material"]), "metrics": copy.deepcopy(metrics),
                "energyBalance": copy.deepcopy(energy), "discretization": copy.deepcopy(disc)}
         frame = {"time_s": end, "surface_m": settings["layer_um"] * 1e-6}

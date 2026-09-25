@@ -44,13 +44,22 @@ class HeatSourceVerification(unittest.TestCase):
                             for x in np.linspace(-100e-6, 100e-6, 11)]
                 self.assertGreaterEqual(min(captures), MINIMUM_SOURCE_CAPTURE_FRACTION)
 
-    def test_legacy_powder_grid_stays_unchanged_without_explicit_policy(self):
+    def test_standard_powder_grid_defaults_to_layer_conforming_and_legacy_geometry_remains_reproducible(self):
         p, _ = validate(dict(mode="standard", backend="reference", mesh_um=36.7,
                              trackLength_um=200, beamDiameter_um=80, layer_um=80))
         domain = calculate_mesh_domain(p)
-        self.assertEqual(domain["nxy"], 12)
-        self.assertAlmostEqual(domain["dx"]*1e6, 36.6666666667, places=8)
-        self.assertAlmostEqual(domain["substrate_depth"]*1e6, 330., places=8)
+        self.assertEqual(p["powderGridPolicy"], "layer-conforming")
+        self.assertAlmostEqual(domain["dx"]*1e6, 80/3, places=8)
+        for layer in range(1, p["layers"]+1):
+            self.assertAlmostEqual((domain["substrate_depth"]+layer*p["layer_um"]*1e-6)/domain["dx"],
+                                   round((domain["substrate_depth"]+layer*p["layer_um"]*1e-6)/domain["dx"]),
+                                   places=10)
+        legacy = dict(p)
+        legacy.pop("powderGridPolicy")
+        legacy_domain = calculate_mesh_domain(legacy)
+        self.assertEqual(legacy_domain["nxy"], 12)
+        self.assertAlmostEqual(legacy_domain["dx"]*1e6, 36.6666666667, places=8)
+        self.assertAlmostEqual(legacy_domain["substrate_depth"]*1e6, 330., places=8)
 
     def test_layer_conforming_policy_rejects_unimplemented_modes(self):
         base = dict(mode="standard", backend="reference", surfaceMode="bare-plate",

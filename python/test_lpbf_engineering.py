@@ -20,6 +20,28 @@ CASE = dict(mode="standard", backend="reference", power_W=40, mesh_um=40, trackL
 
 
 class Verification(unittest.TestCase):
+    def test_openfoam_case_uses_uniform_layer_conforming_powder_grid(self):
+        from lpbf_core_physics import calculate_mesh_domain
+        from lpbf_openfoam import generate_case
+        p, m = validate({**CASE, "backend": "openfoam-thermal", "layer_um": 80,
+                         "mesh_um": 25, "layers": 3})
+        domain = calculate_mesh_domain(p)
+        self.assertAlmostEqual(domain["dx"], 20e-6)
+        with tempfile.TemporaryDirectory() as tmp:
+            generate_case(p, m, tmp)
+            block = (Path(tmp)/"system"/"blockMeshDict").read_text()
+        self.assertIn(f"({domain['nxy']} {domain['nxy']} {domain['nz']})", block)
+        layer_m = p["layer_um"]*1e-6
+        bottom = -domain["substrate_depth"]
+        for layer in range(p["layers"]+1):
+            face = (layer*layer_m-bottom)/domain["dx"]
+            self.assertAlmostEqual(face, round(face), places=10)
+        legacy = dict(p)
+        legacy.pop("powderGridPolicy")
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
+                ValueError, "require a layer-conforming grid"):
+            generate_case(legacy, m, tmp)
+
     def test_active_gradient_excludes_future_powder(self):
         from lpbf_simulation import active_gradient
         x,y,z = np.meshgrid(np.arange(4.),np.arange(4.),np.arange(5.),indexing="ij")

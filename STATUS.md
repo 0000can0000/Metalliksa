@@ -2,11 +2,11 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
-## 2026-09-25 — OpenFOAM termal yolunda güvenli sınırlar
-- İnceleme, standart powder-layer OpenFOAM ağının her katman yüzeyini hücre yüzüne hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Hizalama uygulanana kadar bu backend/mode birleşimi doğrulamada reddediliyor; referans NumPy yolu layer-conforming modeli kullanıyor.
-- OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Böylece yetersiz kaynak alanı sessizce büyütülmüyor.
-- Dar doğrulama: core-contract/OpenFOAM-red ve layer-alignment testleri ile heat-source grubu **17 testte 16 PASS, 1 OpenFOAM skip**. Geniş core-contract koşusunda SQLite/temp sandbox erişimi yüzünden bir test çalışmadı. Bu Windows ortamında `wmake`/OpenFOAM derleyicisi bulunmadığından C++ ikilisi derlenip çalıştırılamadı; uygulama doğrulaması açık.
-- Sıradaki somut adım: OpenFOAM için katman-yüzüne hizalı mesh üretip aynı kaynak yakalama sözleşmesiyle gerçek derleme/çalıştırma/parite testlerini sağlamak; o zamana kadar standart toz-katmanı OpenFOAM backend'i kapalı kalır.
+## 2026-09-25 — OpenFOAM layer-conforming powder grid
+- İnceleme, eski OpenFOAM powder-layer ağının katman yüzeylerini hücre yüzlerine hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Ortak `calculate_mesh_domain` hesabı tekdüze kübik ağda hizalamayı destekliyor; `standard/openfoam-thermal` şimdi sürümlü `layer-conforming` politikasını alıyor. Vaka üreticisi politika ve yüz indekslemesini yazmadan önce doğruluyor.
+- OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Python sonuç kapısı da kaynak yakalamasını ve raporlanan maksimum yüz ofsetini doğruluyor; uyumsuz ikili sonucu kabul edilmiyor.
+- Doğrulama: core-contract **16/16 PASS**; mühendislik+heat-source grubu **49 PASS, 2 OpenFOAM skip**; güncellenen policy testi ile core/model ve case-grid odak testleri **3/3 PASS**. Geniş test koşusunda tek başarısızlık eski hata mesajı beklentisiydi ve yeni sözleşmeye göre düzeltildi. WSL erişimi `E_ACCESSDENIED`; Windows'ta `wmake` ve Docker OpenFOAM imajı yok, dolayısıyla C++ ikilisi ve gerçek solver henüz derlenip çalıştırılmadı.
+- Sıradaki somut adım: WSL/OpenFOAM erişimi olan işçide hizalı çok katmanlı vakayı derleyip çalıştırmak; yüz ofseti, yakalama, enerji kapanışı ve NumPy metrik/alan paritesini doğrulamadan OpenFOAM yolu tamamlanmış sayılmayacak.
 
 ## 2026-09-25 — P6 opt-in CUDA kaynak prototipi
 - Aynı `enthalpy-fv-6` standart tek-iz altkümesinde GL2 hareketli Gauss hücre integrali ve 25 K kaynak-adımı sınırlayıcısının opt-in CUDA uygulaması eklendi. Hücre kaynak/rate alanı CPU oracle’ına `rtol=1e-10`, yakalama farkı `1e-12`, `dt` farkı `1e-15` içinde eşleşti; retry sayısı aynı ve dondurulmuş tam CPU/CUDA sıcaklık-alanı paritesi değişmedi.

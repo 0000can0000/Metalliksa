@@ -64,7 +64,7 @@ class HeatSourceVerification(unittest.TestCase):
     def test_layer_conforming_policy_rejects_unimplemented_modes(self):
         base = dict(mode="standard", backend="reference", surfaceMode="bare-plate",
                     sourcePenetration_um=40, powderGridPolicy="layer-conforming")
-        with self.assertRaisesRegex(ValueError, "requires standard/reference powder-layer mode"):
+        with self.assertRaisesRegex(ValueError, "requires standard reference or OpenFOAM powder-layer mode"):
             validate(base)
 
     def test_capture_gate_uses_shared_one_percent_limit(self):

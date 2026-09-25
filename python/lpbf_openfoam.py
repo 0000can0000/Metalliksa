@@ -22,6 +22,15 @@ def generate_case(p, m, folder):
     thermal_inputs = thermal_si_inputs(p, m)
     domain = calculate_mesh_domain(p)
     radius, span, nxy, nz, dx, bottom = domain["radius"], domain["span"], domain["nxy"], domain["nz"], domain["dx"], -domain["substrate_depth"]
+    if p["mode"] == "standard" and p["surfaceMode"] == "powder-layer":
+        if p.get("powderGridPolicy") != "layer-conforming":
+            raise ValueError("Standard OpenFOAM powder runs require a layer-conforming grid")
+        layer_m = thermal_inputs["layer_m"]
+        layer_cells = layer_m/dx
+        base_face = (0.0-bottom)/dx
+        if (not math.isclose(layer_cells, round(layer_cells), rel_tol=0, abs_tol=1e-10)
+                or not math.isclose(base_face, round(base_face), rel_tol=0, abs_tol=1e-10)):
+            raise ValueError("OpenFOAM powder grid does not align layer surfaces with cell faces")
     if nxy*nxy*nz > 600000: raise ValueError("OpenFOAM thermal cell budget exceeded")
     z = bottom+(np.arange(nz)+.5)*dx
     counts = [int(np.sum(z < layer*thermal_inputs["layer_m"])) for layer in range(int(p["layers"])+1)]
@@ -85,6 +94,15 @@ def thermal(p, m, report=lambda *args: None, artifact_dir=None):
     if not diagnostic_path.is_file():
         raise ValueError("OpenFOAM binary is outdated: rebuild metalliksaThermal for cell-integrated heating")
     diagnostics = json.loads(diagnostic_path.read_text())
+    if p.get("powderGridPolicy") == "layer-conforming":
+        surface_offset_um = diagnostics.get("maximumSurfaceOffset_um")
+        if (isinstance(surface_offset_um, bool) or not isinstance(surface_offset_um, (int, float))
+                or not math.isfinite(surface_offset_um) or abs(surface_offset_um) > 1e-6):
+            raise ValueError("OpenFOAM layer-conforming surface alignment check failed; rebuild solver")
+    minimum_capture = diagnostics.get("minimumCapturedSourceFraction")
+    if (isinstance(minimum_capture, bool) or not isinstance(minimum_capture, (int, float))
+            or not math.isfinite(minimum_capture) or minimum_capture < 1/1.01):
+        raise ValueError("OpenFOAM Gaussian source capture is below the 1/1.01 minimum; rebuild solver")
     if diagnostics.get("sourceIntegration") != SOURCE_INTEGRATION:
         raise ValueError("OpenFOAM source integration contract mismatch; rebuild solver")
     if diagnostics.get("solidificationExtraction") != "linear-liquidus-crossing-v1":

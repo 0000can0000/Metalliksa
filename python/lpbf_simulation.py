@@ -98,25 +98,19 @@ def validate(raw):
         raise ValueError("Unknown mode, strategy or study")
     if p["surfaceMode"] not in ("powder-layer", "bare-plate"):
         raise ValueError("Unknown LPBF surface mode")
-    if (p["mode"] == "standard" and p["surfaceMode"] == "powder-layer"
-            and p["backend"] == "openfoam-thermal"):
-        raise ValueError(
-            "OpenFOAM powder-layer runs are unavailable until its uniform mesh "
-            "aligns every layer surface with cell faces"
-        )
     if p["barePlateGeometry"] not in ("square", "rectangular-corridor"):
         raise ValueError("barePlateGeometry must be 'square' or 'rectangular-corridor'")
     if "powderGridPolicy" in raw:
         if raw["powderGridPolicy"] != "layer-conforming":
             raise ValueError("powderGridPolicy must be 'layer-conforming'")
         if (p["surfaceMode"] != "powder-layer" or p["mode"] != "standard"
-                or p["backend"] != "reference"):
-            raise ValueError("layer-conforming powder grid requires standard/reference powder-layer mode")
+                or p["backend"] not in ("reference", "openfoam-thermal")):
+            raise ValueError("layer-conforming powder grid requires standard reference or OpenFOAM powder-layer mode")
     elif (p["surfaceMode"] == "powder-layer" and p["mode"] == "standard"
-          and p["backend"] == "reference"):
-        # Standard reference powder transients align every powder-layer top
-        # surface with a cell face. The legacy cell-center grid remains
-        # reproducible from its archived source revision and model identity.
+          and p["backend"] in ("reference", "openfoam-thermal")):
+        # Standard powder transients align every powder-layer top surface with
+        # a cell face on both supported thermal backends. Legacy archived
+        # results retain their original settings and model identity.
         p["powderGridPolicy"] = "layer-conforming"
     if p["barePlateGeometry"] == "rectangular-corridor" and p["surfaceMode"] != "bare-plate":
         raise ValueError("rectangular-corridor geometry is only supported for bare-plate mode")

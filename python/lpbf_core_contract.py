@@ -39,6 +39,8 @@ def build_core_contract(settings, material, solver_id, effective_mode):
     if not isinstance(settings, dict) or not isinstance(material, dict):
         raise ValueError('LPBF core contract requires resolved settings and material')
     _verify_material_revision(material)
+    if settings.get('thermalModelId') is not None and solver_id != 'layered-enthalpy-fv-1':
+        raise ValueError('Versioned thermal model does not match the executed solver')
     requested = settings.get('backend')
     if requested not in ('auto', 'reference', 'openfoam-thermal'):
         raise ValueError('LPBF core contract has unknown requested backend')
@@ -83,16 +85,16 @@ def build_core_contract(settings, material, solver_id, effective_mode):
         if requested not in ('auto', expected):
             raise ValueError('LPBF core contract requested/executed backend mismatch')
         if settings.get('powderGridPolicy') == 'layer-conforming':
-            if backend != 'numpy-reference' or requested != 'reference':
-                raise ValueError('Layer-conforming powder grid requires the NumPy reference backend')
+            if (settings.get('surfaceMode') != 'powder-layer'
+                    or settings.get('mode') != 'standard'
+                    or requested != expected):
+                raise ValueError('Layer-conforming powder grid requires a matching standard powder backend')
             model = 'stationary-enthalpy-conduction-layer-conforming-v1'
         else:
             model = 'stationary-enthalpy-conduction-v1'
         transient = True
     else:
         raise ValueError('LPBF core contract has unknown solver/mode combination')
-    if settings.get('thermalModelId') is not None and solver_id != 'layered-enthalpy-fv-1':
-        raise ValueError('Versioned thermal model does not match the executed solver')
     if solver_id == 'layered-enthalpy-fv-1' and support_material is None:
         raise ValueError('Layered-plate material stack is incomplete')
 

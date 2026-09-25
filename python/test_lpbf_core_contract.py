@@ -48,10 +48,14 @@ class CoreContractTests(unittest.TestCase):
         self.assertEqual(build_core_contract(settings, material, 'enthalpy-fv-6', 'standard')['modelId'],
                          'stationary-enthalpy-conduction-layer-conforming-v1')
 
-    def test_standard_openfoam_powder_runs_reject_unaligned_layer_surfaces(self):
-        with self.assertRaisesRegex(ValueError, 'OpenFOAM powder-layer runs are unavailable'):
-            validate(dict(mode='standard', backend='openfoam-thermal',
-                          surfaceMode='powder-layer', layer_um=80, mesh_um=25))
+    def test_standard_openfoam_powder_defaults_to_layer_conforming_model(self):
+        settings, material = validate(dict(mode='standard', backend='openfoam-thermal',
+            surfaceMode='powder-layer', layer_um=80, mesh_um=25))
+        self.assertEqual(settings['powderGridPolicy'], 'layer-conforming')
+        contract = build_core_contract(settings, material,
+                                       'metalliksaThermal-OpenFOAM14-6', 'standard')
+        self.assertEqual(contract['actualBackend'], 'openfoam-thermal')
+        self.assertEqual(contract['modelId'], 'stationary-enthalpy-conduction-layer-conforming-v1')
 
     def test_legacy_core_identity_remains_available_for_archived_settings(self):
         settings, material = validate(dict(mode='standard', backend='reference'))

@@ -697,8 +697,8 @@ export const LaserMeltPoolThermalMap: React.FC<Props> = ({
 *DFLUX, USER
 *GOLDAK_DOUBLE_ELLIPSOID
 ** Parameters in meters (SI Units):
-** a_front (m), a_rear (m), b_halfwidth (m), c_depth (m), Q_total (W), eta_eff
- ${(goldak.semiAxis_af_front_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_ar_rear_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_b_halfwidth_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_c_depth_um * 1e-6).toExponential(4)}, ${params.laserPower_W}, ${params.effectiveAbsorptivity}
+** a_front (m), a_rear (m), b_halfwidth (m), c_depth (m), Q_Goldak=Q_total/2 (W), eta_eff
+ ${(goldak.semiAxis_af_front_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_ar_rear_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_b_halfwidth_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_c_depth_um * 1e-6).toExponential(4)}, ${params.laserPower_W / 2}, ${params.effectiveAbsorptivity}
 ** Solidification Kinetics:
 ** G_avg: ${pyResult.solidificationKinetics.thermalGradient_G_K_m} K/m
 ** R_solid: ${pyResult.solidificationKinetics.solidificationRate_R_m_s} m/s

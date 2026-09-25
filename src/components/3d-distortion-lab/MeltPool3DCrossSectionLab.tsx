@@ -608,8 +608,8 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
 *DFLUX, USER
 *GOLDAK_DOUBLE_ELLIPSOID
 ** Semi-Axes in meters (SI Units):
-** a_front (m), a_rear (m), b_halfwidth (m), c_depth (m), Q_total (W), eta_eff
- ${(goldak.semiAxis_af_front_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_ar_rear_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_b_halfwidth_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_c_depth_um * 1e-6).toExponential(4)}, ${params.laserPower_W}, ${params.effectiveAbsorptivity}
+** a_front (m), a_rear (m), b_halfwidth (m), c_depth (m), Q_Goldak=Q_total/2 (W), eta_eff
+ ${(goldak.semiAxis_af_front_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_ar_rear_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_b_halfwidth_um * 1e-6).toExponential(4)}, ${(goldak.semiAxis_c_depth_um * 1e-6).toExponential(4)}, ${params.laserPower_W / 2}, ${params.effectiveAbsorptivity}
 ** Solidification Kinetics:
 ** G_avg: ${pyResult.solidificationKinetics.thermalGradient_G_K_m} K/m
 ** R_solid: ${pyResult.solidificationKinetics.solidificationRate_R_m_s} m/s
@@ -645,7 +645,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1">
                   <Cpu className="w-3 h-3 text-sky-400" />
                   {pyResult?.modelId ||
-                    (heatSource === "goldak" ? "goldak-v1" : heatSource === "eagar-tsai" ? "eagar-tsai-v1" : "rosenthal-screening-v1")}
+                    (heatSource === "goldak" ? "goldak-total-power-v2" : heatSource === "eagar-tsai" ? "eagar-tsai-v1" : "rosenthal-screening-v1")}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">

@@ -22,7 +22,7 @@ _erf_ufunc = np.frompyfunc(math.erf, 1, 1)
 def _erf(arr):
     return np.asarray(_erf_ufunc(arr), dtype=np.float64)
 
-MODEL_ID = "goldak-v1"
+MODEL_ID = "goldak-total-power-v2"
 _GL_N = 56
 _GL_XI, _GL_W = leggauss(_GL_N)
 
@@ -34,6 +34,15 @@ def goldak_fractions(af_m: float, ar_m: float) -> tuple[float, float]:
     ff = 2.0 * af / (af + ar)
     fr = 2.0 - ff
     return ff, fr
+
+
+def goldak_q_parameter_W(total_power_W: float) -> float:
+    """Return Goldak's Q coefficient for a requested physical total power.
+
+    With the standard 6√3 prefactor and ff + fr = 2, integrating the two
+    half-ellipsoids gives 2Q. The analytic field therefore uses Q=total/2.
+    """
+    return 0.5 * float(total_power_W)
 
 
 def seed_goldak_axes(r0_m: float) -> dict:
@@ -61,7 +70,9 @@ class GoldakField:
         c_m: float,
     ):
         self.T0_C = float(T0_C)
-        self.Q_W = float(Q_W)
+        # Public input is physical total source power; the conventional
+        # Goldak coefficient integrates to twice Q when ff + fr = 2.
+        self.Q_W = goldak_q_parameter_W(Q_W)
         self.rho_cp = max(1.0, float(rho) * float(cp))
         self.alpha = max(1e-12, float(alpha_th))
         self.af = max(4e-6, float(af_m))

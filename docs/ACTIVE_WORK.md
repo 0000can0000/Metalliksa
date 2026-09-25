@@ -1459,3 +1459,28 @@ validation.
 
 Next continue bounded engine review and complete source-matched workflow
 evidence; screening G/R remains distinct from measured solidification data.
+
+## 2026-09-25 continuation — normalize Goldak to physical total power
+
+The source equation audit found that the standard Goldak double-ellipsoid with
+`f_f+f_r=2` integrates over both lobes to `2Q` (Fachinotti et al., 2009,
+[DOI 10.1002/cnm.1324](https://doi.org/10.1002/cnm.1324), Eq. 2). The Python
+analytical field had received physical absorbed/geometric power directly as
+`Q`, doubling its represented power. `GoldakField` now interprets its input as
+physical total power and evaluates the conventional coefficient at half that
+value. The model identity is now `goldak-total-power-v2`; both downloadable
+CAE cards emit the half-power Goldak coefficient alongside efficiency.
+
+The measured-track factor-of-two scoring band did not change. After the
+normalization, Guo 316L N01 predicted depth is 131.3 µm vs 180 µm (27.1% MAPE),
+inside that broad screening band. This is not exact process matching or
+experimental validation; the NIST source-matched optical comparison remains
+unavailable and frozen P4 acceptance remains unchanged.
+
+Verification: new Goldak total-power normalization tests **2/2 passed**;
+`test_goldak_fabbro.py`, melt-pool accuracy, solidification-front script,
+literature catalog, and TypeScript typecheck passed. An old catalog assertion
+that N01 must stay outside the unchanged broad band was updated to match the
+new calculation; no acceptance threshold was changed. Scoped diff check passed.
+
+Next continue the bounded solver audits and source-matched workflow evidence.

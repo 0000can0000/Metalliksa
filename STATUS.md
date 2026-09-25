@@ -553,3 +553,11 @@ Do not alter the existing acceptance thresholds or relabel the study as passed.
 - The mapper now rejects an unbracketed root (`None` at the front-map level). Equality at the upper boundary remains a valid bracket endpoint.
 - Verification: `python -m unittest test_lpbf_solidification -v` **6 PASS, 1 OpenFOAM-only skip**; `py_compile` and scoped `git diff --check` **PASS**. This prevents out-of-domain front values from entering G/R metrics; it is a manufactured numerical contract, not experimental validation.
 - Next: continue bounded engine audits and workflow gates; do not interpret screening G/R values as experiment-matched measurements.
+
+## 2026-09-25 — Goldak total-power normalization
+
+- Equation audit found `GoldakField` received physical absorbed/geometric power as Goldak's `Q`, although with the standard `6√3` source prefactor and `ff+fr=2`, the complete double-ellipsoid integral is `2Q` (Fachinotti et al., 2009, DOI `10.1002/cnm.1324`, Eq. 2). This doubled the internally represented source power.
+- `GoldakField` now accepts physical total power and applies the standard coefficient `Q=total/2`; the physics identity is `goldak-total-power-v2`. Both downloadable CAE cards emit `Q_total/2` with their efficiency field, matching the standard source convention.
+- Fixed broad factor-of-two literature gates were unchanged. Guo 316L N01 predicted depth moved from 73.1 µm to 131.3 µm against 180 µm (27.1% MAPE), entering the existing broad band. This is not exact process matching or experimental validation. NIST's source-matched optical comparison remains unavailable; frozen P4 status is unchanged.
+- Verification: Goldak normalization **2/2 PASS**; `test_goldak_fabbro.py`, melt-pool accuracy fixture, solidification-front script, and literature catalog **PASS**; TypeScript typecheck **PASS**. The catalog's pre-repair assertion that N01 must remain outside the band was updated to reflect the fixed normalization; no tolerance changed. `git diff --check` pending commit.
+- Next: continue remaining bounded solver audits and full source-matched workflow evidence.

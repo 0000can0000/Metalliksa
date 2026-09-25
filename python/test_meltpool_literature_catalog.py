@@ -26,7 +26,7 @@ def goldak_score(t):
         t["material"], t["laserPower_W"], t["scanSpeed_mm_s"], t["beamDiameter_um"],
         t["preheatTemp_C"], t_um, h_um, heat_source="goldak",
     )
-    assert_true(r["modelId"] == "goldak-v1", "heat source")
+    assert_true(r["modelId"] == "goldak-total-power-v2", "heat source")
     s = score_track(r["meltPoolGeometry"]["width_um"], r["meltPoolGeometry"]["depth_um"], t)
     s["pred_W"] = r["meltPoolGeometry"]["width_um"]
     s["pred_D"] = r["meltPoolGeometry"]["depth_um"]
@@ -71,11 +71,11 @@ def main():
         assert_true(guo_scores[gid]["pass"], f"{gid} {guo_scores[gid]}")
 
     n01 = guo_scores["guo-316l-n01"]
-    # Depth 73.1 vs 180 µm → factor 0.41, below ×0.5. Do not fit absorptivity.
-    assert_true(n01["widthInBand"], f"Guo N01 width {n01}")
-    assert_true(not n01["depthInBand"], f"Guo N01 depth unexpectedly in band {n01}")
+    # Correct total-power normalization moves N01 depth inside the unchanged
+    # broad screening band. This is not an exact process match or validation.
+    assert_true(n01["pass"], f"Guo N01 outside the unchanged ×0.5–2 band {n01}")
     print(
-        "REPORT: Guo N01 depth out of ×0.5–2 "
+        "REPORT: Guo N01 inside the broad ×0.5–2 screening band, not validated "
         f"(pred {n01['pred_D']} µm vs 180 µm, MAPE {n01['depth_mape_pct']}%) — not fitted"
     )
 

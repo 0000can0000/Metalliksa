@@ -40,7 +40,7 @@ def main():
     gk = calculate_meltpool_physics(
         "Inconel 718", 285, 960, 67, 23.5, 40, 110, heat_source="goldak"
     )
-    assert_true(gk["modelId"] == "goldak-v1", "goldak model id")
+    assert_true(gk["modelId"] == "goldak-total-power-v2", "goldak model id")
     assert_true(gk["keyholeModel"]["modelId"] == "fabbro-keyhole-v1", "fabbro on goldak path")
     assert_true(abs(gk["keyholeModel"]["absorptivity"] - 0.38) < 0.02, "Fabbro A is Fresnel, not eta_eff")
     W = gk["meltPoolGeometry"]["width_um"]

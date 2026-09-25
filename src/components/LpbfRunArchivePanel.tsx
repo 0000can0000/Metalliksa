@@ -237,7 +237,7 @@ function ArchivedRunRecord({ runId, restoreId }: { runId: string; restoreId?: st
       <pre className="text-xs bg-slate-950 p-3 overflow-auto mt-2 text-slate-300">{JSON.stringify(record.document, null, 2)}</pre>
       </details>
     </div>}
-    {record && !restoreId && <NistOpticalComparison record={record} />}
+    {record && <NistOpticalComparison record={record} restoreId={restoreId} />}
   </div>;
 }
 
@@ -251,15 +251,15 @@ const opticalCases: { id: NistOpticalCaseNumber; label: string }[] = [
   { id: '3.2', label: 'Case 3.2 · 245 W · 960 mm/s · 67 µm' },
 ];
 
-export function NistOpticalComparison({ record }: { record: RunRecord }) {
+export function NistOpticalComparison({ record, restoreId }: { record: RunRecord; restoreId?: string }) {
   const [caseNumber, setCaseNumber] = useState<NistOpticalCaseNumber>('0');
-  const requestKey = `${record.document.runId}:${record.documentSha256}:${caseNumber}`;
+  const requestKey = `${restoreId ?? 'live'}:${record.document.runId}:${record.documentSha256}:${caseNumber}`;
   const task = useInputBoundTask<NistOpticalReport>(requestKey);
   const link = record.document.sources.find(source => source.datasetId === 'nist-amb2022-03-optical-table4-local-v1');
 
   const compare = async () => {
     const request = task.begin('compare');
-    try { request.publish(await compareNistOpticalRun(record, caseNumber, request.signal)); }
+    try { request.publish(await compareNistOpticalRun(record, caseNumber, request.signal, restoreId)); }
     catch (error) { request.fail(error); }
     finally { request.finish(); }
   };

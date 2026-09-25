@@ -2,6 +2,14 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — Rafine P4 zaman tanısı çalışıyor
+- Ayrı dondurulmuş protokol ve runner `f3866c8` commit'inde. Protokol SHA-256 `a49e64803db8ac14a01d361a7958515ff3927ddf258880a6aeb9d73966342595`; aynı kaynak parmak izli önceki 50/25 ns satırları yeniden kullanılıyor, yalnız 12,5 ns / 5 µm CPU hesabı yeni çalışıyor. Canlı oturum `68021`, başlangıç `2026-09-25 21:17:47 +03:00`; kısmi rapor `docs/LPBF_P4_REFINED_DT_DIAGNOSTIC_2026-09-25.partial.json` `running`, yeni satır henüz yok. Başlangıç kaynak parmak izi `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac1189489`.
+- Ön kontrol ve Python sözdizimi PASS; mevcut convergence/contour odaklı 14 test ajan tarafından PASS bildirildi. Sonuç beklenirken fizik/manifest kaynakları değiştirilmez, süreç gözlem gecikmesi yüzünden yeniden başlatılmaz. Tamamlanınca 50/25/12,5 ns gerçek kabul edilen dt oranlarını, hücre-kapsamı ve sürekli kontur kapılarını ayrı değerlendir; önceki P4 `failed` ve 100/50/25 ns `inconclusive` raporlarını koru.
+
+## 2026-09-25 — Geri yüklenen koşu karşılaştırması ve CPU verim incelemesi
+- Geri yüklenen doğrulanmış koşu artık kendi yalıtılmış paketinden NIST karşılaştırmasını açıyor. Kaynak sürümü uymayan örnekte sonuç doğru biçimde `unavailable` / `unvalidated`; optik artık değer üretilmedi. Odaklı API/istemci/paket kontrolleri 27/27 PASS, TypeScript kontrolü PASS, üretim derlemesi PASS, tarayıcı ve klavye akışı kontrol edildi.
+- Salt-okunur CPU incelemesi, iletim hızı ile kararlılık diagonalinin üç eksenli yüz iletkenliğini ayrı hesapladığını buldu. Satır bazlı profil veya ölçülmüş hız kazancı yok. Canlı P4 çalışması bitmeden kaynak-kimliği manifestindeki Python dosyaları değiştirilmez; sonrasında aynı denklemi koruyan ortak hesap adayını eski/yeni çıktı eşitliği, enerji ve kabul edilen zaman adımlarıyla değerlendirmek sıradaki verim adımıdır.
+
 ## 2026-09-25 — P4 kaynak-kimliği tanısı tamamlandı; tarayıcıda paket çevrimi
 - Dondurulmuş 5 µm IN718 CPU tanısı 100/50/25 ns seviyelerinin üçünü de bitirdi. Rapor `docs/LPBF_P4_CURRENT_40W_FINGERPRINT_DIAGNOSTIC_2026-09-25.json`, SHA-256 `726CAD9AA1D4F2B7DC3009B8B10ED1A7DB08B49BA1F9BC9E4B872F662054B558`; protokol ve senaryo SHA'ları dondurulmuş değerlerle eşleşiyor. Her satırın öncesi/kaydı/sonrası ve toplam son kaynak parmak izi `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac1189489`; `integrityStatus=pass`.
 - 3.923/7.000/14.000 kabul edilmiş adım, ortalama 89.217/50/25 ns. En yüksek enerji bağıl hatası `1.629e-13`, enerji kapısı `pass`; gerçek ortalama zaman aralıkları sabit oranlı olmadığından mevcut yakınsama kapısı `inconclusive`. Önceki dondurulmuş P4 `failed` olarak kalır. Rapordaki `finestPairRelativeChange=0` hücre-kapsamı 80/35 µm metriklerine aittir; sürekli liquidus konturu satırlar arasında değişir ve bu sıfır değeri onun yakınsadığını kanıtlamaz. Deneysel doğrulama yok.

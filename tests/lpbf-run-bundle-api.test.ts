@@ -138,6 +138,15 @@ test('portable tar round-trip verifies, restores in isolation, and exposes resto
   const restoredRecord = await recordResponse.json() as typeof f.record;
   assert.deepEqual(restoredRecord.document, f.record.document);
   assert.equal(restoredRecord.documentSha256, f.record.documentSha256);
+  const comparisonResponse = await fetch(`${f.endpoint}/restores/${restored.restoreId}/runs/${f.record.document.runId}/nist-comparison`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caseNumber: '0' }),
+  });
+  assert.equal(comparisonResponse.status, 200);
+  const comparison = await comparisonResponse.json() as { status: string; validationStatus: string; errors: unknown; reasons: string[] };
+  assert.equal(comparison.status, 'unavailable');
+  assert.equal(comparison.validationStatus, 'unvalidated');
+  assert.equal(comparison.errors, null);
+  assert.match(comparison.reasons.join(' '), /analytical screening/i);
   assert.deepEqual(readFileSync(path.join(f.runRoot, 'runs.sqlite')), beforeRuns);
   assert.deepEqual(readFileSync(path.join(f.sourceRoot, 'metadata.sqlite')), beforeSources);
 });

@@ -165,6 +165,13 @@ export class LpbfRunBundleService {
     } finally { repository.close(); }
   }
 
+  async restoredComparisonRoots(restoreId: string) {
+    const runRoot = this.restored(restoreId);
+    try { await verifyRunBundle(runRoot); }
+    catch { throw new LpbfRunArchiveError(409, 'Restored run bundle integrity verification failed.'); }
+    return { runRoot, sourceRoot: path.join(runRoot, 'sources') };
+  }
+
   private restored(restoreId: string): string {
     const id = this.id(restoreId);
     if (!existsSync(path.join(this.bundleRoot, 'restores'))) throw new LpbfRunArchiveError(404, 'Restored run bundle not found.');

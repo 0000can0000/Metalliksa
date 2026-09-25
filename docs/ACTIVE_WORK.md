@@ -1689,3 +1689,50 @@ integrity flow does not validate the model or the NIST optical comparison.
 
 Next: address the separately versioned NIST optical observation operator and qualified alloy-data
 admission without weakening existing evidence gates.
+
+## Active parallel LPBF packages (2026-09-25)
+
+- `/root/restored_run_comparison` owns `routes/lpbfRuns.ts`,
+  `src/components/LpbfRunArchivePanel.tsx`, `src/services/lpbfRunArchiveClient.ts`,
+  and focused route/client tests until handoff. Contract: restored runs expose
+  the existing scientific comparison result without promoting unavailable
+  optical evidence to validation. Root owns browser QA and integration commit.
+- `/root/nist_case0_tiff_map` is read-only: map six official Case 0 workbook
+  observations to exact NIST TIFF/sidecar assets and report provenance gaps.
+- `/root/p4_refined_dt_protocol` owns only new refined-timestep protocol,
+  runner, and focused test files. It must not launch the heavy 12.5 ns run;
+  root will review/freeze the protocol and launch at most one run. The prior
+  frozen P4 and completed fingerprint diagnostic remain immutable.
+
+Handoffs: restored-run comparison and NIST TIFF mapping agents completed;
+root owns integration. The refined-dt agent completed the new protocol/runner;
+root reviewed and committed them as `f3866c8`, then started exactly one 12.5 ns
+solve in live terminal session `68021` at `2026-09-25T18:17:47Z`. Partial report
+`docs/LPBF_P4_REFINED_DT_DIAGNOSTIC_2026-09-25.partial.json` is `running`.
+Protocol SHA-256 is
+`a49e64803db8ac14a01d361a7958515ff3927ddf258880a6aeb9d73966342595`;
+the implementation fingerprint matches the prior 50/25 ns rows. Do not edit
+manifest sources or restart for observation delay. `/root/lpbf_cpu_hotspot_audit`
+now owns a read-only CPU performance audit while this run executes.
+
+The official NIST workbook Case 0 rows 2–7 map in order to L0-1/P3,
+L0-1/P4, L0-2/P3, L0-2/P4, L0-3/P3, L0-3/P4. The NIST catalog lists each
+`AMB2022-718-SH1-BP1-{P3|P4}-L0-{1|2|3}.tif` and a separate `_m.tif`
+variant, each with its own `.sha256` sidecar. The source image bytes, sidecar
+contents, and `_m` annotation meaning were not verified: official data fetch
+failed at the local proxy. This mapping advances source identification only.
+
+Restored-run comparison integration: a dedicated restore endpoint reads the
+verified isolated bundle; UI shows the same NIST comparison panel for restored
+runs. Root reran focused route/client/tar tests **27/27 PASS** and `npx tsc
+--noEmit PASS`. Browser on restarted local server showed restored and live
+records return the same `unavailable`/`unvalidated` source-revision reason;
+keyboard Return triggered the restored action. Production build and scoped
+integration commit are next. The browser sample's archived Table 4 revision 1
+does not match the currently reviewed revision 2, so no residual was shown.
+
+Root completed the production build (PASS) and reviewed the scoped diff. The
+read-only CPU audit found duplicate harmonic face-conductivity work in
+`conduction_rate` and `conduction_diagonal`; existing timings do not establish
+a P4 speedup. Keep the live solver fingerprint fixed until session `68021`
+finishes, then profile and compare numerical parity before a performance edit.

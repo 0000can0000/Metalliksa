@@ -1794,3 +1794,34 @@ are 77.7079/77.7053/77.7036 µm and depths 34.6956/34.6955/34.6963 µm.
 These contours are numerical thermal proxies, not optical observations.
 The frozen P4 `failed` verdict remains unchanged. No experimental validation
 is claimed.
+
+## NIST optical-observation boundary (2026-09-25)
+
+The [NIST cross-sectional methods paper](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=957295)
+defines single-track measurements on three repeated tracks, with two sections
+per track near its center. The sections are perpendicular to the scan (within
+2 degrees); their location has estimated standard uncertainty ±0.2 mm. The
+samples were mounted, aqua-regia etched, optically imaged, and measured in
+ImageJ. Width is the widest horizontal span of the revealed boundary; depth is
+the greatest vertical distance from the original plate surface, excluding any
+height above that surface. Table 4 aggregates six measurements per case.
+
+The current model's one nearest-midpoint ever-liquidus YZ section is a thermal
+proxy. It does not reproduce six separately positioned etched/resolidified
+boundaries or measured-beam-profile behavior. Therefore the existing NIST
+comparison correctly remains `unavailable` with no optical residuals. The
+[NIST beam-metrology report](https://www.nist.gov/publications/laser-beam-metrology-am-bench-2022-approaches-results-and-lessons-learned)
+also documents variability and uncertainty in the AM Bench 2022 power-density
+distribution. A nominal D4σ diameter alone cannot prove a profile-matched
+model source. This is a source-method audit, not solver validation.
+
+The [official NIST catalog](https://catalog.data.gov/dataset/am-bench-2022-measurement-results-data-optical-microscopy-of-laser-scanned-single-track-03)
+lists raw TIFF, separate `_m.tif`, and per-file `.sha256` sidecars for each
+Case 0 track/section. Workbook rows 2–7 map in order to
+`L0-1/P3`, `L0-1/P4`, `L0-2/P3`, `L0-2/P4`, `L0-3/P3`, `L0-3/P4`;
+P3 is 4.9 mm and P4 is 6.0 mm. Exact candidate filenames use
+`AMB2022-718-SH1-BP1-{P3|P4}-L0-{1|2|3}.tif`. The workbook row mapping is
+verified locally; catalog names are publisher metadata. TIFF bytes, sidecar
+hash contents, and the `_m` image meaning could not be verified because the
+official file endpoint was unavailable through the local proxy. No image
+segmentation or optical-boundary claim follows from this mapping.

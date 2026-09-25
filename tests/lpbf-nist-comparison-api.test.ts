@@ -78,6 +78,9 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
   const legacyBuildId = '9'.repeat(32);
   const analyticalId = '8'.repeat(32);
   saveRun(boundId, [exactLink], true);
+  const bundleService = new LpbfRunBundleService(runRoot, sourceRoot, path.join(root, 'bundles'));
+  const exportedBundle = await bundleService.export();
+  const restoredBundle = await bundleService.restore(exportedBundle.bundleId);
   saveRun(legacyId, [exactLink], false);
   saveRun(staleId, [{ ...exactLink, documentSha256: sha('stale') }], true);
   saveRun(unlinkedId, [], true);
@@ -99,7 +102,7 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
 
   const app = express();
   app.use(createLpbfRunsRouter(new LpbfRunArchiveService(runRoot, sourceRoot),
-    new LpbfRunBundleService(runRoot, sourceRoot, path.join(root, 'bundles')),
+    bundleService,
     new LpbfNistComparisonService(runRoot, sourceRoot)));
   const server = app.listen(0, '127.0.0.1');
   t.after(() => server.close());
@@ -120,6 +123,11 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
   assert.equal(valid.body.sourceBinding.artifactSha256, artifact.sha256);
   assert.match(valid.body.reasons.join(' '), /standard CPU transient core/i);
   assert.doesNotMatch(valid.body.reasons.join(' '), /Table 4 parameter rows differ/i);
+  const restoredEndpoint = `${endpoint}/bundles/restores/${restoredBundle.restoreId}/runs/${boundId}/nist-comparison`;
+  const restoredResponse = await fetch(restoredEndpoint, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caseNumber: '0' }) });
+  assert.equal(restoredResponse.status, 200);
+  assert.deepEqual(await restoredResponse.json(), valid.body);
   const withFloat = await post(floatId, { caseNumber: '0' });
   assert.equal(withFloat.status, 200); assert.equal(withFloat.body.status, 'unavailable');
   assert.equal(withFloat.body.errors, null);
@@ -157,6 +165,10 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
   const brokenRun = await post(boundId, { caseNumber: '0' });
   assert.equal(brokenRun.status, 200); assert.equal(brokenRun.body.errors, null);
   assert.match(brokenRun.body.reasons.join(' '), /run output artifact bytes/i);
+  const isolatedResponse = await fetch(restoredEndpoint, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caseNumber: '0' }) });
+  assert.equal(isolatedResponse.status, 200);
+  assert.deepEqual(await isolatedResponse.json(), valid.body);
   writeFileSync(runObject.path, 'abc');
 
   const sourceObject = await sourceStore.verify(artifact);
@@ -165,4 +177,8 @@ test('NIST optical HTTP gate uses archived exact source and verified bytes, and 
   const brokenTable = await post(boundId, { caseNumber: '0' });
   assert.equal(brokenTable.status, 200); assert.equal(brokenTable.body.errors, null);
   assert.match(brokenTable.body.reasons.join(' '), /transcription bytes/i);
+  writeFileSync(path.join(root, 'bundles', 'restores', restoredBundle.restoreId, 'bundle.json'), 'bad');
+  const brokenRestore = await fetch(restoredEndpoint, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caseNumber: '0' }) });
+  assert.equal(brokenRestore.status, 409);
 });

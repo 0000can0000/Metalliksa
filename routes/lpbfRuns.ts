@@ -90,12 +90,20 @@ export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bund
   router.post(`${prefix}/bundles/:bundleId/verify`, handle(req => { emptyBody(req); return bundles.verify(req.params.bundleId); }));
   router.post(`${prefix}/bundles/:bundleId/restore`, handle(req => { emptyBody(req); return bundles.restore(req.params.bundleId); }));
   router.post(`${prefix}/bundles/imports/:bundleId/restore`, handle(req => { emptyBody(req); return bundles.restoreImported(req.params.bundleId); }));
-  router.post(`${prefix}/:runId/nist-comparison`, handle(req => {
+  const comparisonCaseNumber = (req: express.Request): string => {
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
       || Object.keys(req.body).length !== 1 || typeof req.body.caseNumber !== 'string') {
       throw new LpbfRunArchiveError(400, 'Only a Table 4 caseNumber is accepted.');
     }
-    return comparison.compare(req.params.runId, req.body.caseNumber);
+    return req.body.caseNumber;
+  };
+  router.post(`${prefix}/bundles/restores/:restoreId/runs/:runId/nist-comparison`, handle(async req => {
+    const caseNumber = comparisonCaseNumber(req);
+    const { runRoot, sourceRoot } = await bundles.restoredComparisonRoots(req.params.restoreId);
+    return new LpbfNistComparisonService(runRoot, sourceRoot).compare(req.params.runId, caseNumber);
+  }));
+  router.post(`${prefix}/:runId/nist-comparison`, handle(req => {
+    return comparison.compare(req.params.runId, comparisonCaseNumber(req));
   }));
 
   router.post(`${prefix}/proxy-campaigns/preview`, handle(req => {

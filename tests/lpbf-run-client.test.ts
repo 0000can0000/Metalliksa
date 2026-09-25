@@ -175,6 +175,17 @@ test('NIST client posts only a case number and binds the reply to the selected r
   assert.deepEqual(JSON.parse(init.body as string), { caseNumber: '0' });
 });
 
+test('NIST client selects the isolated restored run endpoint and rejects invalid restore identity', async t => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(opticalReport)));
+  const result = await compareNistOpticalRun(opticalRun, '0', signal, restoreId);
+  assert.equal(result.validationStatus, 'unvalidated');
+  const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+  assert.equal(url, `/api/lpbf/runs/bundles/restores/${restoreId}/runs/${jobId}/nist-comparison`);
+  assert.deepEqual(JSON.parse(init.body as string), { caseNumber: '0' });
+  await assert.rejects(compareNistOpticalRun(opticalRun, '0', signal, '../unsafe'), /valid archived run/i);
+  assert.equal(fetchMock.mock.callCount(), 1);
+});
+
 test('NIST client rejects stale case, source binding and numeric unavailable output', async t => {
   for (const bad of [
     { ...opticalReport, caseNumber: '1.1' },

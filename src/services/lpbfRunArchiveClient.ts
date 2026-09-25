@@ -321,9 +321,13 @@ function opticalReport(value: unknown, run: RunRecord, caseNumber: NistOpticalCa
 }
 
 export async function compareNistOpticalRun(run: RunRecord, caseNumber: NistOpticalCaseNumber,
-  signal: AbortSignal): Promise<NistOpticalReport> {
-  if (!jobId(run.document.runId) || !opticalCases.has(caseNumber)) throw new Error('Select a valid archived run and Table 4 case.');
-  const result: unknown = await request(`/${run.document.runId}/nist-comparison`, signal, { caseNumber });
+  signal: AbortSignal, restoreId?: string): Promise<NistOpticalReport> {
+  if (!jobId(run.document.runId) || !opticalCases.has(caseNumber) || (restoreId !== undefined && !bundleId(restoreId))) {
+    throw new Error('Select a valid archived run, restored bundle and Table 4 case.');
+  }
+  const route = restoreId ? `/bundles/restores/${restoreId}/runs/${run.document.runId}/nist-comparison`
+    : `/${run.document.runId}/nist-comparison`;
+  const result: unknown = await request(route, signal, { caseNumber });
   opticalReport(result, run, caseNumber);
   return result;
 }

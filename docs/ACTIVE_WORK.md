@@ -1065,3 +1065,26 @@ This path is an unvalidated sensitivity model, not a source-matched AMB2022-03 r
 ## Layered-plate v2 scaffold
 
 A standalone `lpbf_ss304_support_material.py` now provides a hashed, generic AISI 304 literature-property snapshot and bounded Cp/k/density/enthalpy evaluator for sensitivity-model development. It is deliberately not runtime alloy admission and is not the specimen's exact support revision; temperature evaluation outside 273.15–1473.15 K fails closed. Focused tests pass 4/4. Next, integrate only through a separate opt-in layered solver identity and retain the NIST source-match gate as unavailable until backing thickness, contact/bottom boundary evidence and measured AMB2022-03 beam-profile bytes are available.
+# 2026-09-25 — proxy campaign contract and physics-engine audit
+
+Current package adds a standalone `lpbf_nist_proxy_campaign.py` v1 contract:
+three unique computational runs × two 4.9/6.0 mm thermal-proxy sections,
+source/run/input/material provenance, and hard rejection of optical/etched or
+experimental-validation claims. It additionally fails closed on boolean
+schema versions, malformed trusted source metadata, and unsafe absolute or
+traversing artifact paths. A valid report says `proxy-screening-only`, with
+`numericalConvergenceStatus=not-evaluated` and no comparison residuals.
+
+Focused test: `python -m unittest test_lpbf_nist_proxy_campaign -v`, **12/12
+PASS**; targeted diff check PASS. The contract is not yet integrated into the
+archive/API and does not verify files, solve physics, implement the observation
+operator, calculate residuals, or establish mesh/time convergence.
+
+User explicitly authorizes scientifically justified repair or replacement of
+poorly functioning physics engines, including Python implementations. Next:
+trace current callers/identities and audit CPU `enthalpy-fv-6` and Phase 22 GPU
+operators against independent conservation/manufactured-solution checks; make a
+new solver revision only for a reproduced defect, preserve old model/hash
+identity, then compare CPU/GPU on identical frozen inputs. Do not present
+screening or numerical parity as experimental validation. P4/P5/P6/P7 gates
+remain as recorded.

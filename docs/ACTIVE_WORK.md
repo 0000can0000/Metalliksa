@@ -1523,3 +1523,16 @@ and `thermal-proxy-screening`; its geometry is not an etched optical observation
 and it emits no comparison residuals. Next source task is to archive/hash-bind
 the six raw observations and matching TIFFs in a separate experimental evidence
 contract before implementing any optical comparison operator.
+
+## 2026-09-25 continuation — archive workflow portability gap
+
+Read-only UI/API audit confirmed the live path for material and input
+selection, worker execution, exact source-bound run archiving, unvalidated
+proxy-campaign preview/save, and server-local bundle export/verify/isolated
+restore. The current bundle UI returns an ID only: it cannot download a portable
+bundle to the user's device, upload one on another server, or open the restored
+copy in the application. Existing bundle tests verify same-server integrity and
+restore isolation, not cross-server portability or restored-run navigation.
+The thermal proxy remains explicitly unvalidated. Any portable-bundle follow-up
+needs bounded streaming, strict manifest/artifact verification, archive quotas,
+and isolated restore; do not weaken source identity checks.

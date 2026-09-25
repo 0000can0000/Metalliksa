@@ -13,6 +13,10 @@
 - Eski challenge yöntem PDF’si üç tekrar × P1–P4 kesitleri dediğinden kaynaklar arasında çözümlenmemiş kapsam farkı var. Table 4’e P1/P2 satırı uydurma veya eşleme; P1/P2 kapsamını açık kaynak uyuşmazlığı olarak tut. XLSX publisher SHA-256: `2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931`. TIFF URL/sidecar’lar katalogda listeli, fakat görüntü baytlarının yerel hash doğrulaması ve etched-optical operatör eşlemesi tamamlanmadı.
 - Kampanya mevcut Table 4 aggregate kaydına bağlı `thermal-proxy-screening` kalmalı; termal kontur ölçümlerini optik/dağlanmış deney ölçümü veya residual diye sunma. Sonraki adım altı ham workbook satırını P3/P4/TIFF kimliğiyle ayrı, kaynak baytları doğrulanmış deney gözlem sözleşmesine almak.
 
+## 2026-09-25 — LPBF kullanıcı akışı denetimi
+- Canlı akıştaki malzeme/girdi seçimi, hesaplama, tamamlanan işi kaynak revizyonuna bağlayıp arşivleme, proxy kampanyası önizleme/kaydetme ve bundle doğrulama/izole geri yükleme yolları mevcut. Proxy ekranda doğrulanmamış kalıyor; fiziksel/optik residual üretilmiyor.
+- En belirgin ürün eksiği: bundle yalnızca sunucuda kopyalanıyor ve aynı sunucuda doğrulanıp ayrı klasöre geri yükleniyor. Kullanıcı cihazına indirip başka yere taşıyamıyor; geri yüklenen arşiv uygulamada seçilip incelenemiyor. Bu eksik, server-local testlerde başarıyı geçersiz kılmaz ama taşınabilir teslim/yeniden kullanım sağlamaz.
+
 ## 2026-09-25 — IN625 kapsamlı kaynak kabul kapısı
 - IN625 için yeni, içerik kimliği denetimli kabul kapısı yalnızca `bounded-fusion-enthalpy-screening` kapsamını kabul ediyor. Kimlik, kaynak/konumlar, malzeme girdileri ve SHA-256 beklenen kanonik kayda tam uymalı; değişmiş veya başka alaşımdan kopyalanmış kayıt reddediliyor.
 - Kapı sonucu tam geçici rejim tablosu kabulü ya da deneysel doğrulama anlamına gelmiyor. IN625 hâlâ build-job ve genel beş-özellikli transient malzemesi değil; özel kaynak verisi ve sınırlı model kapsamı ayrı tutuluyor.

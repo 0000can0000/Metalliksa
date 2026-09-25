@@ -98,6 +98,12 @@ def validate(raw):
         raise ValueError("Unknown mode, strategy or study")
     if p["surfaceMode"] not in ("powder-layer", "bare-plate"):
         raise ValueError("Unknown LPBF surface mode")
+    if (p["mode"] == "standard" and p["surfaceMode"] == "powder-layer"
+            and p["backend"] == "openfoam-thermal"):
+        raise ValueError(
+            "OpenFOAM powder-layer runs are unavailable until its uniform mesh "
+            "aligns every layer surface with cell faces"
+        )
     if p["barePlateGeometry"] not in ("square", "rectangular-corridor"):
         raise ValueError("barePlateGeometry must be 'square' or 'rectangular-corridor'")
     if "powderGridPolicy" in raw:

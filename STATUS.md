@@ -2,6 +2,12 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — OpenFOAM termal yolunda güvenli sınırlar
+- İnceleme, standart powder-layer OpenFOAM ağının her katman yüzeyini hücre yüzüne hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Hizalama uygulanana kadar bu backend/mode birleşimi doğrulamada reddediliyor; referans NumPy yolu layer-conforming modeli kullanıyor.
+- OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Böylece yetersiz kaynak alanı sessizce büyütülmüyor.
+- Dar doğrulama: core-contract/OpenFOAM-red ve layer-alignment testleri ile heat-source grubu toplam **17 PASS, 1 OpenFOAM skip**. Geniş core-contract koşusunda SQLite/temp sandbox erişimi yüzünden bir test çalışmadı. Bu Windows ortamında `wmake`/OpenFOAM derleyicisi bulunmadığından C++ ikilisi derlenip çalıştırılamadı; uygulama doğrulaması açık.
+- Sıradaki somut adım: OpenFOAM için katman-yüzüne hizalı mesh üretip aynı kaynak yakalama sözleşmesiyle gerçek derleme/çalıştırma/parite testlerini sağlamak; o zamana kadar standart toz-katmanı OpenFOAM backend'i kapalı kalır.
+
 ## 2026-09-25 — P6 opt-in CUDA kaynak prototipi
 - Aynı `enthalpy-fv-6` standart tek-iz altkümesinde GL2 hareketli Gauss hücre integrali ve 25 K kaynak-adımı sınırlayıcısının opt-in CUDA uygulaması eklendi. Hücre kaynak/rate alanı CPU oracle’ına `rtol=1e-10`, yakalama farkı `1e-12`, `dt` farkı `1e-15` içinde eşleşti; retry sayısı aynı ve dondurulmuş tam CPU/CUDA sıcaklık-alanı paritesi değişmedi.
 - Üç eşzamanlı/alternating 934-adım ölçümünde CPU-kaynak medyanı `6.722 s`, CUDA-kaynak medyanı `9.062 s`: CUDA kolu yaklaşık `%35` yavaş. Batch GL2 düğümleri ve tekleştirilmiş capture/`dt` senkronizasyonu önceki CUDA medyanını `10.171 s`'den iyileştirdi; hız kazancı kanıtlanmadı. Kuyruk/varsayılan kaynak ve sınırlayıcı CPU kalıyor.

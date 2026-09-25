@@ -2,6 +2,14 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — P6 opt-in CUDA kaynak prototipi
+- Aynı `enthalpy-fv-6` standart tek-iz altkümesinde GL2 hareketli Gauss hücre integrali ve 25 K kaynak-adımı sınırlayıcısının opt-in CUDA uygulaması eklendi. Hücre kaynak/rate alanı CPU oracle’ına `rtol=1e-10`, yakalama farkı `1e-12`, `dt` farkı `1e-15` içinde eşleşti; retry sayısı aynı ve dondurulmuş tam CPU/CUDA sıcaklık-alanı paritesi değişmedi.
+- Üç eşzamanlı/alternating 934-adım ölçümünde CPU-kaynak medyanı `6.722 s`, CUDA-kaynak medyanı `9.062 s`: CUDA kolu yaklaşık `%35` yavaş. Batch GL2 düğümleri ve tekleştirilmiş capture/`dt` senkronizasyonu önceki CUDA medyanını `10.171 s`'den iyileştirdi; hız kazancı kanıtlanmadı. Kuyruk/varsayılan kaynak ve sınırlayıcı CPU kalıyor.
+- Doğrulama: `python/test_lpbf_gpu_thermal.py` **9/9 PASS** (RTX 4060 paritesi dahil), `tsc --noEmit` PASS, `git diff --check` PASS. Commit `a3d8aaa`. P6 kısmi; bu yazılım/sayısal parite deneysel doğrulama değildir.
+- P4 tied-peak denetimi, ilk eşit maksimum adımın mevcut deterministik seçimini ve zaten mevcut opt-in tied-contour duyarlılık yolunu doğruladı; `python/test_lpbf_peak_tied_contours.py` **2/2 PASS**. Dondurulmuş kabul ölçütleri/sonuç değişmedi.
+- Kullanıcı, yetersiz sonuç veren fizik motorlarının Python'da bilimsel temelle onarılmasına veya yeniden kurulmasına açıkça yetki verdi. Denklemleri ve model kimliklerini gerekçesiz değiştirme; kabul eşiklerini gevşetme; önce analitik/üretilmiş çözüm ve sayısal pariteyle sınayıp fiziksel deney kanıtından ayrı raporla.
+- Sıradaki somut adım: kampanya arayüz dilimini tamamla ve doğrula; ardından P6 çalışma yükü/parite/performance kapısını koruyarak ölçek-kesişme testi yap. CUDA yavaş kaldıkça P4'ün `2.5 µm` ağına taşıma.
+
 ## 📌 Genel İlerleme Özeti
 - **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
 - **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.

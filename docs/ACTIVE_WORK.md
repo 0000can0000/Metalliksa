@@ -1190,3 +1190,15 @@ data stop at 500 °C. [Ti-6Al-4V PBF study](https://doi.org/10.1016/j.addma.2022
 LPBF alloy gate closed; do not relabel dense NIST steel properties as AM
 properties. Existing estimated-legacy 316L and IN625 screening remain
 separately classified.
+
+## 2026-09-25 continuation — scientific Python authority and P6 source path
+
+Can explicitly authorized scientifically justified repairs or a Python replacement for a core physics engine when its current results are inadequate. Preserve governing-equation provenance, model identity, frozen acceptance thresholds and evidence scope. Separate analytical/manufactured checks, CPU/GPU parity, performance measurements and experimental validation.
+
+The opt-in CUDA implementation now evaluates the same two-node GL2 moving Gaussian cell integral and the existing 25 K source-step limiter used by the CPU reference for the bounded standard powder-layer single-track subset. Direct cell source/rate agreement is within `rtol=1e-10`; capture differs by at most `1e-12`, timestep by `1e-15`, and retry count is exact. The frozen full CPU/CUDA temperature-field parity passes without relaxing targets. Optimizing GL2 batching and joining capture/timestep readback reduced the CUDA-source median from 10.171 s to 9.062 s, but the synchronized alternating 934-step CPU-source median was 6.722 s: the CUDA source path remains about 35% slower. It stays opt-in; queued/default metadata still identifies CPU source integration and limiting. No speedup is claimed. Commit: `a3d8aaa`.
+
+Focused verification on the current checkout: `python/test_lpbf_gpu_thermal.py` 9/9 passed on the RTX 4060; full `tsc --noEmit` and the owned-file `git diff --check` passed. The tied-peak diagnostic regression passed 2/2; no historical P4 result or frozen threshold changed. Earlier production transient manufactured-forcing and face-flux checks remain recorded above.
+
+The NIST proxy-campaign persistence/API slice is committed as `d967f87`: three archived runs must bind the same exact source revision, physical input/material revision and core identity; the server derives the campaign from archive records. Client-supplied measurements/residual/validation claims are rejected. Bundle schema v2 retains v1 reading and checks run/source references. Runtime Node/tsx tests could not start in this Windows environment (`spawn EPERM`); do not call the campaign flow integrated until the UI slice and end-to-end checks are completed. A route allowlist regression was added but shares this runtime limitation. Do not present this six-section thermal-proxy screening record as an optical comparison or NIST validation.
+
+Next: finish the campaign UI/client typing and panel wiring; rerun typecheck and focused tests where the environment permits. Then run an identical-workload P6 scale/crossover benchmark while preserving the strict parity contract. Only consider using CUDA for P4 mesh refinement if measurements show a useful crossover; keep frozen P4 failed/inconclusive outcomes unchanged. Keep P5 unavailable and P7 LPBF/as-built material admission closed.

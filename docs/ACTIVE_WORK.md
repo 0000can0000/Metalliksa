@@ -1,5 +1,33 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
 
+## Continuation checkpoint — frozen 40 W P4 and provenance repair (2026-09-25)
+
+The frozen six-run IN718 CPU study is complete and recorded in
+`docs/LPBF_P4_CURRENT_MODEL_40W_2026-09-25.json`. Energy closure passed with a
+maximum relative error of `1.63e-13`. The discrete mesh gate failed: requested
+20/10/5 µm levels produced cell-extent widths 80/80/80 µm and depths 20/30/35
+µm; the finest depth pair changed 14.29%. The supplementary contour mesh trend
+is inconclusive. The time study is inconclusive because the first actual mean
+step was 89.217 ns, followed by 50 and 25 ns, so the required constant
+refinement ratio is absent. This remains numerical evidence, not experimental
+validation.
+
+The result field named `implementationHash` had included process/material
+inputs, even though `inputHash` already records the request. A separate
+`implementation_fingerprint()` now hashes the solver source tree and model
+version only. CPU, CUDA-pilot and engineering-benchmark provenance use it;
+`fingerprint(p, m)` remains the full cache/queue key, preserving input
+separation. Python compilation, diff check, an input-separation assertion and
+the two-input provenance regression pass. The combined cache/queue test passed
+its hash assertions but could not create/open its SQLite database because
+Windows denied access to the temporary directory (`WinError 5`). Commit only
+the owned solver/test files, P4 report and continuation docs. Then investigate
+the failed discrete resolution gate without changing its frozen thresholds;
+keep the NIST observation operator and measured-profile gates closed. Current
+physics audits have not demonstrated a production thermal equation defect, so
+do not rewrite governing equations absent a reproducible physical/numerical
+failure.
+
 ## Continuation checkpoint — layer-aligned mesh-study repair (2026-09-25)
 
 The failed UI study was the 28 µm middle level (the requested 20 µm mesh was

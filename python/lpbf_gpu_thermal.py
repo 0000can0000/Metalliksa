@@ -18,7 +18,8 @@ import numpy as np
 from lpbf_core_physics import GAUSS_NODES, calculate_mesh_domain, scan_segments, thermal_si_inputs
 from lpbf_heat_source import require_source_capture, source_limited_step
 from lpbf_peak import PeakMeltTracker
-from lpbf_simulation import (MINIMUM_SOURCE_CAPTURE_FRACTION, validate, fingerprint,
+from lpbf_simulation import (MINIMUM_SOURCE_CAPTURE_FRACTION, validate,
+                             implementation_fingerprint,
                              run as cpu_run)
 from lpbf_material_registry import enthalpy_table, property_at
 
@@ -434,7 +435,7 @@ def run_queued_pilot(raw):
         "confidence": "low", "artifacts": [],
         "provenance": {
             "inputHash": hashlib.sha256(json.dumps(request, sort_keys=True, allow_nan=False).encode()).hexdigest(),
-            "implementationHash": fingerprint(request, material),
+            "implementationHash": implementation_fingerprint(),
             "materialVersion": material["version"],
             "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "deviceEvidence": {

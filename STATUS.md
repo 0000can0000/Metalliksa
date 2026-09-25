@@ -2,6 +2,12 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — P4 current 40 W ve kod-provenance ayrımı
+- Dondurulmuş 6 koşuluk IN718 CPU P4 tamamlandı; rapor `docs/LPBF_P4_CURRENT_MODEL_40W_2026-09-25.json`. Enerji kapanışı geçti (maksimum bağıl hata `1.63e-13`); ağ genişlik/derinlik kabulü başarısız (20/10/5 µm düzeylerinde hücre-uzantı genişliği 80/80/80 µm, derinlik 20/30/35 µm; en ince çift derinlik değişimi %14.29). Kontur destek metriği ağ için inconclusive; zaman ağı serisinde gerçek ortalama ilk adım 89.217 ns olduğundan sabit oranlı yakınsama kurulamadı. Fiziksel deney doğrulaması yok.
+- `fingerprint(p,m)` önbellek/iş kuyruğu kimliği olarak değişmeden bırakıldı. Ayrı `implementation_fingerprint()` artık solver kaynak ağacı ve model sürümünü girdilerden bağımsız tanımlıyor; CPU, CUDA-pilot ve mühendislik benchmark sonuçlarındaki `implementationHash` bunu kullanıyor. Böylece farklı parametrelerle üretilen çıktıların aynı kod sürümünü göstermesi sağlanırken cache ayrımı korunuyor.
+- Doğrulama: Python `py_compile`, `git diff --check`, cache input-separation assertion ve iki farklı girdiyle provenance regresyonu geçti. Birleştirilmiş cache/queue regresyonu hash kontrollerini geçti, ardından SQLite geçici veritabanı oluşturma/açma `WinError 5` erişim kısıtında kaldı; ilgili koşu tamamlanamadı.
+- Sıradaki adım: rapor ve devam kaydını ayrı dosyalar olarak commit et. Sonra P4 başarısızlığının ayrık ölçüm operatörü/çözünürlük kaynaklarını araştır; P5 altı-kesit deney operatörü ve ölçülmüş ışın profili kapısı çözülmeden deney doğrulaması iddia etme. Yeni fizik denklemi ancak somut hata kanıtı ve analitik/parite doğrulamasıyla değiştirilecek.
+
 ## 2026-09-25 — Build-job material revision response contract
 - Python build-job solver artık `materialPropertyRevision` alanını üst seviye yanıtta da yayımlıyor; önceden alan yalnızca `buildJobIdentity` içinde bulunuyordu ve istemci yanıtı geçersiz sayıyordu. Python sözleşme assertion'ı ve eksik üst seviye alanı reddeden istemci regresyonu eklendi.
 - Doğrudan Windows Python 3.12 gerçek-solver çağrısı başarılı oldu; üst seviye revizyon ve kimlik revizyonu `build-job-effective-properties-v1` olarak eşleşti. Odaklı istemci paketi izinli runner'da **13/13 PASS**; ilk sandbox denemesi `spawn EPERM` ile kısıtlanmıştı. `git diff --check` temiz.

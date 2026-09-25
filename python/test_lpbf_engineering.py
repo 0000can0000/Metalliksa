@@ -342,10 +342,12 @@ class Verification(unittest.TestCase):
         self.assertNotIn("thermalHistory", r)
 
     def test_cache_key_and_queue_cancel(self):
+        from lpbf_simulation import implementation_fingerprint
         p, m = validate(CASE)
         self.assertEqual(fingerprint(p, m), fingerprint(dict(reversed(list(p.items()))), m))
         q = {**p, "maxDt_s": p["maxDt_s"]*.5}
         self.assertNotEqual(fingerprint(p, m), fingerprint(q, m))
+        self.assertRegex(implementation_fingerprint(), r"^[0-9a-f]{64}$")
         test_root = Path(__file__).resolve().parents[1]/".lpbf-jobs"
         test_root.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=test_root) as tmp:
@@ -359,6 +361,13 @@ class Verification(unittest.TestCase):
             queue.update(third["id"], status="running")
             restarted = Queue(tmp, start=False)
             self.assertEqual(restarted.get(third["id"])["status"], "failed")
+
+    def test_implementation_provenance_is_input_independent(self):
+        first = run({"mode": "screening", "power_W": 20})
+        second = run({"mode": "screening", "power_W": 30})
+        self.assertNotEqual(first["provenance"]["inputHash"], second["provenance"]["inputHash"])
+        self.assertEqual(first["provenance"]["implementationHash"],
+                         second["provenance"]["implementationHash"])
 
     def test_nested_schema_and_measurement_evidence(self):
         from lpbf_evidence import PROCESS_KEYS

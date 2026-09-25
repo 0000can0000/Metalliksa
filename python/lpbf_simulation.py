@@ -157,7 +157,7 @@ def validate(raw):
 
 
 def fingerprint(p, m):
-    # Source changes invalidate cache, including analytical and material dependencies.
+    # Cache identity includes the implementation and effective inputs.
     root = Path(__file__).parent
     h = hashlib.sha256()
     for f in sorted(root.glob("*.py")):
@@ -167,6 +167,20 @@ def fingerprint(p, m):
     for f in sorted((root/"openfoam/Make").glob("*")):
         if f.is_file(): h.update(f.name.encode()); h.update(f.read_bytes())
     h.update(json.dumps([VERSION, p, m], sort_keys=True, allow_nan=False).encode())
+    return h.hexdigest()
+
+
+def implementation_fingerprint():
+    """Hash solver implementation independently of process and material inputs."""
+    root = Path(__file__).parent
+    h = hashlib.sha256()
+    for f in sorted(root.glob("*.py")):
+        h.update(f.name.encode()); h.update(f.read_bytes())
+    for f in sorted((root/"openfoam").glob("*.C")):
+        h.update(f.name.encode()); h.update(f.read_bytes())
+    for f in sorted((root/"openfoam/Make").glob("*")):
+        if f.is_file(): h.update(f.name.encode()); h.update(f.read_bytes())
+    h.update(VERSION.encode())
     return h.hexdigest()
 
 
@@ -559,7 +573,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                   label="Screening only" if p["mode"] == "screening" or fallback else "Unvalidated transient thermal",
                   provenance=dict(inputHash=hashlib.sha256(json.dumps(requested_p, sort_keys=True, allow_nan=False).encode()).hexdigest(),
                                   executionInputHash=hashlib.sha256(json.dumps(p, sort_keys=True, allow_nan=False).encode()).hexdigest(),
-                                  implementationHash=fingerprint(p, m), materialVersion=m["version"],
+                                  implementationHash=implementation_fingerprint(), materialVersion=m["version"],
                                   solverBinaryHash=(capabilities or {}).get("binaryHash"),
                                   createdAt=datetime.datetime.now(datetime.timezone.utc).isoformat()),
                   analyticalComparison=analytical,

@@ -477,3 +477,9 @@ tests **15/15 PASS**. This numerical study is not experimental validation.
 Next: retain the failed/inconclusive P4 result; diagnose cell-edge/thresholded
 geometry resolution or define a prospective physical observable and protocol.
 Do not alter the existing acceptance thresholds or relabel the study as passed.
+
+## 2026-09-25 — Build-job snapshot SHA doğrulaması ve GPU profil kanıtı
+- İstemci, Python build-job yanıtındaki malzeme özellik snapshot SHA'sını ve build-job kimlik SHA'sını Python uyumlu kanonik JSON üzerinden tekrar hesaplayıp doğruluyor. Arşiv deposu aynı bağları saklama/açma sırasında doğruluyor; hiçbir yeni alanı olmayan tarihsel v1 kayıtları geriye uyumlu.
+- Doğrulama: `npx tsx --test tests/lpbf-build-session.test.ts tests/lpbf-run-repository.test.ts` **26/26 PASS**; `npx tsc --noEmit` PASS; tampering, hash korunumu, Python float byte biçimi ve eski v1 kayıtları kapsandı. Salt test depolama uyarıları beklenen test ortamı çıktısıdır.
+- GPU profili RTX 4060 üzerinde aynı 10 µm, 73,568-hücre, 934-adım IN718 vakasında yürütmenin çoğunlukla kernel işinden değil adım-başı CPU/GPU alışverişi ve senkronizasyonlarından etkilendiğini gösterdi: 149,447 CUDA kernel çağrısı; profiler CPU süresinde 4.393 s launch API, 12,245 senkronizasyon ve 18,785 tensor kopyası. `torch.compile` denenemedi: Windows ortamında çalışan Triton kurulumu yok. Ayrı bir Warp füzyon adayı aynı çözücü ve katı tam-alan paritesi altında deneniyor; ölçümü bitmedi.
+- Mevcut Torch/CUDA pilotu opt-in kalır. Profil bulgusu tek başına motor fiziğinin hatalı olduğunu veya GPU'nun daha hızlı olduğunu göstermez. Python motorunu yeniden kurma yetkisi model/provenans, analitik-oracle ve CPU-parite kontrolleriyle kullanılacak; dondurulmuş P4 eşikleri ve deneysel geçerlilik iddiaları değişmeyecek.

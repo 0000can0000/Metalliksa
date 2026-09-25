@@ -10,6 +10,7 @@ import { LpbfNistProxyCampaignService } from '../server/lpbfNistProxyCampaignSer
 import { dryRunRunImport, importRun } from '../server/lpbfRunImport';
 import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
 import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
+import { canonicalBuildJobIdentity, canonicalBuildJobMaterialSnapshot } from '../src/utils/lpbfBuildJobIdentity';
 
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
 function capture(runKind?: 'analytical-screening' | 'build-screening' | 'transient-thermal') {
@@ -98,6 +99,35 @@ test('classification follows captured result identity through preview and import
   assert.equal(oldSaved.runKind, 'legacy-unspecified');
   assert.equal(Object.hasOwn(oldSaved.document.capture, 'runKind'), false);
   assert.equal(f.repository.get(oldSaved.document.runId)?.runKind, 'legacy-unspecified');
+});
+
+test('build-job archive verifies Python-compatible material snapshot and identity hashes', () => {
+  const raw = capture('build-screening'), result = JSON.parse(raw.resultJson);
+  Object.assign(result, {
+    alloyId: 'in718', modelId: 'lpbf-build-job-v1', solverRevision: 'solver-v1',
+    materialPropertySchemaVersion: 1, materialPropertyRevision: 'build-job-effective-properties-v1',
+    materialPropertySnapshot: { schemaVersion: 1, alloyId: 'in718',
+      thermal: { base: 'Ni', liquidus_C: 1336.0, thermal_expansion_1_K: 13e-6 },
+      slicer: { density_gcm3: 8.19 } },
+  });
+  result.materialPropertySha256 = sha(canonicalBuildJobMaterialSnapshot(result.materialPropertySnapshot));
+  const identityPayload = { schemaVersion: 1, alloyId: result.alloyId, modelId: result.modelId,
+    solverRevision: result.solverRevision, materialPropertySchemaVersion: result.materialPropertySchemaVersion,
+    materialPropertyRevision: result.materialPropertyRevision, materialPropertySha256: result.materialPropertySha256 };
+  result.buildJobIdentity = { ...identityPayload,
+    sha256: sha(canonicalBuildJobIdentity({ ...identityPayload, sha256: '' })) };
+  raw.resultJson = JSON.stringify(result);
+  const valid = { schemaVersion: 1, runId: raw.jobId, capture: raw, sources: [] };
+  assert.doesNotThrow(() => validateRunDocument(valid));
+
+  result.materialPropertySnapshot.thermal.liquidus_C = 1400.0;
+  raw.resultJson = JSON.stringify(result);
+  assert.throws(() => validateRunDocument(valid), /material snapshot hash binding/i);
+
+  // V1 archives captured before effective-property snapshots remain readable.
+  const legacy = capture('build-screening');
+  assert.doesNotThrow(() => validateRunDocument({ schemaVersion: 1, runId: legacy.jobId,
+    capture: legacy, sources: [] }));
 });
 
 test('reopen and metadata-only restore preserve hashes; tampered rows fail', async t => {

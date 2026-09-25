@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync, backup } from 'node:sqlite';
 import { parseIn625BareplateJob, parseSimulationJob } from '../src/services/lpbfSimulationService';
 import { artifactRelativePath } from './lpbfArtifactStore';
+import { canonicalBuildJobIdentity, canonicalBuildJobMaterialSnapshot } from '../src/utils/lpbfBuildJobIdentity';
 
 export interface RunCapture {
   schemaVersion: 1; jobId: string; resultJson: string; inputJson: string; materialJson: string;
@@ -72,6 +73,30 @@ export function validateRunDocument(raw: unknown): RunDocument {
     || (capturedRunKind === 'bounded-material-screening'
       && (result.settings?.jobType !== 'in625-bareplate-field' || result.jobType !== 'in625-bareplate-field'))) {
     throw new Error('Invalid captured run classification');
+  }
+  // Older v1 build-job archives may predate the effective-property snapshot.
+  // When any part of the newer binding is present, require and verify the full
+  // binding so an archived snapshot cannot be edited independently of its hash.
+  if (capturedRunKind === 'build-screening'
+    && ['materialPropertySnapshot', 'materialPropertySha256', 'buildJobIdentity']
+      .some(field => Object.hasOwn(result, field))) {
+    const snapshotValue = result.materialPropertySnapshot;
+    const identity = result.buildJobIdentity;
+    if (!snapshotValue || typeof snapshotValue !== 'object' || Array.isArray(snapshotValue)
+      || !hash(result.materialPropertySha256)
+      || !identity || typeof identity !== 'object' || Array.isArray(identity)
+      || identity.schemaVersion !== 1 || identity.alloyId !== result.alloyId
+      || identity.modelId !== result.modelId || identity.solverRevision !== result.solverRevision
+      || identity.materialPropertySchemaVersion !== result.materialPropertySchemaVersion
+      || identity.materialPropertyRevision !== result.materialPropertyRevision
+      || identity.materialPropertySha256 !== result.materialPropertySha256
+      || snapshotValue.alloyId !== result.alloyId
+      || snapshotValue.schemaVersion !== result.materialPropertySchemaVersion
+      || digest(canonicalBuildJobMaterialSnapshot(snapshotValue)) !== result.materialPropertySha256
+      || !hash(identity.sha256)
+      || digest(canonicalBuildJobIdentity(identity)) !== identity.sha256) {
+      throw new Error('Run build-job material snapshot hash binding mismatch');
+    }
   }
   if (!result.verdict) { // Not a build-job
     const job = { id: c.jobId, status: 'completed', progress: 1, log: '', error: null, result };

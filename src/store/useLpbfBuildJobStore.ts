@@ -15,6 +15,7 @@ import {
   PythonLpbfUqBlock,
 } from "../services/pythonComputationService";
 import { inferSlicerPreset, mapSpecimenToBuildJobMaterials } from "../utils/lpbfIndustrialDecision";
+import { canonicalBuildJobIdentity, canonicalBuildJobMaterialSnapshot, sha256Utf8 } from "../utils/lpbfBuildJobIdentity";
 import { useMaterialSpecimenStore } from "./useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "./useLpbfBuildMeshStore";
 
@@ -241,6 +242,11 @@ export async function requestLpbfBuildJob(options?: LpbfBuildJobRequestOptions):
         !/^[a-f0-9]{64}$/.test(identity.sha256)
       ) {
         throw new Error("LPBF build-job material/model identity is missing or inconsistent; update the Python solver before using this result.");
+      }
+      const snapshotHash = await sha256Utf8(canonicalBuildJobMaterialSnapshot(snapshot));
+      const identityHash = await sha256Utf8(canonicalBuildJobIdentity(identity));
+      if (snapshotHash !== job.materialPropertySha256 || identityHash !== identity.sha256) {
+        throw new Error("LPBF build-job material/model identity hash mismatch; update the Python solver before using this result.");
       }
       if (useLpbfBuildJobStore.getState().seq !== seq) return;
       const prev = useLpbfBuildJobStore.getState();

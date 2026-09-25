@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { after, beforeEach, test } from "node:test";
 import { pythonComputationService, type PythonLpbfBuildJobResult } from "../src/services/pythonComputationService";
 import { BUILD_JOB_SOLVER_REVISION, peekLpbfBuildJobKey, requestLpbfBuildJob, setLpbfMurakamiInput, useLpbfBuildJobStore } from "../src/store/useLpbfBuildJobStore";
 import { useMaterialSpecimenStore } from "../src/store/useMaterialSpecimenStore";
 import { useLpbfBuildMeshStore } from "../src/store/useLpbfBuildMeshStore";
 import { mapSpecimenToBuildJobMaterials } from "../src/utils/lpbfIndustrialDecision";
+import { canonicalBuildJobIdentity, canonicalBuildJobMaterialSnapshot } from "../src/utils/lpbfBuildJobIdentity";
 
 // Deliberately incomplete service fixtures exercise session routing, never physical truth.
 const initialSpecimen = useMaterialSpecimenStore.getState().activeSpecimen;
 const initialBuild = useLpbfBuildJobStore.getState();
 const originalSolve = pythonComputationService.solveLpbfBuildJob;
 let calls = 0;
+const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => {
   const result = {
     success: true,
@@ -19,7 +22,6 @@ const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => {
     alloyId: "in718",
     materialPropertySchemaVersion: 1,
     materialPropertyRevision: "build-job-effective-properties-v1",
-    materialPropertySha256: "a".repeat(64),
     uq: null,
     ambench: null,
     ...extra,
@@ -29,8 +31,14 @@ const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => {
   const solverRevision = result.solverRevision ?? BUILD_JOB_SOLVER_REVISION;
   const propertySchemaVersion = result.materialPropertySchemaVersion ?? 1;
   const propertyRevision = result.materialPropertyRevision ?? "build-job-effective-properties-v1";
-  const propertySha256 = result.materialPropertySha256 ?? "a".repeat(64);
-  const defaultIdentity = {
+  const snapshot = {
+    schemaVersion: propertySchemaVersion,
+    alloyId,
+    thermal: { base: "Ni", liquidus_C: 1336.0, thermal_expansion_1_K: 13e-6 },
+    slicer: { density_gcm3: 8.19 },
+  };
+  const propertySha256 = result.materialPropertySha256 ?? sha(canonicalBuildJobMaterialSnapshot(snapshot));
+  const defaultIdentityPayload = {
     schemaVersion: 1,
     alloyId,
     modelId,
@@ -38,21 +46,24 @@ const fixture = (extra: Partial<PythonLpbfBuildJobResult> = {}) => {
     materialPropertySchemaVersion: propertySchemaVersion,
     materialPropertyRevision: propertyRevision,
     materialPropertySha256: propertySha256,
-    sha256: "b".repeat(64),
   };
+  const defaultIdentity = { ...defaultIdentityPayload, sha256: sha(canonicalBuildJobIdentity({ ...defaultIdentityPayload, sha256: "" })) };
   return {
     ...result,
-    materialPropertySnapshot: {
-      schemaVersion: propertySchemaVersion,
-      alloyId,
-      thermal: {},
-      slicer: {},
-    },
+    materialPropertySha256: propertySha256,
+    materialPropertySnapshot: snapshot,
     buildJobIdentity: Object.prototype.hasOwnProperty.call(extra, "buildJobIdentity")
       ? extra.buildJobIdentity
       : defaultIdentity,
   } as unknown as PythonLpbfBuildJobResult;
 };
+
+test("build-job snapshot canonical JSON preserves Python float bytes", () => {
+  assert.equal(canonicalBuildJobMaterialSnapshot({ schemaVersion: 1, alloyId: "in718",
+    thermal: { base: "Ni", liquidus_C: 1336.0, thermal_expansion_1_K: 13e-6 },
+    slicer: { density_gcm3: 8.19 } }),
+  '{"alloyId":"in718","schemaVersion":1,"slicer":{"density_gcm3":8.19},"thermal":{"base":"Ni","liquidus_C":1336.0,"thermal_expansion_1_K":1.3e-05}}');
+});
 
 beforeEach(() => {
   useMaterialSpecimenStore.setState({ activeSpecimen: initialSpecimen });
@@ -123,6 +134,22 @@ test("successful backend results require the top-level material revision", async
   pythonComputationService.solveLpbfBuildJob = async () => fixture({ materialPropertyRevision: undefined });
   await requestLpbfBuildJob();
   assert.match(useLpbfBuildJobStore.getState().error ?? "", /material\/model identity/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
+});
+
+test("successful backend results reject changed material snapshots and identity hashes", async () => {
+  const changedSnapshot = fixture();
+  changedSnapshot.materialPropertySnapshot!.thermal.liquidus_C = 1400.0;
+  pythonComputationService.solveLpbfBuildJob = async () => changedSnapshot;
+  await requestLpbfBuildJob();
+  assert.match(useLpbfBuildJobStore.getState().error ?? "", /identity hash mismatch/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
+
+  const changedIdentity = fixture();
+  changedIdentity.buildJobIdentity!.sha256 = "f".repeat(64);
+  pythonComputationService.solveLpbfBuildJob = async () => changedIdentity;
+  await requestLpbfBuildJob();
+  assert.match(useLpbfBuildJobStore.getState().error ?? "", /identity hash mismatch/);
   assert.equal(useLpbfBuildJobStore.getState().job, null);
 });
 

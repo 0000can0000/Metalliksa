@@ -27,7 +27,11 @@ def run_protocol(protocol_path, scenario_path, output_path):
     protocol_bytes = protocol_path.read_bytes()
     scenario_bytes = scenario_path.read_bytes()
     protocol = json.loads(protocol_bytes)
-    scenario = json.loads(scenario_bytes)
+    scenario_document = json.loads(scenario_bytes)
+    scenario = scenario_document.get("scenario")
+    if (not isinstance(scenario, dict)
+            or scenario_document.get("protocolId") != protocol["scenarioDocumentProtocolId"]):
+        raise ValueError("Scenario document identity does not match the frozen protocol")
     if _sha256(scenario_bytes) != protocol["scenarioSha256"]:
         raise ValueError("Scenario bytes do not match the frozen protocol")
     if str(scenario_path.relative_to(root)).replace("\\", "/") != protocol["scenarioFile"]:
@@ -66,6 +70,7 @@ def run_protocol(protocol_path, scenario_path, output_path):
         "assessmentModuleFile": protocol["assessmentModuleFile"],
         "assessmentModuleSha256": assessment_hash,
         "scenarioFile": str(scenario_path.relative_to(root)).replace("\\", "/"),
+        "scenarioDocumentProtocolId": scenario_document["protocolId"],
         "scenarioSha256": _sha256(scenario_bytes),
         "executionHeadCommit": head,
         "scope": protocol["scope"],

@@ -58,6 +58,15 @@ scientific validity or experimental agreement. Next prioritize the CPU/P4 gate
 and the versioned three-track/two-section proxy-campaign contract; preserve the
 source-profile and 10 mm validity/cost gates.
 
+The UI also selected official NIST optical-workbook revision 1 and rechecked
+its archived bytes: publisher XLSX (25,811 bytes, SHA-256
+`2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931`) and
+publisher checksum sidecar (64 bytes, SHA-256
+`770c0826e53e42c242110e69c032f2cbc74f6183048c43a530c5b62e746ae09b`) matched.
+The archive-document SHA is `73293ca6c2a1929a2e244f806d6eb5900d4c739716f7f291e74c9bc12dc291b6`.
+The same view still marks the optical operator unimplemented, so these exact
+source bytes are provenance evidence only.
+
 ## Continuation checkpoint — P8 archive acceptance and physics continuation (2026-09-25)
 
 The goal remains active. User explicitly authorizes scientific fixes or a Python

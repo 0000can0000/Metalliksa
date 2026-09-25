@@ -23,6 +23,7 @@
 
 ## 2026-09-25 — P3/P8 canlı arşiv bundle round-trip
 - Mevcut UI'da seçili run ve kaynak arşivi üzerinden bundle dışa aktarıldı, sunucu tarafında byte/reference doğrulaması yapıldı ve canlı arşivden ayrı restore dizinine kopyalandı. UI ve manifest: 3 run, 132 run artifact, 3 source link; restore `2e251b3d73a7470ead671287649ace35`, bundle `be741eebfa12413a8fd78978ecefdfc3`. Canlı arşivdeki 3 run değişmedi.
+- Aynı UI'da resmî NIST optik çalışma kitabının revision 1 arşivi seçilip baytları doğrulandı: XLSX 25.811 bayt / SHA-256 `2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931`; yayıncı SHA yan dosyası 64 bayt / SHA-256 `770c0826e53e42c242110e69c032f2cbc74f6183048c43a530c5b62e746ae09b`. Revision ve archive-document SHA: 1 / `73293ca6c2a1929a2e244f806d6eb5900d4c739716f7f291e74c9bc12dc291b6`.
 - Aynı UI'da seçili IN718 run'ın Table 4 revision 1 bağı, incelenen yerel revision 2 ile uyuşmadığı için karşılaştırma `unavailable` döndü; hata eski source identity/transcription mismatch olarak görünür. Eski run yeniden bağlanmadı.
 - Bu, API/UI export→verify→isolated-restore yazılım akışını doğrular; model geçerliliği veya deneysel karşılaştırma değildir. Geliştirici sunucusunu bu deneme için tekrar başlatma girişimi Windows `spawn EPERM` ve port çakışması verdi; önceden açık Codex içi localhost UI kullanıldı, başlatılan ek IPC süreci kapatıldı.
 

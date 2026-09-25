@@ -1161,7 +1161,32 @@ RTX 4060. The manufactured + heat-source + convergence suites ran **27 tests:
 26 PASS, 1 Linux-only OpenFOAM skip**. These checks do not establish
 experimental validity or a GPU speedup.
 
+Implementation commits: `e8fd1ca` and `7bacffa`.
+
 Next: measure the scale/crossover of a parity-matched CUDA/Warp implementation
 of the same `enthalpy-fv-6` physics before using it to attempt the preregistered
 2.5 µm P4 refinement. Preserve P4 thresholds/outcomes; P6 remains partial and
 IN625 full-transient admission remains closed.
+
+## 2026-09-25 — P7 alternative-alloy source gate
+
+A primary-source scan found no alternate LPBF alloy ready for full-transient
+admission. The strongest data set is NIST SRM 1155a steel (Cr18-Ni12-Mo2; the
+thermophysical papers identify it as 316/316L): its certificate is a dense
+steel disk intended for chemical-analysis reference, while the papers provide
+enthalpy/density/Cp and thermal conductivity over the melting range. Part of
+conductivity is inferred from Wiedemann–Franz and
+Smith–Palmer relations; the high-temperature solid Smith–Palmer coefficients
+come from a composition-similar 316L, and the liquid relation is an explicit
+Wiedemann–Franz assumption. It can support only a separately named dense-SRM
+reference model, not LPBF powder/as-built admission. [NIST certificate](https://tsapps.nist.gov/srmext/certificates/1155a.pdf),
+[Pichler et al. 2019](https://doi.org/10.1007/s10853-019-04261-6),
+[Pichler et al. 2022](https://doi.org/10.1007/s10765-022-02991-5).
+
+The screened AM-state alternatives do not cover melting: PBF Ti-6Al-4V
+thermophysical data stop near 1000 °C, and the reviewed as-built SLM AlSi10Mg
+data stop at 500 °C. [Ti-6Al-4V PBF study](https://doi.org/10.1016/j.addma.2022.103045),
+[AlSi10Mg study](https://doi.org/10.1557/jmr.2018.405). Decision: keep the P7
+LPBF alloy gate closed; do not relabel dense NIST steel properties as AM
+properties. Existing estimated-legacy 316L and IN625 screening remain
+separately classified.

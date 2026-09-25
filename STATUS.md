@@ -10,7 +10,7 @@
 ## 2026-09-25 — Kaynak-kimliği sabit P4 tanısı çalışıyor
 - Önceki frozen P4 raporu `failed`, ek accepted-dt tanısı `inconclusive` olarak korunuyor. Yeni dizi `4a73f77` kapsamındaki sürümlü solver-kaynak manifestini kullanıyor; 5 µm CPU ağı ve 100/50/25 ns istek seviyeleri aynı.
 - Protokol SHA-256 `DB0A85E22A75709FCABB3F3BEE9E7C0D44213A081881F6A076EE5DE6820274DF`; senaryo SHA-256 `2ABEC47F9D35C02158EA2E06876E3CA06C3BA5BA9243F1DDCCAA94EF64752EA6`. Başlangıç implementasyon parmak izi `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac118948b`; protokol kaynak dosyalarının başlangıç dirty durumunu da kaydediyor.
-- Aynı canlı terminal oturumu `29680`, başlangıç `2026-09-25 20:00:11 +03:00`. Son doğrulamada süreç canlı, kısmi rapor `running`; 100 ns satırı 3.923 adımda tamamlandı (ortalama dt 89.217 ns, enerji bağıl hatası `1.335e-14`), implementasyon hash'i satır öncesi/sonrası sabit. 50/25 ns seviyeleri sürüyor. Tek satır yakınsama sonucu veya kabul değildir.
+- Aynı canlı terminal oturumu `29680`, başlangıç `2026-09-25 20:00:11 +03:00`. Son doğrulamada süreç canlı, kısmi rapor `running`; 100 ns satırı 3.923 adımda tamamlandı (ortalama dt 89.217 ns, enerji bağıl hatası `1.335e-14`), 50 ns satırı 7.000 adımda tamamlandı (ortalama dt 50 ns). Her iki satırda implementasyon hash'i satır öncesi/sonrası sabit. 25 ns seviyesi sürüyor. İki satır yakınsama sonucu veya kabul değildir.
 - Sıradaki adım aynı oturumu izlemek; tamamlanınca üç satırın aynı parmak izini ve rapor bütünlüğünü doğrulayıp mevcut convergence kapısıyla yorumlamak. Süreç yalnızca gözlem gecikmesi nedeniyle yeniden başlatılmamalı.
 
 ## 2026-09-25 — IN625 sınırlı termal kapsamının fizik denetimi

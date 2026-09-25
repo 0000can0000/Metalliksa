@@ -1,5 +1,15 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
 
+## Frozen diagnostic protocol — 40 W tied-peak endpoint spread (2026-09-25)
+
+Before execution, froze `docs/LPBF_P4_CURRENT_40W_TIED_ENDPOINT_DIAGNOSTIC_PROTOCOL_2026-09-25.md`
+for the exact frozen P4 40 W scenario at 20/10/5 µm, fixed 25 ns maximum
+timestep. It records equal maximum molten-cell endpoints and compares the
+existing production contour spread against an independent offline edge oracle.
+This is diagnostic only (`acceptanceStatus=not-assessed`), leaves the frozen
+P4 report untouched, and cannot establish experimental validity. Next execute
+the registered runner once and add its report/protocol SHA evidence below.
+
 ## Continuation checkpoint — frozen 40 W P4 and provenance repair (2026-09-25)
 
 The frozen six-run IN718 CPU study is complete and recorded in

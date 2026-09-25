@@ -17,6 +17,12 @@
 - Canlı kullanım sınırı: uygun, source-revision-bound üç koşuyla gerçek NIST preview/create henüz çalıştırılmadı. Bundle round-trip testi campaign fixture'ıyla geçti; P5 residual ve deneysel validasyon hâlâ `unavailable`.
 - P5 optik residual/validasyonu `unavailable`; proxy campaign bunu değiştirmez. Uygun arşiv verisiyle canlı preview→create→reopen→export/verify/restore entegrasyon doğrulaması açık.
 
+## 2026-09-25 — P6 ölçek ölçümü ve motor onarım yetkisi
+- Kullanıcı, bilimsel olarak yetersiz bulunan çekirdek fizik motorlarının onarılmasına veya gerektiğinde Python'da yeniden kurulmasına açıkça yetki verdi. Uygulama: fizik modeli/denklem kaynağını ve kimliğini gerekçesiz değiştirme; kaynak yakalama, enerji, parite ve P4 eşiklerini gevşetme; sayısal kanıtı fiziksel deney kanıtı gibi sunma.
+- 10 µm, 73,568 hücre, 934 adım IN718 koşusunda CPU-kaynaklı CUDA transient karşılaştırması **PASS**, 17.652 s; CUDA-kaynaklı sürüm aynı parite kapılarıyla **PASS**, 19.630 s. Alan yükselişinin L2 bağıl farkı `2.60e-9`, maksimum fark `7.28e-9`; enerji ve ölçüm/proxy kapıları da geçti. Tek ölçümde CUDA kaynak kolu toplamda yaklaşık %11 yavaş; bileşen crossover'ı tam çözücü hızlanmasına dönüşmedi.
+- 5 µm tam çözücü ölçümü, GPU pilotunun mevcut `MAX_CELLS=100000` bütçe korumasında durdu; bu ağaç için tam-çözücü 5 µm crossover kanıtı yok. Daha önceki kaynak/limitleyici mikro ölçümleri yalnızca bileşen ölçümüdür.
+- Fiziksel doğrulama hâlâ yok; sonuçlar aynı-model yazılım/sayısal CPU-GPU paritesidir. CUDA kaynak yolu opt-in, CPU varsayılanı olarak kalır. Commit: henüz yok (bu bölüm dokümantasyon devam kaydıdır).
+
 ## 📌 Genel İlerleme Özeti
 - **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
 - **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.

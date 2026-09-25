@@ -5,7 +5,7 @@
 ## 2026-09-25 — OpenFOAM termal yolunda güvenli sınırlar
 - İnceleme, standart powder-layer OpenFOAM ağının her katman yüzeyini hücre yüzüne hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Hizalama uygulanana kadar bu backend/mode birleşimi doğrulamada reddediliyor; referans NumPy yolu layer-conforming modeli kullanıyor.
 - OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Böylece yetersiz kaynak alanı sessizce büyütülmüyor.
-- Dar doğrulama: core-contract/OpenFOAM-red ve layer-alignment testleri ile heat-source grubu toplam **17 PASS, 1 OpenFOAM skip**. Geniş core-contract koşusunda SQLite/temp sandbox erişimi yüzünden bir test çalışmadı. Bu Windows ortamında `wmake`/OpenFOAM derleyicisi bulunmadığından C++ ikilisi derlenip çalıştırılamadı; uygulama doğrulaması açık.
+- Dar doğrulama: core-contract/OpenFOAM-red ve layer-alignment testleri ile heat-source grubu **17 testte 16 PASS, 1 OpenFOAM skip**. Geniş core-contract koşusunda SQLite/temp sandbox erişimi yüzünden bir test çalışmadı. Bu Windows ortamında `wmake`/OpenFOAM derleyicisi bulunmadığından C++ ikilisi derlenip çalıştırılamadı; uygulama doğrulaması açık.
 - Sıradaki somut adım: OpenFOAM için katman-yüzüne hizalı mesh üretip aynı kaynak yakalama sözleşmesiyle gerçek derleme/çalıştırma/parite testlerini sağlamak; o zamana kadar standart toz-katmanı OpenFOAM backend'i kapalı kalır.
 
 ## 2026-09-25 — P6 opt-in CUDA kaynak prototipi

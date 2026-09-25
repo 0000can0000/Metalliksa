@@ -1713,7 +1713,7 @@ the coarsest level captured 54.851% of the Gaussian source, below the existing
 99% minimum. The source-capture guard correctly refused to renormalize this
 truncated source. No threshold or frozen acceptance criterion changed.
 
-Updated `python/lpbf_simulation.py` so a failed coarse or medium level is
+Commit `4684213` updates `python/lpbf_simulation.py` so a failed coarse or medium level is
 retained as an explicit unavailable level, the requested fine result and other
 completed levels survive, and all partial-sequence convergence checks are
 marked failed with the original error reason. The result UI renders missing

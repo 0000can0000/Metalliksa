@@ -33,9 +33,12 @@ runner previously let one invalid level discard the requested fine solve and
 the other levels. It now records that level as unavailable, preserves the
 requested result and any other completed levels, and marks all partial-study
 convergence checks failed. No convergence claim is made from an incomplete
-sequence. Targeted old/new study regression tests passed. Broader Windows
-Python verification encountered 7 access-denied temp-directory errors (2
-OpenFOAM checks skipped), so the full package is not yet verified.
+sequence. Commit `4684213` contains the Python handling, UI rendering and
+regression coverage. Focused study regressions, 15 heat-source tests (one
+OpenFOAM skip), and `npm run lint` passed. The focused TSX UI test could not
+start (`spawn EPERM`). Broader Windows Python verification encountered 7
+access-denied temp-directory errors (2 OpenFOAM checks skipped), so the full
+package is not yet verified.
 
 Engine choice: the standard 3D CPU transient in `python/lpbf_simulation.py`
 already follows piecewise-linear moving scan segments with a cell-integrated

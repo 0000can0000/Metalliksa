@@ -1507,6 +1507,16 @@ verify the final report against the frozen protocol and retain failed or
 inconclusive status when required. This diagnostic does not change the frozen
 P4 failure or establish experimental validation.
 
+The existing temporal estimator requires a constant actual-spacing ratio
+within 2%. The completed levels have mean-dt ratios 1.784 and 2.0 (the
+first-order `sum(dt²)/T` scales have ratios 1.830 and 2.0). The coarsest run
+contains 1,682 source-limited/retried steps while the 50 ns run has none, so an
+unequal-spacing Richardson fit to one scalar effective dt is not justified for
+this frozen case. The continuous contour changed only about 0.003% in width and
+less than 0.001% in depth from 100 to 50 ns; the finest row is still pending.
+Keep the frozen gate unchanged and report temporal convergence as inconclusive
+unless all existing acceptance conditions are actually met.
+
 ## 2026-09-25 continuation — NIST Table 4 section identity
 
 Read-only source audit mapped the publisher workbook's six rows per condition

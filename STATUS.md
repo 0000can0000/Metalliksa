@@ -7,10 +7,10 @@
 - **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.
 
 ## 2026-09-25 — Üretim transient motoru ve CUDA istek kapısı
-- Üretim CPU `transient()` döngüsünü kullanan analitik entalpi-rampası kontrolü eklendi. Üç ayrı zaman adımı aynı uzaysal-uniform çözümü geri üretti; üretim kaynak-zaman-sınırlama/yeniden deneme yolu çalıştı ve enerji kapanışı bağıl hatası `1e-10` altında kaldı. Bu, test içi kopya güncelleme döngüsünü değil gerçek zaman döngüsünü sınar; uzaysal iletim doğrulaması veya deneysel doğrulama değildir.
+- Üretim CPU `transient()` döngüsünü kullanan uniform ve uniform olmayan analitik entalpi kontrolleri eklendi. Üç ayrı zaman adımında doğru final sıcaklık profilleri üretildi; uzaysal kontrol her adımın pasif iletim/sınır kaybını bağımsız yüz-akısı hesabıyla karşılaştırdı. Üretim kaynak-zaman-sınırlama/yeniden deneme yolu çalıştı ve enerji kapanışı bağıl hatası `1e-10` altında kaldı. Bu, gerçek geçici yolu ve ayrık iletim uygulamasını doğrular; deneysel doğrulama değildir.
 - CUDA pilotu, farklı model kimliği gerektiren `layer-conforming` grid talebini cihaz/mesh işinden önce açıkça reddediyor; standart/reference isteği kabul regresyonu eklendi. Fizik denklemleri değişmedi.
-- Doğrulama: GPU parite + üretim transient **8/8 PASS** (IN718 ve 316L CUDA pariteleri dahil); kaynak/üretim transient/yakınsama grubu **25 PASS, 1 Linux-only OpenFOAM skip**. P4/P5/P6/P7 kapıları değişmedi; GPU parite hızlanma veya malzeme/deney yeterliliği değildir.
-- Sonraki adım: üretim geçici yolunda uzaysal olarak değişen bağımsız manufactured çözümü sınamak, ardından dondurulmuş P4 sınırlarını değiştirmeden ağ/tepe-ölçütü çözünürlüğünü ele almak. Devam kaydı: `docs/ACTIVE_WORK.md` son bölümü.
+- Doğrulama: GPU parite + iki üretim transient testi **9/9 PASS** (IN718 ve 316L CUDA pariteleri dahil); transient/kaynak/yakınsama grubu **26 PASS, 1 Linux-only OpenFOAM skip**. P4/P5/P6/P7 kapıları değişmedi; GPU parite hızlanma veya malzeme/deney yeterliliği değildir.
+- Sonraki adım: aynı `enthalpy-fv-6` fiziğinde CUDA/Warp ölçek ve hız-kesişme sınırını ölçmek; yalnızca parite korunursa 2,5 µm P4 ağı için kullanmak. Dondurulmuş P4 eşikleri değişmeyecek. Devam kaydı: `docs/ACTIVE_WORK.md` son bölümü.
 
 ## 2026-09-25 — Üç ağlı termal çalışma düzeltmesi
 - Built-in standart powder-layer mesh study, katman yüzeylerini hücre yüzlerine hizalayan CPU-reference protokolüne geçirildi. Kaynak yakalama %99 eşiği ve yeniden ölçekleme davranışı değişmedi; `auto` istek ile fiilen kullanılan `reference` backend ayrı kaydediliyor.

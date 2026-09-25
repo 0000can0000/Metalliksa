@@ -1138,14 +1138,16 @@ thresholds and continue the complete P0–P10 objective.
 
 ## 2026-09-25 — Production transient manufactured check and CUDA request guard
 
-Added `python/test_lpbf_production_transient_manufactured.py`. It drives the
-actual CPU `transient()` loop with a manufactured spatially uniform enthalpy
-ramp, while retaining the production `source_limited_step` retry/capture logic
-and passive boundary-loss accounting. Three distinct time-step caps recover
-the analytic final peak and center temperature; energy closure is below
-`1e-10`. This closes the prior test gap where temporal refinement used a
-separate local update loop. It does not independently test nonuniform spatial
-conduction or validate the laser/material model experimentally.
+Added `python/test_lpbf_production_transient_manufactured.py`. Uniform and
+nonuniform manufactured enthalpy ramps now run through the actual CPU
+`transient()` loop while retaining production source-limiter retries and
+capture checks. For the nonuniform solution, the passive conduction and
+boundary-loss rate at every step matches a separately coded face-flux oracle;
+three distinct timestep caps recover the analytic final peak and center. Both
+cases close energy below `1e-10`. This closes the prior gap where temporal
+refinement used a separate local update loop and now checks the production
+spatial operator on a manufactured field. It remains numerical verification,
+not experimental validation.
 
 The CUDA thermal pilot now rejects `powderGridPolicy=layer-conforming` before
 device discovery and mesh work. The pilot still implements the standard-grid
@@ -1153,13 +1155,13 @@ model identity, so accepting a layer-aligned request would have performed
 expensive work under the wrong contract. Standard/reference acceptance remains
 covered. No physical equations or legacy model identity changed.
 
-Verification: `test_lpbf_gpu_thermal` plus the manufactured transient test
-**8/8 PASS**, including the frozen IN718 and estimated-legacy 316L CUDA parity
-cases on RTX 4060. The manufactured test + heat-source + convergence suites
-ran **26 tests: 25 PASS, 1 Linux-only OpenFOAM skip**. These are software and
-numerical-consistency checks, not experimental validation or a GPU speedup
-claim.
+Verification: `test_lpbf_gpu_thermal` plus the two manufactured transient tests
+**9/9 PASS**, including frozen IN718 and estimated-legacy 316L CUDA parity on
+RTX 4060. The manufactured + heat-source + convergence suites ran **27 tests:
+26 PASS, 1 Linux-only OpenFOAM skip**. These checks do not establish
+experimental validity or a GPU speedup.
 
-Next: add an independent nonuniform manufactured check through production
-stepping, then continue frozen-gate P4 resolution diagnosis. Preserve P4/P5
-outcomes; P6 remains partial and IN625 full-transient admission remains closed.
+Next: measure the scale/crossover of a parity-matched CUDA/Warp implementation
+of the same `enthalpy-fv-6` physics before using it to attempt the preregistered
+2.5 µm P4 refinement. Preserve P4 thresholds/outcomes; P6 remains partial and
+IN625 full-transient admission remains closed.

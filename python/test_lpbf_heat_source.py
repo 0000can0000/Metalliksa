@@ -216,7 +216,37 @@ class HeatSourceVerification(unittest.TestCase):
         d = r["numericalDiagnostics"]
         self.assertLessEqual(d["maximumEnthalpyIncrement_K"], 25*(1+1e-10))
         self.assertLessEqual(d["maximumSurfaceOffset_um"], r["discretization"]["mesh_m"]*5e5+1e-9)
+        dt_summary = d["acceptedTimestepDistribution"]
+        self.assertEqual(dt_summary["methodId"], "accepted-timestep-distribution-v1")
+        self.assertEqual(dt_summary["count"], r["discretization"]["steps"])
+        self.assertAlmostEqual(dt_summary["total_s"], end, delta=1e-13)
+        self.assertAlmostEqual(dt_summary["mean_s"], r["discretization"]["meanDt_s"], delta=1e-15)
+        self.assertAlmostEqual(dt_summary["sourceTimestepRetries"], d["sourceTimestepRetries"])
+        self.assertLessEqual(dt_summary["minimum_s"], dt_summary["p50_s"])
+        self.assertLessEqual(dt_summary["p50_s"], dt_summary["p90_s"])
+        self.assertLessEqual(dt_summary["p90_s"], dt_summary["p99_s"])
+        self.assertLessEqual(dt_summary["p99_s"], dt_summary["maximum_s"])
+        self.assertGreaterEqual(dt_summary["eulerFirstOrderWeightedDt_s"], dt_summary["minimum_s"])
+        self.assertLessEqual(dt_summary["eulerFirstOrderWeightedDt_s"], dt_summary["maximum_s"])
         self.assertEqual(r["geometricDefectScreen"]["status"], "unresolved")
+
+    def test_accepted_timestep_distribution_uses_realized_steps(self):
+        from lpbf_simulation import summarize_accepted_timesteps
+        summary = summarize_accepted_timesteps([1.0, 1.0, 0.5], 1.0, 1, 2)
+        self.assertEqual(summary["count"], 3)
+        self.assertAlmostEqual(summary["total_s"], 2.5)
+        self.assertAlmostEqual(summary["mean_s"], 2.5/3)
+        self.assertAlmostEqual(summary["eulerFirstOrderWeightedDt_s"], 2.25/2.5)
+        self.assertAlmostEqual(summary["requestedMaxDtHitFraction"], 2/3)
+        self.assertEqual(summary["sourceLimitedStepCount"], 1)
+        self.assertEqual(summary["sourceTimestepRetries"], 2)
+        # Geometric requested caps do not imply geometric realized refinement.
+        coarse = summarize_accepted_timesteps([1.0, .1], 1.0, 0, 0)
+        fine = summarize_accepted_timesteps([.5, .5], .5, 0, 0)
+        self.assertAlmostEqual(coarse["eulerFirstOrderWeightedDt_s"], .9181818181818182)
+        self.assertAlmostEqual(fine["eulerFirstOrderWeightedDt_s"], .5)
+        with self.assertRaises(ValueError):
+            summarize_accepted_timesteps([1.0, 0.0], 1.0, 0, 0)
 
 
 if __name__ == "__main__":

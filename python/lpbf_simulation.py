@@ -48,6 +48,47 @@ BOUNDS = dict(power_W=(10, 1500), speed_mm_s=(10, 10000), beamDiameter_um=(20, 5
               powderConductivityRatio=(.01, 1), convection_W_m2K=(0, 1000), timeout_s=(10, 3600))
 
 
+def summarize_accepted_timesteps(accepted_dt_s, requested_max_dt_s, source_limited_steps, source_retries):
+    """Summarize realized positive steps without changing the solver schedule.
+
+    ``eulerFirstOrderWeightedDt_s`` is the diagnostic scale sum(dt**2)/T for
+    first-order local-error accumulation. It is descriptive, not an automatic
+    convergence pass criterion; the step distribution must also be reviewed.
+    """
+    if (isinstance(requested_max_dt_s, bool) or not isinstance(requested_max_dt_s, (int, float))
+            or not math.isfinite(requested_max_dt_s) or requested_max_dt_s <= 0
+            or type(source_limited_steps) is not int or source_limited_steps < 0
+            or type(source_retries) is not int or source_retries < source_limited_steps):
+        raise ValueError("Invalid accepted-timestep summary inputs")
+    dt = np.asarray(accepted_dt_s, dtype=np.float64)
+    if (dt.ndim != 1 or dt.size == 0 or not np.isfinite(dt).all()
+            or np.any(dt <= 0) or source_limited_steps > dt.size):
+        raise ValueError("Accepted timesteps must be a nonempty finite positive sequence")
+    total = float(np.sum(dt, dtype=np.float64))
+    squared_total = float(np.dot(dt, dt))
+    if not math.isfinite(total) or not math.isfinite(squared_total) or total <= 0:
+        raise ValueError("Accepted timestep totals must be finite and positive")
+    cap_tolerance = max(float(requested_max_dt_s) * 1e-12, 1e-30)
+    at_requested_cap = np.abs(dt - float(requested_max_dt_s)) <= cap_tolerance
+    return {
+        "methodId": "accepted-timestep-distribution-v1",
+        "count": int(dt.size),
+        "total_s": total,
+        "sumSquared_s2": squared_total,
+        "mean_s": total / int(dt.size),
+        "minimum_s": float(np.min(dt)),
+        "p50_s": float(np.quantile(dt, .50)),
+        "p90_s": float(np.quantile(dt, .90)),
+        "p99_s": float(np.quantile(dt, .99)),
+        "maximum_s": float(np.max(dt)),
+        "eulerFirstOrderWeightedDt_s": squared_total / total,
+        "requestedMaxDt_s": float(requested_max_dt_s),
+        "requestedMaxDtHitFraction": float(np.count_nonzero(at_requested_cap) / dt.size),
+        "sourceLimitedStepCount": source_limited_steps,
+        "sourceTimestepRetries": source_retries,
+    }
+
+
 def validate(raw):
     layered_fields = {"thermalModelId", "plateThickness_um", "supportThickness_um",
                       "contactResistance_m2K_W", "supportBottomBoundary",
@@ -344,6 +385,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     min_dt = p["maxDt_s"]
     max_dt = max_increment = surface_offset = 0.
     minimum_capture, source_retries = 1., 0
+    source_limited_steps = 0
+    accepted_dt_s = []
     cp_floor = min(row[3] for row in m["table"])
     if layered:
         cp_floor = min(cp_floor, float(np.min(ss_cp_table)))
@@ -398,6 +441,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             absorbed_power_W, rate, rho*cp, axis_y=axis_y,
             incidence_angle_deg=p.get("incidenceAngle_deg", 0.),
             incidence_azimuth_deg=p.get("incidenceAzimuth_deg", 0.))
+        accepted_dt_s.append(dt)
+        source_limited_steps += int(retries > 0)
         require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
@@ -463,6 +508,8 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
     if balance > .01:
         raise ValueError(f"Energy balance failed: {balance:.3%}")
     discretization = dict(cells=int(T.size), mesh_m=dx, minimumDt_s=min_dt, meanDt_s=end/step, steps=step)
+    timestep_diagnostics = summarize_accepted_timesteps(
+        accepted_dt_s, p["maxDt_s"], source_limited_steps, source_retries)
     if layered:
         discretization.update(requestedPlateThickness_um=p["plateThickness_um"],
             effectivePlateThickness_um=domain["plate_depth"]*1e6,
@@ -498,7 +545,9 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                 numericalDiagnostics=dict(**peak_diagnostics, overlapExtraction=OVERLAP_MODEL_ID if overlap_metrics else None, sourceIntegration=SOURCE_INTEGRATION, solidificationExtraction="linear-liquidus-crossing-v1",
                     stabilityLimit="local-conductance-row-sum", minimumCapturedSourceFraction=minimum_capture,
                     maximumSourceRenormalization=1/minimum_capture, maximumSurfaceOffset_um=surface_offset,
-                    maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment, sourceTimestepRetries=source_retries),
+                    maximumTimestep_s=max_dt, maximumEnthalpyIncrement_K=max_increment,
+                    sourceTimestepRetries=source_retries,
+                    acceptedTimestepDistribution=timestep_diagnostics),
                 energyBalance=dict(input_J=energy_in, losses_J=energy_out, stored_J=stored, relativeError=balance),
                 discretization=discretization,
                 scanPath=segments,

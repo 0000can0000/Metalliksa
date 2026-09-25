@@ -63,6 +63,8 @@ def _case_result(scenario, key, requested):
         closure = abs(input_j - losses_j - stored_j) / max(input_j, 1e-30)
         row.update(status="completed", actualMesh_m=disc["mesh_m"], cells=disc["cells"],
                    actualMeanDt_s=disc["meanDt_s"], actualMinimumDt_s=disc["minimumDt_s"],
+                   acceptedTimestepDistribution=copy.deepcopy(
+                       result.get("numericalDiagnostics", {}).get("acceptedTimestepDistribution")),
                    steps=disc["steps"], width_um=result["metrics"]["width_um"],
                    depth_um=result["metrics"]["depth_um"],
                    volume_um3=result["metrics"].get("volume_um3"),

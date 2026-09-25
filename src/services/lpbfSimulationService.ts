@@ -60,6 +60,12 @@ export interface SimulationResult {
     sourceIntegration: string; stabilityLimit: string; minimumCapturedSourceFraction: number;
     maximumSourceRenormalization: number; maximumSurfaceOffset_um: number;
     maximumTimestep_s: number; maximumEnthalpyIncrement_K: number; sourceTimestepRetries: number;
+    acceptedTimestepDistribution?: {
+      methodId: "accepted-timestep-distribution-v1"; count: number; total_s: number; sumSquared_s2: number;
+      mean_s: number; minimum_s: number; p50_s: number; p90_s: number; p99_s: number; maximum_s: number;
+      eulerFirstOrderWeightedDt_s: number; requestedMaxDt_s: number; requestedMaxDtHitFraction: number;
+      sourceLimitedStepCount: number; sourceTimestepRetries: number;
+    };
   };
   fieldOverlapDiagnostics?: {
     modelId: string; scope: string; tracks: number; layers: number;
@@ -254,6 +260,29 @@ export function parseSimulationJob(value: unknown): SimulationJob {
         || !["minimumCapturedSourceFraction", "maximumSourceRenormalization", "maximumSurfaceOffset_um", "maximumTimestep_s", "maximumEnthalpyIncrement_K", "sourceTimestepRetries"].every(k => typeof d[k] === "number" && Number(d[k]) >= 0)
         || Number(d.minimumCapturedSourceFraction) <= 0 || Number(d.minimumCapturedSourceFraction) > 1
         || Number(d.maximumSourceRenormalization) < 1 || !Number.isSafeInteger(d.sourceTimestepRetries)) throw new Error("Invalid numerical source diagnostics");
+      if (d.acceptedTimestepDistribution !== undefined) {
+        const s = d.acceptedTimestepDistribution;
+        const numeric = ["total_s", "sumSquared_s2", "mean_s", "minimum_s", "p50_s", "p90_s", "p99_s", "maximum_s",
+          "eulerFirstOrderWeightedDt_s", "requestedMaxDt_s"];
+        if (!object(s) || s.methodId !== "accepted-timestep-distribution-v1"
+          || !Number.isSafeInteger(s.count) || Number(s.count) < 1
+          || !numeric.every(k => typeof s[k] === "number" && Number(s[k]) > 0)
+          || !Number.isSafeInteger(s.sourceLimitedStepCount) || Number(s.sourceLimitedStepCount) < 0
+          || Number(s.sourceLimitedStepCount) > Number(s.count)
+          || !Number.isSafeInteger(s.sourceTimestepRetries) || Number(s.sourceTimestepRetries) < Number(s.sourceLimitedStepCount)
+          || Number(s.sourceTimestepRetries) !== Number(d.sourceTimestepRetries)
+          || typeof s.requestedMaxDtHitFraction !== "number" || Number(s.requestedMaxDtHitFraction) < 0
+          || Number(s.requestedMaxDtHitFraction) > 1
+          || !(Number(s.minimum_s) <= Number(s.p50_s) && Number(s.p50_s) <= Number(s.p90_s)
+            && Number(s.p90_s) <= Number(s.p99_s) && Number(s.p99_s) <= Number(s.maximum_s))
+          || Math.abs(Number(s.mean_s) - Number(s.total_s) / Number(s.count)) > Math.max(Number(s.mean_s) * 1e-10, 1e-30)
+          || Math.abs(Number(s.eulerFirstOrderWeightedDt_s) - Number(s.sumSquared_s2) / Number(s.total_s))
+            > Math.max(Number(s.eulerFirstOrderWeightedDt_s) * 1e-10, 1e-30)
+          || Number(s.eulerFirstOrderWeightedDt_s) < Number(s.minimum_s) * (1 - 1e-10)
+          || Number(s.eulerFirstOrderWeightedDt_s) > Number(s.maximum_s) * (1 + 1e-10)) {
+          throw new Error("Invalid accepted-timestep distribution diagnostics");
+        }
+      }
       if (d.meltPoolExtraction !== undefined && (d.meltPoolExtraction !== "accepted-step-molten-volume-v1"
         || !Number.isSafeInteger(d.meltPoolObservedSteps) || Number(d.meltPoolObservedSteps) < 1
         || typeof d.sampledPeakMeltVolume_um3 !== "number" || d.sampledPeakMeltVolume_um3 < 0

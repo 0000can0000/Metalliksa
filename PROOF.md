@@ -1709,7 +1709,7 @@ validatable/validated NIST comparison by itself.
 ## Three-mesh study failure handling (2026-09-25)
 
 A fresh IN718 UI study using the built-in "Three meshes" option halted when
-the coarsest level captured 54.851% of the Gaussian source, below the existing
+the 28 µm middle level captured 54.851% of the Gaussian source, below the existing
 99% minimum. The source-capture guard correctly refused to renormalize this
 truncated source. No threshold or frozen acceptance criterion changed.
 
@@ -1730,3 +1730,28 @@ esbuild child process returned `spawn EPERM`. Therefore the broader package and
 UI rendering test are not yet passing verification. This change improves
 failure reporting and result preservation; it does not improve the source-
 capture fraction, solver accuracy, or experimental validation.
+
+## Layer-aligned three-mesh study repair (2026-09-25)
+
+The failed 30 W / 1200 mm/s / 80 µm IN718 case requested 20 µm spacing. The
+previous `sqrt(2)` level rounded to 28 µm. Its z centers at 14 and 42 µm made
+the whole-cell active mask exclude the second cell, although that cell spans
+28–56 µm and the layer surface is at 40 µm. The clipped interval 28–40 µm
+therefore lost source integral; independent reproduction gives 54.8506%
+capture. The unchanged 99% source-capture guard correctly rejected it.
+
+For standard powder-layer mesh studies with requested backend `auto` or
+`reference`, `python/lpbf_simulation.py` now runs a three-level CPU-reference
+sequence with the explicit `layer-conforming` grid. The reproduced vector used
+1/2/3 cells per 40 µm layer (40/20/13.333 µm). `requestedBackend` and actual
+execution settings are recorded separately, with both requested and execution
+input hashes. The same exact vector completed all three levels; energy relative
+error was `3.0433745192575536e-16`. Width, depth and volume trends remained
+`inconclusive`; result `validationStatus` remains `unvalidated`. This establishes
+numerical execution and energy closure only, not mesh convergence or physical
+validation.
+
+Verification: three focused regressions passed (standard three-grid result,
+failed fine-level preservation/backend provenance, and layer-aligned source
+capture). The exact end-to-end vector completed. Broader package and UI checks
+were not rerun after this change.

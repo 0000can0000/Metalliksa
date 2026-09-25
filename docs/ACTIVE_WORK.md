@@ -1,5 +1,29 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
 
+## Continuation checkpoint — layer-aligned mesh-study repair (2026-09-25)
+
+The failed UI study was the 28 µm middle level (the requested 20 µm mesh was
+the base; 40 µm was the coarse level). Its z-cell centers were 14 and 42 µm.
+The whole-cell active mask correctly excluded the 42 µm center, but that cell
+spanned 28–56 µm and the physical 40 µm layer surface cut through it. The
+cell-integrated source therefore omitted the 28–40 µm part of the Gaussian
+source and captured 54.8506%. The 99% guard and source normalization remain
+unchanged; no partial-cell thermal capacity or conduction was invented.
+
+The built-in standard powder-layer mesh study now runs the CPU-reference model
+with a layer-conforming grid and three distinct integer cells-per-layer levels.
+For the reproduced IN718 vector these are 1/2/3 cells per layer and 40/20/13.333
+µm. The original backend request and executed backend are recorded separately;
+an automatic backend request is explicitly executed as the CPU reference for
+this numerical study. The exact 30 W, 1200 mm/s, 80 µm study completed all three
+levels; energy relative error was 3.04e-16. Width, depth and volume trends were
+inconclusive, so this is not convergence acceptance or experimental validation.
+
+Focused regressions (three tests) passed. Broad package, browser, and UI checks
+have not been rerun after this repair. Next: audit the supported mesh-level
+window and progress reporting, then continue the frozen P4 numerical/error
+analysis without relabeling inconclusive results as validation.
+
 ## Continuation checkpoint — P8 archive acceptance and physics continuation (2026-09-25)
 
 The goal remains active. User explicitly authorizes scientific fixes or a Python
@@ -26,7 +50,7 @@ P5 stays unavailable because the current model lacks matching melt flow,
 evaporation mass transfer and mass/latent-energy closure.
 
 Mesh-study failure diagnosis: a fresh UI "Three meshes" attempt stopped when
-the coarsest level captured only 54.851% of the Gaussian source, below the
+the middle 28 µm level captured only 54.851% of the Gaussian source, below the
 unchanged 99% minimum. The guard is functioning as intended; this does not
 justify renormalizing a truncated source or relaxing the threshold. The study
 runner previously let one invalid level discard the requested fine solve and

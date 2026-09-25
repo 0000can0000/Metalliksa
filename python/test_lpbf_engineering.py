@@ -229,12 +229,20 @@ class Verification(unittest.TestCase):
         r = run({**CASE, "power_W": 10, "study": "mesh"})
         self.assertEqual(len(r["convergenceStudy"]["results"]), 3)
         self.assertEqual(r["convergenceStudy"]["checks"]["width_um"]["status"], "inconclusive")
+        self.assertEqual(r["convergenceStudy"]["protocol"], "layer-aligned-three-grid-cpu-reference-v1")
+        self.assertEqual(r["convergenceStudy"]["cellsPerLayer"], [1, 2, 3])
+        self.assertEqual(r["settings"]["powderGridPolicy"], "layer-conforming")
+        self.assertEqual(r["settings"]["backend"], "reference")
         self.assertEqual(r["validationStatus"], "unvalidated")
 
-    def test_failed_coarse_mesh_preserves_requested_result_and_fails_study_closed(self):
+    def test_failed_fine_mesh_preserves_requested_result_and_fails_study_closed(self):
+        progress = []
+
         def synthetic_level(p, material, report=None, artifact_dir=None):
-            if p["mesh_um"] > 60:
+            if p["mesh_um"] < 15:
                 raise ValueError("Gaussian source capture 54.851% is below the 99% minimum")
+            report(0., "trial started")
+            report(1., "trial completed")
             mesh_m = p["mesh_um"]*1e-6
             return dict(metrics=dict(width_um=100., depth_um=40., volume_um3=100000.,
                                      length_um=180., peakTemperature_K=1800.),
@@ -244,15 +252,20 @@ class Verification(unittest.TestCase):
                 patch("lpbf_simulation.enforce_thermal_balances"), \
                 patch("lpbf_simulation.write_artifacts"), \
                 patch("lpbf_simulation.build_core_contract", return_value={"modelId": "test"}):
-            r = run({**CASE, "study": "mesh"})
+            r = run({**CASE, "mesh_um": 20, "study": "mesh", "backend": "auto"},
+                    report=lambda fraction, message: progress.append(fraction))
 
         study = r["convergenceStudy"]
         self.assertEqual(r["metrics"]["width_um"], 100.)
         self.assertEqual(study["status"], "failed")
-        self.assertEqual(study["spacings"][0], None)
-        self.assertIsNone(study["results"][0])
+        self.assertIsNone(study["spacings"][2])
+        self.assertIsNone(study["results"][2])
         self.assertIn("54.851%", study["checks"]["width_um"]["reason"])
         self.assertEqual(study["checks"]["width_um"]["status"], "failed")
+        self.assertEqual(r["requestedBackend"], "auto")
+        self.assertEqual(r["settings"]["backend"], "reference")
+        self.assertNotEqual(r["provenance"]["inputHash"], r["provenance"]["executionInputHash"])
+        self.assertEqual(progress, sorted(progress))
 
     def test_measurement_statistics(self):
         r = compare([110., 90.], [100., 100.])

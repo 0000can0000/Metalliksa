@@ -492,8 +492,36 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
                     (np.clip((T-m["solidus_K"])/(m["liquidus_K"]-m["solidus_K"]),0,1)*active).ravel()))
 
 
+def _layer_aligned_mesh_levels(p):
+    """Return three distinct cells-per-layer levels bracketing the request."""
+    layer_um = p["layer_um"]
+    base_cells = max(1, int(math.ceil(layer_um / p["mesh_um"] - 1e-12)))
+    max_cells = int(math.floor(layer_um / BOUNDS["mesh_um"][0] + 1e-12))
+    if max_cells < 3:
+        return None
+    if base_cells <= 1:
+        cells = (1, 2, 3)
+    elif base_cells >= max_cells:
+        cells = (max_cells - 2, max_cells - 1, max_cells)
+    else:
+        cells = (base_cells - 1, base_cells, base_cells + 1)
+    return tuple((n, layer_um / n) for n in cells)
+
+
 def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
-    p, m = validate(raw)
+    requested_p, requested_m = validate(raw)
+    requested_backend = requested_p["backend"]
+    p, m = requested_p, requested_m
+    # The built-in powder-layer mesh study is a CPU-reference protocol.  Its
+    # z-grid must place each layer surface on a cell face; preserve the user's
+    # backend request separately instead of silently treating this as parity.
+    layer_mesh_study = (p["study"] == "mesh" and p["mode"] == "standard"
+                        and p["surfaceMode"] == "powder-layer"
+                        and requested_backend in ("auto", "reference"))
+    if layer_mesh_study and p.get("powderGridPolicy") != "layer-conforming":
+        execution_input = dict(raw)
+        execution_input.update(backend="reference", powderGridPolicy="layer-conforming")
+        p, m = validate(execution_input)
     bare = p["surfaceMode"] == "bare-plate"
     analytical = None if bare else screening(p, m)
     fallback = p["mode"] == "high-fidelity"
@@ -513,9 +541,11 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                   solver=dict(id=("layered-enthalpy-fv-1" if p.get("thermalModelId") == "layered-plate-enthalpy-v1"
                                   else "rosenthal+goldak" if p["mode"] == "screening" or fallback else VERSION),
                               version=VERSION, openfoam=(capabilities or {}).get("openfoamVersion")),
-                  settings=p, material=m, confidence="low", validationStatus="unvalidated", productionReady=False,
+                  settings=p, material=m, requestedBackend=requested_backend,
+                  confidence="low", validationStatus="unvalidated", productionReady=False,
                   label="Screening only" if p["mode"] == "screening" or fallback else "Unvalidated transient thermal",
-                  provenance=dict(inputHash=hashlib.sha256(json.dumps(p, sort_keys=True, allow_nan=False).encode()).hexdigest(),
+                  provenance=dict(inputHash=hashlib.sha256(json.dumps(requested_p, sort_keys=True, allow_nan=False).encode()).hexdigest(),
+                                  executionInputHash=hashlib.sha256(json.dumps(p, sort_keys=True, allow_nan=False).encode()).hexdigest(),
                                   implementationHash=fingerprint(p, m), materialVersion=m["version"],
                                   solverBinaryHash=(capabilities or {}).get("binaryHash"),
                                   createdAt=datetime.datetime.now(datetime.timezone.utc).isoformat()),
@@ -547,20 +577,54 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
             trials = []
             level_errors = []
             key = "mesh_um" if p["study"] == "mesh" else "maxDt_s"
-            # Coarse -> medium -> fine; finest result is the requested discretization.
-            for index, scale in enumerate((2., math.sqrt(2.))):
-                q = copy.deepcopy(p); q[key] *= scale
-                try:
-                    trial = thermal_solver(q, m, lambda f, msg: report((index+1+f)/3, msg))
-                except Exception as exc:
-                    # Keep a failed level explicit while preserving the requested solve.
-                    # A partial sequence is never eligible for convergence assessment.
-                    trials.append(None)
-                    level_errors.append(dict(level=("coarse", "medium")[index],
-                                             requested=q[key], reason=str(exc)[:500] or type(exc).__name__))
-                    continue
-                trials.append(trial)
-            trials.append(result)
+            if layer_mesh_study:
+                plan = _layer_aligned_mesh_levels(p)
+                level_specs = ([dict(level=name, requested=spacing, cellsPerLayer=count)
+                                for name, (count, spacing) in zip(("coarse", "medium", "fine"), plan)]
+                               if plan else [])
+                requested_spacing = p["mesh_um"]
+                if not plan:
+                    level_errors.append(dict(level="mesh-plan", requested=requested_spacing,
+                        reason="Three distinct layer-aligned meshes require at least three cells per layer at the 5 um minimum spacing."))
+                # The requested solve is one member of the sorted three-grid
+                # sequence; run the other two with identical model/material.
+                ordered_results = [None, None, None]
+                if plan:
+                    base_cells = max(1, int(math.ceil(p["layer_um"] / requested_spacing - 1e-12)))
+                    base_index = next((i for i, (count, _) in enumerate(plan) if count == base_cells), None)
+                    if base_index is None:
+                        level_errors.append(dict(level="mesh-plan", requested=requested_spacing,
+                            reason="The requested mesh is outside the selected three-level layer-aligned window."))
+                    else:
+                        ordered_results[base_index] = result
+                        completed_solves = 1
+                        for index, spec in enumerate(level_specs):
+                            if index == base_index:
+                                continue
+                            q = copy.deepcopy(p)
+                            q[key] = spec["requested"]
+                            progress_slot = completed_solves
+                            try:
+                                ordered_results[index] = thermal_solver(
+                                    q, m, lambda f, msg, i=progress_slot: report((i+f)/3, msg))
+                            except Exception as exc:
+                                level_errors.append(dict(level=spec["level"], requested=spec["requested"],
+                                    reason=str(exc)[:500] or type(exc).__name__))
+                            completed_solves += 1
+                trials = ordered_results
+            else:
+                # Retain the legacy timestep and explicitly selected non-reference protocols.
+                for index, scale in enumerate((2., math.sqrt(2.))):
+                    q = copy.deepcopy(p); q[key] *= scale
+                    try:
+                        trial = thermal_solver(q, m, lambda f, msg: report((index+1+f)/3, msg))
+                    except Exception as exc:
+                        trials.append(None)
+                        level_errors.append(dict(level=("coarse", "medium")[index],
+                                                 requested=q[key], reason=str(exc)[:500] or type(exc).__name__))
+                        continue
+                    trials.append(trial)
+                trials.append(result)
             resolution_key = "mesh_m" if key == "mesh_um" else "meanDt_s"
             actual = [v["discretization"][resolution_key] if v is not None else None for v in trials]
             metric_key = "midTrackCrossSection" if bare else "metrics"
@@ -574,6 +638,13 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                 results=[v[metric_key] if v is not None else None for v in trials], checks=checks,
                 status="failed" if level_errors else "complete",
                 failedLevels=level_errors)
+            if layer_mesh_study:
+                result["convergenceStudy"].update(
+                    protocol="layer-aligned-three-grid-cpu-reference-v1",
+                    gridPolicy="layer-conforming",
+                    requestedBackend=requested_backend,
+                    cellsPerLayer=[spec["cellsPerLayer"] for spec in level_specs],
+                    requestedMesh_um=requested_p["mesh_um"])
             if bare:
                 targets = dict(energyRelativeErrorMax=.01, finestPairWidthDepthRelativeChangeMax=.05,
                                minimumLevels=3, source="docs/DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md#11")

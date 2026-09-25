@@ -1770,3 +1770,27 @@ Verification: the targeted Python failed-level/provenance regression passed and
 `npm run lint` passed. `npm exec -- tsx tests/lpbf-presentation.test.tsx` could
 not start: esbuild child process failed with `spawn EPERM`; this UI test is
 unverified. No browser check was run.
+
+## P4 fingerprint-locked temporal diagnostic (2026-09-25)
+
+Scope: supplementary IN718 CPU reference study at fixed 5 µm mesh for the
+frozen 40 W scenario, requested max dt 100/50/25 ns. Source inputs are the
+frozen protocol `docs/LPBF_P4_CURRENT_40W_FINGERPRINT_PROTOCOL_2026-09-25.json`
+(SHA-256 `db0a85e22a75709fcabb3f3bee9e7c0d44213a081881f6a076ee5de6820274df`)
+and scenario (SHA-256
+`2abec47f9d35c02158ea2e06876e3ca06c3ba5ba9243f1ddccaa94ef64752ea6`).
+The final JSON report SHA-256 is
+`726cad9aa1d4f2b7dc3009b8b10ed1a7db08b49ba1f9bc9e4b872f662054b558`.
+The report pins the execution HEAD, start-time dirty source paths, runner and
+assessment hashes, and equal implementation hashes before and after each row.
+
+Results: 3,923/7,000/14,000 accepted steps; actual mean dt 89.217/50/25 ns.
+Maximum relative energy-balance error `1.629e-13` passes the frozen 1% bound.
+The accepted mean dt ratios are unequal, so the existing fixed-ratio estimator
+returns **inconclusive** for time convergence. Cell-extent width/depth are
+80/35 µm at all three levels; the reported zero finest-pair relative change
+refers only to these quantized extents. The interpolated liquidus contour widths
+are 77.7079/77.7053/77.7036 µm and depths 34.6956/34.6955/34.6963 µm.
+These contours are numerical thermal proxies, not optical observations.
+The frozen P4 `failed` verdict remains unchanged. No experimental validation
+is claimed.

@@ -2,6 +2,12 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — P4 kaynak-kimliği tanısı tamamlandı; tarayıcıda paket çevrimi
+- Dondurulmuş 5 µm IN718 CPU tanısı 100/50/25 ns seviyelerinin üçünü de bitirdi. Rapor `docs/LPBF_P4_CURRENT_40W_FINGERPRINT_DIAGNOSTIC_2026-09-25.json`, SHA-256 `726CAD9AA1D4F2B7DC3009B8B10ED1A7DB08B49BA1F9BC9E4B872F662054B558`; protokol ve senaryo SHA'ları dondurulmuş değerlerle eşleşiyor. Her satırın öncesi/kaydı/sonrası ve toplam son kaynak parmak izi `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac1189489`; `integrityStatus=pass`.
+- 3.923/7.000/14.000 kabul edilmiş adım, ortalama 89.217/50/25 ns. En yüksek enerji bağıl hatası `1.629e-13`, enerji kapısı `pass`; gerçek ortalama zaman aralıkları sabit oranlı olmadığından mevcut yakınsama kapısı `inconclusive`. Önceki dondurulmuş P4 `failed` olarak kalır. Rapordaki `finestPairRelativeChange=0` hücre-kapsamı 80/35 µm metriklerine aittir; sürekli liquidus konturu satırlar arasında değişir ve bu sıfır değeri onun yakınsadığını kanıtlamaz. Deneysel doğrulama yok.
+- Ayrı test sekmesinde gerçek arayüz çevrimi yapıldı: 3 koşu/132 artefakt/3 kaynak bağlantılı paket oluşturma ve doğrulama, 10.107.904 bayt `.tar` indirme, aynı dosyayı yükleyip doğrulama, ayrı arşive restore ve kayıt açma başarılı. Sayfa yenilenince restore kimliğiyle arşiv yeniden açıldı. Doğrulanmış sunucu paketi kimliğinden yenileme sonrası indirme düğmesi kayboluyordu; UI düzeltmesi TypeScript ve tarayıcıda doğrulandı.
+- Sıradaki adım: NIST optik altı-kesit gözlem operatörü, ölçülmüş ışın profili ve tam beş-özellikli yeni alaşım veri kapısı açık. Mevcut proxy sonuçları deneysel validasyon diye sunulmayacak.
+
 ## 2026-09-25 — LPBF taşınabilir çalışma arşivi
 - LPBF çalışma kanıt paketi artık sıkıştırılmamış akışlı USTAR olarak indirilebilir, başka kurulumda yüklenip manifest/artefakt/kaynak kimlikleriyle doğrulanabilir ve canlı depolardan ayrı alana geri yüklenebilir. UI hem içeri aktarılan hem sunucu-içi restore kimliğiyle kayıt listesini açar; son restore kimliği localStorage'da tutulur ve sayfa yenilemesinden sonra yeniden açılabilir.
 - Son doğrulama: taşınabilir bundle/API/tar testleri `6/6 PASS`; `npx tsc --noEmit PASS`; `npm run build PASS` (mevcut büyük chunk uyarısı); scoped `git diff --check PASS`. Yeni test tabında workflow modülü yüklendi ve restore ID alanı geçerli 32 hex kimliğinde etkinleşip boş değerle devre dışı kaldı. Gerçek dosya aktarımı/restore arayüzünden yapılmadı; tam round-trip API testiyle doğrulandı.

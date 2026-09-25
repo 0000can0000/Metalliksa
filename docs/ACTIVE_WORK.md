@@ -1658,3 +1658,34 @@ checking that live database bytes remain unchanged.
 Current transport is uncompressed USTAR with a 16 GiB limit. Imported bundles
 have no retention/cleanup policy yet. Bundle integrity is evidence integrity,
 not model or experimental validation.
+
+## 2026-09-25 continuation — P4 final diagnostic and browser archive round-trip
+
+The fingerprint-locked 5 µm CPU run completed all requested 100/50/25 ns levels.
+Final report: `docs/LPBF_P4_CURRENT_40W_FINGERPRINT_DIAGNOSTIC_2026-09-25.json`,
+SHA-256 `726cad9aa1d4f2b7dc3009b8b10ed1a7db08b49ba1f9bc9e4b872f662054b558`.
+Protocol and scenario hashes matched the frozen files; runner and assessment
+module hashes matched their pinned values. All row before/recorded/after
+implementation hashes and the final hash matched
+`8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac1189489`.
+The three rows took 3,923/7,000/14,000 accepted steps, with mean dt
+89.217/50/25 ns. Maximum relative energy error was `1.629e-13` (pass).
+The actual mean timestep ratio is not constant, so the existing time-axis
+convergence gate is **inconclusive**. Reported zero finest-pair relative change
+uses cell-extent width/depth (80/35 µm at all levels); the independent
+continuous-contour values vary and were not the acceptance metric. The frozen
+P4 failure and experimental-validation=false remain unchanged.
+
+In the separate local test browser tab, a 3-run/132-artifact/3-source-link
+bundle was created, verified, downloaded (10,107,904 bytes), uploaded from the
+downloaded `.tar`, verified, restored into a second isolated archive, and a
+restored run was opened. Restore ID persistence through reload also worked.
+The UI lost its download button for a verified, existing bundle ID after reload;
+`LpbfRunArchivePanel` now offers download for that verified ID. `npx tsc --noEmit`
+and scoped diff check passed; the changed button appeared after verification
+in the browser. The production build passed in the permitted runner (the
+default sandbox returned `spawn EPERM` before the build could start). This archive
+integrity flow does not validate the model or the NIST optical comparison.
+
+Next: address the separately versioned NIST optical observation operator and qualified alloy-data
+admission without weakening existing evidence gates.

@@ -62,6 +62,7 @@ function RunBundleControls() {
   const importedRestoreTask = useInputBoundTask<RestoredRunBundle>(importTask.data?.importId ?? 'no-import');
   const busy = !!(exportTask.pending || verifyTask.pending || restoreTask.pending || importTask.pending || importedRestoreTask.pending);
   const verified = verifyTask.data?.bundleId === bundleId;
+  const downloadableBundleId = verified ? bundleId : exportTask.data?.bundleId;
 
   const rememberRestore = (restoreId: string) => {
     setRestoreSelection({ input: restoreId, active: restoreId });
@@ -118,8 +119,8 @@ function RunBundleControls() {
   };
 
   const download = () => {
-    if (!exportTask.data) return;
-    try { downloadRunBundle(exportTask.data.bundleId); setDownloadError(null); }
+    if (!downloadableBundleId) return;
+    try { downloadRunBundle(downloadableBundleId); setDownloadError(null); }
     catch (error) { setDownloadError(error instanceof Error ? error.message : 'Bundle download failed.'); }
   };
 
@@ -131,7 +132,7 @@ function RunBundleControls() {
     {exportTask.pending && <p role="status">Creating bundle on server…</p>}
     {exportTask.error && <p role="alert" className="text-rose-300">{exportTask.error}</p>}
     {exportTask.data && <p role="status" className="text-emerald-200">Bundle created: {exportTask.data.bundleId}. {exportTask.data.manifest.runCount} runs, {exportTask.data.manifest.artifactCount} run artifacts, {exportTask.data.manifest.sourceLinkCount} source links.</p>}
-    {exportTask.data && <button type="button" className={button} disabled={busy} onClick={download}>Download portable .tar bundle</button>}
+    {downloadableBundleId && <button type="button" className={button} disabled={busy} onClick={download}>Download portable .tar bundle</button>}
     {downloadError && <p role="alert" className="text-rose-300">{downloadError}</p>}
     <label className="block text-sm">Server-local bundle ID
       <input type="text" aria-label="Server-local bundle ID" spellCheck={false} autoComplete="off" maxLength={32}

@@ -113,6 +113,25 @@ test('reopen and metadata-only restore preserve hashes; tampered rows fail', asy
   assert.throws(() => f.repository.get(saved.document.runId), /integrity/i);
 });
 
+test('writable v1 database receives the explicit v2 campaign-table migration without changing run rows', t => {
+  const root = mkdtempSync(path.join(tmpdir(), 'lpbf-run-v1-migration-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const filename = path.join(root, 'runs.sqlite'), legacy = new DatabaseSync(filename);
+  legacy.exec(`CREATE TABLE lpbf_runs (run_id TEXT PRIMARY KEY, document_json TEXT NOT NULL,
+    document_sha256 TEXT NOT NULL, created_at TEXT NOT NULL) STRICT;
+    CREATE TABLE lpbf_metadata (kind TEXT PRIMARY KEY) STRICT;
+    INSERT INTO lpbf_metadata VALUES ('metalliksa-lpbf-runs-v1'); PRAGMA user_version=1;`);
+  legacy.close();
+  const repository = new LpbfRunRepository(filename);
+  try {
+    const migrated = new DatabaseSync(filename, { readOnly: true });
+    try { assert.equal(migrated.prepare('PRAGMA user_version').get()!.user_version, 2); }
+    finally { migrated.close(); }
+    assert.deepEqual([...repository.allRuns()], []);
+    assert.deepEqual([...repository.allProxyCampaigns()], []);
+  } finally { repository.close(); }
+});
+
 test('missing/changed bytes and extra files never publish a completed record', async t => {
   const f = fixture(t);
   await dryRunRunImport(capture(), [], f.sources, f.job);

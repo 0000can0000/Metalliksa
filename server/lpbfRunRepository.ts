@@ -16,6 +16,7 @@ export type RunKind = 'analytical-screening' | 'build-screening' | 'transient-th
 export interface RunSourceLink { datasetId: string; revision: number; documentSha256: string }
 export interface RunDocument { schemaVersion: 1; runId: string; capture: RunCapture; sources: RunSourceLink[] }
 export interface RunRecord { document: RunDocument; documentSha256: string; createdAt: string; evidenceStatus: 'unvalidated-model'; runKind: RunKind }
+export interface ProxyCampaignRecord { campaignId: string; document: Record<string, any>; documentSha256: string; createdAt: string }
 const MAX_BYTES = 32 * 1024 * 1024;
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 const hash = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -121,6 +122,39 @@ function decode(row: any): RunRecord {
   } catch { throw new Error('Run metadata integrity failed; existing records preserved'); }
 }
 
+function validateProxyCampaignDocument(raw: unknown): Record<string, any> {
+  let document: any;
+  try {
+    const json = JSON.stringify(raw);
+    if (!json || Buffer.byteLength(json) > MAX_BYTES) throw new Error('Campaign too large');
+    document = JSON.parse(json);
+  } catch { throw new Error('Invalid proxy campaign document'); }
+  if (!document || typeof document !== 'object' || Array.isArray(document)
+    || document.schemaVersion !== 1 || document.kind !== 'lpbf-nist-amb2022-03-proxy-campaign'
+    || typeof document.campaignId !== 'string' || !/^[a-f0-9]{32}$/.test(document.campaignId)
+    || !Array.isArray(document.tracks) || document.tracks.length !== 3) throw new Error('Invalid proxy campaign document');
+  const ids = new Set<string>();
+  for (const track of document.tracks) {
+    const identity = track?.runIdentity;
+    if (!identity || typeof identity.runId !== 'string' || !/^[a-f0-9]{32}$/.test(identity.runId)
+      || typeof identity.runDocumentSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(identity.runDocumentSha256)
+      || ids.has(identity.runId)) throw new Error('Invalid or duplicate campaign run reference');
+    ids.add(identity.runId);
+  }
+  return document;
+}
+
+function decodeProxyCampaign(row: any): ProxyCampaignRecord {
+  try {
+    if (typeof row.document_json !== 'string' || Buffer.byteLength(row.document_json) > MAX_BYTES
+      || digest(row.document_json) !== row.document_sha256 || typeof row.created_at !== 'string'
+      || !Number.isFinite(Date.parse(row.created_at))) throw new Error('Invalid row');
+    const document = validateProxyCampaignDocument(JSON.parse(row.document_json));
+    if (document.campaignId !== row.campaign_id) throw new Error('Identity mismatch');
+    return { campaignId: row.campaign_id, document, documentSha256: row.document_sha256, createdAt: row.created_at };
+  } catch { throw new Error('Proxy campaign metadata integrity failed; existing records preserved'); }
+}
+
 export class LpbfRunRepository {
   private readonly db: DatabaseSync;
   private closed = false;
@@ -136,8 +170,17 @@ export class LpbfRunRepository {
             document_sha256 TEXT NOT NULL, created_at TEXT NOT NULL) STRICT;
           CREATE TABLE lpbf_metadata (kind TEXT PRIMARY KEY) STRICT;
           INSERT INTO lpbf_metadata VALUES ('metalliksa-lpbf-runs-v1');
-          PRAGMA user_version=1; COMMIT;`);
-      } else if (version !== 1) throw new Error('Unsupported run database version');
+          CREATE TABLE lpbf_proxy_campaigns (campaign_id TEXT PRIMARY KEY, document_json TEXT NOT NULL,
+            document_sha256 TEXT NOT NULL, created_at TEXT NOT NULL) STRICT;
+          PRAGMA user_version=2; COMMIT;`);
+      } else if (version === 1) {
+        if (options.readOnly) {
+          // A portable v1 archive remains readable without changing its bytes.
+        } else this.db.exec(`BEGIN IMMEDIATE;
+          CREATE TABLE lpbf_proxy_campaigns (campaign_id TEXT PRIMARY KEY, document_json TEXT NOT NULL,
+            document_sha256 TEXT NOT NULL, created_at TEXT NOT NULL) STRICT;
+          PRAGMA user_version=2; COMMIT;`);
+      } else if (version !== 2) throw new Error('Unsupported run database version');
       if (this.db.prepare('SELECT kind FROM lpbf_metadata').get()?.kind !== 'metalliksa-lpbf-runs-v1') throw new Error('Invalid run database identity');
       if (options.readOnly) {
         if (this.db.prepare('PRAGMA integrity_check').get()!.integrity_check !== 'ok') throw new Error('Run database integrity failed');
@@ -155,6 +198,34 @@ export class LpbfRunRepository {
   }
   *allRuns(): Generator<RunRecord> {
     for (const row of this.db.prepare('SELECT * FROM lpbf_runs ORDER BY run_id').iterate()) yield decode(row);
+  }
+  getProxyCampaign(campaignId: string): ProxyCampaignRecord | null {
+    if (!/^[a-f0-9]{32}$/.test(campaignId)) throw new Error('Invalid campaign id');
+    if (this.db.prepare('PRAGMA user_version').get()!.user_version < 2) return null;
+    const row = this.db.prepare('SELECT * FROM lpbf_proxy_campaigns WHERE campaign_id=?').get(campaignId);
+    return row ? decodeProxyCampaign(row) : null;
+  }
+  *allProxyCampaigns(): Generator<ProxyCampaignRecord> {
+    if (this.db.prepare('PRAGMA user_version').get()!.user_version < 2) return;
+    for (const row of this.db.prepare('SELECT * FROM lpbf_proxy_campaigns ORDER BY campaign_id').iterate()) yield decodeProxyCampaign(row);
+  }
+  saveProxyCampaign(raw: unknown): ProxyCampaignRecord {
+    if (this.backingUp) throw new Error('Run backup in progress');
+    const document = validateProxyCampaignDocument(raw), json = JSON.stringify(document);
+    if (this.db.prepare('PRAGMA user_version').get()!.user_version < 2) throw new Error('Campaign storage requires writable v2 migration');
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      if (this.getProxyCampaign(document.campaignId)) throw new Error('Campaign identity conflict; immutable record already exists');
+      for (const track of document.tracks) {
+        const identity = track.runIdentity;
+        const run = this.get(identity.runId);
+        if (!run || run.documentSha256 !== identity.runDocumentSha256) throw new Error('Campaign archived run reference mismatch');
+      }
+      const createdAt = new Date().toISOString(), documentSha256 = digest(json);
+      this.db.prepare('INSERT INTO lpbf_proxy_campaigns VALUES (?, ?, ?, ?)').run(document.campaignId, json, documentSha256, createdAt);
+      this.db.exec('COMMIT');
+      return { campaignId: document.campaignId, document, documentSha256, createdAt };
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
   /** Metadata-only boundary; importRun performs source and byte checks first. */
   save(raw: unknown): RunRecord {

@@ -71,6 +71,39 @@ test('full bundle independently restores exact run and historical source revisio
   assert.deepEqual(readFileSync(path.join(destination, 'bundle.json')), before);
 });
 
+test('bundle snapshots and restores immutable six-proxy campaign run references', async t => {
+  const f = await fixture(t);
+  const runRecords = [f.record];
+  for (const id of ['b'.repeat(32), 'c'.repeat(32)]) {
+    const document = structuredClone(f.record.document);
+    document.runId = document.capture.jobId = id;
+    runRecords.push(f.runs.save(document));
+  }
+  const binding = { datasetId: 'synthetic', revision: 1, documentSha256: f.record.document.sources[0].documentSha256,
+    artifactPath: 'raw', artifactSha256: sha('raw'), artifactSizeBytes: 3, caseNumber: '2.1' };
+  const campaign = { schemaVersion: 1, kind: 'lpbf-nist-amb2022-03-proxy-campaign', campaignId: '9'.repeat(32),
+    benchmark: 'AMB2022-03-TMPG', caseNumber: '2.1', sourceBinding: binding, tracks: runRecords.map(record => ({
+      runIdentity: { runId: record.document.runId, runDocumentSha256: record.documentSha256 },
+    })) };
+  f.runs.saveProxyCampaign(campaign);
+  const manifest = await f.backup();
+  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.campaignCount, 1);
+  const destination = path.join(f.root, 'campaign-restored');
+  await restoreRunBundle(f.bundle, destination);
+  const restored = new LpbfRunRepository(path.join(destination, 'runs.sqlite'), { readOnly: true });
+  try {
+    const record = restored.getProxyCampaign(campaign.campaignId)!;
+    assert.deepEqual(record.document, campaign);
+    assert.equal([...restored.allProxyCampaigns()].length, 1);
+  } finally { restored.close(); }
+
+  const invalid = structuredClone(campaign);
+  invalid.campaignId = '8'.repeat(32);
+  invalid.tracks[0].runIdentity.runDocumentSha256 = sha('mixed provenance');
+  assert.throws(() => f.runs.saveProxyCampaign(invalid), /run reference mismatch/i);
+});
+
 test('missing or corrupted run/source objects prevent restore before destination creation', async t => {
   for (const which of ['run', 'source'] as const) for (const missing of [false, true]) {
     const f = await fixture(t); await f.backup();

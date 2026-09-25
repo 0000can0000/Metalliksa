@@ -2,9 +2,10 @@ import express, { Router, type ErrorRequestHandler, type RequestHandler } from '
 import { LpbfRunArchiveError, LpbfRunArchiveService } from '../server/lpbfRunArchiveService';
 import { LpbfRunBundleService } from '../server/lpbfRunBundleService';
 import { LpbfNistComparisonService } from '../server/lpbfNistComparisonService';
+import { LpbfNistProxyCampaignService } from '../server/lpbfNistProxyCampaignService';
 
 export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bundles = new LpbfRunBundleService(),
-  comparison = new LpbfNistComparisonService()): Router {
+  comparison = new LpbfNistComparisonService(), campaigns = new LpbfNistProxyCampaignService()): Router {
   const router = Router();
   const prefix = '/api/lpbf/runs';
   
@@ -49,6 +50,21 @@ export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bund
       throw new LpbfRunArchiveError(400, 'Only a Table 4 caseNumber is accepted.');
     }
     return comparison.compare(req.params.runId, req.body.caseNumber);
+  }));
+
+  router.post(`${prefix}/proxy-campaigns/preview`, handle(req => {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
+      || Object.keys(req.body).sort().join() !== 'caseNumber,runIds') {
+      throw new LpbfRunArchiveError(400, 'Proxy campaign preview accepts only runIds and caseNumber.');
+    }
+    return campaigns.preview(req.body.runIds, req.body.caseNumber);
+  }));
+  router.post(`${prefix}/proxy-campaigns`, handle(req => {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
+      || Object.keys(req.body).sort().join() !== 'caseNumber,previewSha256,runIds') {
+      throw new LpbfRunArchiveError(400, 'Proxy campaign creation requires runIds, caseNumber and previewSha256.');
+    }
+    return campaigns.create(req.body.runIds, req.body.caseNumber, req.body.previewSha256);
   }));
   
   router.post(`${prefix}/preview`, handle(req => {

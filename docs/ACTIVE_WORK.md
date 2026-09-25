@@ -1614,10 +1614,13 @@ The requested max-dt levels are 100/50/25 ns. The run records its versioned
 solver manifest and its start-time dirty paths. It started at
 `2026-09-25T20:00:11+03:00` with implementation fingerprint
 `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac118948b`.
-Latest live-session poll: stage `running`, zero completed rows; the first
-level is still underway. This is not yet a physics result. Continue polling
-this same handle, then verify all three row hashes and apply the existing
-convergence gate. Preserve the previous `failed`/`inconclusive` reports.
+Latest live-session poll: stage `running`; the 100 ns row completed in 3,923
+steps, with mean accepted dt 89.217 ns, relative energy error `1.335e-14`, and
+matching before/recorded/after implementation hashes. The 50/25 ns levels
+remain in progress. One row does not establish convergence or acceptance.
+Continue polling this same handle, verify all three row hashes, and apply the
+existing convergence gate. Preserve the previous `failed`/`inconclusive`
+reports.
 
 ## 2026-09-25 continuation — IN625 enthalpy scope and data-gate audit
 

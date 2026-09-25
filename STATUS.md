@@ -2,6 +2,11 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — LPBF taşınabilir çalışma arşivi
+- LPBF çalışma kanıt paketi artık sıkıştırılmamış akışlı USTAR olarak indirilebilir, başka kurulumda yüklenip manifest/artefakt/kaynak kimlikleriyle doğrulanabilir ve canlı depolardan ayrı alana geri yüklenebilir. UI hem içeri aktarılan hem sunucu-içi restore kimliğiyle kayıt listesini açar; son restore kimliği localStorage'da tutulur ve sayfa yenilemesinden sonra yeniden açılabilir.
+- Son doğrulama: taşınabilir bundle/API/tar testleri `6/6 PASS`; `npx tsc --noEmit PASS`; `npm run build PASS` (mevcut büyük chunk uyarısı); scoped `git diff --check PASS`. Yeni test tabında workflow modülü yüklendi ve restore ID alanı geçerli 32 hex kimliğinde etkinleşip boş değerle devre dışı kaldı. Gerçek dosya aktarımı/restore arayüzünden yapılmadı; tam round-trip API testiyle doğrulandı.
+- Veri modelinin doğrulanması run modelini veya fiziksel geçerliliği onaylamaz. Taşıma sıkıştırmasız USTAR, toplam 16 GiB sınırı; import arşivleri için saklama/temizlik politikası ayrıca tanımlanmalı.
+
 ## 2026-09-25 — Kaynak-kimliği sabit P4 tanısı çalışıyor
 - Önceki frozen P4 raporu `failed`, ek accepted-dt tanısı `inconclusive` olarak korunuyor. Yeni dizi `4a73f77` kapsamındaki sürümlü solver-kaynak manifestini kullanıyor; 5 µm CPU ağı ve 100/50/25 ns istek seviyeleri aynı.
 - Protokol SHA-256 `DB0A85E22A75709FCABB3F3BEE9E7C0D44213A081881F6A076EE5DE6820274DF`; senaryo SHA-256 `2ABEC47F9D35C02158EA2E06876E3CA06C3BA5BA9243F1DDCCAA94EF64752EA6`. Başlangıç implementasyon parmak izi `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac118948b`; protokol kaynak dosyalarının başlangıç dirty durumunu da kaydediyor.

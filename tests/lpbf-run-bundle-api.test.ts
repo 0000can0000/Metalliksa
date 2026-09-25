@@ -64,7 +64,7 @@ async function fixture(t: TestContext) {
       headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
     return { status: response.status, body: await response.json() };
   };
-  return { root, runRoot, sourceRoot, bundleRoot, runs, sources, runStore, sourceStore,
+  return { root, runRoot, sourceRoot, bundleRoot, endpoint, runs, sources, runStore, sourceStore,
     record, sourceRef, bundles, post };
 }
 
@@ -100,6 +100,46 @@ test('HTTP export, verify and isolated restore preserve live bytes and historica
   assert.deepEqual(readFileSync(path.join(f.runRoot, 'runs.sqlite')), beforeRuns);
   assert.deepEqual(readFileSync(path.join(f.sourceRoot, 'metadata.sqlite')), beforeSources);
   assert.equal(readFileSync((await f.sourceStore.verify(f.sourceRef)).path, 'utf8'), 'raw');
+});
+
+test('portable tar round-trip verifies, restores in isolation, and exposes restored run records', async t => {
+  const f = await fixture(t);
+  const beforeRuns = readFileSync(path.join(f.runRoot, 'runs.sqlite'));
+  const beforeSources = readFileSync(path.join(f.sourceRoot, 'metadata.sqlite'));
+  const exported = await f.post('export'); assert.equal(exported.status, 200);
+  const id = exported.body.bundleId as string;
+  const downloaded = await fetch(`${f.endpoint}/${id}/download`);
+  assert.equal(downloaded.status, 200);
+  assert.match(downloaded.headers.get('content-type') ?? '', /application\/x-tar/);
+  const bytes = new Uint8Array(await downloaded.arrayBuffer());
+  assert.ok(bytes.length > 1024);
+  const uploaded = await fetch(`${f.endpoint}/import`, { method: 'POST',
+    headers: { 'Content-Type': 'application/x-tar' }, body: bytes });
+  assert.equal(uploaded.status, 200);
+  const imported = await uploaded.json() as { importId: string; verified: boolean; manifest: { runCount: number; sourceLinkCount: number } };
+  assert.match(imported.importId, /^[0-9a-f]{32}$/);
+  assert.equal(imported.verified, true);
+  assert.equal(imported.manifest.runCount, 1);
+  assert.equal(imported.manifest.sourceLinkCount, 1);
+
+  const restoredResponse = await fetch(`${f.endpoint}/imports/${imported.importId}/restore`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+  });
+  assert.equal(restoredResponse.status, 200);
+  const restored = await restoredResponse.json() as { restoreId: string; verified: boolean };
+  assert.match(restored.restoreId, /^[0-9a-f]{32}$/);
+  assert.equal(restored.verified, true);
+  const listResponse = await fetch(`${f.endpoint}/restores/${restored.restoreId}/runs`);
+  assert.equal(listResponse.status, 200);
+  assert.deepEqual(await listResponse.json(), [{ runId: f.record.document.runId, createdAt: f.record.createdAt,
+    evidenceStatus: 'unvalidated-model', sourceBindingStatus: 'exact-revision-bound', runKind: 'analytical-screening' }]);
+  const recordResponse = await fetch(`${f.endpoint}/restores/${restored.restoreId}/runs/${f.record.document.runId}`);
+  assert.equal(recordResponse.status, 200);
+  const restoredRecord = await recordResponse.json() as typeof f.record;
+  assert.deepEqual(restoredRecord.document, f.record.document);
+  assert.equal(restoredRecord.documentSha256, f.record.documentSha256);
+  assert.deepEqual(readFileSync(path.join(f.runRoot, 'runs.sqlite')), beforeRuns);
+  assert.deepEqual(readFileSync(path.join(f.sourceRoot, 'metadata.sqlite')), beforeSources);
 });
 
 test('HTTP rejects corrupted bundles before restore and accepts no filesystem path', async t => {
@@ -139,11 +179,17 @@ test('bundle API retains router write guards and disjoint storage roots', async 
     /separate from live/i);
   const prior = process.env.METALLIKSA_READ_ONLY;
   process.env.METALLIKSA_READ_ONLY = 'true';
-  try { assert.equal((await f.post('export')).status, 403); }
+  try {
+    assert.equal((await f.post('export')).status, 403);
+    assert.equal((await fetch(`${f.endpoint}/import`, { method: 'POST',
+      headers: { 'Content-Type': 'application/x-tar' }, body: Buffer.alloc(1024) })).status, 403);
+  }
   finally {
     if (prior === undefined) delete process.env.METALLIKSA_READ_ONLY;
     else process.env.METALLIKSA_READ_ONLY = prior;
   }
   assert.equal((await f.post('export', {}, { Origin: 'https://evil.example' })).status, 403);
+  assert.equal((await fetch(`${f.endpoint}/import`, { method: 'POST',
+    headers: { 'Content-Type': 'application/x-tar', Origin: 'https://evil.example' }, body: Buffer.alloc(1024) })).status, 403);
   assert.equal(existsSync(f.bundleRoot), false);
 });

@@ -37,6 +37,7 @@ export interface ExportedRunBundle {
 
 export interface VerifiedRunBundle extends ExportedRunBundle { verified: true }
 export interface RestoredRunBundle extends VerifiedRunBundle { restoreId: string }
+export interface ImportedRunBundle extends VerifiedRunBundle { importId: string }
 
 export interface NistProxyCampaign {
   schemaVersion: 1;
@@ -200,6 +201,61 @@ export async function restoreRunBundle(id: string, signal: AbortSignal): Promise
   exportedBundle(result, id);
   if (result.verified !== true || !bundleId(result.restoreId)) throw invalid();
   return result as RestoredRunBundle;
+}
+
+function portableBundle(value: unknown): asserts value is ImportedRunBundle {
+  if (!object(value) || !bundleId(value.importId) || value.storage !== 'server-local-directory' || value.verified !== true) throw invalid();
+  bundleManifest(value.manifest);
+}
+
+export function downloadRunBundle(id: string): void {
+  if (!bundleId(id)) throw new Error('Invalid run bundle ID.');
+  const anchor = document.createElement('a');
+  anchor.href = `/api/lpbf/runs/bundles/${id}/download`; anchor.download = `metalliksa-lpbf-run-bundle-${id}.tar`;
+  document.body.append(anchor); anchor.click(); anchor.remove();
+}
+
+export async function importRunBundle(file: File, signal: AbortSignal): Promise<ImportedRunBundle> {
+  const response = await fetch('/api/lpbf/runs/bundles/import', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-tar' }, body: file, signal, cache: 'no-store',
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const detail = object(body) && typeof body.error === 'string' ? ` ${body.error}` : '';
+    throw new Error(`Run bundle verification failed (${response.status}).${detail}`);
+  }
+  const result: unknown = await response.json();
+  portableBundle(result);
+  return result;
+}
+
+export async function restoreImportedRunBundle(id: string, signal: AbortSignal): Promise<RestoredRunBundle> {
+  if (!bundleId(id)) throw new Error('Invalid imported run bundle ID.');
+  const result: unknown = await bundleRequest(`/imports/${id}/restore`, signal);
+  if (!object(result) || !bundleId(result.bundleId) || !bundleId(result.restoreId) || result.verified !== true
+    || result.storage !== 'server-local-directory') throw invalid();
+  bundleManifest(result.manifest);
+  return result as unknown as RestoredRunBundle;
+}
+
+export async function listRestoredRuns(restoreId: string, signal: AbortSignal): Promise<RunArchiveList> {
+  if (!bundleId(restoreId)) throw new Error('Invalid restored bundle ID.');
+  const response = await fetch(`/api/lpbf/runs/bundles/restores/${restoreId}/runs`, { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error(`Restored run list failed (${response.status}).`);
+  const result: unknown = await response.json();
+  if (!Array.isArray(result) || result.some(item => !object(item) || !jobId(item.runId) || !date(item.createdAt)
+    || item.evidenceStatus !== 'unvalidated-model' || !runKind(item.runKind) || !bindingStatus(item.sourceBindingStatus))) throw invalid();
+  return result;
+}
+
+export async function getRestoredRun(restoreId: string, runId: string, signal: AbortSignal): Promise<RunRecord> {
+  if (!bundleId(restoreId) || !jobId(runId)) throw new Error('Invalid restored run identity.');
+  const response = await fetch(`/api/lpbf/runs/bundles/restores/${restoreId}/runs/${runId}`, { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error(`Restored run could not be opened (${response.status}).`);
+  const result: unknown = await response.json();
+  recordIdentity(result, runId);
+  if (!object(result) || !bindingStatus(result.sourceBindingStatus)) throw invalid();
+  return result as RunRecord;
 }
 
 export async function listRuns(signal: AbortSignal): Promise<RunArchiveList> {

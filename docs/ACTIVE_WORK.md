@@ -1638,3 +1638,22 @@ needed for the full transient report's derived Marangoni metric. Keep the
 full-transient gate unchanged. This was a source audit only: no tests or
 runtime execution were performed, so existing dirty source/test files remain
 untouched and runtime verification is still required before claiming a check.
+
+## 2026-09-25 continuation — portable run bundle flow
+
+Added streaming USTAR download/upload, isolated import verification and restore,
+and UI navigation to restored records. The restore ID is stored locally in the
+browser and can be entered again after a page reload. Existing run/source hash,
+identity, and live-store isolation checks remain in force. The path rejects
+traversal, links, duplicate entries, and oversized archives.
+
+Focused HTTP/tar tests pass **6/6**; `npx tsc --noEmit`, production build, and
+scoped `git diff --check` pass. In a separate local browser tab, the LPBF
+workflow loaded and the restore-ID control enabled only for a valid 32-digit
+hex ID. The actual file-transfer/restore UI action was not exercised; the API
+round-trip test covers download, upload, verify, restore, list, and open while
+checking that live database bytes remain unchanged.
+
+Current transport is uncompressed USTAR with a 16 GiB limit. Imported bundles
+have no retention/cleanup policy yet. Bundle integrity is evidence integrity,
+not model or experimental validation.

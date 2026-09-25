@@ -1,13 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useInputBoundTask } from '../hooks/useInputBoundTask';
-import { listRuns, getRun, previewRun, importRun, exportRunBundle, verifyRunBundle, restoreRunBundle,
+import { listRuns, getRun, getRestoredRun, listRestoredRuns, previewRun, importRun, exportRunBundle, downloadRunBundle,
+  importRunBundle, restoreImportedRunBundle, verifyRunBundle, restoreRunBundle,
   compareNistOpticalRun, listNistProxyCampaigns, previewNistProxyCampaign, createNistProxyCampaign,
   type RunPreview, type RunArchiveList, type ExportedRunBundle, type VerifiedRunBundle,
-  type RestoredRunBundle, type NistProxyCampaignPreview, type NistProxyCampaignRecord } from '../services/lpbfRunArchiveClient';
+  type RestoredRunBundle, type ImportedRunBundle, type NistProxyCampaignPreview, type NistProxyCampaignRecord } from '../services/lpbfRunArchiveClient';
 import { sourceAction, sourceCatalog } from '../services/lpbfSourceService';
 import type { RunRecord, RunSourceLink, NistOpticalCaseNumber, NistOpticalReport } from '../types/lpbfRun';
 
 const button = 'rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-sky-300 disabled:opacity-40';
+const RESTORE_ID_STORAGE_KEY = 'metalliksa.lpbf.lastRestoreId.v1';
+
+function savedRestoreId(): string {
+  try {
+    const value = window.localStorage.getItem(RESTORE_ID_STORAGE_KEY) ?? '';
+    return /^[a-f0-9]{32}$/.test(value) ? value : '';
+  } catch { return ''; }
+}
 
 export function LpbfRunArchivePanel() {
   const [runs, setRuns] = useState<RunArchiveList | null>(null);
@@ -39,11 +48,25 @@ export function LpbfRunArchivePanel() {
 
 function RunBundleControls() {
   const [bundleId, setBundleId] = useState('');
+  const [portableFile, setPortableFile] = useState<File | null>(null);
+  const [restored, setRestored] = useState<RestoredRunBundle | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [restoreSelection, setRestoreSelection] = useState(() => {
+    const restoreId = typeof window === 'undefined' ? '' : savedRestoreId();
+    return { input: restoreId, active: restoreId };
+  });
   const exportTask = useInputBoundTask<ExportedRunBundle>('run-bundle-export');
   const verifyTask = useInputBoundTask<VerifiedRunBundle>(bundleId);
   const restoreTask = useInputBoundTask<RestoredRunBundle>(bundleId);
-  const busy = !!(exportTask.pending || verifyTask.pending || restoreTask.pending);
+  const importTask = useInputBoundTask<ImportedRunBundle>(portableFile ? `${portableFile.name}:${portableFile.size}:${portableFile.lastModified}` : 'no-file');
+  const importedRestoreTask = useInputBoundTask<RestoredRunBundle>(importTask.data?.importId ?? 'no-import');
+  const busy = !!(exportTask.pending || verifyTask.pending || restoreTask.pending || importTask.pending || importedRestoreTask.pending);
   const verified = verifyTask.data?.bundleId === bundleId;
+
+  const rememberRestore = (restoreId: string) => {
+    setRestoreSelection({ input: restoreId, active: restoreId });
+    try { window.localStorage.setItem(RESTORE_ID_STORAGE_KEY, restoreId); } catch { /* Session state still keeps the restore accessible. */ }
+  };
 
   const runExport = async () => {
     const request = exportTask.begin('export');
@@ -65,19 +88,51 @@ function RunBundleControls() {
   const runRestore = async () => {
     if (!verified) return;
     const request = restoreTask.begin('restore');
-    try { request.publish(await restoreRunBundle(bundleId, request.signal)); }
+    try {
+      const result = await restoreRunBundle(bundleId, request.signal);
+      if (request.isCurrent()) rememberRestore(result.restoreId);
+      request.publish(result);
+    }
     catch (error) { request.fail(error); }
     finally { request.finish(); }
   };
 
+  const runImport = async () => {
+    if (!portableFile) return;
+    const request = importTask.begin('verify-import');
+    try { request.publish(await importRunBundle(portableFile, request.signal)); }
+    catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  const runImportedRestore = async () => {
+    const imported = importTask.data;
+    if (!imported) return;
+    const request = importedRestoreTask.begin('restore-import');
+    try {
+      const result = await restoreImportedRunBundle(imported.importId, request.signal);
+      if (request.isCurrent()) { setRestored(result); rememberRestore(result.restoreId); }
+      request.publish(result);
+    } catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  const download = () => {
+    if (!exportTask.data) return;
+    try { downloadRunBundle(exportTask.data.bundleId); setDownloadError(null); }
+    catch (error) { setDownloadError(error instanceof Error ? error.message : 'Bundle download failed.'); }
+  };
+
   return <div className="space-y-3 border-t border-slate-700 pt-4" aria-label="Run bundle controls">
-    <h4 className="font-medium">Server-local bundle</h4>
-    <p className="text-sm text-slate-400">Export a copy on this server, verify its stored bytes, then restore a separate copy. Restoring does not replace the live archive. This interface does not transfer files to or from your device.</p>
+    <h4 className="font-medium">Portable run evidence bundle</h4>
+    <p className="text-sm text-slate-400">Create and download a portable copy, then upload it on another installation to verify and restore it into an isolated archive. The live run archive remains unchanged.</p>
     <p className="text-xs text-amber-200">Bundle integrity does not validate the model. Runs without archived source links remain legacy-unlinked.</p>
-    <button type="button" className={button} disabled={busy} onClick={() => void runExport()}>Export server-local bundle</button>
+    <button type="button" className={button} disabled={busy} onClick={() => void runExport()}>Create bundle on this installation</button>
     {exportTask.pending && <p role="status">Creating bundle on server…</p>}
     {exportTask.error && <p role="alert" className="text-rose-300">{exportTask.error}</p>}
     {exportTask.data && <p role="status" className="text-emerald-200">Bundle created: {exportTask.data.bundleId}. {exportTask.data.manifest.runCount} runs, {exportTask.data.manifest.artifactCount} run artifacts, {exportTask.data.manifest.sourceLinkCount} source links.</p>}
+    {exportTask.data && <button type="button" className={button} disabled={busy} onClick={download}>Download portable .tar bundle</button>}
+    {downloadError && <p role="alert" className="text-rose-300">{downloadError}</p>}
     <label className="block text-sm">Server-local bundle ID
       <input type="text" aria-label="Server-local bundle ID" spellCheck={false} autoComplete="off" maxLength={32}
         className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-sky-300"
@@ -93,16 +148,71 @@ function RunBundleControls() {
     {restoreTask.pending && <p role="status">Restoring to an isolated server directory…</p>}
     {restoreTask.error && <p role="alert" className="text-rose-300">{restoreTask.error}</p>}
     {restoreTask.data && <p role="status" className="text-emerald-200">Verified copy restored on this server (restore ID: {restoreTask.data.restoreId}). The live archive is unchanged.</p>}
+    <div className="space-y-2 border-t border-slate-700 pt-3">
+      <h5 className="font-medium">Open an isolated restored archive</h5>
+      <label className="block text-sm">Restore ID
+        <input type="text" aria-label="Restore ID" spellCheck={false} autoComplete="off" maxLength={32}
+          className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-sky-300"
+          value={restoreSelection.input} onChange={event => setRestoreSelection(current => ({ ...current, input: event.target.value.trim() }))}
+          placeholder="32-character restore ID" />
+      </label>
+      <button type="button" className={button} disabled={busy || !/^[a-f0-9]{32}$/.test(restoreSelection.input)}
+        onClick={() => {
+          const restoreId = restoreSelection.input;
+          setRestoreSelection(current => ({ ...current, active: restoreId }));
+          try { window.localStorage.setItem(RESTORE_ID_STORAGE_KEY, restoreId); } catch { /* Session state still keeps the restore accessible. */ }
+        }}>Open restored archive</button>
+    </div>
+    {restoreSelection.active && <RestoredBundleRuns key={restoreSelection.active} restoreId={restoreSelection.active} />}
+    <div className="space-y-2 border-t border-slate-700 pt-3">
+      <h5 className="font-medium">Restore a portable bundle</h5>
+      <label className="block text-sm">Run bundle file
+        <input type="file" aria-label="Run bundle file" accept=".tar,application/x-tar" className="mt-2 block w-full text-sm"
+          onChange={event => { setPortableFile(event.currentTarget.files?.[0] ?? null); setRestored(null); }} />
+      </label>
+      <button type="button" className={button} disabled={busy || !portableFile} onClick={() => void runImport()}>Upload and verify bundle</button>
+      {importTask.pending && <p role="status">Uploading bundle and checking file hashes, run identities, and source revisions…</p>}
+      {importTask.error && <p role="alert" className="text-rose-300">{importTask.error}</p>}
+      {importTask.data && <p role="status" className="text-emerald-200">Portable bundle verified: {importTask.data.manifest.runCount} runs, {importTask.data.manifest.artifactCount} run artifacts, {importTask.data.manifest.sourceLinkCount} source links.</p>}
+      <button type="button" className={button} disabled={busy || !importTask.data} onClick={() => void runImportedRestore()}>Restore verified bundle into isolated archive</button>
+      {importedRestoreTask.pending && <p role="status">Restoring a separate, verified copy…</p>}
+      {importedRestoreTask.error && <p role="alert" className="text-rose-300">{importedRestoreTask.error}</p>}
+      {restored && <p role="status" className="text-emerald-200">Restored copy is ready to open above (restore ID: {restored.restoreId}).</p>}
+    </div>
   </div>;
 }
 
-function ArchivedRunRecord({ runId }: { runId: string }) {
+function RestoredBundleRuns({ restoreId }: { restoreId: string }) {
+  const [runs, setRuns] = useState<RunArchiveList | null>(null);
+  const [runId, setRunId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    listRestoredRuns(restoreId, controller.signal).then(items => {
+      if (!controller.signal.aborted) { setRuns(items); setRunId(items[0]?.runId ?? ''); }
+    }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Restored records unavailable.'); });
+    return () => controller.abort();
+  }, [restoreId]);
+  return <div className="space-y-2 rounded-lg border border-emerald-500/30 p-3">
+    <h5 className="font-medium text-emerald-200">Restored bundle · {restoreId}</h5>
+    {error && <p role="alert" className="text-rose-300">{error}</p>}
+    {runs === null && !error ? <p role="status">Loading restored run records…</p>
+      : runs?.length === 0 ? <p>No run records are present in this bundle.</p>
+      : runs && <>
+        <label className="block text-sm">Open a restored run<select aria-label="Open a restored run" className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2"
+          value={runId} onChange={event => setRunId(event.target.value)}>{runs.map(item => <option key={item.runId} value={item.runId}>{item.runId.slice(0, 8)}… · {item.runKind} · {item.createdAt}</option>)}</select></label>
+        {runId && <ArchivedRunRecord key={runId} restoreId={restoreId} runId={runId} />}
+      </>}
+  </div>;
+}
+
+function ArchivedRunRecord({ runId, restoreId }: { runId: string; restoreId?: string }) {
   const task = useInputBoundTask<RunRecord>(runId);
   
   const run = async (action: 'current') => {
     const request = task.begin(action);
     try {
-      request.publish(await getRun(runId, request.signal));
+      request.publish(restoreId ? await getRestoredRun(restoreId, runId, request.signal) : await getRun(runId, request.signal));
     } catch (error) { request.fail(error); }
     finally { request.finish(); }
   };
@@ -126,7 +236,7 @@ function ArchivedRunRecord({ runId }: { runId: string }) {
       <pre className="text-xs bg-slate-950 p-3 overflow-auto mt-2 text-slate-300">{JSON.stringify(record.document, null, 2)}</pre>
       </details>
     </div>}
-    {record && <NistOpticalComparison record={record} />}
+    {record && !restoreId && <NistOpticalComparison record={record} />}
   </div>;
 }
 

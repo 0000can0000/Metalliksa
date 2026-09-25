@@ -243,6 +243,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   const [estimateError,setEstimateError] = useState("");
   const [error,setError] = useEngineeringField("error");
   const [busy,setBusy] = useEngineeringField("busy");
+  const [repeatExecution,setRepeatExecution] = useState(false);
   const [cancelling,setCancelling] = useState(false);
   const [elapsed,setElapsed] = useState(0);
   const [fieldTime,setFieldTime] = useState<number>();
@@ -254,9 +255,11 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
   const [width,setWidth] = useEngineeringField("width"); const [depth,setDepth] = useEngineeringField("depth"); const [source,setSource] = useEngineeringField("source");
   const signature = JSON.stringify([input,settings,mode,material,properties,measurements,width,depth,source,specimen,uncertainty,holdout,sharedStrategy]);
   const submittedSignature = useLpbfEngineeringStore(s=>s.submittedSignature);
+  const canRepeatCurrentInput = job?.status === "completed" && submittedSignature === signature;
   const cancelledJob = useRef("");
   const [resultSignature] = useEngineeringField("resultSignature");
   const active = job?.status === "queued" || job?.status === "running";
+  useEffect(()=>{setRepeatExecution(false);},[signature]);
   useEffect(()=>{if(!active)return;setElapsed(0);const start=Date.now();const timer=setInterval(()=>setElapsed((Date.now()-start)/1000),1000);return()=>clearInterval(timer);},[active,job?.id]);
   const cancel=async()=>{if(!job || cancelling)return;setCancelling(true);try{const next=await simulationApi.cancel(job.id);if(next.status!=="queued"&&next.status!=="running")cancelledJob.current=job.id;setJob(next);}catch(e){setError(e instanceof Error?e.message:"Cancellation failed");}finally{setCancelling(false);}};
   const materialEvidence=caps?.materials.find(m=>m.name===(material||input.material));
@@ -344,7 +347,7 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
         if(uncertainty!==""&&(!Number.isFinite(Number(uncertainty))||Number(uncertainty)<0))throw new Error("Measurement uncertainty must be nonnegative in µm.");
         p.measurements=[{width_um:Number(width),depth_um:Number(depth),source:source+(specimen?` · ${specimen}`:""),processVector:currentProcessVectorFromInput(p,p.strategy||resolvedStrategy),...(uncertainty!==""?{uncertainty_um:{width_um:Number(uncertainty),depth_um:Number(uncertainty)}}:{}),...(holdout!=="unknown"?{independentHoldout:holdout==="yes"}:{})}];
       }
-      const next=await simulationApi.submit(p);useLpbfEngineeringStore.setState({job:next,submittedSignature:signature,submittedInput:p,resultSignature:next.status==="completed"?signature:""});setFieldTime(undefined);resumeEngineeringJob();
+      const next=await simulationApi.submit(p,repeatExecution&&canRepeatCurrentInput?{executionScope:'repeat'}:undefined);useLpbfEngineeringStore.setState({job:next,submittedSignature:signature,submittedInput:p,resultSignature:next.status==="completed"?signature:""});setFieldTime(undefined);setRepeatExecution(false);resumeEngineeringJob();
     }catch(e){setError(e instanceof Error?e.message:"Submission failed");}finally{setBusy(false);}
   };
   const download=()=>{if(!r)return;const url=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download=`lpbf-${job.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
@@ -379,6 +382,18 @@ export function LpbfEngineeringSimulation({input:providedInput}:{input:Simulatio
     ] as const).map(([key,shared,label,unit,min,max])=><label key={key} className="text-xs text-slate-400">{label} · {unit}<input aria-label={`${label} (${unit})`} className={`${inputClass} mt-1 text-base tabular-nums`} type="number" min={min} max={max} step="any" aria-invalid={!Number.isFinite(input[key])||input[key]<min||input[key]>max} value={input[key]} onChange={e=>{const value=e.currentTarget.valueAsNumber;if(Number.isFinite(value))updateProcess({[shared]:value});}}/><span className="block mt-1 text-[10px]">{min}–{max} {unit} · shared</span>{(input[key]<min||input[key]>max)&&<span className="block text-xs text-red-300">Enter {min}–{max} {unit}.</span>}<button type="button" className="mt-1 text-xs underline underline-offset-4" onClick={()=>updateProcess({[shared]:initialProcess.current[key]})}>Reset {label.toLowerCase()} · {initialProcess.current[key]} {unit}</button><details className="mt-1"><summary className="text-[10px] cursor-pointer">Parameter guidance</summary><span className="text-xs leading-5">{label} updates the shared process vector. Default: value on opening. Power and geometry change thermal response; speed and layer thickness can change simulated duration and compute cost. See preflight for this combination.</span></details></label>)}</div>
     </details>
     <div className="mt-5 flex flex-wrap items-center gap-3"><button className="rounded-lg border border-slate-400/50 bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-white disabled:opacity-40" disabled={busy||active||missingMaterial||invalidControls||invalidProcess} onClick={submit}>{busy?"Submitting…":"Run simulation"}</button>{r&&<button className="rounded-lg border border-slate-600 px-4 py-2.5 text-sm hover:bg-slate-800" onClick={download}>Export result JSON</button>}<span className="text-xs text-slate-400">{invalidControls||invalidProcess?"Correct invalid parameters to run.":active?"Worker active · controls remain available for the next run.":"Execution runs in the worker queue."}</span></div>
+    <div className="rounded-xl border border-slate-700/50 bg-slate-900/30 p-4">
+      <label className="flex items-start gap-3 text-sm text-slate-200">
+        <input aria-label="Create a fresh computational run record" aria-describedby="repeat-run-help"
+          className="mt-1 accent-sky-400" type="checkbox" checked={repeatExecution}
+          disabled={busy||active||!canRepeatCurrentInput}
+          onChange={event=>setRepeatExecution(event.currentTarget.checked)}/>
+        <span>Create a fresh computational run record</span>
+      </label>
+      <p id="repeat-run-help" className="ml-6 mt-2 text-xs leading-5 text-slate-400">
+        Available after this exact input finishes. It reruns the same LPBF inputs to create a distinct run ID; it does not represent an experimental or physical repeat. The default submission remains deduplicated.
+      </p>
+    </div>
     {(mode==="standard"||mode==="calibration")&&<p className="text-xs text-slate-400" role="status">{estimateError||(estimate?`Preflight: ${fmt(estimate.cells)} cells · ${fmt(estimate.spacing_m*1e6)} µm · ~${fmt(estimate.minimumEstimatedSteps)} estimated steps · ~${fmt(estimate.workingMemoryEstimate_MB)} MB working arrays · ${estimate.runs} solve(s). ${estimate.exceedsCellBudget?"Cell budget exceeded.":estimate.exceedsStepBudget?"Requested timestep exceeds the 250,000-step budget. Increase timestep or shorten the process history.":estimate.runtimeEstimate}`:"Estimating resources…")}</p>}
     {r&&<>
       {r.fallbackReason&&<p className="text-sm text-amber-200">{r.fallbackReason}</p>}

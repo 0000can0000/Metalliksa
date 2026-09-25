@@ -1554,3 +1554,14 @@ IN625 CUDA path at bounded bare-plate screening; CPU/CUDA parity for the four
 legacy registry alloys is numerical implementation parity only. Do not admit a
 new generic transient alloy or broaden scientific CUDA qualification until the
 data gate passes.
+
+## 2026-09-25 continuation — NIST measured-profile source correction
+
+The primary-source follow-up refined the earlier “no measured profile found”
+wording: NIST AMS 100-67 Fig. 7 includes normalized measured signal-intensity
+traces and central x/y sections. This is a published plotted 1D profile, not a
+raw 2D camera array or an identified data artifact tied to the exact AMB2022-03
+Case 0 67 µm / 5° scan; no profile-byte checksum is locally pinned. The report's
+3.3 µm (5.2%, k=1) uncertainty applies to spot diameter, not profile intensity.
+Keep the current gate closed until case-specific profile bytes and their
+D4σ/model mapping are established. Source: [NIST AMS 100-67](https://doi.org/10.6028/NIST.AMS.100-67).

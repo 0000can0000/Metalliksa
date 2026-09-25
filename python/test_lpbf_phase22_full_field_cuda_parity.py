@@ -55,8 +55,8 @@ class Phase22FullFieldCudaParity(unittest.TestCase):
         wp.config.use_precompiled_headers = False
         cpu = _run("cpu")
         cuda = _run("cuda:0")
-        self.assertEqual(cpu["steps"], 5)
-        self.assertEqual(cuda["steps"], 5)
+        self.assertGreater(cpu["steps"], 0)
+        self.assertEqual(cpu["steps"], cuda["steps"])
 
         cpu_fields = cpu["diagnostic_fields"]
         cuda_fields = cuda["diagnostic_fields"]

@@ -1088,3 +1088,28 @@ new solver revision only for a reproduced defect, preserve old model/hash
 identity, then compare CPU/GPU on identical frozen inputs. Do not present
 screening or numerical parity as experimental validation. P4/P5/P6/P7 gates
 remain as recorded.
+
+# 2026-09-25 — Phase 22 parity repair and transient verification gap
+
+Both the Phase 22 full-field and multistep CUDA parity tests hardcoded five
+steps, while the adaptive stability rule produces 19 for the frozen 6 µs case.
+The stale assertions prevented parity checks from running. They now require
+positive step count and equal CPU/CUDA count, then execute the existing fixed
+field/pressure/surface tolerances.
+
+Verification: six focused Phase 22 suites passed **42/42** on the NVIDIA RTX
+4060, including manufactured thermal and pressure fields, energy closure, and
+full-field thermal/hydrodynamic parity. Legacy Phase 21 focused tests passed
+**6/6**. The larger CPU engineering/heat-source/core-contract command reached
+62 tests but had **8 errors and 2 skips**; errors came from SQLite temp DB
+creation/cleanup permission failures, so report it as incomplete.
+
+Independent source review found no reproduced bug in production CPU
+`enthalpy-fv-6` or the reviewed Phase 22 operators. This does not qualify their
+screening/prototype assumptions or experimental validity. Known boundary: the
+CPU temporal refinement study uses a test-local update loop rather than the
+production transient stepping path. Next: create an independent manufactured
+transient check that exercises production stepping, while preserving solver
+identity for any correction and only opening a new model revision for a
+reproduced physics defect. The current user authorizes scientifically justified
+Python solver repair/replacement. P4/P5/P6/P7 gates remain unchanged.

@@ -13,7 +13,7 @@ import warp as wp
 from lpbf_transient_3d_gpu import TransientEnthalpy3DGPU
 
 
-# Frozen inputs: small 5^3 mesh, 10 um spacing, five timesteps, solid initial
+# Frozen inputs: small 5^3 mesh, 10 um spacing, 6 us duration, solid initial
 # condition and a centered 25 W stationary path. This should exercise thermal
 # evolution into the phase-change range as well as the coupled flow update.
 CASE = {
@@ -52,7 +52,7 @@ def _run(device):
 
 @unittest.skipUnless(wp.get_cuda_device_count() > 0, "Warp CUDA device unavailable")
 class Phase22MultistepCudaParity(unittest.TestCase):
-    def test_five_step_production_path_cpu_cuda_parity(self):
+    def test_production_path_cpu_cuda_parity(self):
         # NVRTC's PCH temp directory is ACL-blocked on this Windows host; the
         # regular compilation path is otherwise supported by Warp.
         wp.config.use_precompiled_headers = False
@@ -64,7 +64,7 @@ class Phase22MultistepCudaParity(unittest.TestCase):
 
         for result, expected_device in ((cpu, "cpu"), (cuda, cuda_device)):
             self.assertEqual(result["device"], expected_device)
-            self.assertEqual(result["steps"], 5)
+            self.assertGreater(result["steps"], 0)
             self.assertEqual(result["pressure_projection_solver"],
                              "preconditioned_conjugate_gradient")
             self.assertEqual(result["pressure_projection_status"], "converged")
@@ -83,6 +83,8 @@ class Phase22MultistepCudaParity(unittest.TestCase):
                 "pressure_projection_post_divergence_max_s_inv",
             ):
                 self.assertTrue(np.isfinite(result[field]), field)
+
+        self.assertEqual(cpu["steps"], cuda["steps"])
 
         self.assertLessEqual(
             abs(cpu["max_temperature_K"] - cuda["max_temperature_K"]),

@@ -357,3 +357,30 @@ LPBF transient cores remain subject to the existing documented physics and
 validation gates. Next: integrate or explicitly reject this contract at the
 archive/API boundary, then perform a focused numerical defect audit of the
 CPU-reference and Phase 22 GPU engines before choosing a bounded correction.
+
+# 2026-09-25 — Phase 22 parity-test repair and engine audit
+
+The CUDA full-field and multistep parity tests pinned an obsolete five-step
+count. The current adaptive stability limit executes 19 steps for the frozen
+6 µs case; both tests stopped before their CPU/CUDA acceptance checks. Removed
+the stale fixed count and now require positive/equal backend step counts before
+comparing the fields.
+
+Verification: Phase 22 thermal/hydrodynamic, energy-ledger, manufactured
+thermal/pressure, multistep parity, and full-field parity suites: **42/42 PASS**
+on NVIDIA RTX 4060 `cuda:0`. The full-field test compared temperature, enthalpy,
+velocity, pressure, and surface fields. Legacy Phase 21 focused physics tests:
+**6/6 PASS**. Broader CPU engineering/heat-source/core-contract run: 62 tests,
+8 errors, 2 skips; the errors were SQLite database creation/cleanup permission
+failures under Windows temporary directories, so the broad suite is not a PASS.
+
+Read-only CPU core audit found conservative shared-face fluxes, manufactured
+spatial convergence, enthalpy/latent-heat checks, and bounded energy closure;
+no reproducible defect in `enthalpy-fv-6` was demonstrated. Phase 22 operators
+likewise showed no reproducible defect in this reviewed scope. Both remain
+screening/prototype models with documented missing experimental validation;
+Phase 22 free-surface Marangoni/recoil conditions are heuristic boundary laws.
+A remaining CPU verification gap is production-path temporal convergence: the
+current temporal refinement test has a separate local update loop. Next, design
+an independent transient manufactured check through the production stepping
+path, then continue the physics/data/API goal without relaxing P4/P5/P6/P7 gates.

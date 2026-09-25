@@ -120,9 +120,10 @@ class MultiTrackThermalEngine:
         diff_denom = (4.0 * math.pi * alpha * dt_s) ** 1.5
         heat_cap = rho * cp
 
-        # Kernel value
+        # Surface Green's function per joule multiplied by the impulse energy.
         kernel = (2.0 / (heat_cap * diff_denom)) * math.exp(-r2 / (4.0 * alpha * dt_s))
-        return kernel
+        impulse_energy_J = absorbed_power_W * dt_s
+        return kernel * impulse_energy_J
 
     def evaluate_track_temperature_rise(
         self,

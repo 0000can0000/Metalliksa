@@ -39,6 +39,15 @@ class TestPhase17ThermalAccumulation(unittest.TestCase):
         self.assertGreater(k1, k2)
         self.assertGreater(k1, 0.0)
 
+    def test_green_function_temperature_scales_with_impulse_energy(self):
+        args = dict(dx_mm=0.1, dy_mm=0.0, dz_mm=0.0, dt_s=0.005)
+        zero = self.engine.green_function_point_temperature(**args, absorbed_power_W=0.0)
+        one = self.engine.green_function_point_temperature(**args, absorbed_power_W=100.0)
+        two = self.engine.green_function_point_temperature(**args, absorbed_power_W=200.0)
+        self.assertEqual(zero, 0.0)
+        self.assertGreater(one, 0.0)
+        self.assertAlmostEqual(two, 2.0 * one, places=12)
+
     def test_hatch_sequence_accumulation(self):
         """Verify that sequential tracks accumulate baseline preheating drift."""
         config = HatchProcessConfig(

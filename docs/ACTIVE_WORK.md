@@ -19,10 +19,16 @@ this numerical study. The exact 30 W, 1200 mm/s, 80 µm study completed all thre
 levels; energy relative error was 3.04e-16. Width, depth and volume trends were
 inconclusive, so this is not convergence acceptance or experimental validation.
 
-Focused regressions (three tests) passed. Broad package, browser, and UI checks
-have not been rerun after this repair. Next: audit the supported mesh-level
-window and progress reporting, then continue the frozen P4 numerical/error
-analysis without relabeling inconclusive results as validation.
+The convergence panel now discloses the layer-aligned CPU-reference protocol,
+requested versus executed backend, and cells-per-layer sequence. The API type
+also preserves the execution-input hash. Python regressions and TypeScript
+typecheck passed. The focused TSX test still cannot start because esbuild
+returns `spawn EPERM`; no browser verification was done. P4 review confirms the
+latest conforming study is not a substitute for the frozen P4 gate. Next:
+investigate tied peak-time selection as a diagnostic-only sensitivity, then
+freeze any new numerical protocol before running it. Keep the 80 W frozen P4
+status failed and the 75 W contour study inconclusive. P5 source/operator and
+IN625 full-transient data gates also remain open.
 
 ## Continuation checkpoint — P8 archive acceptance and physics continuation (2026-09-25)
 

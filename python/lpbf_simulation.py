@@ -643,6 +643,7 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
                     protocol="layer-aligned-three-grid-cpu-reference-v1",
                     gridPolicy="layer-conforming",
                     requestedBackend=requested_backend,
+                    executionBackend="reference",
                     cellsPerLayer=[spec["cellsPerLayer"] for spec in level_specs],
                     requestedMesh_um=requested_p["mesh_um"])
             if bare:

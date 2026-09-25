@@ -1755,3 +1755,18 @@ Verification: three focused regressions passed (standard three-grid result,
 failed fine-level preservation/backend provenance, and layer-aligned source
 capture). The exact end-to-end vector completed. Broader package and UI checks
 were not rerun after this change.
+
+## Mesh-study backend disclosure (2026-09-25)
+
+The layer-aligned protocol result now records `executionBackend=reference` in
+addition to the requested backend, cell count per layer, and the separate
+execution-input hash. The convergence panel displays this distinction (for
+example: requested backend `automatic`, execution backend `reference`) so an
+automatic request cannot be mistaken for GPU/OpenFOAM execution. The
+`SimulationResult` type preserves the top-level requested backend and
+`provenance.executionInputHash`.
+
+Verification: the targeted Python failed-level/provenance regression passed and
+`npm run lint` passed. `npm exec -- tsx tests/lpbf-presentation.test.tsx` could
+not start: esbuild child process failed with `spawn EPERM`; this UI test is
+unverified. No browser check was run.

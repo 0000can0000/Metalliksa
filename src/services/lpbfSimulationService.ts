@@ -75,6 +75,7 @@ export interface SimulationResult {
       overlapDepth_um: number | null; maximumHatch_um: number | null; riskScreened: boolean | null; reason: string | null };
   };
   schemaVersion: 1; requestedMode: SimulationMode; effectiveMode: SimulationMode;
+  requestedBackend?: SimulationInput["backend"];
   solver: { id: string; version: string; openfoam: string | null };
   settings: SimulationInput; confidence: "low"; validationStatus: "unvalidated";
   productionReady: false; label: string; fallbackReason: string | null;
@@ -89,7 +90,7 @@ export interface SimulationResult {
   resourceEstimate?: ResourceEstimate;
   confidenceReason?: string;
   scanPath?: { start_s: number; end_s: number; layer: number; track?: number; start?: number[]; end?: number[] }[];
-  provenance?: { createdAt: string; inputHash: string; implementationHash: string; solverBinaryHash: string | null; runtime_s?: number };
+  provenance?: { createdAt: string; inputHash: string; executionInputHash?: string; implementationHash: string; solverBinaryHash: string | null; runtime_s?: number };
   massBalance?: { initial_kg: number; deposited_kg: number; final_kg: number; relativeError: number; scope: string };
   phaseAudit?: { liquidVolume_m3: number; solidVolume_m3: number; activeVolume_m3: number; minFraction: number; maxFraction: number; scope: string };
   fieldSeries?: "field-series.json" | null;

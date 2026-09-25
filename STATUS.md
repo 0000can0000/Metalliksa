@@ -546,3 +546,10 @@ Do not alter the existing acceptance thresholds or relabel the study as passed.
 - `evaluate_track_temperature_rise` now doubles composite-midpoint resolution from 8 until consecutive accumulated results agree within 0.1%, bounded at 512 pulses per prior track; non-convergence raises an explicit error. A regression pins the converged near-wake value within 0.2 K.
 - Verification: `python -m unittest test_phase17 -v` **7/7 PASS**; `py_compile` and scoped `git diff --check` **PASS**. This improves numerical integration of the existing point-source model only. Centerline point pulses omit Gaussian beam footprint in accumulated residual fields, Rosenthal spot rise remains a screening approximation, and no experimental validation is implied.
 - Next: continue the bounded engine audit and source-matched workflow; keep NIST optical comparison unavailable until the observation operator and process/source traceability gates are met.
+
+## 2026-09-25 — Solidification-front search-bound rejection
+
+- A manufactured temperature field exposed a false-root defect: when the liquidus is still exceeded at the requested search-depth boundary, `_binary_z_liquidus` returned that boundary as the front. The reproduced 8 µm domain then produced 9 false front points with median `G≈1.005e6 K/m` and `R≈0.995 m/s`, although the true crossing lay at 960 µm.
+- The mapper now rejects an unbracketed root (`None` at the front-map level). Equality at the upper boundary remains a valid bracket endpoint.
+- Verification: `python -m unittest test_lpbf_solidification -v` **6 PASS, 1 OpenFOAM-only skip**; `py_compile` and scoped `git diff --check` **PASS**. This prevents out-of-domain front values from entering G/R metrics; it is a manufactured numerical contract, not experimental validation.
+- Next: continue bounded engine audits and workflow gates; do not interpret screening G/R values as experiment-matched measurements.

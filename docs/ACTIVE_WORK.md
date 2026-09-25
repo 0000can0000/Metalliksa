@@ -1440,3 +1440,22 @@ footprint, and the Rosenthal spot-rise relation remains a screening estimate.
 No experimental validation is implied. Next continue the bounded engine audit
 and source-matched workflow while leaving the NIST optical comparison
 unavailable until the source and observation gates are satisfied.
+
+## 2026-09-25 continuation — reject unbracketed solidification fronts
+
+A manufactured field exposed a false-front defect in `_binary_z_liquidus`: if
+temperature remained above liquidus at the configured search-depth ceiling,
+the helper returned that ceiling as if it were a root. For `Tliq=1700 K`,
+`T=1700+100+1e6*x-1e5*z`, and an 8 µm search depth, the old mapper reported 9
+front points with median `G≈1.005e6 K/m` and `R≈0.995 m/s`; the crossing was
+actually at 960 µm, outside the domain.
+
+An unbracketed upper boundary now returns the no-front sentinel, while an exact
+liquidus crossing on the boundary remains accepted. Regressions cover both
+cases. `python -m unittest test_lpbf_solidification -v` passed **6 tests**
+with **1 OpenFOAM-only skip**; Python compilation and scoped `git diff --check`
+passed. This is a manufactured search-bound correction only, not experimental
+validation.
+
+Next continue bounded engine review and complete source-matched workflow
+evidence; screening G/R remains distinct from measured solidification data.

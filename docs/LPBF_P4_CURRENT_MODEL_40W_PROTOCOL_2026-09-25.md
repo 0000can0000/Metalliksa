@@ -1,7 +1,7 @@
 # Current-model IN718 CPU refinement protocol — 40 W
 
-Protocol ID: `lpbf-p4-current-layer-conforming-40w-2026-09-25-v1`  
-Scenario: `docs/LPBF_P4_CURRENT_MODEL_40W_SCENARIO_2026-09-25.json`  
+Protocol ID: `lpbf-p4-current-layer-conforming-40w-2026-09-25-v1`
+Scenario: `docs/LPBF_P4_CURRENT_MODEL_40W_SCENARIO_2026-09-25.json`
 Report: `docs/LPBF_P4_CURRENT_MODEL_40W_2026-09-25.json`
 
 ## Purpose and separation

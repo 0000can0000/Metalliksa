@@ -533,3 +533,9 @@ Do not alter the existing acceptance thresholds or relabel the study as passed.
 - Code/test changes committed locally as `c55c9e1` (`Fix LPBF melt pool input and irradiance contracts`).
 - Wavelength follow-up: no blue absorptivity property exists in the indexed material snapshots; the solver treated every non-Green token as IR. The solver now only accepts the explicit 1064 nm/IR and 515 nm/Green property pairs, rejects Blue/unknown wavelengths, and both affected controls mark Blue unavailable. Tests cover Blue rejection and the IN718 Green absorptivity path.
 - Next: continue the targeted audit of remaining bounded physics engines and keep the NIST optical comparison unavailable until its case-specific coupling/source mapping is reconciled and source bytes are inspected.
+
+## 2026-09-25 — Multi-track thermal impulse kernel repair
+
+- `MultiTrackThermalEngine.green_function_point_temperature()` computed a surface Green's function per joule but returned it as a temperature rise, ignoring its `absorbed_power_W` input. Reproduction returned the same `3408.0125` for 0, 100, and 200 W. It now multiplies the Green's function by `Q = absorbed_power_W * dt_s`; the hatch-sequence integration already applied this energy factor at its caller and is unchanged.
+- Verification: `python -m unittest test_phase17 -v` **6/6 PASS**, including zero response at 0 W and linear response to doubled impulse energy; `py_compile` and scoped `git diff --check` **PASS**. This fixes an isolated analytical-kernel contract; the multi-track model remains a screening approximation and is not experimentally validated.
+- Code/test commit: `bb8087e` (`Fix impulse energy in LPBF thermal kernel`). Next: continue bounded engine audits, then resume source-matched workflow and NIST evidence reconciliation.

@@ -1411,3 +1411,9 @@ Verification: solver input/irradiance/wavelength regression **5/5 PASS**; melt-p
 Next: audit remaining bounded physics engines; preserve failed/inconclusive convergence and NIST evidence gates.
 
 Wavelength follow-up: no `absorptivity_Blue` material property was found in the indexed Python material records, while the UI exposes `Blue_450nm`; the previous selector treated every non-Green wavelength as IR. The engine now accepts only IR_1064nm and Green_515nm where corresponding material properties exist, and the Blue options in both thermal-map screens are disabled with an explicit reason. The same focused suite asserts Blue rejection and the Inconel 718 Green absorptivity path.
+
+## 2026-09-25 continuation — multi-track impulse-energy kernel
+
+The isolated `green_function_point_temperature()` returned the point-source Green's function per joule as though it were a temperature rise; varying absorbed power left its result unchanged (0/100/200 W all returned 3408.0125 for the reproduced input). It now multiplies by the instantaneous heat impulse `Q = P_abs * dt`. The production hatch-sequence integration already applied `P_abs * dt_sub` to its kernel and was not changed. `python -m unittest test_phase17 -v` passes **6/6**, including zero power → zero rise and exact linearity with impulse energy; `py_compile` and scoped diff check pass. This remains an analytical screening model, not experimental validation.
+
+Code/test commit: `bb8087e`. Continue targeted engine review and keep NIST experimental comparison blocked by source/condition traceability until resolved.

@@ -206,12 +206,18 @@ def sample_thermal_slice(eval_T, axis_a, axis_b, na, nb):
 
 
 def _normalize_heat_source(heat_source: str | None) -> str:
-    key = (heat_source or "rosenthal").strip().lower().replace("_", "-")
+    if heat_source is None or (isinstance(heat_source, str) and not heat_source.strip()):
+        return "rosenthal"
+    if not isinstance(heat_source, str):
+        raise ValueError(f"Unsupported LPBF heat source: {heat_source!r}")
+    key = heat_source.strip().lower().replace("_", "-")
+    if key in ("rosenthal", "rosenthal-screening", "rosenthal-screening-v1"):
+        return "rosenthal"
     if key in ("eagar-tsai", "eagar-tsai-v1", "et", "eager-tsai"):
         return "eagar-tsai"
     if key in ("goldak", "goldak-v1", "goldak-double-ellipsoid"):
         return "goldak"
-    return "rosenthal"
+    raise ValueError(f"Unsupported LPBF heat source: {heat_source!r}")
 
 
 def calculate_meltpool_physics(
@@ -237,6 +243,7 @@ def calculate_meltpool_physics(
     """
     if not isinstance(material_name, str) or not material_name.strip():
         raise ValueError(f"Unsupported LPBF material identity: {material_name!r}")
+    source = _normalize_heat_source(heat_source)
     base = thermal_props(material_name) or SECONDARY_THERMOPHYSICAL_DB.get(material_name)
     if base is None:
         raise ValueError(f"Unsupported LPBF material identity: {material_name!r}")
@@ -244,9 +251,29 @@ def calculate_meltpool_physics(
     if prop_overrides:
         props.update(prop_overrides)
     
-    P_laser = max(10.0, float(laser_power_W))
-    v_scan = max(10.0, float(scan_speed_mm_s)) * 1e-3  # m/s
-    d_beam = max(10.0, float(beam_diameter_um)) * 1e-6  # m
+    process_values = {}
+    for name, value in (
+        ("laser_power_W", laser_power_W),
+        ("scan_speed_mm_s", scan_speed_mm_s),
+        ("beam_diameter_um", beam_diameter_um),
+        ("layer_thickness_um", layer_thickness_um),
+        ("hatch_spacing_um", hatch_spacing_um),
+    ):
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must be finite and positive") from exc
+        if not math.isfinite(numeric_value) or numeric_value <= 0:
+            raise ValueError(f"{name} must be finite and positive")
+        process_values[name] = numeric_value
+
+    P_laser = process_values["laser_power_W"]
+    scan_speed_mm_s = process_values["scan_speed_mm_s"]
+    beam_diameter_um = process_values["beam_diameter_um"]
+    layer_thickness_um = process_values["layer_thickness_um"]
+    hatch_spacing_um = process_values["hatch_spacing_um"]
+    v_scan = scan_speed_mm_s * 1e-3  # m/s
+    d_beam = beam_diameter_um * 1e-6  # m
     r_beam = d_beam / 2.0
     T_preheat = float(preheat_temp_C)
     t_layer_m = float(layer_thickness_um) * 1e-6
@@ -269,8 +296,18 @@ def calculate_meltpool_physics(
     # King ΔH/hs stays on solid props (literature onset ~30 is solid-based).
     alpha_solid = k_s / (rho * cp_s)
 
-    # Base optical absorptivity
-    eta_base_flat = props["absorptivity_Green"] if "Green" in laser_wavelength else props["absorptivity_IR"]
+    # Use only wavelength/property pairs that exist in the material snapshot.
+    wavelength_property = {
+        "IR_1064nm": "absorptivity_IR",
+        "Green_515nm": "absorptivity_Green",
+    }.get(laser_wavelength)
+    if wavelength_property is None:
+        raise ValueError(f"Unsupported LPBF laser wavelength: {laser_wavelength!r}")
+    if wavelength_property not in props:
+        raise ValueError(
+            f"Material {material_name!r} has no absorptivity for {laser_wavelength}"
+        )
+    eta_base_flat = float(props[wavelength_property])
 
     try:
         from powder_bed_raytracer import calculate_powder_bed_absorptivity
@@ -284,14 +321,19 @@ def calculate_meltpool_physics(
         eta_base = eta_base_flat
 
     # 1. Volumetric and Linear Energy Densities
-    ved_J_mm3 = P_laser / (max(1.0, float(scan_speed_mm_s)) * (float(hatch_spacing_um) * 1e-3) * (float(layer_thickness_um) * 1e-3))
-    led_J_m = P_laser / max(1e-4, v_scan)
+    ved_J_mm3 = P_laser / (
+        scan_speed_mm_s
+        * (hatch_spacing_um * 1e-3)
+        * (layer_thickness_um * 1e-3)
+    )
+    led_J_m = P_laser / v_scan
 
     # 2. Normalized Enthalpy (King / Rubenchik) + peak intensity I0 — solid k, Cp
     # ΔH/hs = (η P) / (ρ cp (Tliq-T0) sqrt(π α v r^3))
     enthalpy_denom = rho * cp_s * max(50.0, T_liq - T_preheat) * math.sqrt(math.pi * alpha_solid * v_scan * (r_beam ** 3))
     normalized_enthalpy = (eta_base * P_laser) / max(1e-9, enthalpy_denom)
-    peak_intensity_W_m2 = (4.0 * P_laser) / (math.pi * max(1e-16, d_beam ** 2))
+    # Gaussian 1/e² diameter d=2w: I0 = 2P/(πw²) = 8P/(πd²).
+    peak_intensity_W_m2 = (8.0 * P_laser) / (math.pi * d_beam ** 2)
     peak_intensity_MW_cm2 = peak_intensity_W_m2 * 1e-10
 
     # 3. Multi-reflection absorptivity once a vapor depression can form (ΔH/hs > 15)
@@ -307,7 +349,6 @@ def calculate_meltpool_physics(
     # Latent-heat (Stefan) correction so the liquidus is not an over-hot Rosenthal tail.
     Lf = props["latent_heat_fusion_J_kg"]
     stefan = Lf / max(1.0, cp * max(50.0, T_liq - T_preheat))
-    source = _normalize_heat_source(heat_source)
     # ET/Goldak are conduction fields: Fresnel A only. Fabbro already carries keyhole A(R)
     # (Appl. Sci. 2020 eq. 2). Stacking eta_eff on both double-counts Trapp multiple reflections.
     if source in ("eagar-tsai", "goldak"):

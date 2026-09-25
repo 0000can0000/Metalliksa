@@ -241,13 +241,13 @@ export function calculateVolumetricEnergyDensity(
   return Number((power_W / (scanSpeed_mm_s * hatch_mm * layer_mm)).toFixed(2));
 }
 
-/** Peak Laser Beam Center Intensity: I_0 = 4P / (pi * d_spot^2) [MW/cm²] */
+/** Gaussian peak irradiance for a 1/e² diameter: I_0 = 8P / (pi * d_spot^2) [MW/cm²]. */
 export function calculatePeakLaserIntensity(power_W: number, beamDiameter_um: number): number {
   if (beamDiameter_um <= 0) return 0;
   const radius_cm = (beamDiameter_um / 2) * 1e-4; // µm to cm
   const area_cm2 = Math.PI * Math.pow(radius_cm, 2);
   const power_MW = power_W * 1e-6;
-  return Number((power_MW / area_cm2).toFixed(3));
+  return Number(((2 * power_MW) / area_cm2).toFixed(3));
 }
 
 /** Normalized Enthalpy (King / Gouge / Scime criterion): ΔH / h_s */

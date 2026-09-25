@@ -914,7 +914,7 @@ export const MeltPool3DCrossSectionLab: React.FC<MeltPool3DCrossSectionProps> = 
           >
             <option value="IR_1064nm">IR Fiber (1064 nm)</option>
             <option value="Green_515nm">Green (515 nm - Cu/Al)</option>
-            <option value="Blue_450nm">Blue (450 nm)</option>
+            <option value="Blue_450nm" disabled>Blue (450 nm — material absorptivity unavailable)</option>
           </select>
         </div>
 

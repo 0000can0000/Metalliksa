@@ -9,7 +9,8 @@
 - Commit `15b4663` kaydedildi. P4 incelemesi ayrık ölçüm operatörünün hücre genişliği ekini ve derinlik nicemlenmesini gösterdi; fizik denklemi arızası kanıtlanmadı. Salt tanı protokolünü aşağıdaki ayrı kayıt izler. Ardından P5 altı-kesit operatörü ve ışın profili kapısını sürdür; yeni fizik denklemi ancak somut hata kanıtı ve analitik/parite doğrulamasıyla değiştirilsin.
 
 ## 2026-09-25 — P4 40 W eşit-tepe zamanı tanı protokolü
-- Salt tanı protokolü `docs/LPBF_P4_CURRENT_40W_TIED_ENDPOINT_DIAGNOSTIC_PROTOCOL_2026-09-25.md` olarak sonuçlardan önce donduruldu; yalnızca aynı 40 W girdisinde 20/10/5 µm ağların eşit eriyik-hücre-sayılı tepe zamanlarını ve üretim/bağımsız kontur yayılımını inceler. Kabul sonucu `not-assessed`; frozen P4 ve fiziksel doğrulama durumu değişemez. Sıradaki eylem: protokoldeki tek çalıştırmayı yürüt ve rapor/SHA değerlerini buraya ekle.
+- Salt tanı protokolü `docs/LPBF_P4_CURRENT_40W_TIED_ENDPOINT_DIAGNOSTIC_PROTOCOL_2026-09-25.md` olarak sonuçlardan önce donduruldu; yalnızca aynı 40 W girdisinde 20/10/5 µm ağların eşit eriyik-hücre-sayılı tepe zamanlarını ve üretim/bağımsız kontur yayılımını inceler. Kabul sonucu `not-assessed`; frozen P4 ve fiziksel doğrulama durumu değişemez. Çalıştırma başladı; tamamlanınca rapor/SHA değerlerini ekle.
+- Çalıştırma başlatıldı; birleşik yürütme oturumu `83545`, ilk Python süreci PID `20508`. Sonuç henüz yazılmadı; bağlam devamında bu oturumu yokla, aynı işi yeniden başlatma. Protokol SHA-256 `c5628e46eed810e6de7638742e2c15f1b94e60f1386df07cf1241c960d5b88ee`.
 
 ## 2026-09-25 — Build-job material revision response contract
 - Python build-job solver artık `materialPropertyRevision` alanını üst seviye yanıtta da yayımlıyor; önceden alan yalnızca `buildJobIdentity` içinde bulunuyordu ve istemci yanıtı geçersiz sayıyordu. Python sözleşme assertion'ı ve eksik üst seviye alanı reddeden istemci regresyonu eklendi.

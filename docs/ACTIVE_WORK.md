@@ -10,6 +10,11 @@ This is diagnostic only (`acceptanceStatus=not-assessed`), leaves the frozen
 P4 report untouched, and cannot establish experimental validity. Next execute
 the registered runner once and add its report/protocol SHA evidence below.
 
+Execution is currently in progress in unified terminal session `83545` (first
+Python process PID `20508`). No report has been written yet. On continuation,
+poll the existing session; do not launch a duplicate. Frozen protocol SHA-256:
+`c5628e46eed810e6de7638742e2c15f1b94e60f1386df07cf1241c960d5b88ee`.
+
 ## Continuation checkpoint — frozen 40 W P4 and provenance repair (2026-09-25)
 
 The frozen six-run IN718 CPU study is complete and recorded in

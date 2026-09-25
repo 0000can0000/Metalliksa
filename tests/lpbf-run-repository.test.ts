@@ -6,6 +6,7 @@ import path from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { LpbfRunRepository, validateRunDocument } from '../server/lpbfRunRepository';
+import { LpbfNistProxyCampaignService } from '../server/lpbfNistProxyCampaignService';
 import { dryRunRunImport, importRun } from '../server/lpbfRunImport';
 import { LpbfArtifactStore } from '../server/lpbfArtifactStore';
 import { LpbfSourceRepository } from '../server/lpbfSourceRepository';
@@ -130,6 +131,39 @@ test('writable v1 database receives the explicit v2 campaign-table migration wit
     assert.deepEqual([...repository.allRuns()], []);
     assert.deepEqual([...repository.allProxyCampaigns()], []);
   } finally { repository.close(); }
+});
+
+test('saved proxy campaigns list in creation order and reject broken archived references', async t => {
+  const root = mkdtempSync(path.join(tmpdir(), 'lpbf-campaign-list-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runRoot = path.join(root, 'runs'); mkdirSync(runRoot);
+  const filename = path.join(runRoot, 'runs.sqlite');
+  const repository = new LpbfRunRepository(filename);
+  const sourceBinding = { datasetId: 'nist-fixture', revision: 1, documentSha256: sha('source') };
+  const runIds = ['a', 'b', 'c'].map(value => value.repeat(32));
+  const runs = runIds.map(id => {
+    const raw = capture('transient-thermal'); raw.jobId = id;
+    return repository.save({ schemaVersion: 1, runId: id, capture: raw, sources: [sourceBinding] });
+  });
+  const campaign = { schemaVersion: 1, kind: 'lpbf-nist-amb2022-03-proxy-campaign',
+    campaignId: 'e'.repeat(32), sourceBinding,
+    tracks: runs.map(run => ({ runIdentity: { runId: run.document.runId, runDocumentSha256: run.documentSha256 } })) };
+  repository.saveProxyCampaign(campaign);
+  repository.close();
+
+  const service = new LpbfNistProxyCampaignService(runRoot, path.join(root, 'sources'));
+  const listed = await service.list();
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].campaignId, campaign.campaignId);
+  assert.equal(listed[0].documentSha256, sha(JSON.stringify(campaign)));
+
+  const db = new DatabaseSync(filename);
+  const changed = JSON.parse(db.prepare('SELECT document_json FROM lpbf_proxy_campaigns').get()!.document_json);
+  changed.tracks[0].runIdentity.runDocumentSha256 = 'f'.repeat(64);
+  const documentJson = JSON.stringify(changed);
+  db.prepare('UPDATE lpbf_proxy_campaigns SET document_json=?, document_sha256=?').run(documentJson, sha(documentJson));
+  db.close();
+  await assert.rejects(service.list(), /reference integrity/i);
 });
 
 test('missing/changed bytes and extra files never publish a completed record', async t => {

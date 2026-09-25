@@ -8,13 +8,14 @@
 - Doğrulama: `python/test_lpbf_gpu_thermal.py` **9/9 PASS** (RTX 4060 paritesi dahil), `tsc --noEmit` PASS, `git diff --check` PASS. Commit `a3d8aaa`. P6 kısmi; bu yazılım/sayısal parite deneysel doğrulama değildir.
 - P4 tied-peak denetimi, ilk eşit maksimum adımın mevcut deterministik seçimini ve zaten mevcut opt-in tied-contour duyarlılık yolunu doğruladı; `python/test_lpbf_peak_tied_contours.py` **2/2 PASS**. Dondurulmuş kabul ölçütleri/sonuç değişmedi.
 - Kullanıcı, yetersiz sonuç veren fizik motorlarının Python'da bilimsel temelle onarılmasına veya yeniden kurulmasına açıkça yetki verdi. Denklemleri ve model kimliklerini gerekçesiz değiştirme; kabul eşiklerini gevşetme; önce analitik/üretilmiş çözüm ve sayısal pariteyle sınayıp fiziksel deney kanıtından ayrı raporla.
-- Sıradaki somut adım: kampanya arayüz dilimini tamamla ve doğrula; ardından P6 çalışma yükü/parite/performance kapısını koruyarak ölçek-kesişme testi yap. CUDA yavaş kaldıkça P4'ün `2.5 µm` ağına taşıma.
+- Sıradaki somut adım: canlı archive üzerinde preview→create→listeyi yeniden yükle→bundle v2 export/verify/isolated restore akışını doğrula; Node `spawn EPERM` bunun önünde. Sonra aynı parite kapısıyla P6 ölçek-kesişme ölçümü yap; ölçülmüş crossover olmadan P4'ün `2.5 µm` ağına taşıma.
 
 ## 2026-09-25 — NIST proxy kampanya arşiv/panel dilimi
 - Üç arşivlenmiş transient koşu ve Table 4 case seçimi, server-side preview ve değişmez campaign kaydı UI/client akışına bağlandı. Client'a yalnızca run ID'leri, case ve preview SHA gider; sayısal ölçü, residual ve validasyon iddiası gitmez. Panel altı gözlemi yalnızca thermal-proxy screening/unvalidated olarak gösterir.
-- Server/API/persistence/bundle: `d967f87`; UI/client ve iki odaklı test: `7004742`. Bundle v2 campaign run SHA/source revision bağlarını kontrol eder ve v1 bundle okumayı sürdürür.
-- Doğrulama: tam `tsc --noEmit` PASS. Python GPU paketi `9/9 PASS`. Node API/client/UI odak testleri `spawn EPERM` yüzünden başlatılamadı; `git diff --check` PASS. Dolayısıyla panel/type/API sözleşmesi uygulanmış olsa da canlı campaign oluşturma–dışa aktarma–geri yükleme akışı doğrulanmış sayılmaz.
-- P5 optik residual/validasyonu `unavailable`; proxy campaign bunu değiştirmez. UI'da arşivlenmiş campaign listesi/yeniden açma ve canlı bundle round-trip entegrasyon doğrulaması sonraki adım olarak açık.
+- Server/API/persistence/bundle: `d967f87`; UI/client ve iki odaklı test: `7004742`. `7cfba1a` arşivlenmiş kampanyaları listeleyip tekrar açmayı ve client'ta bundle v2 `campaignCount` doğrulamasını ekledi; v1 bundle okuması sürüyor.
+- Doğrulama: tam `tsc --noEmit` PASS; `python/test_lpbf_gpu_thermal.py` **9/9 PASS**; Node depo/bundle/API/client/UI odak paketi **48/48 PASS** (alt süreçler sandbox dışında çalıştırıldı); `git diff --check` PASS. Proxy campaign list servisi ve run/source referans reddi sentetik arşivle doğrulandı.
+- Canlı kullanım sınırı: uygun, source-revision-bound üç koşuyla gerçek NIST preview/create henüz çalıştırılmadı. Bundle round-trip testi campaign fixture'ıyla geçti; P5 residual ve deneysel validasyon hâlâ `unavailable`.
+- P5 optik residual/validasyonu `unavailable`; proxy campaign bunu değiştirmez. Uygun arşiv verisiyle canlı preview→create→reopen→export/verify/restore entegrasyon doğrulaması açık.
 
 ## 📌 Genel İlerleme Özeti
 - **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).

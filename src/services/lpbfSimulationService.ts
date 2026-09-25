@@ -339,7 +339,10 @@ export const simulationApi = {
     if (!object(e) || !finiteTree(e) || typeof e.cells !== "number" || e.cells <= 0 || typeof e.minimumEstimatedSteps !== "number") throw new Error("Invalid resource estimate");
     return e as unknown as ResourceEstimate;
   },
-  async submit(input: SimulationInput) { return parseSimulationJob(await request("/api/lpbf/jobs", { method: "POST", body: JSON.stringify(input) })); },
+  async submit(input: SimulationInput, options: { executionScope?: 'repeat' } = {}) {
+    const endpoint = options.executionScope === 'repeat' ? "/api/lpbf/jobs/repeat" : "/api/lpbf/jobs";
+    return parseSimulationJob(await request(endpoint, { method: "POST", body: JSON.stringify(input) }));
+  },
   async get(id: string) { return parseSimulationJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`)); },
   async cancel(id: string) { return parseSimulationJob(await request(`/api/lpbf/jobs/${encodeURIComponent(id)}`, { method: "DELETE" })); },
 };

@@ -445,7 +445,9 @@ class Queue:
         if len(content) != entry["size_bytes"] or hashlib.sha256(content).hexdigest() != entry["sha256"]: raise ValueError("Artifact integrity failed")
         return dict(content=base64.b64encode(content).decode(),type="image/svg+xml" if name.endswith(".svg") else "application/octet-stream" if name.endswith(".bin") else "application/json" if name.endswith(".json") else "text/csv")
 
-    def submit(self, raw):
+    def submit(self, raw, *, execution_scope="deduplicated"):
+        if execution_scope not in ("deduplicated", "repeat"):
+            raise ValueError("Invalid execution scope")
         job_type = raw.get("jobType")
         if job_type == "build-job":
             p, m = raw, raw
@@ -473,7 +475,8 @@ class Queue:
             key_payload = fingerprint(p, m)+json.dumps(self.caps, sort_keys=True)
         key = hashlib.sha256(key_payload.encode()).hexdigest()
         with self.lock, self.connect() as c:
-            row = c.execute("SELECT id FROM jobs WHERE cache_key=? AND status IN ('queued','running','completed') ORDER BY created DESC LIMIT 1", (key,)).fetchone()
+            row = None if execution_scope == "repeat" else c.execute(
+                "SELECT id FROM jobs WHERE cache_key=? AND status IN ('queued','running','completed') ORDER BY created DESC LIMIT 1", (key,)).fetchone()
             if row:
                 try:
                     cached = self.get(row["id"])
@@ -668,6 +671,7 @@ def main():
                 p, m = validate(request["payload"])
                 data = resource_estimate(p,m)
             elif method == "submit": data = queue.submit(request["payload"])
+            elif method == "submit-repeat": data = queue.submit(request["payload"], execution_scope="repeat")
             elif method == "artifact": data = queue.artifact(request["payload"])
             elif method == "capture": data = queue.capture(request["payload"])
             elif method == "archive-capture": data = queue.archive_capture(request["payload"])

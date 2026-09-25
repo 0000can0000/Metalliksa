@@ -45,6 +45,17 @@ for (const [method, route, rpc] of [
   });
 }
 
+// Explicit opt-in for a fresh execution record when the caller needs a distinct
+// archive identity for unchanged physics inputs. The worker keeps the canonical
+// physics cache key and input bytes; only this endpoint skips result reuse.
+lpbfSimulationRouter.post("/api/lpbf/jobs/repeat", async (req, res) => {
+  try {
+    if (Buffer.byteLength(JSON.stringify(req.body)) > 50000000) return res.status(413).json({ error: "Simulation input too large" });
+    const data = await lpbfWorker.request("submit-repeat", req.body);
+    res.status(202).json(data);
+  } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Simulation request failed" }); }
+});
+
 lpbfSimulationRouter.get("/api/lpbf/jobs/:id/artifacts/:name", async (req: Request, res: Response) => {
   try {
     const data = await lpbfWorker.request("artifact", { id:req.params.id, name:req.params.name }) as {content:string;type:string};

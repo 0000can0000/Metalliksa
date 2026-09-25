@@ -5,7 +5,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { artifactDirectory, LpbfArtifactStore } from './lpbfArtifactStore';
 import { LpbfRunArchiveError } from './lpbfRunArchiveService';
-import { LpbfRunRepository, type RunRecord } from './lpbfRunRepository';
+import { LpbfRunRepository, type ProxyCampaignRecord, type RunRecord } from './lpbfRunRepository';
 import { runArtifacts } from './lpbfRunImport';
 import { LpbfSourceRepository } from './lpbfSourceRepository';
 import { getHostPython } from './pythonRuntime';
@@ -89,6 +89,31 @@ function runCampaignIdentity(record: RunRecord, result: any, observations: any[]
 export class LpbfNistProxyCampaignService {
   constructor(private readonly runRoot = path.resolve(process.env.METALLIKSA_LPBF_RUN_ROOT || '.lpbf-runs'),
     private readonly sourceRoot = path.resolve(process.env.METALLIKSA_LPBF_SOURCE_ROOT || '.lpbf-sources')) {}
+
+  async list(): Promise<ProxyCampaignRecord[]> {
+    const runDb = path.join(this.runRoot, 'runs.sqlite');
+    let stat;
+    try { stat = lstatSync(runDb); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
+    if (stat.isSymbolicLink() || !stat.isFile()) throw new Error('Run metadata is not a regular file');
+    artifactDirectory(this.runRoot);
+    const repository = new LpbfRunRepository(runDb, { readOnly: true });
+    try {
+      const campaigns = [...repository.allProxyCampaigns()];
+      for (const campaign of campaigns) {
+        for (const track of campaign.document.tracks) {
+          const identity = track.runIdentity, run = repository.get(identity.runId);
+          if (!run || run.documentSha256 !== identity.runDocumentSha256
+            || !run.document.sources.some(link => link.datasetId === campaign.document.sourceBinding?.datasetId
+              && link.revision === campaign.document.sourceBinding?.revision
+              && link.documentSha256 === campaign.document.sourceBinding?.documentSha256)) {
+            throw new Error('Stored campaign run/source reference integrity failed');
+          }
+        }
+      }
+      return campaigns.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    } finally { repository.close(); }
+  }
 
   private async build(runIds: unknown, caseNumber: unknown) {
     if (!Array.isArray(runIds) || runIds.length !== 3 || runIds.some(id => typeof id !== 'string' || !/^[a-f0-9]{32}$/.test(id))

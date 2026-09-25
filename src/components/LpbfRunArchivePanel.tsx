@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useInputBoundTask } from '../hooks/useInputBoundTask';
 import { listRuns, getRun, previewRun, importRun, exportRunBundle, verifyRunBundle, restoreRunBundle,
-  compareNistOpticalRun, previewNistProxyCampaign, createNistProxyCampaign,
+  compareNistOpticalRun, listNistProxyCampaigns, previewNistProxyCampaign, createNistProxyCampaign,
   type RunPreview, type RunArchiveList, type ExportedRunBundle, type VerifiedRunBundle,
   type RestoredRunBundle, type NistProxyCampaignPreview, type NistProxyCampaignRecord } from '../services/lpbfRunArchiveClient';
 import { sourceAction, sourceCatalog } from '../services/lpbfSourceService';
@@ -207,6 +207,8 @@ const proxyCampaignCases: { id: NistOpticalCaseNumber; label: string }[] = [
 
 export function NistProxyCampaign({ runs }: { runs: RunArchiveList }) {
   const candidates = runs.filter(run => run.runKind === 'transient-thermal');
+  const [savedCampaigns, setSavedCampaigns] = useState<NistProxyCampaignRecord[]>([]);
+  const [savedCampaignError, setSavedCampaignError] = useState<string | null>(null);
   const candidateKey = candidates.map(run => run.runId).join(':');
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>(() => candidates.slice(0, 3).map(run => run.runId));
   const [caseNumber, setCaseNumber] = useState<NistOpticalCaseNumber>('0');
@@ -226,6 +228,16 @@ export function NistProxyCampaign({ runs }: { runs: RunArchiveList }) {
   const preview = previewTask.data;
   const saved = createTask.data?.record ?? null;
 
+  useEffect(() => {
+    const controller = new AbortController();
+    listNistProxyCampaigns(controller.signal).then(items => {
+      if (!controller.signal.aborted) setSavedCampaigns(items);
+    }).catch(error => {
+      if (!controller.signal.aborted) setSavedCampaignError(error instanceof Error ? error.message : 'Saved proxy campaigns unavailable.');
+    });
+    return () => controller.abort();
+  }, []);
+
   const runPreview = async () => {
     if (!canPreview) return;
     const request = previewTask.begin('preview');
@@ -240,6 +252,7 @@ export function NistProxyCampaign({ runs }: { runs: RunArchiveList }) {
     try {
       const result = await createNistProxyCampaign(currentRunIds, caseNumber, preview.previewSha256, request.signal);
       request.publish({ preview: result, record: result.record ?? null });
+      if (result.record) setSavedCampaigns(current => [result.record!, ...current.filter(item => item.campaignId !== result.record!.campaignId)]);
     } catch (error) { request.fail(error); }
     finally { request.finish(); }
   };
@@ -277,6 +290,16 @@ export function NistProxyCampaign({ runs }: { runs: RunArchiveList }) {
         {createTask.error && <p role="alert" className="text-rose-300">{createTask.error}</p>}
         {saved && <p role="status" className="text-emerald-200">Proxy campaign archived: {saved.campaignId} · SHA-256 {saved.documentSha256}. Status remains unvalidated.</p>}
       </>}
+    {savedCampaignError && <p role="alert" className="text-rose-300">Saved proxy campaign archive unavailable: {savedCampaignError}</p>}
+    {savedCampaigns.length > 0 && <div aria-label="Saved NIST proxy campaigns" className="space-y-2 border-t border-slate-700 pt-3">
+      <h5 className="font-medium">Saved proxy campaigns · unvalidated</h5>
+      {savedCampaigns.map(record => <details key={record.campaignId} className="rounded-lg border border-slate-700 p-3">
+        <summary className="cursor-pointer">Case {record.document.caseNumber} · {record.createdAt} · {record.campaignId.slice(0, 8)}…</summary>
+        <p className="mt-2 text-xs text-slate-300">Thermal proxy screening only · no experimental validation · no optical residuals · SHA-256 {record.documentSha256}</p>
+        <ul className="mt-2 space-y-1">{record.document.tracks.flatMap(track => track.observations.map(observation =>
+          <li key={`${track.simulatedTrackId}:${observation.sectionId}`}>{track.runIdentity.runId.slice(0, 8)}… · {observation.distanceFromScanStart_mm} mm · simulated width {observation.geometry.width_um.toFixed(2)} µm · depth {observation.geometry.depth_um.toFixed(2)} µm</li>))}</ul>
+      </details>)}
+    </div>}
   </section>;
 }
 

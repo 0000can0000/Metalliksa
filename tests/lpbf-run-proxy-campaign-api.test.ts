@@ -8,6 +8,7 @@ test('proxy campaign API derives evidence server-side and rejects client measure
   const result = { campaign: null, validation: { status: 'unavailable', comparisonResiduals: null,
     experimentalValidation: false, validationStatus: 'unvalidated' } };
   const campaigns = {
+    list: async () => { calls.push({ method: 'list', args: [] }); return []; },
     preview: async (...args: unknown[]) => { calls.push({ method: 'preview', args }); return result; },
     create: async (...args: unknown[]) => { calls.push({ method: 'create', args }); return result; },
   };
@@ -20,6 +21,10 @@ test('proxy campaign API derives evidence server-side and rejects client measure
   assert.ok(address && typeof address !== 'string');
   const endpoint = `http://127.0.0.1:${address.port}/api/lpbf/runs/proxy-campaigns`;
   const runIds = ['a'.repeat(32), 'b'.repeat(32), 'c'.repeat(32)];
+  const listed = await fetch(endpoint, { cache: 'no-store' });
+  assert.equal(listed.status, 200);
+  assert.deepEqual(await listed.json(), []);
+  assert.deepEqual(calls.pop(), { method: 'list', args: [] });
   async function post(url: string, body: unknown) {
     const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) });

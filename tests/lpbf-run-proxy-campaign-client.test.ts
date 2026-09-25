@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createNistProxyCampaign, previewNistProxyCampaign } from '../src/services/lpbfRunArchiveClient';
+import { createNistProxyCampaign, listNistProxyCampaigns, previewNistProxyCampaign } from '../src/services/lpbfRunArchiveClient';
 
 const runIds = ['a'.repeat(32), 'b'.repeat(32), 'c'.repeat(32)];
 const signal = new AbortController().signal;
@@ -88,4 +88,21 @@ test('unavailable proxy campaign retains reasons and disables the create contrac
   const result = await previewNistProxyCampaign(runIds, '0', signal);
   assert.equal(result.campaign, null);
   assert.match(result.validation.reasons[0], /source binding/);
+});
+
+test('saved proxy campaign list preserves exact run, source and unvalidated record identity', async t => {
+  const campaign = campaignDocument();
+  const record = { campaignId: campaign.campaignId, document: campaign,
+    documentSha256: '9'.repeat(64), createdAt: '2026-09-25T10:00:00.000Z' };
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify([record])));
+  const result = await listNistProxyCampaigns(signal);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].document.campaignId, campaign.campaignId);
+  const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+  assert.equal(url, '/api/lpbf/runs/proxy-campaigns');
+  assert.equal(init.method, undefined);
+  t.mock.restoreAll();
+  const changed = { ...record, document: { ...campaign, tracks: campaign.tracks.slice(0, 2) } };
+  t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify([changed])));
+  await assert.rejects(listNistProxyCampaigns(signal), /invalid/i);
 });

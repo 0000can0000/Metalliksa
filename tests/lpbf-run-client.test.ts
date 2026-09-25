@@ -117,6 +117,17 @@ test('bundle export, verify and isolated restore use empty JSON bodies and exact
     && request.init.body === '{}' && (request.init.headers as Record<string, string>)['Content-Type'] === 'application/json'));
 });
 
+test('bundle client accepts v2 manifests with campaign counts while retaining v1 support', async t => {
+  const v2 = { ...manifest, schemaVersion: 2, campaignCount: 3 };
+  respond(t, { bundleId, storage: 'server-local-directory', manifest: v2 });
+  const result = await exportRunBundle(signal);
+  assert.equal(result.manifest.schemaVersion, 2);
+  assert.equal(result.manifest.campaignCount, 3);
+  t.mock.restoreAll();
+  respond(t, { bundleId, storage: 'server-local-directory', manifest: { ...v2, campaignCount: -1 } });
+  await assert.rejects(exportRunBundle(signal), /invalid/i);
+});
+
 test('bundle client rejects malformed manifest, false verification and a different bundle ID', async t => {
   respond(t, { bundleId, storage: 'server-local-directory', manifest: { ...manifest, runCount: -1 } });
   await assert.rejects(exportRunBundle(signal), /invalid/i);

@@ -34,6 +34,7 @@ export function createLpbfRunsRouter(service = new LpbfRunArchiveService(), bund
   };
 
   router.get(prefix, handle(() => service.list()));
+  router.get(`${prefix}/proxy-campaigns`, handle(() => campaigns.list()));
   router.get(`${prefix}/:runId`, handle(req => service.get(req.params.runId)));
 
   const emptyBody = (req: express.Request) => {

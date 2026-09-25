@@ -17,13 +17,14 @@ export interface RunPreview {
 export type RunArchiveList = { runId: string; createdAt: string; evidenceStatus: 'unvalidated-model'; sourceBindingStatus: RunSourceBindingStatus; runKind: RunKind }[];
 
 export interface RunBundleManifest {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   kind: 'metalliksa-lpbf-run-bundle';
   metadata: { sha256: string; byteSize: number };
   sourceBundle: { sha256: string; byteSize: number };
   runCount: number;
   artifactCount: number;
   sourceLinkCount: number;
+  campaignCount?: number;
 }
 
 export interface ExportedRunBundle {
@@ -150,10 +151,14 @@ async function request(path: string, signal: AbortSignal, body?: object) {
 }
 
 function bundleManifest(value: unknown): asserts value is RunBundleManifest {
-  if (!object(value) || value.schemaVersion !== 1 || value.kind !== 'metalliksa-lpbf-run-bundle'
+  if (!object(value) || ![1, 2].includes(value.schemaVersion as number) || value.kind !== 'metalliksa-lpbf-run-bundle'
+    || Object.keys(value).sort().join(',') !== (value.schemaVersion === 1
+      ? 'artifactCount,kind,metadata,runCount,schemaVersion,sourceBundle,sourceLinkCount'
+      : 'artifactCount,campaignCount,kind,metadata,runCount,schemaVersion,sourceBundle,sourceLinkCount')
     || !object(value.metadata) || !sha(value.metadata.sha256) || !count(value.metadata.byteSize)
     || !object(value.sourceBundle) || !sha(value.sourceBundle.sha256) || !count(value.sourceBundle.byteSize)
-    || !count(value.runCount) || !count(value.artifactCount) || !count(value.sourceLinkCount)) throw invalid();
+    || !count(value.runCount) || !count(value.artifactCount) || !count(value.sourceLinkCount)
+    || (value.schemaVersion === 2 && !count(value.campaignCount))) throw invalid();
 }
 
 async function bundleRequest(path: string, signal: AbortSignal): Promise<unknown> {
@@ -204,6 +209,23 @@ export async function listRuns(signal: AbortSignal): Promise<RunArchiveList> {
     || !runKind(item.runKind)
     || !bindingStatus(item.sourceBindingStatus))) throw invalid();
   return result;
+}
+
+export async function listNistProxyCampaigns(signal: AbortSignal): Promise<NistProxyCampaignRecord[]> {
+  const result: unknown = await request('/proxy-campaigns', signal);
+  if (!Array.isArray(result)) throw invalid();
+  for (const record of result) {
+    if (!object(record) || !exactKeys(record, 'campaignId,createdAt,document,documentSha256')
+      || !campaignId(record.campaignId) || !sha(record.documentSha256) || !date(record.createdAt)
+      || !object(record.document) || !Array.isArray(record.document.tracks)) throw invalid();
+    const runIds = record.document.tracks.map(track => object(track) && object(track.runIdentity)
+      ? track.runIdentity.runId : null);
+    if (runIds.length !== 3 || runIds.some(id => !jobId(id))
+      || record.campaignId !== record.document.campaignId
+      || !opticalCases.has(String(record.document.caseNumber))) throw invalid();
+    proxyCampaign(record.document, runIds as string[], record.document.caseNumber as NistOpticalCaseNumber);
+  }
+  return result as NistProxyCampaignRecord[];
 }
 
 export async function getRun(runId: string, signal: AbortSignal): Promise<RunRecord> {

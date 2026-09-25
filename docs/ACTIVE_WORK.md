@@ -44,6 +44,20 @@ validate the engine or change the unavailable P5 result. Do not launch another
 NIST solve until the observation contract, source profile, and 10 mm model
 validity/cost gates are resolved.
 
+## 2026-09-25 continuation — live run bundle round-trip
+
+Verified the current localhost UI against its existing source/run archive. The
+server-local export contains 3 runs, 132 run artifacts, and 3 source links;
+the UI verified the manifest and restored an isolated copy with restore ID
+`2e251b3d73a7470ead671287649ace35` from bundle
+`be741eebfa12413a8fd78978ecefdfc3`. The live archive still displayed its
+original 3 records. Selecting the archived IN718 run then produced `unavailable`
+because its Table 4 source revision 1 did not match reviewed local revision 2;
+the old run was not rebound. This proves the current software archive path, not
+scientific validity or experimental agreement. Next prioritize the CPU/P4 gate
+and the versioned three-track/two-section proxy-campaign contract; preserve the
+source-profile and 10 mm validity/cost gates.
+
 ## Continuation checkpoint — P8 archive acceptance and physics continuation (2026-09-25)
 
 The goal remains active. User explicitly authorizes scientific fixes or a Python

@@ -21,6 +21,11 @@
 - `python -m unittest test_lpbf_nist_in718_comparison -v`: 6 test PASS. Bu yalnızca karşılaştırma kapısı regresyonudur; motorun deneysel validasyonu veya NIST kıyası değildir.
 - Sıradaki adım: P4 eşit-tepe tanısını sürdür; P5 için üç ayrı izden 4,9/6,0 mm termal proxy kayıtlarını ve ölçüm operatörünü içeren sürümlü bileşik run sözleşmesini tasarla. Koşu maliyeti, kaynak profili ve 10 mm model-geçerlilik duruşu çözülmeden simülasyon başlatma.
 
+## 2026-09-25 — P3/P8 canlı arşiv bundle round-trip
+- Mevcut UI'da seçili run ve kaynak arşivi üzerinden bundle dışa aktarıldı, sunucu tarafında byte/reference doğrulaması yapıldı ve canlı arşivden ayrı restore dizinine kopyalandı. UI ve manifest: 3 run, 132 run artifact, 3 source link; restore `2e251b3d73a7470ead671287649ace35`, bundle `be741eebfa12413a8fd78978ecefdfc3`. Canlı arşivdeki 3 run değişmedi.
+- Aynı UI'da seçili IN718 run'ın Table 4 revision 1 bağı, incelenen yerel revision 2 ile uyuşmadığı için karşılaştırma `unavailable` döndü; hata eski source identity/transcription mismatch olarak görünür. Eski run yeniden bağlanmadı.
+- Bu, API/UI export→verify→isolated-restore yazılım akışını doğrular; model geçerliliği veya deneysel karşılaştırma değildir. Geliştirici sunucusunu bu deneme için tekrar başlatma girişimi Windows `spawn EPERM` ve port çakışması verdi; önceden açık Codex içi localhost UI kullanıldı, başlatılan ek IPC süreci kapatıldı.
+
 ## 2026-09-25 — P7 kanıt matrisi, motor denetimi ve P8 arşiv kabulü
 - IN625 özellik kanıt matrisi `docs/IN625_P7_PROPERTY_EVIDENCE_MATRIX_2026-09-25.md` içinde oluşturuldu. Kaynak/lot/durum/aralık/belirsizlik ayrımı yapıldı; alaşım `thermal-screening-only`, `fullTransient=false`, `buildJob=false` kalıyor.
 - Faz 21 motoru tarama hızı içermeyen durağan 2B screening olarak doğrulandı; sabit ışın yarıçapı/soğurma ve 2B güç normalizasyonu eksikleri açıkça raporlanıyor. Worker RPC mevcut, fakat UI servis metodunun indekslenmiş çağrısı bulunmadı. Motor tarama çözünürlüklü eriyik havuzu sonucu gibi sunulmamalı; doğru hareketli kaynak modeli ayrı fizik sözleşmesi gerektirir.

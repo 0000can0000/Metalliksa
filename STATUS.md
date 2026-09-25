@@ -4,7 +4,7 @@
 
 ## 2026-09-25 — Build-job material revision response contract
 - Python build-job solver artık `materialPropertyRevision` alanını üst seviye yanıtta da yayımlıyor; önceden alan yalnızca `buildJobIdentity` içinde bulunuyordu ve istemci yanıtı geçersiz sayıyordu. Python sözleşme assertion'ı ve eksik üst seviye alanı reddeden istemci regresyonu eklendi.
-- Doğrudan Windows Python 3.12 gerçek-solver çağrısı başarılı oldu; üst seviye revizyon ve kimlik revizyonu `build-job-effective-properties-v1` olarak eşleşti. Node testi Windows sandbox'ında `spawn EPERM` nedeniyle çalıştırılamadı; kaynak değişikliği `git diff --check` ile temiz.
+- Doğrudan Windows Python 3.12 gerçek-solver çağrısı başarılı oldu; üst seviye revizyon ve kimlik revizyonu `build-job-effective-properties-v1` olarak eşleşti. Odaklı istemci paketi izinli runner'da **13/13 PASS**; ilk sandbox denemesi `spawn EPERM` ile kısıtlanmıştı. `git diff --check` temiz.
 - Sıradaki adım: odaklı Node testi izinli runner'da çalıştır; kontrollü P4 koşusunun 5 µm ağ ve zaman adımlarını tamamlayıp dondurulmuş kapılara göre raporunu değerlendir.
 
 ## 2026-09-25 — OpenFOAM layer-conforming powder grid

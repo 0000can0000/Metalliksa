@@ -10,6 +10,52 @@ from lpbf_simulation import run
 
 
 class InterpolatedMidtrackSection(unittest.TestCase):
+    @staticmethod
+    def _analytic_liquidus_contour(dx_um, geometry, angle_deg=23.):
+        dx = dx_um * 1e-6
+        angle = np.deg2rad(angle_deg)
+        center_x, center_y, center_z = 7.3e-6, -3.4e-6, -30e-6
+        sphere_radius = 60e-6
+        max_radius = sphere_radius if geometry == "sphere" else 80e-6
+        extent = max_radius + max(abs(center_x), abs(center_y)) + 4*dx
+        axis = np.arange(-extent + dx/2, extent, dx)
+        z_axis = np.arange(center_z-sphere_radius-4*dx + dx/2, 2*dx, dx)
+        x, y, z = np.meshgrid(axis, axis, z_axis, indexing="ij")
+        local_x, local_y = x-center_x, y-center_y
+        if geometry == "sphere":
+            level = sphere_radius**2 - (local_x**2 + local_y**2 + (z-center_z)**2)
+            expected_width_um = 2*sphere_radius*1e6
+            scale = sphere_radius**2
+        else:
+            along_scan = local_x*np.cos(angle) + local_y*np.sin(angle)
+            across_scan = -local_x*np.sin(angle) + local_y*np.cos(angle)
+            a, b, c = 80e-6, 40e-6, 60e-6
+            level = 1 - (along_scan/a)**2 - (across_scan/b)**2 - ((z-center_z)/c)**2
+            expected_width_um = 2*b*1e6
+            scale = 1.
+        expected_depth_um = (-center_z + sphere_radius)*1e6
+        temperature = 1609.15 + 1000*level/scale
+        coordinates = np.column_stack((x.ravel(), y.ravel(), z.ravel()))
+        contour = interpolated_peak_melt_pool(
+            coordinates, temperature.ravel(), 0., angle_deg, dx, 1609.15)
+        return expected_width_um, expected_depth_um, contour
+
+    def test_analytic_sphere_and_rotated_ellipsoid_contours_refine(self):
+        for geometry in ("sphere", "ellipsoid"):
+            with self.subTest(geometry=geometry):
+                errors = {"width_um": [], "depth_um": []}
+                for dx_um in (20., 10., 5., 2.5):
+                    expected_width, expected_depth, contour = self._analytic_liquidus_contour(
+                        dx_um, geometry)
+                    self.assertEqual(contour["status"], "thermal-proxy", contour.get("reason"))
+                    errors["width_um"].append(abs(contour["width_um"]-expected_width))
+                    errors["depth_um"].append(abs(contour["depth_um"]-expected_depth))
+                for values in errors.values():
+                    self.assertTrue(all(later < earlier for earlier, later in zip(values, values[1:])),
+                                    f"{geometry} contour error did not decrease: {values}")
+                    self.assertLess(values[-1], .1,
+                                    f"{geometry} finest contour error remains too large: {values}")
+
     def test_peak_field_contour_interpolates_3d_edges(self):
         x, y, z = np.meshgrid(np.array([-1., 0., 1.])*1e-6,
                               np.array([-1., 0., 1.])*1e-6,

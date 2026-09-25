@@ -1,8 +1,9 @@
 """CUDA thermal evolution for the CPU reference LPBF enthalpy-conduction model.
 
-The common cell-integrated moving source is evaluated on the host and transferred
-to CUDA. Conduction, enthalpy update, constitutive interpolation and melt state
-run on CUDA in float64. Queue integration uses a separate, explicit pilot job type.
+The common cell-integrated moving source defaults to the host reference helper;
+an opt-in CUDA prototype evaluates the same GL2 cell integrals and timestep cap.
+Conduction, enthalpy update, constitutive interpolation and melt state run on
+CUDA in float64. Queue integration uses a separate, explicit pilot job type.
 """
 
 import math
@@ -14,7 +15,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs
+from lpbf_core_physics import GAUSS_NODES, calculate_mesh_domain, scan_segments, thermal_si_inputs
 from lpbf_heat_source import require_source_capture, source_limited_step
 from lpbf_peak import PeakMeltTracker
 from lpbf_simulation import (MINIMUM_SOURCE_CAPTURE_FRACTION, validate, fingerprint,
@@ -95,9 +96,91 @@ def _conduction(torch, temperature, conductivity, active, dx):
     return rate, diagonal
 
 
-def run_gpu(raw, device="cuda:0", capture_final=False):
+def _gaussian_interval_torch(torch, lower, upper, center, radius):
+    """Integrate the CPU reference's normalized one-dimensional Gaussian cells."""
+    scale = math.sqrt(2.0) / radius
+    a = (lower - center) * scale
+    b = (upper - center) * scale
+    positive_tail = 0.5 * (torch.special.erfc(a) - torch.special.erfc(b))
+    negative_tail = 0.5 * (torch.special.erfc(-b) - torch.special.erfc(-a))
+    central = 0.5 * (torch.special.erf(b) - torch.special.erf(a))
+    value = torch.where(a >= 0.0, positive_tail,
+                        torch.where(b <= 0.0, negative_tail, central))
+    return torch.where(b > a, torch.clamp(value, min=0.0), torch.zeros_like(value))
+
+
+def _integrated_source_torch(torch, axis, z, dx, segment, time, dt, surface,
+                             radius, penetration, power, defer_capture_check=False):
+    """CUDA version of the powder-layer, normal-incidence shared GL2 source."""
+    source = torch.zeros((axis.numel(), axis.numel(), z.numel()),
+                         dtype=axis.dtype, device=axis.device)
+    if segment is None:
+        capture = torch.ones((), dtype=axis.dtype, device=axis.device) if defer_capture_check else 1.0
+        return source, capture
+    if (dt <= 0.0 or time < segment["start_s"] - 1e-13
+            or time + dt > segment["end_s"] + 1e-13):
+        raise ValueError("Source interval must remain inside one laser-on segment")
+
+    x_lower = axis - dx / 2.0
+    x_upper = axis + dx / 2.0
+    z_lower = z - dx / 2.0
+    z_upper = torch.minimum(z + dx / 2.0,
+                            torch.as_tensor(surface, dtype=z.dtype, device=z.device))
+    depth_lower = _gaussian_interval_torch(
+        torch, z_lower, z_upper, surface, penetration)
+    depth_lower = torch.where(z < surface, depth_lower, torch.zeros_like(depth_lower))
+
+    start = np.asarray(segment["start"], dtype=np.float64)
+    stop = np.asarray(segment["end"], dtype=np.float64)
+    duration = segment["end_s"] - segment["start_s"]
+    source_scale = 0.5 * power / (dx ** 3)
+    nodes = np.asarray(GAUSS_NODES, dtype=np.float64)
+    fractions = np.clip((time + nodes * dt - segment["start_s"]) / duration, 0.0, 1.0)
+    positions = torch.as_tensor(start[None, :] + fractions[:, None] * (stop - start)[None, :],
+                                dtype=axis.dtype, device=axis.device)
+    # Batch both GL2 nodes so each interval/operator launch handles the pair.
+    x_mass = _gaussian_interval_torch(
+        torch, x_lower[None, :], x_upper[None, :], positions[:, 0, None], radius)
+    y_mass = _gaussian_interval_torch(
+        torch, x_lower[None, :], x_upper[None, :], positions[:, 1, None], radius)
+    weights = (x_mass[:, :, None, None] * y_mass[:, None, :, None]
+               * depth_lower[None, None, None, :])
+    totals = weights.sum(dim=(1, 2, 3))
+    captures = torch.clamp(totals * 2.0, max=1.0)
+    safe_totals = torch.clamp(totals, min=torch.finfo(totals.dtype).tiny)
+    sources = weights * (source_scale / safe_totals[:, None, None, None])
+    source = sources.sum(dim=0)
+    capture = torch.min(captures)
+    if defer_capture_check:
+        return source, capture
+    capture_value = float(capture.item())
+    require_source_capture(capture_value, MINIMUM_SOURCE_CAPTURE_FRACTION)
+    return source, capture_value
+
+
+def _source_limited_step_torch(torch, axis, z, dx, segment, time, dt, surface,
+                               radius, penetration, power, passive_rate, capacity):
+    """CUDA counterpart to source_limited_step with its same 25 K cap/retries."""
+    for retries in range(12):
+        source, capture = _integrated_source_torch(
+            torch, axis, z, dx, segment, time, dt, surface, radius, penetration, power,
+            defer_capture_check=True)
+        rate = passive_rate + source
+        allowed_tensor = torch.min(
+            25.0 * capacity / torch.clamp(torch.abs(rate), min=1e-30))
+        capture, allowed = torch.stack((capture, allowed_tensor)).tolist()
+        require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
+        if allowed >= dt * (1.0 - 1e-12):
+            return dt, source, rate, capture, retries
+        dt = 0.95 * allowed
+    raise ValueError("Moving-source timestep limit failed to converge")
+
+
+def run_gpu(raw, device="cuda:0", capture_final=False, use_cuda_source=False):
     """Run a bounded single-track/layer reference-physics case on explicit CUDA."""
     torch, cuda = require_cuda(device)
+    if type(use_cuda_source) is not bool:
+        raise ValueError("use_cuda_source must be a boolean")
     p, material = validate(raw)
     if (p["mode"] != "standard" or p["backend"] != "reference" or p["study"] != "none"
             or p["tracks"] != 1 or p["layers"] != 1):
@@ -109,6 +192,8 @@ def run_gpu(raw, device="cuda:0", capture_final=False):
         raise ValueError("CUDA pilot cell budget exceeded")
     axis = (np.arange(nxy)+.5)*dx-span/2
     z = (np.arange(nz)+.5)*dx-substrate
+    axis_cuda = torch.as_tensor(axis, dtype=torch.float64, device=cuda)
+    z_cuda = torch.as_tensor(z, dtype=torch.float64, device=cuda)
     layer_m = p["layer_um"]*1e-6
     if not np.any(z < 0) or not np.any((z >= 0)&(z < layer_m)):
         raise ValueError("Mesh cannot resolve substrate and powder layer")
@@ -166,11 +251,17 @@ def run_gpu(raw, device="cuda:0", capture_final=False):
         diagonal[:, :, top_index] += (p["convection_W_m2K"]
             + material["emissivity"]*5.670374419e-8*(top+t0)*(top**2+t0**2))/dx
         dt = min(dt, torch.min(.9*rho*cp_floor/torch.clamp(diagonal, min=1e-30)).item())
-        dt, source_np, _, capture, _ = source_limited_step(axis, z, dx, segment, time, dt, layer_m,
-            radius, layer_m, ti["absorbed_power_W"], rate.cpu().numpy(), (rho*cp).cpu().numpy())
-        require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
-        source = torch.as_tensor(source_np, dtype=torch.float64, device=cuda)
-        rate += source
+        if use_cuda_source:
+            dt, source, rate, capture, _ = _source_limited_step_torch(
+                torch, axis_cuda, z_cuda, dx, segment, time, dt, layer_m,
+                radius, layer_m, ti["absorbed_power_W"], rate, rho * cp)
+        else:
+            dt, source_np, _, capture, _ = source_limited_step(
+                axis, z, dx, segment, time, dt, layer_m, radius, layer_m,
+                ti["absorbed_power_W"], rate.cpu().numpy(), (rho*cp).cpu().numpy())
+            require_source_capture(capture, MINIMUM_SOURCE_CAPTURE_FRACTION)
+            source = torch.as_tensor(source_np, dtype=torch.float64, device=cuda)
+            rate += source
         enthalpy += dt*rate
         specific_h = enthalpy/rho+h0
         if (not torch.isfinite(specific_h).all().item() or torch.min(specific_h).item() < hh_np[0]-1e-8
@@ -181,7 +272,7 @@ def run_gpu(raw, device="cuda:0", capture_final=False):
         step += 1
         min_dt = min(min_dt, dt)
         max_dt = max(max_dt, dt)
-        energy_in += float(source_np.sum())*dx**3*dt
+        energy_in += source.sum().item()*dx**3*dt
         energy_out += (bottom.sum().item()+surface_loss.sum().item())*dx**3*dt
         ever |= (temperature >= material["liquidus_K"]) & active
         peak = max(peak, torch.max(temperature).item())
@@ -197,7 +288,8 @@ def run_gpu(raw, device="cuda:0", capture_final=False):
     metrics["peakTemperature_K"] = peak
     result = {"solver": {"id": GPU_SOLVER_ID, "modelId": MODEL_ID,
                        "actualBackend": device, "thermalEvolutionDevice": device,
-                       "sourceIntegrationDevice": "cpu", "sourceTimestepLimiterDevice": "cpu",
+                       "sourceIntegrationDevice": device if use_cuda_source else "cpu",
+                       "sourceTimestepLimiterDevice": device if use_cuda_source else "cpu",
                        "dtype": "float64"},
             "material": {k: material[k] for k in ("name", "materialId", "materialRevisionSha256", "version")},
             "settings": p, "metrics": metrics, "peakExtraction": extraction,
@@ -273,9 +365,10 @@ def _field_parity(cpu, gpu, frame, cpu_temperature, cpu_coordinates, gpu_field):
                        "gpuEncoding": "float64 final state"}
 
 
-def compare_with_cpu(raw, device="cuda:0"):
+def compare_with_cpu(raw, device="cuda:0", use_cuda_source=False):
     """Run the same fixed case and assess frozen integral and grid-cell targets."""
-    gpu, gpu_field = run_gpu(raw, device, capture_final=True)
+    gpu, gpu_field = run_gpu(raw, device, capture_final=True,
+                             use_cuda_source=use_cuda_source)
     cpu, frame, cpu_temperature, cpu_coordinates = _run_cpu_with_final(raw)
     if (cpu["coreContract"]["modelId"] != gpu["solver"]["modelId"]
             or cpu["material"]["materialRevisionSha256"] != gpu["material"]["materialRevisionSha256"]):
@@ -345,6 +438,7 @@ def run_queued_pilot(raw):
                 "computeCapability": list(torch.cuda.get_device_capability(cuda)),
                 "torch": torch.__version__, "cudaRuntime": torch.version.cuda,
                 "thermalEvolution": device, "sourceIntegration": "cpu",
+                "sourceTimestepLimiter": "cpu",
                 "synchronizedAfterSolve": True,
             },
         },
@@ -369,10 +463,16 @@ def enforce_gpu_pilot_result(result):
             or solver.get("id") != GPU_SOLVER_ID or solver.get("modelId") != MODEL_ID
             or solver.get("actualBackend") != device
             or solver.get("thermalEvolutionDevice") != device
-            or solver.get("sourceIntegrationDevice") != "cpu"
+            or solver.get("sourceIntegrationDevice") not in ("cpu", device)
+            or solver.get("sourceTimestepLimiterDevice") not in ("cpu", device)
+            or solver.get("sourceIntegrationDevice") != solver.get("sourceTimestepLimiterDevice")
             or evidence.get("selected") != device
             or evidence.get("thermalEvolution") != device
-            or evidence.get("sourceIntegration") != "cpu"
+            or evidence.get("sourceIntegration") != solver.get("sourceIntegrationDevice")
+            or (solver.get("sourceIntegrationDevice") == "cpu"
+                and evidence.get("sourceTimestepLimiter") not in (None, "cpu"))
+            or (solver.get("sourceIntegrationDevice") == device
+                and evidence.get("sourceTimestepLimiter") != device)
             or evidence.get("synchronizedAfterSolve") is not True
             or pilot.get("experimentalValidation") is not False
             or pilot.get("cpu", {}).get("coreContract", {}).get("modelId") != MODEL_ID

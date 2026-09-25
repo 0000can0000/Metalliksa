@@ -360,8 +360,8 @@ export interface GpuPilotResult {
   validationStatus: 'unvalidated'; productionReady: false; label: string;
   settings: GpuPilotInput;
   solver: { id: 'enthalpy-fv-6-cuda-pilot-1'; modelId: 'stationary-enthalpy-conduction-v1';
-    actualBackend: string; thermalEvolutionDevice: string; sourceIntegrationDevice: 'cpu';
-    sourceTimestepLimiterDevice: 'cpu'; dtype: 'float64' };
+    actualBackend: string; thermalEvolutionDevice: string; sourceIntegrationDevice: 'cpu' | `cuda:${number}`;
+    sourceTimestepLimiterDevice: 'cpu' | `cuda:${number}`; dtype: 'float64' };
   material: { name: string; materialId: string; materialRevisionSha256: string; version: string };
   metrics: { width_um: number; depth_um: number; length_um: number; volume_um3: number; peakTemperature_K: number };
   energyBalance: { input_J: number; losses_J: number; stored_J: number; relativeError: number };
@@ -374,7 +374,9 @@ export interface GpuPilotResult {
     comparisons: Record<string, GpuPilotComparison> };
   provenance: { inputHash: string; implementationHash: string; materialVersion: string; createdAt: string;
     deviceEvidence: { selected: string; name: string; computeCapability: number[];
-      torch: string; cudaRuntime: string; thermalEvolution: string; sourceIntegration: 'cpu'; synchronizedAfterSolve: true };
+      torch: string; cudaRuntime: string; thermalEvolution: string;
+      sourceIntegration: 'cpu' | `cuda:${number}`; sourceTimestepLimiter?: 'cpu' | `cuda:${number}`;
+      synchronizedAfterSolve: true };
     runtime_s?: number };
   artifacts: [];
 }
@@ -391,6 +393,18 @@ const GPU_COMPARISON_KEYS = ['finalSampling', 'finalTemperatureField', 'peakTemp
   'input_J', 'losses_J', 'stored_J', 'width_um', 'depth_um', 'length_um', 'volume_um3'] as const;
 const gpuStatus = (value: unknown): value is GpuPilotStatus =>
   value === 'pass' || value === 'failed' || value === 'inconclusive';
+const gpuSourceDevicesMatch = (solver: unknown, evidence: unknown, selected: unknown): boolean => {
+  if (!object(solver) || !object(evidence) || typeof selected !== 'string'
+    || !/^cuda:[0-9]+$/.test(selected)) return false;
+  const source = solver.sourceIntegrationDevice;
+  const limiter = solver.sourceTimestepLimiterDevice;
+  if (source === 'cpu' && limiter === 'cpu') {
+    return evidence.sourceIntegration === 'cpu'
+      && (evidence.sourceTimestepLimiter === undefined || evidence.sourceTimestepLimiter === 'cpu');
+  }
+  return source === selected && limiter === selected
+    && evidence.sourceIntegration === selected && evidence.sourceTimestepLimiter === selected;
+};
 
 export function parseGpuPilotJob(value: unknown): GpuPilotJob {
   if (!object(value) || !finiteTree(value) || typeof value.id !== 'string' || !/^[a-f0-9]{32}$/.test(value.id)
@@ -418,7 +432,6 @@ export function parseGpuPilotJob(value: unknown): GpuPilotJob {
     || r.solver.modelId !== 'stationary-enthalpy-conduction-v1'
     || r.solver.actualBackend !== r.settings.backend
     || r.solver.thermalEvolutionDevice !== r.settings.backend
-    || r.solver.sourceIntegrationDevice !== 'cpu' || r.solver.sourceTimestepLimiterDevice !== 'cpu'
     || r.solver.dtype !== 'float64' || !object(r.material)
     || typeof r.material.name !== 'string' || typeof r.material.materialId !== 'string'
     || typeof r.material.materialRevisionSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(r.material.materialRevisionSha256)
@@ -428,9 +441,9 @@ export function parseGpuPilotJob(value: unknown): GpuPilotJob {
     || !Number.isSafeInteger(r.discretization.steps) || Number(r.discretization.steps) <= 0
     || typeof r.discretization.mesh_m !== 'number' || r.discretization.mesh_m <= 0
     || !object(r.provenance) || !object(r.provenance.deviceEvidence)
+    || !gpuSourceDevicesMatch(r.solver, r.provenance.deviceEvidence, r.settings.backend)
     || r.provenance.deviceEvidence.selected !== r.settings.backend
     || r.provenance.deviceEvidence.thermalEvolution !== r.settings.backend
-    || r.provenance.deviceEvidence.sourceIntegration !== 'cpu'
     || r.provenance.deviceEvidence.synchronizedAfterSolve !== true
     || typeof r.provenance.deviceEvidence.name !== 'string' || !r.provenance.deviceEvidence.name.trim()
     || !object(r.gpuPilot) || r.gpuPilot.experimentalValidation !== false

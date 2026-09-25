@@ -6,10 +6,14 @@ import copy
 
 import numpy as np
 
-from lpbf_gpu_thermal import (PARITY_TARGETS, compare_with_cpu, require_cuda,
-                              run_gpu, validate_pilot_request)
+from lpbf_gpu_thermal import (PARITY_TARGETS, _integrated_source_torch,
+                              _source_limited_step_torch, compare_with_cpu,
+                              require_cuda, run_gpu, validate_pilot_request)
 from lpbf_simulation import validate
-from lpbf_core_physics import scan_segments
+from lpbf_core_physics import calculate_mesh_domain, scan_segments, thermal_si_inputs
+from lpbf_heat_source import (MINIMUM_SOURCE_CAPTURE_FRACTION, integrated_source,
+                              source_limited_step)
+from lpbf_material_registry import property_at
 
 
 CASE = {"mode": "standard", "backend": "reference", "material": "Inconel 718",
@@ -38,6 +42,78 @@ class GpuThermal(unittest.TestCase):
         self.assertEqual(settings["study"], "none")
         self.assertNotIn("powderGridPolicy", settings)
         self.assertEqual(material["materialId"], "in718")
+
+    def test_cuda_source_field_capture_and_limited_dt_match_shared_cpu_source(self):
+        try:
+            import torch
+            available = torch.cuda.is_available()
+        except ImportError:
+            available = False
+        if not available:
+            self.skipTest("CUDA runtime unavailable; source/limiter parity unverified")
+
+        settings, material = validate(CASE)
+        domain = calculate_mesh_domain(settings)
+        dx = domain["dx"]
+        radius = domain["radius"]
+        layer_m = settings["layer_um"] * 1e-6
+        axis = (np.arange(domain["nxy"])+.5)*dx-domain["span"]/2
+        z = (np.arange(domain["nz"])+.5)*dx-domain["substrate_depth"]
+        segments, _ = scan_segments(settings)
+        segment = segments[0]
+        time = segment["start_s"]
+        initial_dt = 10e-6
+        power = thermal_si_inputs(settings, material)["absorbed_power_W"]
+
+        source_cpu, capture_cpu = integrated_source(
+            axis, z, dx, segment, time, initial_dt, layer_m, radius, layer_m,
+            power, axis_y=axis)
+        axis_cuda = torch.as_tensor(axis, dtype=torch.float64, device="cuda:0")
+        z_cuda = torch.as_tensor(z, dtype=torch.float64, device="cuda:0")
+        source_cuda, capture_cuda = _integrated_source_torch(
+            torch, axis_cuda, z_cuda, dx, segment, time, initial_dt, layer_m,
+            radius, layer_m, power)
+        np.testing.assert_allclose(source_cuda.cpu().numpy(), source_cpu,
+                                   rtol=1e-10, atol=1e-8)
+        self.assertAlmostEqual(capture_cuda, capture_cpu, delta=1e-12)
+        self.assertGreaterEqual(capture_cuda, MINIMUM_SOURCE_CAPTURE_FRACTION)
+
+        _, _, zz = np.meshgrid(axis, axis, z, indexing="ij")
+        rho = float(property_at(material, thermal_si_inputs(settings, material)["preheat_K"], 1))
+        cp = float(property_at(material, thermal_si_inputs(settings, material)["preheat_K"], 3))
+        rho_field = rho*np.where(zz > 0.0, settings["packingFraction"], 1.0)
+        capacity_cpu = rho_field * cp
+        passive_cpu = np.zeros_like(source_cpu)
+        cpu_result = source_limited_step(
+            axis, z, dx, segment, time, initial_dt, layer_m, radius, layer_m,
+            power, passive_cpu, capacity_cpu, axis_y=axis)
+        passive_cuda = torch.zeros_like(source_cuda)
+        capacity_cuda = torch.as_tensor(capacity_cpu, dtype=torch.float64, device="cuda:0")
+        cuda_result = _source_limited_step_torch(
+            torch, axis_cuda, z_cuda, dx, segment, time, initial_dt, layer_m,
+            radius, layer_m, power, passive_cuda, capacity_cuda)
+        self.assertLess(cpu_result[0], initial_dt, "frozen source case must exercise the 25 K limiter")
+        self.assertAlmostEqual(cuda_result[0], cpu_result[0], delta=1e-15)
+        self.assertEqual(cuda_result[4], cpu_result[4])
+        self.assertAlmostEqual(cuda_result[3], cpu_result[3], delta=1e-12)
+        np.testing.assert_allclose(cuda_result[1].cpu().numpy(), cpu_result[1],
+                                   rtol=1e-10, atol=1e-8)
+        np.testing.assert_allclose(cuda_result[2].cpu().numpy(), cpu_result[2],
+                                   rtol=1e-10, atol=1e-8)
+
+    def test_cuda_source_path_preserves_frozen_cpu_parity(self):
+        try:
+            import torch
+            available = torch.cuda.is_available()
+        except ImportError:
+            available = False
+        if not available:
+            self.skipTest("CUDA runtime unavailable; real GPU parity unverified")
+        result = compare_with_cpu(CASE, "cuda:0", use_cuda_source=True)
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["gpu"]["solver"]["sourceIntegrationDevice"], "cuda:0")
+        self.assertEqual(result["gpu"]["solver"]["sourceTimestepLimiterDevice"], "cuda:0")
+        self.assertEqual(result["comparisons"]["finalTemperatureField"]["status"], "pass")
 
     def test_gpu_path_rejects_truncated_source_capture(self):
         try:

@@ -60,7 +60,8 @@ const completed = {
     provenance: { inputHash: sha, implementationHash: sha, materialVersion: '1', createdAt: '2026-09-23T00:00:00Z',
       deviceEvidence: { selected: 'cuda:0', name: 'NVIDIA GeForce RTX 4060 Laptop GPU',
         computeCapability: [8, 9], torch: '2.14', cudaRuntime: '12.6',
-        thermalEvolution: 'cuda:0', sourceIntegration: 'cpu', synchronizedAfterSolve: true } },
+        thermalEvolution: 'cuda:0', sourceIntegration: 'cpu', sourceTimestepLimiter: 'cpu',
+        synchronizedAfterSolve: true } },
     artifacts: [],
   },
 };
@@ -77,6 +78,34 @@ test('GPU pilot has its own parser and cannot be presented as standard LPBF evid
   assert.throws(() => parseGpuPilotJob(movedTarget), /frozen parity targets/);
   const fakeExperiment = clone(); fakeExperiment.result.gpuPilot.experimentalValidation = true;
   assert.throws(() => parseGpuPilotJob(fakeExperiment), /identity/);
+});
+
+test('GPU pilot parser binds CPU or selected CUDA source and limiter devices', () => {
+  const legacyCpu = clone();
+  delete legacyCpu.result.provenance.deviceEvidence.sourceTimestepLimiter;
+  assert.equal(parseGpuPilotJob(legacyCpu).result?.solver.sourceIntegrationDevice, 'cpu');
+
+  const cudaSource = clone();
+  cudaSource.result.solver.sourceIntegrationDevice = 'cuda:0';
+  cudaSource.result.solver.sourceTimestepLimiterDevice = 'cuda:0';
+  cudaSource.result.provenance.deviceEvidence.sourceIntegration = 'cuda:0';
+  cudaSource.result.provenance.deviceEvidence.sourceTimestepLimiter = 'cuda:0';
+  assert.equal(parseGpuPilotJob(cudaSource).result?.solver.sourceIntegrationDevice, 'cuda:0');
+
+  const wrongDevice = structuredClone(cudaSource);
+  wrongDevice.result.solver.sourceIntegrationDevice = 'cuda:1';
+  wrongDevice.result.solver.sourceTimestepLimiterDevice = 'cuda:1';
+  wrongDevice.result.provenance.deviceEvidence.sourceIntegration = 'cuda:1';
+  wrongDevice.result.provenance.deviceEvidence.sourceTimestepLimiter = 'cuda:1';
+  assert.throws(() => parseGpuPilotJob(wrongDevice), /identity/);
+
+  const mismatchedLimiter = structuredClone(cudaSource);
+  mismatchedLimiter.result.solver.sourceTimestepLimiterDevice = 'cpu';
+  assert.throws(() => parseGpuPilotJob(mismatchedLimiter), /identity/);
+
+  const invalidDevice = structuredClone(cudaSource);
+  invalidDevice.result.provenance.deviceEvidence.sourceIntegration = 'cuda:bad';
+  assert.throws(() => parseGpuPilotJob(invalidDevice), /identity/);
 });
 
 test('GPU pilot client uses the existing job API and preserves explicit CUDA errors', async () => {

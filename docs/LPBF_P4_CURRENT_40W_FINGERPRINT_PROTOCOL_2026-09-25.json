@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "lpbf-p4-current-40w-fingerprint-stability-v1",
+  "status": "frozen-before-execution",
+  "scope": "Supplementary CPU reference temporal diagnostic with stable implementation provenance; not experimental validation",
+  "scenarioFile": "docs/LPBF_P4_CURRENT_MODEL_40W_SCENARIO_2026-09-25.json",
+  "scenarioSha256": "2abec47f9d35c02158ea2e06876e3ca06c3ba5ba9243f1ddccaa94ef64752ea6",
+  "runnerFile": "python/run_lpbf_accepted_dt_diagnostic.py",
+  "runnerSha256": "c2256fc3075bdde556661146b1b419238b99d70afb4a861b327b38f132f2d0d3",
+  "output": "docs/LPBF_P4_CURRENT_40W_FINGERPRINT_DIAGNOSTIC_2026-09-25.json",
+  "fixedMesh_um": 5.0,
+  "requestedMaxDt_s": [
+    1e-7,
+    5e-8,
+    2.5e-8
+  ],
+  "priorFrozenP4Status": "failed",
+  "acceptance": {
+    "energyRelativeErrorMax": 0.01,
+    "finestPairWidthDepthRelativeChangeMax": 0.05,
+    "minimumLevels": 3,
+    "maximumLevels": 6,
+    "trend": "Existing lpbf_convergence_study._axis and lpbf_verification.convergence using actual accepted mean timestep spacings; no new threshold or extrapolation"
+  },
+  "executionIntegrity": {
+    "captureHeadAndDirtyManifestPaths": true,
+    "recordImplementationFingerprintBeforeAndAfterEachRun": true,
+    "requireEveryRowFingerprintToMatch": true,
+    "recordRowsAfterEachLevel": true
+  },
+  "experimentalValidation": false
+}

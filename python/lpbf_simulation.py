@@ -31,6 +31,44 @@ from lpbf_overlap import FieldOverlapTracker, OVERLAP_MODEL_ID
 from lpbf_evidence import finite_tree, measurement_evidence, resource_estimate, thermal_audits, enforce_thermal_balances, write_artifacts, FieldRecorder
 
 VERSION = "enthalpy-fv-6"
+IMPLEMENTATION_FINGERPRINT_SCHEMA = "lpbf-thermal-implementation-manifest-v2"
+# Reviewed production closure for the shared thermal path and supported CPU,
+# OpenFOAM, CUDA, and Warp implementations. Keep orchestration, tests, scratch
+# scripts, and unrelated physics modules out of this numerical implementation ID.
+IMPLEMENTATION_SOURCE_FILES = (
+    "four_alloy_materials.py",
+    "eagar_tsai_solver.py",
+    "fabbro_keyhole.py",
+    "goldak_solver.py",
+    "in625_gpu_thermal_material.py",
+    "in625_thermal_material.py",
+    "lpbf_core_contract.py",
+    "lpbf_core_physics.py",
+    "lpbf_cfd.py",
+    "lpbf_defect_diagnostics.py",
+    "lpbf_evidence.py",
+    "lpbf_gpu_thermal.py",
+    "lpbf_gpu_thermal_warp.py",
+    "lpbf_heat_source.py",
+    "lpbf_layered_conduction.py",
+    "lpbf_material_registry.py",
+    "marangoni_screening.py",
+    "lpbf_openfoam.py",
+    "lpbf_overlap.py",
+    "lpbf_peak.py",
+    "powder_packer.py",
+    "powder_bed_raytracer.py",
+    "lpbf_simulation.py",
+    "lpbf_ss304_support_material.py",
+    "lpbf_thermal_solver.py",
+    "lpbf_transient_3d_gpu.py",
+    "lpbf_verification.py",
+    "solidification_front.py",
+    "warp_thermal_solver.py",
+    "openfoam/Make/files",
+    "openfoam/Make/options",
+    "openfoam/metalliksaThermal.C",
+)
 DEFAULTS = dict(mode="screening", material="Inconel 718", power_W=200., speed_mm_s=800.,
                 beamDiameter_um=80., preheat_C=80., layer_um=40., hatch_um=100.,
                 mesh_um=20., maxDt_s=1e-6, trackLength_um=600., tracks=1, layers=1,
@@ -212,16 +250,36 @@ def fingerprint(p, m):
 
 
 def implementation_fingerprint():
-    """Hash solver implementation independently of process and material inputs."""
-    root = Path(__file__).parent
+    """Hash reviewed thermal implementation sources, independent of run inputs."""
+    return _fingerprint_implementation_sources(Path(__file__).parent,
+                                               IMPLEMENTATION_SOURCE_FILES, VERSION)
+
+
+def _fingerprint_implementation_sources(root, source_files, version):
+    """Hash a deterministic, fail-closed relative source manifest."""
+    paths = tuple(source_files)
+    if len(paths) != len(set(paths)):
+        raise ValueError("Implementation source manifest contains duplicate paths")
+    root = Path(root).resolve()
+    entries = []
+    for relative in paths:
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError(f"Implementation source path must stay within its root: {relative}")
+        source = (root / path).resolve()
+        if root not in source.parents or not source.is_file():
+            raise FileNotFoundError(f"Implementation source is missing from manifest: {relative}")
+        entries.append((path.as_posix(), source.read_bytes()))
+    return _fingerprint_manifest_entries(entries, version)
+
+
+def _fingerprint_manifest_entries(entries, version):
     h = hashlib.sha256()
-    for f in sorted(root.glob("*.py")):
-        h.update(f.name.encode()); h.update(f.read_bytes())
-    for f in sorted((root/"openfoam").glob("*.C")):
-        h.update(f.name.encode()); h.update(f.read_bytes())
-    for f in sorted((root/"openfoam/Make").glob("*")):
-        if f.is_file(): h.update(f.name.encode()); h.update(f.read_bytes())
-    h.update(VERSION.encode())
+    h.update((IMPLEMENTATION_FINGERPRINT_SCHEMA + "\0" + str(version) + "\0").encode())
+    for relative, content in sorted(entries):
+        name = relative.encode("utf-8")
+        h.update(len(name).to_bytes(4, "big")); h.update(name)
+        h.update(len(content).to_bytes(8, "big")); h.update(content)
     return h.hexdigest()
 
 

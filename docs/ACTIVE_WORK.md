@@ -1583,3 +1583,21 @@ changes, but this is not a single implementation-hash-locked convergence series.
 For any future acceptance claim, freeze the source snapshot for the entire
 series and record solver-scoped provenance. Report SHA-256 is
 `777ed20aa55b4c518ce27a0d6672c50b987bb786eb67e24a1db1ebb0ee3d9284`.
+
+## 2026-09-25 continuation — thermal implementation fingerprint v2
+
+The broad `python/*.py` fingerprint was replaced with a versioned production
+source manifest covering the static Python import closure and checked-in local
+OpenFOAM sources/build files. It excludes tests, worker orchestration, scratch
+files, and the diagnostic runner; it fails closed for missing, duplicate, or
+out-of-root entries. The UI now calls it an implementation fingerprint rather
+than a source revision. Focused provenance checks passed 6/6; the existing
+input-independence case passed; repeat-scope tests passed 2/2 in the permitted
+runner after the default sandbox could not open its temporary SQLite files.
+TypeScript typecheck, Python compilation, and scoped diff check passed.
+
+A new frozen protocol pins the scenario, runner bytes, levels, output path, and
+per-row hash-integrity requirement. The repeat computation has not started yet;
+the previous report remains preserved and inconclusive. Next: commit this
+protocol/runner with the source change, execute the frozen levels, then report
+only the existing numerical gate outcome.

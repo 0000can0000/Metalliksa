@@ -1565,3 +1565,21 @@ Case 0 67 µm / 5° scan; no profile-byte checksum is locally pinned. The report
 3.3 µm (5.2%, k=1) uncertainty applies to spot diameter, not profile intensity.
 Keep the current gate closed until case-specific profile bytes and their
 D4σ/model mapping are established. Source: [NIST AMS 100-67](https://doi.org/10.6028/NIST.AMS.100-67).
+
+## 2026-09-25 continuation — accepted-dt diagnostic completed
+
+The frozen supplementary 5 µm CPU run completed at requested max-dt values of
+100/50/25 ns. Energy relative error stayed below `1.7e-13`; discrete width and
+depth remained 80/35 µm. The existing gate correctly reports `inconclusive`:
+accepted mean dt was 89.22/50/25 ns, which does not provide the constant actual
+refinement ratio required by the existing convergence helper. No nonuniform
+Richardson fit or new criterion is admissible. Original P4 remains `failed` and
+unchanged; no experimental validation is implied.
+
+The three row implementation hashes differ because the current fingerprint
+hashes every `python/*.py`, including repeat-worker/test files written while the
+long run was active. No numerical solver edit was found among post-start Python
+changes, but this is not a single implementation-hash-locked convergence series.
+For any future acceptance claim, freeze the source snapshot for the entire
+series and record solver-scoped provenance. Report SHA-256 is
+`777ed20aa55b4c518ce27a0d6672c50b987bb786eb67e24a1db1ebb0ee3d9284`.

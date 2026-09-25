@@ -90,6 +90,7 @@ def main():
     assert ti["verdict"]["verdict"] in ("printable", "risky", "do-not-print")
     assert ti["thermal"]["meltPoolGeometry"]["width_um"] > 0
     assert ti["materialPropertySchemaVersion"] == 1
+    assert ti["materialPropertyRevision"] == ti["buildJobIdentity"]["materialPropertyRevision"]
     assert len(ti["materialPropertySha256"]) == 64
     assert ti["materialPropertySnapshot"]["alloyId"] == "ti6al4v"
     from lpbf_build_job_material_snapshot import build_build_job_identity

@@ -18,6 +18,7 @@ from four_alloy_materials import (
 )
 from lpbf_build_job_schema import LpbfBuildJobRequest
 from lpbf_build_job_material_snapshot import (
+    MATERIAL_PROPERTY_REVISION,
     build_ambench_material_property_snapshot,
     build_build_job_identity,
     build_material_property_snapshot,
@@ -613,6 +614,7 @@ def solve_lpbf_build_job(data):
         "assumptions": assumptions,
         "alloyId": alloy_id,
         "materialPropertySchemaVersion": material_snapshot["schemaVersion"],
+        "materialPropertyRevision": MATERIAL_PROPERTY_REVISION,
         "materialPropertySha256": material_property_sha256,
         "materialPropertySnapshot": material_snapshot,
         "amBenchMaterialPropertySha256": ambench_property_sha256,

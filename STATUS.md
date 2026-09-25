@@ -2,6 +2,11 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — Build-job material revision response contract
+- Python build-job solver artık `materialPropertyRevision` alanını üst seviye yanıtta da yayımlıyor; önceden alan yalnızca `buildJobIdentity` içinde bulunuyordu ve istemci yanıtı geçersiz sayıyordu. Python sözleşme assertion'ı ve eksik üst seviye alanı reddeden istemci regresyonu eklendi.
+- Doğrudan Windows Python 3.12 gerçek-solver çağrısı başarılı oldu; üst seviye revizyon ve kimlik revizyonu `build-job-effective-properties-v1` olarak eşleşti. Node testi Windows sandbox'ında `spawn EPERM` nedeniyle çalıştırılamadı; kaynak değişikliği `git diff --check` ile temiz.
+- Sıradaki adım: odaklı Node testi izinli runner'da çalıştır; kontrollü P4 koşusunun 5 µm ağ ve zaman adımlarını tamamlayıp dondurulmuş kapılara göre raporunu değerlendir.
+
 ## 2026-09-25 — OpenFOAM layer-conforming powder grid
 - İnceleme, eski OpenFOAM powder-layer ağının katman yüzeylerini hücre yüzlerine hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Ortak `calculate_mesh_domain` hesabı tekdüze kübik ağda hizalamayı destekliyor; `standard/openfoam-thermal` şimdi sürümlü `layer-conforming` politikasını alıyor. Vaka üreticisi politika ve yüz indekslemesini yazmadan önce doğruluyor.
 - OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Python sonuç kapısı da kaynak yakalamasını ve raporlanan maksimum yüz ofsetini doğruluyor; uyumsuz ikili sonucu kabul edilmiyor.

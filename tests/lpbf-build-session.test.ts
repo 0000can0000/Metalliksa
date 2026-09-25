@@ -119,6 +119,13 @@ test("successful results require a consistent material and model identity", asyn
   assert.equal(useLpbfBuildJobStore.getState().job, null);
 });
 
+test("successful backend results require the top-level material revision", async () => {
+  pythonComputationService.solveLpbfBuildJob = async () => fixture({ materialPropertyRevision: undefined });
+  await requestLpbfBuildJob();
+  assert.match(useLpbfBuildJobStore.getState().error ?? "", /material\/model identity/);
+  assert.equal(useLpbfBuildJobStore.getState().job, null);
+});
+
 test("backend failures without a solver revision preserve their error", async () => {
   const backendError = "Unsupported LPBF alloy identity: synthetic unknown alloy";
   pythonComputationService.solveLpbfBuildJob = async () => ({

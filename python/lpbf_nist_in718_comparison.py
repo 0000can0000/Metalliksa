@@ -216,6 +216,13 @@ def _model_reasons(result, row):
             or abs(section["planeOffset_um"]) > section["mesh_um"]/4
             or any(not _number(section.get(key)) or section[key] <= 0 for key in ("width_um", "depth_um"))):
         reasons.append("Mid-track section does not match the six-sample etched optical widest/deepest operator and resolved position.")
+    # The NIST aggregate comprises two physical sections on each of three
+    # separately scanned tracks (4.9 and 6.0 mm from each track start). A
+    # single midpoint result cannot stand in for those six observations, even
+    # if a caller labels it with the optical operator or sets count=6.
+    reasons.append(
+        "NIST six-section operator is not implemented: require separate 4.9/6.0 mm section records for each of three simulated tracks."
+    )
     convergence = _object(result.get("comparisonConvergence"))
     process_vector = {"power_W": settings.get("power_W"), "speed_mm_s": settings.get("speed_mm_s"),
                       "beamDiameterD4sigma_um": row.get("beamDiameterD4sigma_um"),
@@ -247,6 +254,7 @@ def compare_nist_in718_optical_geometry(result, table4, source_binding, expected
                             "resultsLocator": "Table 4, CHAL-AMB2022-03-TMPG",
                             "methods": METHODS_URL,
                             "measurement": "six optical cross-section depth/width measurements per condition",
+                            "sectionPositions_mm": [4.9, 6.0], "trackCount": 3,
                             "archiveKind": "local transcription of published aggregate means and standard deviations"},
               "sourceBinding": source_binding if not source_reasons else None,
               "reasons": reasons, "errors": None}

@@ -164,14 +164,14 @@ class In718NistOpticalComparison(unittest.TestCase):
                 self.assertEqual(report["status"], "unavailable")
                 self.assertIsNone(report["errors"])
 
-    def test_synthetic_schema_positive_is_only_unvalidated_residual(self):
+    def test_single_midpoint_cannot_stand_in_for_nist_six_section_operator(self):
         report = self.compare()
-        self.assertEqual(report["status"], "comparable-screening")
+        self.assertEqual(report["status"], "unavailable")
         self.assertEqual(report["validationStatus"], "unvalidated")
-        self.assertEqual(report["reasons"], [])
-        self.assertAlmostEqual(report["errors"]["width"]["signed_um"], 3.7)
-        self.assertAlmostEqual(report["errors"]["depth"]["absolute_um"], 10.3)
-        self.assertEqual(report["errors"]["width"]["publishedStdDev_um"], 2.9)
+        self.assertIsNone(report["errors"])
+        self.assertIn("4.9/6.0 mm", " ".join(report["reasons"]))
+        self.assertEqual(report["reference"]["sectionPositions_mm"], [4.9, 6.0])
+        self.assertEqual(report["reference"]["trackCount"], 3)
 
     def test_cli_preserves_python_json_number_lexemes(self):
         request = {"resultJson": json.dumps(synthetic_result(), allow_nan=False),
@@ -182,8 +182,9 @@ class In718NistOpticalComparison(unittest.TestCase):
             [sys.executable, str(Path(__file__).with_name("lpbf_nist_in718_comparison.py"))],
             input=json.dumps(request), text=True, capture_output=True, check=True)
         report = json.loads(completed.stdout)
-        self.assertEqual(report["status"], "comparable-screening")
-        self.assertEqual(report["reasons"], [])
+        self.assertEqual(report["status"], "unavailable")
+        self.assertIsNone(report["errors"])
+        self.assertIn("six-section operator is not implemented", " ".join(report["reasons"]))
 
 
 if __name__ == "__main__":

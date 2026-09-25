@@ -30,6 +30,20 @@ freeze any new numerical protocol before running it. Keep the 80 W frozen P4
 status failed and the 75 W contour study inconclusive. P5 source/operator and
 IN625 full-transient data gates also remain open.
 
+## 2026-09-25 continuation — NIST observation-count gate
+
+The official NIST workbook and catalog define six cross-sections per process
+condition: three tracks, each sampled at 4.9 and 6.0 mm from its start. The
+comparator's previous synthetic positive fixture supplied one x=5 mm midpoint
+section while declaring `observationCount=6`; that schema could emit numerical
+residuals without matching the source sampling plan. The Python comparator now
+always withholds residuals until a versioned six-section operator backed by
+three separate simulated tracks is implemented. Reports expose the required
+positions and track count. Targeted regression: all 6 tests pass. This does not
+validate the engine or change the unavailable P5 result. Do not launch another
+NIST solve until the observation contract, source profile, and 10 mm model
+validity/cost gates are resolved.
+
 ## Continuation checkpoint — P8 archive acceptance and physics continuation (2026-09-25)
 
 The goal remains active. User explicitly authorizes scientific fixes or a Python

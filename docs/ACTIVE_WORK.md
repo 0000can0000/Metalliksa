@@ -1498,8 +1498,9 @@ The frozen 5 µm CPU temporal diagnostic for P4 is running against protocol
 `docs/LPBF_P4_CURRENT_40W_ACCEPTED_DT_DIAGNOSTIC_PROTOCOL_2026-09-25.md`
 (SHA-256 `2f9fbea438a1b9c22aa7124a72550a354bf4b7b6df2a82a908449302d591d1a4`).
 The 100 ns level completed with 3,923 accepted steps, mean 89.217 ns, minimum
-3.094 ns, and 1,682 source-limited/retried steps. The 50 ns level is currently
-running; 25 ns remains. Partial results are in
+3.094 ns, and 1,682 source-limited/retried steps. The 50 ns level completed
+with 7,000 steps, mean 50 ns, 99.986% cap hits, and no source-limited steps or
+retries. The 25 ns level is currently running. Partial results are in
 `docs/LPBF_P4_CURRENT_40W_ACCEPTED_DT_DIAGNOSTIC_2026-09-25.partial.json`.
 Continue the existing process; do not restart it. Once all three levels finish,
 verify the final report against the frozen protocol and retain failed or

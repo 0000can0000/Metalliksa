@@ -37,6 +37,55 @@ export interface ExportedRunBundle {
 export interface VerifiedRunBundle extends ExportedRunBundle { verified: true }
 export interface RestoredRunBundle extends VerifiedRunBundle { restoreId: string }
 
+export interface NistProxyCampaign {
+  schemaVersion: 1;
+  kind: 'lpbf-nist-amb2022-03-proxy-campaign';
+  campaignId: string;
+  benchmark: 'AMB2022-03-TMPG';
+  caseNumber: NistOpticalCaseNumber;
+  sourceBinding: RunSourceLink & { artifactPath: string; artifactSha256: string; artifactSizeBytes: number; caseNumber: NistOpticalCaseNumber };
+  claimBoundary: { resultKind: 'thermal-proxy-screening'; validationStatus: 'unvalidated'; experimentalValidation: false; opticalOperatorMatched: false };
+  samplingPlan: { coordinateFrame: 'scan-start-relative'; scanDirection: '+X'; sectionPositions_mm: [4.9, 6.0]; expectedTrackCount: 3; expectedObservationCount: 6; replicateSemantics: 'independent-computational-runs-only' };
+  tracks: {
+    simulatedTrackId: string;
+    experimentalTrackId: null;
+    replicateKind: 'independent-computational-run';
+    runIdentity: NistProxyRunIdentity;
+    observations: { sectionId: 'x-4p9mm' | 'x-6p0mm'; coordinateFrame: 'scan-start-relative'; scanDirection: '+X';
+      distanceFromScanStart_mm: 4.9 | 6.0; surfaceZ_m: 0; status: 'thermal-proxy';
+      geometry: { width_um: number; depth_um: number };
+      operator: { sectionOperatorId: string; interpolationOperatorId: string; contourOperatorId: string; evidenceClass: 'thermal-proxy-only' };
+      provenance: { sourceBinding: NistProxyCampaign['sourceBinding']; runIdentity: NistProxyRunIdentity } }[];
+  }[];
+}
+
+export interface NistProxyRunIdentity {
+  runId: string;
+  runDocumentSha256: string;
+  resultArtifact: { path: 'capture/result.json'; sha256: string; size_bytes: number };
+  inputSha256: string;
+  materialSha256: string;
+  materialId: string;
+  materialRevisionSha256: string;
+  coreContract: { schemaVersion: number; modelId: string; solverId: string; actualBackend: string };
+}
+
+export interface NistProxyCampaignValidation {
+  schemaVersion: 1;
+  kind: 'lpbf-nist-amb2022-03-proxy-campaign-validation';
+  status: 'unavailable' | 'proxy-screening-only';
+  validationStatus: 'unvalidated';
+  experimentalValidation: false;
+  numericalConvergenceStatus: 'not-evaluated';
+  comparisonResiduals: null;
+  observationCount: 6 | null;
+  reasons: string[];
+}
+
+export interface NistProxyCampaignRecord { campaignId: string; document: NistProxyCampaign; documentSha256: string; createdAt: string }
+export interface NistProxyCampaignPreview { campaign: NistProxyCampaign | null; validation: NistProxyCampaignValidation; previewSha256?: string }
+export interface NistProxyCampaignCreate extends NistProxyCampaignPreview { record?: NistProxyCampaignRecord }
+
 const invalid = () => new Error('Invalid run archive response. Reload before retrying.');
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -220,4 +269,128 @@ export async function importRun(jobId: string, sources: RunSourceLink[], signal:
   recordIdentity(result, jobId);
   if (!sameSources(result.document.sources, sources)) throw invalid();
   return result;
+}
+
+const campaignId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
+const exactKeys = (value: Record<string, unknown>, expected: string) => Object.keys(value).sort().join(',') === expected;
+
+function proxyRunIdentity(value: unknown, expectedRunId: string): value is NistProxyRunIdentity {
+  return object(value) && exactKeys(value, 'coreContract,inputSha256,materialId,materialRevisionSha256,materialSha256,resultArtifact,runDocumentSha256,runId')
+    && value.runId === expectedRunId && sha(value.runDocumentSha256) && sha(value.inputSha256)
+    && sha(value.materialSha256) && sha(value.materialRevisionSha256) && typeof value.materialId === 'string'
+    && object(value.resultArtifact) && exactKeys(value.resultArtifact, 'path,sha256,size_bytes')
+    && value.resultArtifact.path === 'capture/result.json' && sha(value.resultArtifact.sha256)
+    && Number.isSafeInteger(value.resultArtifact.size_bytes) && (value.resultArtifact.size_bytes as number) >= 0
+    && object(value.coreContract) && exactKeys(value.coreContract, 'actualBackend,modelId,schemaVersion,solverId')
+    && Number.isSafeInteger(value.coreContract.schemaVersion) && typeof value.coreContract.modelId === 'string'
+    && typeof value.coreContract.solverId === 'string' && typeof value.coreContract.actualBackend === 'string';
+}
+
+function proxyCampaignValidation(value: unknown): asserts value is NistProxyCampaignValidation {
+  if (!object(value) || value.schemaVersion !== 1 || value.kind !== 'lpbf-nist-amb2022-03-proxy-campaign-validation'
+    || Object.keys(value).sort().join(',') !== 'comparisonResiduals,experimentalValidation,kind,numericalConvergenceStatus,observationCount,reasons,schemaVersion,status,validationStatus'
+    || !['unavailable', 'proxy-screening-only'].includes(value.status as string)
+    || value.validationStatus !== 'unvalidated' || value.experimentalValidation !== false
+    || value.numericalConvergenceStatus !== 'not-evaluated' || value.comparisonResiduals !== null
+    || !Array.isArray(value.reasons) || value.reasons.some(reason => typeof reason !== 'string' || !reason.trim())) throw invalid();
+  if (value.status === 'proxy-screening-only') {
+    if (value.observationCount !== 6 || value.reasons.length !== 0) throw invalid();
+  } else if (value.observationCount !== null || value.reasons.length === 0) throw invalid();
+}
+
+function proxyCampaign(value: unknown, expectedRunIds: string[], expectedCase: NistOpticalCaseNumber): asserts value is NistProxyCampaign {
+  if (!object(value) || value.schemaVersion !== 1 || value.kind !== 'lpbf-nist-amb2022-03-proxy-campaign'
+    || Object.keys(value).sort().join(',') !== 'benchmark,campaignId,caseNumber,claimBoundary,kind,samplingPlan,schemaVersion,sourceBinding,tracks'
+    || !campaignId(value.campaignId) || value.benchmark !== 'AMB2022-03-TMPG' || value.caseNumber !== expectedCase
+    || !object(value.sourceBinding) || !exactKeys(value.sourceBinding, 'artifactPath,artifactSha256,artifactSizeBytes,caseNumber,datasetId,documentSha256,revision')
+    || value.sourceBinding.datasetId !== opticalDatasetId
+    || !Number.isSafeInteger(value.sourceBinding.revision) || (value.sourceBinding.revision as number) < 1
+    || !sha(value.sourceBinding.documentSha256) || value.sourceBinding.artifactPath !== 'table4-aggregate-v2.json'
+    || value.sourceBinding.artifactSha256 !== opticalArtifactSha || value.sourceBinding.artifactSizeBytes !== 4321
+    || value.sourceBinding.caseNumber !== expectedCase
+    || !object(value.claimBoundary) || !exactKeys(value.claimBoundary, 'experimentalValidation,opticalOperatorMatched,resultKind,validationStatus')
+    || value.claimBoundary.resultKind !== 'thermal-proxy-screening'
+    || value.claimBoundary.validationStatus !== 'unvalidated' || value.claimBoundary.experimentalValidation !== false
+    || value.claimBoundary.opticalOperatorMatched !== false
+    || !object(value.samplingPlan) || !exactKeys(value.samplingPlan, 'coordinateFrame,expectedObservationCount,expectedTrackCount,replicateSemantics,scanDirection,sectionPositions_mm')
+    || value.samplingPlan.coordinateFrame !== 'scan-start-relative'
+    || value.samplingPlan.scanDirection !== '+X' || !Array.isArray(value.samplingPlan.sectionPositions_mm)
+    || value.samplingPlan.sectionPositions_mm.length !== 2 || value.samplingPlan.sectionPositions_mm[0] !== 4.9
+    || value.samplingPlan.sectionPositions_mm[1] !== 6 || value.samplingPlan.expectedTrackCount !== 3
+    || value.samplingPlan.expectedObservationCount !== 6
+    || value.samplingPlan.replicateSemantics !== 'independent-computational-runs-only'
+    || !Array.isArray(value.tracks) || value.tracks.length !== 3) throw invalid();
+  const seen = new Set<string>();
+  for (let index = 0; index < value.tracks.length; index++) {
+    const track = value.tracks[index];
+    if (!object(track) || !exactKeys(track, 'experimentalTrackId,observations,replicateKind,runIdentity,simulatedTrackId')
+      || track.simulatedTrackId !== `sim-${expectedRunIds[index]}` || track.experimentalTrackId !== null
+      || track.replicateKind !== 'independent-computational-run' || !proxyRunIdentity(track.runIdentity, expectedRunIds[index])
+      || seen.has(track.runIdentity.runId) || !Array.isArray(track.observations) || track.observations.length !== 2) throw invalid();
+    seen.add(track.runIdentity.runId);
+    const sections = new Set<string>();
+    for (const observation of track.observations) {
+      if (!object(observation) || !exactKeys(observation, 'coordinateFrame,distanceFromScanStart_mm,geometry,operator,provenance,scanDirection,sectionId,status,surfaceZ_m')
+        || !['x-4p9mm', 'x-6p0mm'].includes(observation.sectionId as string)
+        || observation.coordinateFrame !== 'scan-start-relative' || observation.scanDirection !== '+X' || observation.surfaceZ_m !== 0
+        || sections.has(observation.sectionId as string) || observation.status !== 'thermal-proxy'
+        || observation.distanceFromScanStart_mm !== (observation.sectionId === 'x-4p9mm' ? 4.9 : 6)
+        || !object(observation.geometry) || !exactKeys(observation.geometry, 'depth_um,width_um')
+        || !finite(observation.geometry.width_um) || observation.geometry.width_um <= 0
+        || !finite(observation.geometry.depth_um) || observation.geometry.depth_um <= 0
+        || !object(observation.operator) || !exactKeys(observation.operator, 'contourOperatorId,evidenceClass,interpolationOperatorId,sectionOperatorId')
+        || typeof observation.operator.sectionOperatorId !== 'string' || typeof observation.operator.interpolationOperatorId !== 'string'
+        || typeof observation.operator.contourOperatorId !== 'string' || observation.operator.evidenceClass !== 'thermal-proxy-only'
+        || !object(observation.provenance) || !exactKeys(observation.provenance, 'runIdentity,sourceBinding')
+        || JSON.stringify(observation.provenance.sourceBinding) !== JSON.stringify(value.sourceBinding)
+        || JSON.stringify(observation.provenance.runIdentity) !== JSON.stringify(track.runIdentity)) throw invalid();
+      sections.add(observation.sectionId as string);
+    }
+    if (!sections.has('x-4p9mm') || !sections.has('x-6p0mm')) throw invalid();
+  }
+}
+
+function proxyCampaignPreview(value: unknown, expectedRunIds: string[], expectedCase: NistOpticalCaseNumber): asserts value is NistProxyCampaignPreview {
+  if (!object(value)) throw invalid();
+  proxyCampaignValidation(value.validation);
+  if (value.campaign === null) {
+    if (value.validation.status !== 'unavailable' || value.previewSha256 !== undefined) throw invalid();
+    return;
+  }
+  if (value.validation.status !== 'proxy-screening-only' || !sha(value.previewSha256)) throw invalid();
+  proxyCampaign(value.campaign, expectedRunIds, expectedCase);
+}
+
+function campaignRequestInputs(runIds: string[], caseNumber: NistOpticalCaseNumber) {
+  if (!Array.isArray(runIds) || runIds.length !== 3 || runIds.some(id => !jobId(id))
+    || new Set(runIds).size !== 3 || !opticalCases.has(caseNumber)) {
+    throw new Error('Select three distinct archived run IDs and a valid Table 4 case.');
+  }
+}
+
+export async function previewNistProxyCampaign(runIds: string[], caseNumber: NistOpticalCaseNumber,
+  signal: AbortSignal): Promise<NistProxyCampaignPreview> {
+  campaignRequestInputs(runIds, caseNumber);
+  const result: unknown = await request('/proxy-campaigns/preview', signal, { runIds, caseNumber });
+  proxyCampaignPreview(result, runIds, caseNumber);
+  return result;
+}
+
+export async function createNistProxyCampaign(runIds: string[], caseNumber: NistOpticalCaseNumber,
+  previewSha256: string, signal: AbortSignal): Promise<NistProxyCampaignCreate> {
+  campaignRequestInputs(runIds, caseNumber);
+  if (!sha(previewSha256)) throw new Error('Preview the archived runs before saving the campaign.');
+  const result: unknown = await request('/proxy-campaigns', signal, { runIds, caseNumber, previewSha256 });
+  proxyCampaignPreview(result, runIds, caseNumber);
+  const response = result as NistProxyCampaignCreate;
+  if (response.campaign !== null) {
+    if (response.previewSha256 !== previewSha256 || !object(response.record)
+      || !exactKeys(response.record, 'campaignId,createdAt,document,documentSha256')) throw invalid();
+    const record = response.record;
+    if (record.campaignId !== response.campaign.campaignId || !sha(record.documentSha256) || !date(record.createdAt)) throw invalid();
+    proxyCampaign(record.document, runIds, caseNumber);
+    if (record.document.campaignId !== response.campaign.campaignId
+      || JSON.stringify(record.document) !== JSON.stringify(response.campaign)) throw invalid();
+  } else if (response.record !== undefined) throw invalid();
+  return response;
 }

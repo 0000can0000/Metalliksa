@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useInputBoundTask } from '../hooks/useInputBoundTask';
 import { listRuns, getRun, previewRun, importRun, exportRunBundle, verifyRunBundle, restoreRunBundle,
-  compareNistOpticalRun,
+  compareNistOpticalRun, previewNistProxyCampaign, createNistProxyCampaign,
   type RunPreview, type RunArchiveList, type ExportedRunBundle, type VerifiedRunBundle,
-  type RestoredRunBundle } from '../services/lpbfRunArchiveClient';
+  type RestoredRunBundle, type NistProxyCampaignPreview, type NistProxyCampaignRecord } from '../services/lpbfRunArchiveClient';
 import { sourceAction, sourceCatalog } from '../services/lpbfSourceService';
 import type { RunRecord, RunSourceLink, NistOpticalCaseNumber, NistOpticalReport } from '../types/lpbfRun';
 
@@ -32,6 +32,7 @@ export function LpbfRunArchivePanel() {
       : runs.length === 0 ? <p>No simulation runs archived yet.</p>
       : <><label className="block text-sm">Archived run<select aria-label="Archived run" className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300" value={selected} onChange={event => setSelected(event.target.value)}>{runs.map(item => <option key={item.runId} value={item.runId}>{item.runId.slice(0,8)}... · {item.runKind} · {item.createdAt}</option>)}</select></label>
         {selected && <ArchivedRunRecord key={selected} runId={selected}/>}</>}
+    {runs && <NistProxyCampaign runs={runs} />}
     <RunBundleControls />
   </section>;
 }
@@ -192,6 +193,107 @@ export function NistOpticalResult({ report }: { report: NistOpticalReport }) {
         </p>)}
       </div>}
     </div>;
+}
+
+const proxyCampaignCases: { id: NistOpticalCaseNumber; label: string }[] = [
+  { id: '0', label: 'Case 0 · 285 W · 960 mm/s · 67 µm' },
+  { id: '1.1', label: 'Case 1.1 · 285 W · 960 mm/s · 49 µm' },
+  { id: '1.2', label: 'Case 1.2 · 285 W · 960 mm/s · 82 µm' },
+  { id: '2.1', label: 'Case 2.1 · 285 W · 1200 mm/s · 67 µm' },
+  { id: '2.2', label: 'Case 2.2 · 285 W · 800 mm/s · 67 µm' },
+  { id: '3.1', label: 'Case 3.1 · 325 W · 960 mm/s · 67 µm' },
+  { id: '3.2', label: 'Case 3.2 · 245 W · 960 mm/s · 67 µm' },
+];
+
+export function NistProxyCampaign({ runs }: { runs: RunArchiveList }) {
+  const candidates = runs.filter(run => run.runKind === 'transient-thermal');
+  const candidateKey = candidates.map(run => run.runId).join(':');
+  const [selectedRunIds, setSelectedRunIds] = useState<string[]>(() => candidates.slice(0, 3).map(run => run.runId));
+  const [caseNumber, setCaseNumber] = useState<NistOpticalCaseNumber>('0');
+  const [selectionKey, setSelectionKey] = useState(candidateKey);
+  const currentRunIds = selectionKey === candidateKey ? selectedRunIds : candidates.slice(0, 3).map(run => run.runId);
+  useEffect(() => {
+    if (selectionKey !== candidateKey) {
+      setSelectedRunIds(candidates.slice(0, 3).map(run => run.runId));
+      setSelectionKey(candidateKey);
+    }
+  }, [candidateKey, selectionKey]);
+  const inputKey = `${currentRunIds.join(':')}:${caseNumber}`;
+  const previewTask = useInputBoundTask<NistProxyCampaignPreview>(inputKey);
+  const createTask = useInputBoundTask<{ preview: NistProxyCampaignPreview; record: NistProxyCampaignRecord | null }>(inputKey);
+  const canPreview = currentRunIds.length === 3 && currentRunIds.every(Boolean)
+    && new Set(currentRunIds).size === 3 && candidates.length >= 3;
+  const preview = previewTask.data;
+  const saved = createTask.data?.record ?? null;
+
+  const runPreview = async () => {
+    if (!canPreview) return;
+    const request = previewTask.begin('preview');
+    try { request.publish(await previewNistProxyCampaign(currentRunIds, caseNumber, request.signal)); }
+    catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  const saveCampaign = async () => {
+    if (!preview?.campaign || !preview.previewSha256) return;
+    const request = createTask.begin('save');
+    try {
+      const result = await createNistProxyCampaign(currentRunIds, caseNumber, preview.previewSha256, request.signal);
+      request.publish({ preview: result, record: result.record ?? null });
+    } catch (error) { request.fail(error); }
+    finally { request.finish(); }
+  };
+
+  return <section aria-label="NIST proxy campaign" className="space-y-3 rounded-xl border border-slate-700 p-4 text-sm">
+    <div><h4 className="font-medium">NIST AMB2022-03 · six-section thermal proxy campaign</h4>
+      <p className="mt-1 text-xs text-amber-200">Proxy screening only · unvalidated. This flow records six simulated section observations from three archived runs. It does not calculate optical residuals or claim experimental validation.</p></div>
+    {candidates.length < 3 ? <p className="text-slate-300">Three archived transient-thermal runs are required. Available: {candidates.length}.</p>
+      : <>
+        {currentRunIds.map((runId, index) => <label key={index} className="block">Archived thermal run {index + 1}
+          <select aria-label={`Archived thermal run ${index + 1}`} value={runId}
+            className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300"
+            onChange={event => setSelectedRunIds(current => current.map((value, row) => row === index ? event.target.value : value))}>
+            <option value="">Select an archived run</option>{candidates.map(item => <option key={item.runId} value={item.runId}
+              disabled={currentRunIds.some((chosen, row) => row !== index && chosen === item.runId)}>{item.runId.slice(0, 8)}… · {item.createdAt}</option>)}
+          </select>
+        </label>)}
+        <label className="block">Published process case
+          <select aria-label="NIST proxy campaign case" value={caseNumber}
+            className="mt-2 block w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 focus-visible:outline-2 focus-visible:outline-sky-300"
+            onChange={event => setCaseNumber(event.target.value as NistOpticalCaseNumber)}>
+            {proxyCampaignCases.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={button} disabled={!canPreview || !!previewTask.pending || !!createTask.pending}
+            onClick={() => void runPreview()}>Preview proxy campaign</button>
+          <button type="button" className={button} disabled={!preview?.campaign || !preview.previewSha256 || !!previewTask.pending || !!createTask.pending}
+            onClick={() => void saveCampaign()}>Archive proxy campaign</button>
+        </div>
+        {previewTask.pending && <p role="status">Checking the three archived runs and exact Table 4 source revision…</p>}
+        {previewTask.error && <p role="alert" className="text-rose-300">{previewTask.error}</p>}
+        {preview && <ProxyCampaignSummary result={preview} />}
+        {createTask.pending && <p role="status">Saving the immutable proxy campaign record…</p>}
+        {createTask.error && <p role="alert" className="text-rose-300">{createTask.error}</p>}
+        {saved && <p role="status" className="text-emerald-200">Proxy campaign archived: {saved.campaignId} · SHA-256 {saved.documentSha256}. Status remains unvalidated.</p>}
+      </>}
+  </section>;
+}
+
+function ProxyCampaignSummary({ result }: { result: NistProxyCampaignPreview }) {
+  if (!result.campaign) return <div className="space-y-2" role="status">
+    <p className="font-medium text-amber-200">Proxy campaign unavailable · unvalidated</p>
+    <ul className="list-disc space-y-1 pl-5 text-amber-200">{result.validation.reasons.map((reason, index) => <li key={`${index}:${reason}`}>{reason}</li>)}</ul>
+  </div>;
+  return <div className="space-y-2" aria-live="polite">
+    <p className="font-medium">Six thermal-proxy observations · proxy screening only · unvalidated</p>
+    <p>Case {result.campaign.caseNumber}; exact archived Table 4 revision {result.campaign.sourceBinding.revision}.</p>
+    <p className="text-xs text-slate-300">Experimental validation: no · numerical convergence: not evaluated · comparison residuals: not calculated.</p>
+    <ul className="space-y-1 text-slate-200">{result.campaign.tracks.flatMap(track => track.observations.map(observation =>
+      <li key={`${track.simulatedTrackId}:${observation.sectionId}`}>
+        {track.runIdentity.runId.slice(0, 8)}… · {observation.sectionId === 'x-4p9mm' ? '4.9' : '6.0'} mm · simulated width {observation.geometry.width_um.toFixed(2)} µm · depth {observation.geometry.depth_um.toFixed(2)} µm
+      </li>))}</ul>
+  </div>;
 }
 
 interface ArchivedSourceOption { key: string; label: string; link: RunSourceLink }

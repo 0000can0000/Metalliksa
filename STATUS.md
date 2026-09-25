@@ -23,6 +23,10 @@
 - Dört malzeme de registry'de `estimated`/`estimated-legacy`; sonuç yalnızca aynı girdili CPU/CUDA sayısal paritesidir. Testler açık `cuda:0` termal evrimini, CPU kaynak integrasyonunu, aynı solver/material revision kimliğini, alan ve havuz metrik eşleşmesini denetler; `experimentalValidation=false`. GPU hızlanması veya deneysel yeterlilik iddiası yok.
 - IN625 ayrı, sınırlı yalın-plaka thermal-screening CUDA rotasında kalıyor; generic powder-layer transient ya da full build-job alaşımı değildir. Sıradaki adım: kalite/provenance dosyaları tam kabul kapısını geçmeden yeni alaşımı solver/GPU havuzuna ekleme.
 
+## 2026-09-25 — NIST case 0 ham altı gözlem regresyonu
+- Kaynağa sabitlenen NIST resmi workbook okuyucusu 42 BP1 ham satırı döndürüyor. Case 0 için regression, workbook satırları 2–7'yi üç hat × 4.9/6.0 mm olarak, part kimliği, 285 W / 960 mm/s / 67 µm beam alanları ve satır-bazlı genişlik/derinlikle birlikte pinliyor. `python -m unittest test_lpbf_nist_official_measurements`: **4/4 PASS**; veri SHA'sı değişmedi.
+- Bu yalnızca resmi ham ölçüm satırlarının köken/doğruluk kontrolüdür. Model gözlem operatörü/validasyon üretmez. Sonraki NIST işi: bu satırları ayrı v2 `etched-optical` veya açıkça `resolidified-fusion-zone-proxy` karşılaştırma sözleşmesinde tutmak; model tarafı çözümlenmeden residual üretmemek.
+
 ## 2026-09-25 — OpenFOAM layer-conforming powder grid
 - İnceleme, eski OpenFOAM powder-layer ağının katman yüzeylerini hücre yüzlerine hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Ortak `calculate_mesh_domain` hesabı tekdüze kübik ağda hizalamayı destekliyor; `standard/openfoam-thermal` şimdi sürümlü `layer-conforming` politikasını alıyor. Vaka üreticisi politika ve yüz indekslemesini yazmadan önce doğruluyor.
 - OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Python sonuç kapısı da kaynak yakalamasını ve raporlanan maksimum yüz ofsetini doğruluyor; uyumsuz ikili sonucu kabul edilmiyor.

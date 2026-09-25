@@ -44,6 +44,27 @@ class NistOfficialMeasurements(unittest.TestCase):
         self.assertEqual(["P3", "P4", "P3", "P4", "P1", "P2"],
                          [row["partNumber"] for row in case_21])
 
+    def test_case_zero_retains_the_six_raw_source_observations(self):
+        observations = [row for row in recompute_bp1_table4()["observations"]
+                        if row["caseNumber"] == "0"]
+        identity = [(row["row"], row["lineNumber"], row["position_mm"], row["partNumber"])
+                    for row in observations]
+        self.assertEqual(identity, [
+            (2, 1, 4.9, "P3"), (3, 1, 6.0, "P4"),
+            (4, 2, 4.9, "P3"), (5, 2, 6.0, "P4"),
+            (6, 3, 4.9, "P3"), (7, 3, 6.0, "P4"),
+        ])
+        for row, depth_um, width_um in zip(
+                observations,
+                (139.863, 138.483, 142.209, 138.138, 141.864, 137.724),
+                (141.795, 134.619, 133.653, 136.482, 135.792, 135.378)):
+            with self.subTest(workbookRow=row["row"]):
+                self.assertEqual(row["laserPower_W"], 285.0)
+                self.assertEqual(row["scanSpeed_mm_s"], 960.0)
+                self.assertEqual(row["beamDiameterGaussAvg_um"], 67.0)
+                self.assertAlmostEqual(row["depth_um"], depth_um)
+                self.assertAlmostEqual(row["width_um"], width_um)
+
     def test_digest_and_size_are_required_before_parsing(self):
         original = WORKBOOK_PATH.read_bytes()
         with patch.object(Path, "read_text", return_value="0" * 64):

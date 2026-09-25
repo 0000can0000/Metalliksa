@@ -1,5 +1,18 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
 
+## NIST case 0 raw six-observation source regression (2026-09-25)
+
+Pinned the exact AMB2022-03 Table 4 case 0 source records in the existing
+workbook-reader regression. Official workbook SHA remains
+`2cfaac96aaca3dabb77b7029f842cdcc7e75c5a2cf3577d0734823246364a931`. Source
+rows 2–7 preserve line 1/2/3 at both 4.9 and 6.0 mm, P3/P4 part identifiers,
+285 W, 960 mm/s, 67 µm, and each raw width/depth value. The full
+`python/test_lpbf_nist_official_measurements.py` suite passed **4/4**. This
+strengthens input provenance only; it does not implement an etched-optical
+model observation operator or authorize residual/validation claims. Keep proxy
+campaign v1 unchanged and create a distinct v2 contract only after its model
+observable is explicitly defined.
+
 ## CUDA parity coverage — all four legacy registry alloys (2026-09-25)
 
 The explicit CUDA reference-model parity tests now cover IN718 and 316L plus

@@ -48,6 +48,27 @@ class TestPhase17ThermalAccumulation(unittest.TestCase):
         self.assertGreater(one, 0.0)
         self.assertAlmostEqual(two, 2.0 * one, places=12)
 
+    def test_near_wake_track_integral_converges(self):
+        config = HatchProcessConfig(
+            laser_power_W=280.0,
+            scan_velocity_mm_s=1000.0,
+            track_length_mm=8.0,
+            num_tracks=6,
+            turnaround_delay_ms=0.5
+        )
+
+        # Independent composite-midpoint refinement of the same Green kernel
+        # converges to 115.42205685 K; the former 8-pulse result was 73.30766744 K.
+        rise = self.engine.evaluate_track_temperature_rise(
+            config=config,
+            track_idx=1,
+            current_time_s=0.0125,
+            eval_x_mm=4.0,
+            eval_y_mm=0.1
+        )
+
+        self.assertAlmostEqual(rise, 115.42205685, delta=0.2)
+
     def test_hatch_sequence_accumulation(self):
         """Verify that sequential tracks accumulate baseline preheating drift."""
         config = HatchProcessConfig(

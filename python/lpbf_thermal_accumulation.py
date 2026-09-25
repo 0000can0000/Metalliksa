@@ -155,33 +155,52 @@ class MultiTrackThermalEngine:
 
         delta_t_accum = 0.0
 
-        # Discretize each prior track into spatial sub-pulses and integrate
+        # Integrate each moving track with composite midpoint quadrature. The
+        # Green kernel can be sharply localized near the evaluation point, so
+        # a fixed, coarse pulse count can miss most of the near-wake energy.
+        # Double resolution until the accumulated result converges.
+        relative_tolerance = 1e-3
+        max_substeps = 512
         num_substeps = 8
-        dt_sub = t_track / num_substeps
+        previous = None
 
-        for prior_idx in range(track_idx):
-            # Prior track timing
-            prior_start = prior_idx * (t_track + t_turn)
-            prior_y = prior_idx * h_mm
-            direction = 1.0 if (prior_idx % 2 == 0) else -1.0
-            x_start = 0.0 if direction > 0 else l_mm
+        while num_substeps <= max_substeps:
+            delta_t_accum = 0.0
+            dt_sub = t_track / num_substeps
 
-            for step in range(num_substeps):
-                t_pulse = prior_start + (step + 0.5) * dt_sub
-                dt_elapsed = current_time_s - t_pulse
+            for prior_idx in range(track_idx):
+                prior_start = prior_idx * (t_track + t_turn)
+                prior_y = prior_idx * h_mm
+                direction = 1.0 if (prior_idx % 2 == 0) else -1.0
+                x_start = 0.0 if direction > 0 else l_mm
 
-                if dt_elapsed > 1e-6:
-                    x_pulse = x_start + direction * (step + 0.5) * dt_sub * v_mms
-                    dx = eval_x_mm - x_pulse
-                    dy = eval_y_mm - prior_y
-                    dz = eval_z_mm
-                    r2 = dx * dx + dy * dy + dz * dz
+                for step in range(num_substeps):
+                    t_offset = (step + 0.5) * dt_sub
+                    t_pulse = prior_start + t_offset
+                    dt_elapsed = current_time_s - t_pulse
 
-                    kernel = (2.0 / (rho * cp * ((4.0 * math.pi * alpha * dt_elapsed) ** 1.5))) * math.exp(-r2 / (4.0 * alpha * dt_elapsed))
-                    # Energy element dQ = p_abs * dt_sub
-                    delta_t_accum += kernel * (p_abs * dt_sub)
+                    if dt_elapsed > 1e-6:
+                        x_pulse = x_start + direction * t_offset * v_mms
+                        dx = eval_x_mm - x_pulse
+                        dy = eval_y_mm - prior_y
+                        dz = eval_z_mm
+                        r2 = dx * dx + dy * dy + dz * dz
 
-        return delta_t_accum
+                        kernel = (2.0 / (rho * cp * ((4.0 * math.pi * alpha * dt_elapsed) ** 1.5))) * math.exp(-r2 / (4.0 * alpha * dt_elapsed))
+                        # Energy element dQ = p_abs * dt_sub
+                        delta_t_accum += kernel * (p_abs * dt_sub)
+
+            if previous is not None:
+                scale = max(abs(delta_t_accum), 1.0)
+                if abs(delta_t_accum - previous) <= relative_tolerance * scale:
+                    return delta_t_accum
+
+            previous = delta_t_accum
+            num_substeps *= 2
+
+        raise RuntimeError(
+            f"Thermal accumulation quadrature did not converge within {max_substeps} substeps per track."
+        )
 
     def simulate_hatch_sequence(self, config: HatchProcessConfig) -> Dict[str, Any]:
         """

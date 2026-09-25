@@ -1417,3 +1417,26 @@ Wavelength follow-up: no `absorptivity_Blue` material property was found in the 
 The isolated `green_function_point_temperature()` returned the point-source Green's function per joule as though it were a temperature rise; varying absorbed power left its result unchanged (0/100/200 W all returned 3408.0125 for the reproduced input). It now multiplies by the instantaneous heat impulse `Q = P_abs * dt`. The production hatch-sequence integration already applied `P_abs * dt_sub` to its kernel and was not changed. `python -m unittest test_phase17 -v` passes **6/6**, including zero power → zero rise and exact linearity with impulse energy; `py_compile` and scoped diff check pass. This remains an analytical screening model, not experimental validation.
 
 Code/test commit: `bb8087e`. Continue targeted engine review and keep NIST experimental comparison blocked by source/condition traceability until resolved.
+
+## 2026-09-25 continuation — multi-track near-wake quadrature
+
+The thermal accumulation audit identified a converged-integral defect in the
+fixed 8-pulse midpoint rule. Reproduced with Ti-6Al-4V at 280 W, 1000 mm/s,
+8 mm track length and 0.1 mm hatch: for the next-track near-wake sample at
+12.5 ms and (4.0, 0.1) mm, 8 pulses returned 73.307667 K while independent
+refinement reached 115.422057 K by 32/64 pulses. This is a 36.5% underprediction
+within the current model's own Green-kernel formulation.
+
+`evaluate_track_temperature_rise` now doubles midpoint resolution from 8,
+accepting only when consecutive accumulated values differ by at most 0.1%,
+with a 512-pulse bound and an explicit error if convergence is not reached.
+The near-wake regression passes against the converged value within 0.2 K.
+`python -m unittest test_phase17 -v` passed **7/7**; `py_compile` and scoped
+`git diff --check` passed.
+
+This corrects quadrature, not the physical model: residual accumulation still
+represents each scan as centerline point pulses without the Gaussian beam
+footprint, and the Rosenthal spot-rise relation remains a screening estimate.
+No experimental validation is implied. Next continue the bounded engine audit
+and source-matched workflow while leaving the NIST optical comparison
+unavailable until the source and observation gates are satisfied.

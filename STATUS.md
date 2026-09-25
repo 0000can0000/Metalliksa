@@ -10,6 +10,12 @@
 - Kullanıcı, yetersiz sonuç veren fizik motorlarının Python'da bilimsel temelle onarılmasına veya yeniden kurulmasına açıkça yetki verdi. Denklemleri ve model kimliklerini gerekçesiz değiştirme; kabul eşiklerini gevşetme; önce analitik/üretilmiş çözüm ve sayısal pariteyle sınayıp fiziksel deney kanıtından ayrı raporla.
 - Sıradaki somut adım: kampanya arayüz dilimini tamamla ve doğrula; ardından P6 çalışma yükü/parite/performance kapısını koruyarak ölçek-kesişme testi yap. CUDA yavaş kaldıkça P4'ün `2.5 µm` ağına taşıma.
 
+## 2026-09-25 — NIST proxy kampanya arşiv/panel dilimi
+- Üç arşivlenmiş transient koşu ve Table 4 case seçimi, server-side preview ve değişmez campaign kaydı UI/client akışına bağlandı. Client'a yalnızca run ID'leri, case ve preview SHA gider; sayısal ölçü, residual ve validasyon iddiası gitmez. Panel altı gözlemi yalnızca thermal-proxy screening/unvalidated olarak gösterir.
+- Server/API/persistence/bundle: `d967f87`; UI/client ve iki odaklı test: `7004742`. Bundle v2 campaign run SHA/source revision bağlarını kontrol eder ve v1 bundle okumayı sürdürür.
+- Doğrulama: tam `tsc --noEmit` PASS. Python GPU paketi `9/9 PASS`. Node API/client/UI odak testleri `spawn EPERM` yüzünden başlatılamadı; `git diff --check` PASS. Dolayısıyla panel/type/API sözleşmesi uygulanmış olsa da canlı campaign oluşturma–dışa aktarma–geri yükleme akışı doğrulanmış sayılmaz.
+- P5 optik residual/validasyonu `unavailable`; proxy campaign bunu değiştirmez. UI'da arşivlenmiş campaign listesi/yeniden açma ve canlı bundle round-trip entegrasyon doğrulaması sonraki adım olarak açık.
+
 ## 📌 Genel İlerleme Özeti
 - **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
 - **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.

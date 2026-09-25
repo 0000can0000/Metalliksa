@@ -18,6 +18,11 @@
 - Doğrudan Windows Python 3.12 gerçek-solver çağrısı başarılı oldu; üst seviye revizyon ve kimlik revizyonu `build-job-effective-properties-v1` olarak eşleşti. Odaklı istemci paketi izinli runner'da **13/13 PASS**; ilk sandbox denemesi `spawn EPERM` ile kısıtlanmıştı. `git diff --check` temiz.
 - Sıradaki adım: odaklı Node testi izinli runner'da çalıştır; kontrollü P4 koşusunun 5 µm ağ ve zaman adımlarını tamamlayıp dondurulmuş kapılara göre raporunu değerlendir.
 
+## 2026-09-25 — Dört legacy alaşım için GPU sayısal paritesi
+- `python/test_lpbf_gpu_thermal.py` şimdi dört eski registry alaşımını aynı açık-CUDA referans-model sözleşmesinde kapsıyor: IN718, 316L, AlSi10Mg, Ti-6Al-4V. AlSi10Mg ve Ti-6Al-4V için CUDA regresyonu eklendi; odaklı dört-alaşım koşusu **3/3 test PASS** (yeni test içindeki iki ayrı `subTest` dahil), `py_compile` ve `git diff --check` temiz.
+- Dört malzeme de registry'de `estimated`/`estimated-legacy`; sonuç yalnızca aynı girdili CPU/CUDA sayısal paritesidir. Testler açık `cuda:0` termal evrimini, CPU kaynak integrasyonunu, aynı solver/material revision kimliğini, alan ve havuz metrik eşleşmesini denetler; `experimentalValidation=false`. GPU hızlanması veya deneysel yeterlilik iddiası yok.
+- IN625 ayrı, sınırlı yalın-plaka thermal-screening CUDA rotasında kalıyor; generic powder-layer transient ya da full build-job alaşımı değildir. Sıradaki adım: kalite/provenance dosyaları tam kabul kapısını geçmeden yeni alaşımı solver/GPU havuzuna ekleme.
+
 ## 2026-09-25 — OpenFOAM layer-conforming powder grid
 - İnceleme, eski OpenFOAM powder-layer ağının katman yüzeylerini hücre yüzlerine hizalamadığını ve Gauss kaynak kaybını yeniden-normalize ettiğini buldu. Ortak `calculate_mesh_domain` hesabı tekdüze kübik ağda hizalamayı destekliyor; `standard/openfoam-thermal` şimdi sürümlü `layer-conforming` politikasını alıyor. Vaka üreticisi politika ve yüz indekslemesini yazmadan önce doğruluyor.
 - OpenFOAM C++ kaynak integrali, NumPy referansındaki `1/1.01` minimum yakalama sınırını yeniden-normalizasyondan önce uyguluyor. Python sonuç kapısı da kaynak yakalamasını ve raporlanan maksimum yüz ofsetini doğruluyor; uyumsuz ikili sonucu kabul edilmiyor.

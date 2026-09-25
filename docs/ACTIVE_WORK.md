@@ -1,5 +1,19 @@
 # Current LPBF goal owner — 01a0cfbf-d2ad-7f70-b94f-b89183eb819c, 2026-09-25
 
+## CUDA parity coverage — all four legacy registry alloys (2026-09-25)
+
+The explicit CUDA reference-model parity tests now cover IN718 and 316L plus
+AlSi10Mg and Ti-6Al-4V. Added the latter two to
+`python/test_lpbf_gpu_thermal.py`. The focused four-alloy invocation passed
+**3/3 test methods** (the new method contains separate Al and Ti subtests), and
+Python compilation/diff check passed. All snapshots are registry
+`estimated`/`estimated-legacy`. The tests verify explicit `cuda:0` thermal
+evolution, CPU source integration, matching model/material revisions, and
+same-input CPU/GPU numerical parity; validation remains false and no speedup
+is claimed. IN625 remains limited to its separate bare-plate thermal-screening
+path, not the generic powder transient. Next add alloys only after their
+property evidence and uncertainty pass the material-data admission gate.
+
 ## Frozen diagnostic protocol — 40 W tied-peak endpoint spread (2026-09-25)
 
 Before execution, froze `docs/LPBF_P4_CURRENT_40W_TIED_ENDPOINT_DIAGNOSTIC_PROTOCOL_2026-09-25.md`

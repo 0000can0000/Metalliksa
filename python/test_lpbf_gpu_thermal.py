@@ -242,6 +242,35 @@ class GpuThermal(unittest.TestCase):
         self.assertEqual(result["comparisons"]["volume_um3"]["status"], "pass")
         self.assertEqual(result["comparisons"]["length_um"]["status"], "pass")
 
+    def test_cuda_reference_parity_for_al_and_ti_registry_materials(self):
+        """Check same-model CUDA parity for estimated AlSi10Mg and Ti-6Al-4V snapshots."""
+        try:
+            import torch
+            available = torch.cuda.is_available()
+        except ImportError:
+            available = False
+        if not available:
+            self.skipTest("CUDA runtime unavailable; Al/Ti GPU parity unverified")
+
+        for name, material_id in (("AlSi10Mg", "alsi10mg"), ("Ti-6Al-4V", "ti6al4v")):
+            with self.subTest(material=name):
+                case = {**CASE, "material": name}
+                _, material = validate(case)
+                self.assertEqual(material["materialId"], material_id)
+                self.assertEqual(material["quality"], "estimated")
+
+                result = compare_with_cpu(case, "cuda:0")
+                self.assertEqual(result["status"], "pass")
+                self.assertEqual(result["gpu"]["solver"]["thermalEvolutionDevice"], "cuda:0")
+                self.assertEqual(result["gpu"]["solver"]["sourceIntegrationDevice"], "cpu")
+                self.assertEqual(result["gpu"]["solver"]["modelId"],
+                                 result["cpu"]["coreContract"]["modelId"])
+                self.assertEqual(result["gpu"]["material"]["materialRevisionSha256"],
+                                 result["cpu"]["material"]["materialRevisionSha256"])
+                self.assertEqual(result["comparisons"]["finalTemperatureField"]["status"], "pass")
+                self.assertEqual(result["comparisons"]["volume_um3"]["status"], "pass")
+                self.assertFalse(result["experimentalValidation"])
+
 
 if __name__ == "__main__":
     unittest.main()

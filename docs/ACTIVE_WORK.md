@@ -1484,3 +1484,24 @@ that N01 must stay outside the unchanged broad band was updated to match the
 new calculation; no acceptance threshold was changed. Scoped diff check passed.
 
 Next continue the bounded solver audits and source-matched workflow evidence.
+
+## 2026-09-25 continuation — accepted timestep distribution run in progress
+
+An opt-in repeat execution scope is now implemented and committed. Ordinary
+queue submissions still reuse the matching computational job. An explicit
+repeat skips only that reuse lookup, retaining the same validated physical
+input/cache identity while producing a distinct run ID. The UI exposes this
+only after the exact input signature completes and labels it as a computational
+record, not a physical repeat. Commits: `363c1ef` and `c354032`.
+
+The frozen 5 µm CPU temporal diagnostic for P4 is running against protocol
+`docs/LPBF_P4_CURRENT_40W_ACCEPTED_DT_DIAGNOSTIC_PROTOCOL_2026-09-25.md`
+(SHA-256 `2f9fbea438a1b9c22aa7124a72550a354bf4b7b6df2a82a908449302d591d1a4`).
+The 100 ns level completed with 3,923 accepted steps, mean 89.217 ns, minimum
+3.094 ns, and 1,682 source-limited/retried steps. The 50 ns level is currently
+running; 25 ns remains. Partial results are in
+`docs/LPBF_P4_CURRENT_40W_ACCEPTED_DT_DIAGNOSTIC_2026-09-25.partial.json`.
+Continue the existing process; do not restart it. Once all three levels finish,
+verify the final report against the frozen protocol and retain failed or
+inconclusive status when required. This diagnostic does not change the frozen
+P4 failure or establish experimental validation.

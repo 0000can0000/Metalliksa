@@ -2,6 +2,12 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — Aynı girdide ayrı LPBF yürütme kaydı
+- Varsayılan kuyruk tekilleştirmesi korunarak, aynı fizik girdisiyle yeni bir hesaplama kaydı oluşturmak için açık `repeat` kapsamı eklendi. Worker/cache fizik kimliği değiştirilmez; yalnızca önceki işi yeniden kullanma adımı atlanır. UI seçeneği ancak aynı tam girdi imzası tamamlanmışsa açılır; girdiler değişince sıfırlanır ve bunun fiziksel/deneysel tekrar olmadığı belirtilir.
+- Commitler: `363c1ef` API/worker yürütme kapsamı; `c354032` UI seçeneği. Ajan doğrulaması: kuyruk/istemci ve UI odaklı Node testleri PASS; Python yürütme kimliği testleri 2/2 PASS; TypeScript kontrolü ve diff-check PASS.
+- P4 accepted-dt tanısı sürüyor: dondurulmuş protokol SHA-256 `2f9fbea438a1b9c22aa7124a72550a354bf4b7b6df2a82a908449302d591d1a4`. 100 ns seviyesi tamamlandı (3923 adım; ortalama 89.217 ns; minimum 3.094 ns; kaynak sınırlı/retry adımları 1682); 50 ns ve 25 ns aynı 5 µm CPU ağında sırada. Bu ek bir sayısal zaman-adımı tanısıdır; P4 kabul/deneysel doğrulama değildir. İş bitince nihai rapor, üç seviye ve kabul kapısı değerlendirmesiyle güncellenecek.
+- Sıradaki adım: çalışan aynı tanı sürecini sürdür; tamamlanınca bütünlük/üç satır raporunu doğrula, sonucu ve kontrol kanıtını `STATUS.md`/`docs/ACTIVE_WORK.md` içine yaz. NIST optik operatörü, ışın profili ve 10 mm kaynak-bağlı ağ/maliyet kapıları hâlâ açık.
+
 ## 2026-09-25 — IN625 kapsamlı kaynak kabul kapısı
 - IN625 için yeni, içerik kimliği denetimli kabul kapısı yalnızca `bounded-fusion-enthalpy-screening` kapsamını kabul ediyor. Kimlik, kaynak/konumlar, malzeme girdileri ve SHA-256 beklenen kanonik kayda tam uymalı; değişmiş veya başka alaşımdan kopyalanmış kayıt reddediliyor.
 - Kapı sonucu tam geçici rejim tablosu kabulü ya da deneysel doğrulama anlamına gelmiyor. IN625 hâlâ build-job ve genel beş-özellikli transient malzemesi değil; özel kaynak verisi ve sınırlı model kapsamı ayrı tutuluyor.

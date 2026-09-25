@@ -10,10 +10,33 @@ This is diagnostic only (`acceptanceStatus=not-assessed`), leaves the frozen
 P4 report untouched, and cannot establish experimental validity. Next execute
 the registered runner once and add its report/protocol SHA evidence below.
 
-Execution is currently in progress in unified terminal session `83545` (first
-Python process PID `20508`). No report has been written yet. On continuation,
-poll the existing session; do not launch a duplicate. Frozen protocol SHA-256:
+Execution completed. Report:
+`docs/LPBF_P4_CURRENT_40W_TIED_ENDPOINT_DIAGNOSTIC_2026-09-25.json` (SHA-256
+`7a45ce57645b7b0bb88fe7a844dfdaffbae770d7872f62bcee3a5ac68e493235`);
+frozen protocol SHA-256
 `c5628e46eed810e6de7638742e2c15f1b94e60f1386df07cf1241c960d5b88ee`.
+The 20/10/5 µm levels had 2,349/190/7 tied accepted maximum-count states; all
+contours were valid. Production and independent offline oracle min/median/max
+matched exactly for width and depth at every level. Width/depth ranges in µm:
+20 µm: 70.689–72.477 / 28.623–29.656; 10 µm: 74.328–74.518 /
+32.811–33.332; 5 µm: 77.7036–77.7063 / 34.6929–34.6963. The ranges do not
+overlap between mesh levels, so tied-time selection does not account for the
+mesh trend. First-endpoint cell-extent values and the original frozen P4
+acceptance are unchanged. Runtime was 3,379.94 s; this is diagnostic overhead.
+
+The diagnostic runner did not emit a new energy ledger. Energy values are
+explicitly cross-referenced from the matching-input frozen P4 mesh levels and
+are not presented as new measurements from this run. Actual execution HEAD at
+start was `476a55e`; only status/continuation docs changed from code commit
+`15b4663`, and implementation SHA-256 stayed
+`72520e2a25c5a6b781e2c7a0bb8c501deadfe2d6c15ce73e017bbd22e56459d3`. The
+diagnostic's `acceptanceStatus` remains `not-assessed`; frozen P4 remains
+failed/inconclusive and experimental validation remains false.
+
+Next: preserve NIST v1 `thermal-proxy-screening`; define a separately
+versioned v2 contract using the six raw official observations before any new
+comparison implementation. The etch/fusion-zone observation and measured beam
+profile gates must stay explicit; proxy residuals cannot be called validation.
 
 ## Continuation checkpoint — frozen 40 W P4 and provenance repair (2026-09-25)
 

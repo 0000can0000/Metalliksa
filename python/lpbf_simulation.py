@@ -400,7 +400,11 @@ def transient(p, m, report=lambda *args: None, artifact_dir=None):
             if not np.isfinite(h).all() or float(h.min()) < hh[0]-1e-8 or float(h.max()) >= np.interp(m["boiling_K"], tt, hh):
                 raise ValueError("Thermal model validity exceeded (boiling or nonphysical enthalpy); evaporation/free-surface CFD required")
             T = np.interp(h, hh, tt)
-        time += dt; step += 1
+        time += dt
+        end_roundoff = min(1e-14, 2*math.ulp(end)*(step+1))
+        if end-time <= end_roundoff:
+            time = end
+        step += 1
         energy_in += float(source.sum())*dx**3*dt
         energy_out += (float(bottom.sum())+float(surface_loss.sum()))*dx**3*dt
         melt = (T >= m["liquidus_K"])&active

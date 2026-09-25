@@ -225,6 +225,13 @@ class Verification(unittest.TestCase):
         self.assertLess(r["energyBalance"]["relativeError"], 1e-10)
         self.assertEqual(len(r["scanPath"]), 4)
 
+    def test_final_time_roundoff_does_not_create_substep(self):
+        p, m = validate({**CASE, "mesh_um": 20, "maxDt_s": 5e-8,
+                         "layer_um": 40, "powderGridPolicy": "layer-conforming"})
+        result = transient(p, m)
+        self.assertGreater(result["discretization"]["minimumDt_s"], p["maxDt_s"] * 0.5)
+        self.assertLess(result["energyBalance"]["relativeError"], 1e-10)
+
     def test_three_mesh_study_is_not_validation(self):
         r = run({**CASE, "power_W": 10, "study": "mesh"})
         self.assertEqual(len(r["convergenceStudy"]["results"]), 3)

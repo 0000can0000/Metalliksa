@@ -1113,3 +1113,25 @@ transient check that exercises production stepping, while preserving solver
 identity for any correction and only opening a new model revision for a
 reproduced physics defect. The current user authorizes scientifically justified
 Python solver repair/replacement. P4/P5/P6/P7 gates remain unchanged.
+
+## 2026-09-25 — production CPU final-step correction and convergence result
+
+The production `transient()` loop accumulated enough floating-point time error
+to add a tiny final step at 50/25 ns. A frozen 350 µs case produced 7,001 /
+14,001 steps and minimum dt `5.18e-17` / `4.34e-19` s. The loop now snaps the
+reported integration time to `end` inside a step-count-scaled ULP tolerance
+capped at `1e-14` s. The integration increment, source, and energy accounting
+are unchanged; the new regression fails before this fix and passes after it.
+
+Post-fix actual CPU 3×3 run: standard IN718, 40 W, 200 µm track, 40 µm layer,
+layer-conforming, meshes 40/20/10 µm; timestep caps 100/50/25 ns yielded actual
+100/50/25 ns and 3,500/7,000/14,000 steps. Max energy residual `1.63e-13`.
+Mesh gate **failed**: depths 40/20/30 µm; finest pair differs 33.3%. Time gate
+**inconclusive**: width/depth are identical across time levels although peak T
+changes 2795.36→2793.79→2793.74 K; that metric is outside the pre-frozen gate.
+Focused production physics and convergence-contract tests **15/15 PASS**.
+
+Next: retain P4 as failed/inconclusive; diagnose grid/thresholded-geometry
+resolution and design any new observable/protocol before running it. This is
+numerical screen evidence, not experimental validation. Preserve original P4
+thresholds and continue the complete P0–P10 objective.

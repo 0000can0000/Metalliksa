@@ -384,3 +384,29 @@ A remaining CPU verification gap is production-path temporal convergence: the
 current temporal refinement test has a separate local update loop. Next, design
 an independent transient manufactured check through the production stepping
 path, then continue the physics/data/API goal without relaxing P4/P5/P6/P7 gates.
+
+## 2026-09-25 — CPU transient final-time roundoff and 3×3 recheck
+
+A real IN718 CPU time-refinement run exposed an endpoint artifact: requested
+50 ns and 25 ns levels took 7,001 and 14,001 steps and reported minimum steps
+of `5.18e-17 s` and `4.34e-19 s`, respectively, for a 350 µs end time. The
+final step was only accumulated-time floating-point residue. The loop now
+snaps to the requested final time when remaining time is within a step-count-
+scaled ULP tolerance, capped at `1e-14 s`; no thermal update, source scaling,
+or balance equation changed. A regression first reproduced the tiny step,
+then passed after the fix.
+
+The same fixed IN718 case was re-run with layer-conforming meshes 40/20/10 µm
+and requested time caps 100/50/25 ns. Actual time steps were now distinct at
+100/50/25 ns with exactly 3,500/7,000/14,000 steps; minimum steps stayed at the
+requested scale. Maximum energy relative error was `1.63e-13`. CPU convergence
+gate remains **failed** for mesh (depth 40/20/30 µm; 20→10 µm changes 33.3%)
+and **inconclusive** for time because thresholded width/depth remained identical
+across levels. Peak temperatures were 2795.36/2793.79/2793.74 K but are not part
+of the pre-frozen acceptance criteria. Verification: focused production energy,
+source-free, multilayer, heterogeneous refinement, and convergence contract
+tests **15/15 PASS**. This numerical study is not experimental validation.
+
+Next: retain the failed/inconclusive P4 result; diagnose cell-edge/thresholded
+geometry resolution or define a prospective physical observable and protocol.
+Do not alter the existing acceptance thresholds or relabel the study as passed.

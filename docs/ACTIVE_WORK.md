@@ -1371,3 +1371,9 @@ The CPU reference now records the accepted timestep sequence as a compact distri
 Verification: Python heat-source suite **15 passed, 1 OpenFOAM skip**; focused TypeScript UI/API diagnostics suite **5/5 passed**; `npx tsc --noEmit` passed. The full frozen P4 three-level case has not been rerun with this instrumentation, and its old failed/inconclusive results remain unchanged.
 
 Next: run at least three predeclared maxDt levels on the same CPU/reference workload and inspect realized `sum(dt²)/T` ratios and requested-cap binding fractions. Leave the outcome inconclusive if the actual distributions do not satisfy the existing ratio requirement; preserve the mesh, physics and acceptance thresholds.
+
+## 2026-09-25 continuation — four-alloy Warp parity
+
+The opt-in Warp candidate passed same-model full-field CPU parity for IN718, 316L, AlSi10Mg and Ti-6Al-4V on the common 10 µm, single-track/single-layer process case. All four material-specific revisions and CPU/Warp step counts matched, energy closure passed, and every result remained `experimentalValidation=false`. The Python test module completed 3/3 tests, with the four materials as subchecks in one test. These are four estimated materials and numerical/software parity only; they are not alloy qualification or experimental validation. The 1.490x Warp/Torch timing remains specific to the IN718 pilot and must not be generalized to the other alloys.
+
+The test process used a per-command `WARP_CACHE_PATH` inside `python/.warp-cache` to avoid the denied user-profile kernel cache. Warp still emitted a cleanup traceback for a PCH temp directory below `%TEMP%`, but the Python process returned exit code 0 and every assertion passed. No persistent Warp cache setting, default backend, or queue route was changed. Keep the candidate opt-in.

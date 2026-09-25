@@ -45,6 +45,38 @@ class WarpThermalCandidate(unittest.TestCase):
         self.assertLessEqual(field["relativeRiseMax"], .01)
         self.assertLessEqual(result["gpu"]["energyBalance"]["relativeError"], .01)
 
+    def test_four_registry_alloys_match_cpu_under_same_warp_model(self):
+        try:
+            import torch
+            available = torch.cuda.is_available() and candidate.wp is not None
+        except ImportError:
+            available = False
+        if not available:
+            self.skipTest("Warp/CUDA unavailable; four-alloy parity unverified")
+
+        from lpbf_simulation import validate
+        alloys = (("Inconel 718", "in718"),
+                  ("316L Stainless Steel", "ss316l"),
+                  ("AlSi10Mg", "alsi10mg"),
+                  ("Ti-6Al-4V", "ti6al4v"))
+        for name, expected_id in alloys:
+            with self.subTest(alloy=name):
+                case = {**CASE, "material": name}
+                _, material = validate(case)
+                self.assertEqual(material["materialId"], expected_id)
+                self.assertEqual(material["quality"], "estimated")
+                result = candidate.compare_with_cpu(case, "cuda:0")
+                self.assertEqual(result["status"], "pass")
+                self.assertEqual(result["gpu"]["material"]["materialRevisionSha256"],
+                                 material["materialRevisionSha256"])
+                self.assertEqual(result["gpu"]["solver"]["modelId"],
+                                 result["cpu"]["coreContract"]["modelId"])
+                self.assertEqual(result["gpu"]["discretization"]["steps"],
+                                 result["cpu"]["discretization"]["steps"])
+                self.assertEqual(result["comparisons"]["finalTemperatureField"]["status"], "pass")
+                self.assertLessEqual(result["gpu"]["energyBalance"]["relativeError"], .01)
+                self.assertFalse(result["experimentalValidation"])
+
 
 if __name__ == "__main__":
     unittest.main()

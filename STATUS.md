@@ -2,6 +2,12 @@
 
 *Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
 
+## 2026-09-25 — Kaynak-kimliği sabit P4 tanısı çalışıyor
+- Önceki frozen P4 raporu `failed`, ek accepted-dt tanısı `inconclusive` olarak korunuyor. Yeni dizi `4a73f77` kapsamındaki sürümlü solver-kaynak manifestini kullanıyor; 5 µm CPU ağı ve 100/50/25 ns istek seviyeleri aynı.
+- Protokol SHA-256 `DB0A85E22A75709FCABB3F3BEE9E7C0D44213A081881F6A076EE5DE6820274DF`; senaryo SHA-256 `2ABEC47F9D35C02158EA2E06876E3CA06C3BA5BA9243F1DDCCAA94EF64752EA6`. Başlangıç implementasyon parmak izi `8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac118948b`; protokol kaynak dosyalarının başlangıç dirty durumunu da kaydediyor.
+- Aynı canlı terminal oturumu `29680`, başlangıç `2026-09-25 20:00:11 +03:00`. Son doğrulamada süreç canlı, kısmi rapor `running`, tamamlanan satır `0`; ilk seviye sürüyor. Bu ara kayıt fizik sonucu veya kabul değildir.
+- Sıradaki adım aynı oturumu izlemek; tamamlanınca üç satırın aynı parmak izini ve rapor bütünlüğünü doğrulayıp mevcut convergence kapısıyla yorumlamak. Süreç yalnızca gözlem gecikmesi nedeniyle yeniden başlatılmamalı.
+
 ## 2026-09-25 — Aynı girdide ayrı LPBF yürütme kaydı
 - Varsayılan kuyruk tekilleştirmesi korunarak, aynı fizik girdisiyle yeni bir hesaplama kaydı oluşturmak için açık `repeat` kapsamı eklendi. Worker/cache fizik kimliği değiştirilmez; yalnızca önceki işi yeniden kullanma adımı atlanır. UI seçeneği ancak aynı tam girdi imzası tamamlanmışsa açılır; girdiler değişince sıfırlanır ve bunun fiziksel/deneysel tekrar olmadığı belirtilir.
 - Commitler: `363c1ef` API/worker yürütme kapsamı; `c354032` UI seçeneği. Ajan doğrulaması: kuyruk/istemci ve UI odaklı Node testleri PASS; Python yürütme kimliği testleri 2/2 PASS; TypeScript kontrolü ve diff-check PASS.

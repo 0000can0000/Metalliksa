@@ -1601,3 +1601,20 @@ per-row hash-integrity requirement. The repeat computation has not started yet;
 the previous report remains preserved and inconclusive. Next: commit this
 protocol/runner with the source change, execute the frozen levels, then report
 only the existing numerical gate outcome.
+
+## 2026-09-25 continuation — solver-fingerprint-locked P4 run started
+
+The frozen 5 µm CPU diagnostic is now running in terminal session `29680`
+against `docs/LPBF_P4_CURRENT_40W_FINGERPRINT_PROTOCOL_2026-09-25.json`.
+Protocol SHA-256 is
+`DB0A85E22A75709FCABB3F3BEE9E7C0D44213A081881F6A076EE5DE6820274DF`; the
+scenario SHA-256 is
+`2ABEC47F9D35C02158EA2E06876E3CA06C3BA5BA9243F1DDCCAA94EF64752EA6`.
+The requested max-dt levels are 100/50/25 ns. The run records its versioned
+solver manifest and its start-time dirty paths. It started at
+`2026-09-25T20:00:11+03:00` with implementation fingerprint
+`8302df5a8237b0a84b9b6e467b37421a7627f831611f9c992d037f3ac118948b`.
+Latest live-session poll: stage `running`, zero completed rows; the first
+level is still underway. This is not yet a physics result. Continue polling
+this same handle, then verify all three row hashes and apply the existing
+convergence gate. Preserve the previous `failed`/`inconclusive` reports.

@@ -27,6 +27,8 @@ for (const status of ["queued", "running", "failed", "cancelled", "timed_out"] a
 assert.match(renderToStaticMarkup(<ConvergencePanel study={undefined}/>),/Not run/);
 const audit=renderToStaticMarkup(<ConvergencePanel study={{kind:"mesh",spacings:[4e-5,2e-5,1e-5],results:[{width_um:100,depth_um:40},{width_um:110,depth_um:42},{width_um:112,depth_um:43}],checks:{width_um:{status:"inconclusive",reason:"Fixture",observedOrder:2,fineGCI_pct:3}}}}/>);
 for(const label of ["Coarse","Medium","Fine","inconclusive","observed order 2","fine GCI 3"]) assert.ok(audit.includes(label));
+const incompleteStudy=renderToStaticMarkup(<ConvergencePanel study={{kind:"mesh",status:"failed",spacings:[null,4e-5,2e-5],results:[null,{width_um:100,depth_um:40},{width_um:110,depth_um:42}],checks:{width_um:{status:"failed",reason:"Coarse level source capture below minimum"}}}}/>);
+for(const label of ["mesh · failed","Coarse level source capture below minimum","Unavailable"]) assert.ok(incompleteStudy.includes(label));
 assert.match(renderToStaticMarkup(<MeasurementPanel result={result}/>),/does not establish independent validation/);
 assert.match(renderToStaticMarkup(<ThermalHistory result={result}/>),/Not resolved in this screening run/);
 console.log("PASS: result visibility, progress, cancellation/failure/timeout, cache, stale inputs, calibration and numerical evidence rendering");

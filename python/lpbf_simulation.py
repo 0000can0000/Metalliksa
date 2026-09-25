@@ -545,37 +545,58 @@ def run(raw, report=lambda *args: None, artifact_dir=None, capabilities=None):
             result["solver"]["id"] = "metalliksaThermal-OpenFOAM14-6"
         if p["study"] != "none":
             trials = []
+            level_errors = []
             key = "mesh_um" if p["study"] == "mesh" else "maxDt_s"
             # Coarse -> medium -> fine; finest result is the requested discretization.
             for index, scale in enumerate((2., math.sqrt(2.))):
                 q = copy.deepcopy(p); q[key] *= scale
-                trial = thermal_solver(q, m, lambda f, msg: report((index+1+f)/3, msg))
+                try:
+                    trial = thermal_solver(q, m, lambda f, msg: report((index+1+f)/3, msg))
+                except Exception as exc:
+                    # Keep a failed level explicit while preserving the requested solve.
+                    # A partial sequence is never eligible for convergence assessment.
+                    trials.append(None)
+                    level_errors.append(dict(level=("coarse", "medium")[index],
+                                             requested=q[key], reason=str(exc)[:500] or type(exc).__name__))
+                    continue
                 trials.append(trial)
             trials.append(result)
-            actual = [v["discretization"]["mesh_m" if key == "mesh_um" else "meanDt_s"] for v in trials]
+            resolution_key = "mesh_m" if key == "mesh_um" else "meanDt_s"
+            actual = [v["discretization"][resolution_key] if v is not None else None for v in trials]
             metric_key = "midTrackCrossSection" if bare else "metrics"
             metric_names = ("width_um", "depth_um") if bare else ("width_um", "depth_um", "volume_um3")
-            checks = {k: convergence([v[metric_key][k] for v in trials], actual) for k in metric_names}
+            checks = ({k: dict(status="failed", reason="Invalid study levels: " + "; ".join(
+                            f"{v['level']}: {v['reason']}" for v in level_errors)) for k in metric_names}
+                      if level_errors else
+                      {k: convergence([v[metric_key][k] for v in trials], actual) for k in metric_names})
             result["convergenceStudy"] = dict(kind=p["study"], spacings=actual,
-                metricSource=metric_key, results=[v[metric_key] for v in trials], checks=checks)
+                metricSource=metric_key,
+                results=[v[metric_key] if v is not None else None for v in trials], checks=checks,
+                status="failed" if level_errors else "complete",
+                failedLevels=level_errors)
             if bare:
                 targets = dict(energyRelativeErrorMax=.01, finestPairWidthDepthRelativeChangeMax=.05,
                                minimumLevels=3, source="docs/DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md#11")
-                verdicts = {}
-                for key in metric_names:
-                    values = [v[metric_key][key] for v in trials]
-                    change = abs(values[-1]-values[-2])/values[-1] if all(x > 0 for x in values) else None
-                    location_resolved = all(v[metric_key]["midpointResolvedWithinQuarterCell"] for v in trials)
-                    status = ("inconclusive" if change is None else "failed" if change > .05 else
-                              "inconclusive" if not location_resolved else
-                              "pass" if checks[key]["status"] == "numerically-converging" else "inconclusive")
-                    verdicts[key] = dict(status=status, finestPairRelativeChange=change,
-                                       midpointLocationResolved=location_resolved)
-                energies = [v["energyBalance"]["relativeError"] for v in trials]
+                if level_errors:
+                    reason = "Invalid study levels: " + "; ".join(
+                        f"{v['level']}: {v['reason']}" for v in level_errors)
+                    verdicts = {name: dict(status="failed", reason=reason) for name in metric_names}
+                else:
+                    verdicts = {}
+                    for name in metric_names:
+                        values = [v[metric_key][name] for v in trials]
+                        change = abs(values[-1]-values[-2])/values[-1] if all(x > 0 for x in values) else None
+                        location_resolved = all(v[metric_key]["midpointResolvedWithinQuarterCell"] for v in trials)
+                        status = ("inconclusive" if change is None else "failed" if change > .05 else
+                                  "inconclusive" if not location_resolved else
+                                  "pass" if checks[name]["status"] == "numerically-converging" else "inconclusive")
+                        verdicts[name] = dict(status=status, finestPairRelativeChange=change,
+                                             midpointLocationResolved=location_resolved)
+                energies = [v["energyBalance"]["relativeError"] for v in trials if v is not None]
                 energy_status = "pass" if all(e <= .01 for e in energies) else "failed"
                 states = [energy_status, *(v["status"] for v in verdicts.values())]
                 result["convergenceStudy"]["acceptance"] = dict(targets=targets, metrics=verdicts,
-                    energyStatus=energy_status, maximumEnergyRelativeError=max(energies),
+                    energyStatus=energy_status, maximumEnergyRelativeError=max(energies) if energies else None,
                     status="failed" if "failed" in states else "inconclusive" if "inconclusive" in states else "pass")
     else:
         result["metrics"] = analytical["goldak"]

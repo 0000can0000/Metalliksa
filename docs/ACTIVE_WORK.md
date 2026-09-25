@@ -25,6 +25,18 @@ equal endpoints by mesh), not a proven cause of the frozen failed result.
 P5 stays unavailable because the current model lacks matching melt flow,
 evaporation mass transfer and mass/latent-energy closure.
 
+Mesh-study failure diagnosis: a fresh UI "Three meshes" attempt stopped when
+the coarsest level captured only 54.851% of the Gaussian source, below the
+unchanged 99% minimum. The guard is functioning as intended; this does not
+justify renormalizing a truncated source or relaxing the threshold. The study
+runner previously let one invalid level discard the requested fine solve and
+the other levels. It now records that level as unavailable, preserves the
+requested result and any other completed levels, and marks all partial-study
+convergence checks failed. No convergence claim is made from an incomplete
+sequence. Targeted old/new study regression tests passed. Broader Windows
+Python verification encountered 7 access-denied temp-directory errors (2
+OpenFOAM checks skipped), so the full package is not yet verified.
+
 Engine choice: the standard 3D CPU transient in `python/lpbf_simulation.py`
 already follows piecewise-linear moving scan segments with a cell-integrated
 Gaussian source, two-node time quadrature, adaptive explicit stepping and a
@@ -70,13 +82,14 @@ verified measured AMB2022-03 beam profile that the source hunt has not found.
 No run was silently rebound; new source provenance alone does not qualify the
 model.
 
-Next: continue P4 tied-peak diagnosis without changing the frozen acceptance
-protocol; quantify mesh/time error for the existing moving-source solver,
-increase resolution where the UI reports only 1–2 cells across a melt dimension,
-and locate the exact measured AMB2022-03 beam-profile artifact before attempting
-a source-matched comparison. Retain P7 full-transient/build-job and P5 gates as
-closed until evidence passes admission. Preserve user-owned changes and stage
-only files explicitly owned by this work.
+Next: resolve why the coarse UI mesh represents too little source while keeping
+the 99% guard fixed; rerun the three-level study and inspect its per-level
+status. Then quantify mesh/time error for the existing moving-source solver,
+continue P4 tied-peak diagnosis without changing its frozen protocol, increase
+resolution where melt dimensions span only 1–2 cells, and locate the exact
+measured AMB2022-03 beam-profile artifact before a source-matched comparison.
+Retain P7 full-transient/build-job and P5 gates as closed until evidence passes
+admission. Preserve user-owned changes and stage only owned files.
 
 ## Continuation checkpoint — layer-conforming P4 v2 result (2026-09-24)
 

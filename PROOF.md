@@ -1705,3 +1705,28 @@ The comparator's model gate additionally requires a verified measured beam
 profile artifact, which was not available in the AMB2022-03 source hunt. Thus
 importing revision 2 improves provenance but does not make this or any run a
 validatable/validated NIST comparison by itself.
+
+## Three-mesh study failure handling (2026-09-25)
+
+A fresh IN718 UI study using the built-in "Three meshes" option halted when
+the coarsest level captured 54.851% of the Gaussian source, below the existing
+99% minimum. The source-capture guard correctly refused to renormalize this
+truncated source. No threshold or frozen acceptance criterion changed.
+
+Updated `python/lpbf_simulation.py` so a failed coarse or medium level is
+retained as an explicit unavailable level, the requested fine result and other
+completed levels survive, and all partial-sequence convergence checks are
+marked failed with the original error reason. The result UI renders missing
+levels safely and displays the failed study status. A partial sequence cannot
+be called converged.
+
+Verification: the existing three-mesh study regression and a new synthetic
+low-capture regression both passed. The broader `test_lpbf_engineering` plus
+`test_lpbf_heat_source` run executed 49 tests but ended with 7 access-denied
+temporary-directory errors on Windows; two OpenFOAM-dependent tests were
+skipped. Isolated heat-source tests passed (15 tests, one OpenFOAM skip), and
+`npm run lint` passed. The focused TSX UI test could not start because Node's
+esbuild child process returned `spawn EPERM`. Therefore the broader package and
+UI rendering test are not yet passing verification. This change improves
+failure reporting and result preservation; it does not improve the source-
+capture fraction, solver accuracy, or experimental validation.

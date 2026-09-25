@@ -8,6 +8,7 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 import numpy as np
 from lpbf_material_registry import catalog, material, enthalpy_table
 from lpbf_simulation import validate, run, transient, scan_segments, fingerprint
@@ -229,6 +230,29 @@ class Verification(unittest.TestCase):
         self.assertEqual(len(r["convergenceStudy"]["results"]), 3)
         self.assertEqual(r["convergenceStudy"]["checks"]["width_um"]["status"], "inconclusive")
         self.assertEqual(r["validationStatus"], "unvalidated")
+
+    def test_failed_coarse_mesh_preserves_requested_result_and_fails_study_closed(self):
+        def synthetic_level(p, material, report=None, artifact_dir=None):
+            if p["mesh_um"] > 60:
+                raise ValueError("Gaussian source capture 54.851% is below the 99% minimum")
+            mesh_m = p["mesh_um"]*1e-6
+            return dict(metrics=dict(width_um=100., depth_um=40., volume_um3=100000.,
+                                     length_um=180., peakTemperature_K=1800.),
+                        discretization=dict(mesh_m=mesh_m, meanDt_s=1e-7))
+
+        with patch("lpbf_simulation.transient", side_effect=synthetic_level), \
+                patch("lpbf_simulation.enforce_thermal_balances"), \
+                patch("lpbf_simulation.write_artifacts"), \
+                patch("lpbf_simulation.build_core_contract", return_value={"modelId": "test"}):
+            r = run({**CASE, "study": "mesh"})
+
+        study = r["convergenceStudy"]
+        self.assertEqual(r["metrics"]["width_um"], 100.)
+        self.assertEqual(study["status"], "failed")
+        self.assertEqual(study["spacings"][0], None)
+        self.assertIsNone(study["results"][0])
+        self.assertIn("54.851%", study["checks"]["width_um"]["reason"])
+        self.assertEqual(study["checks"]["width_um"]["status"], "failed")
 
     def test_measurement_statistics(self):
         r = compare([110., 90.], [100., 100.])

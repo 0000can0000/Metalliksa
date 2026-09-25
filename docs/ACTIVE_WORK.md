@@ -1546,3 +1546,11 @@ restore isolation, not cross-server portability or restored-run navigation.
 The thermal proxy remains explicitly unvalidated. Any portable-bundle follow-up
 needs bounded streaming, strict manifest/artifact verification, archive quotas,
 and isolated restore; do not weaken source identity checks.
+
+An additional source hunt found no IN625 or alternative alloy with a complete,
+LPBF-relevant five-property table over the full transient range, including an
+independently supported upper temperature and viscosity. Keep the current
+IN625 CUDA path at bounded bare-plate screening; CPU/CUDA parity for the four
+legacy registry alloys is numerical implementation parity only. Do not admit a
+new generic transient alloy or broaden scientific CUDA qualification until the
+data gate passes.

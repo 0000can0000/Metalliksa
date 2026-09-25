@@ -6,7 +6,9 @@
   "scenarioFile": "docs/LPBF_P4_CURRENT_MODEL_40W_SCENARIO_2026-09-25.json",
   "scenarioSha256": "2abec47f9d35c02158ea2e06876e3ca06c3ba5ba9243f1ddccaa94ef64752ea6",
   "runnerFile": "python/run_lpbf_accepted_dt_diagnostic.py",
-  "runnerSha256": "c2256fc3075bdde556661146b1b419238b99d70afb4a861b327b38f132f2d0d3",
+  "runnerSha256": "6054b887b3878b4cd049ce053e9d39811dfb7742e92d02f3921bb44ade4e271b",
+  "assessmentModuleFile": "python/lpbf_convergence_study.py",
+  "assessmentModuleSha256": "62e04531004b6d57b30890bdc0568dc46a420a52ee8af5b75fa4436b03931d50",
   "output": "docs/LPBF_P4_CURRENT_40W_FINGERPRINT_DIAGNOSTIC_2026-09-25.json",
   "fixedMesh_um": 5.0,
   "requestedMaxDt_s": [

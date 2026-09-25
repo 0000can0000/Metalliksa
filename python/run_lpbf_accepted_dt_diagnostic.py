@@ -7,7 +7,6 @@ import json
 import subprocess
 from pathlib import Path
 
-from lpbf_convergence_study import _axis, _case_result
 from lpbf_simulation import IMPLEMENTATION_SOURCE_FILES, implementation_fingerprint
 
 
@@ -35,6 +34,12 @@ def run_protocol(protocol_path, scenario_path, output_path):
         raise ValueError("Scenario path differs from the frozen protocol")
     if str(output_path.relative_to(root)).replace("\\", "/") != protocol["output"]:
         raise ValueError("Output path differs from the frozen protocol")
+    assessment_path = (root / protocol["assessmentModuleFile"]).resolve()
+    if root not in assessment_path.parents or not assessment_path.is_file():
+        raise FileNotFoundError("Assessment module is missing or outside the repository")
+    assessment_hash = _sha256(assessment_path.read_bytes())
+    if assessment_hash != protocol["assessmentModuleSha256"]:
+        raise ValueError("Assessment module bytes do not match the frozen protocol")
     if scenario.get("mode") != "standard" or scenario.get("backend") != "reference":
         raise ValueError("Only the frozen standard/reference CPU scenario is accepted")
     if scenario.get("mesh_um") != protocol["fixedMesh_um"]:
@@ -50,12 +55,16 @@ def run_protocol(protocol_path, scenario_path, output_path):
     runner_hash = _sha256(Path(__file__).read_bytes())
     if runner_hash != protocol["runnerSha256"]:
         raise ValueError("Runner bytes do not match the frozen protocol")
+    from lpbf_convergence_study import _axis, _case_result
+
     rows = []
     base = {
         "schemaVersion": 1,
         "protocolId": protocol["protocolId"],
         "protocolSha256": _sha256(protocol_bytes),
         "runnerSha256": runner_hash,
+        "assessmentModuleFile": protocol["assessmentModuleFile"],
+        "assessmentModuleSha256": assessment_hash,
         "scenarioFile": str(scenario_path.relative_to(root)).replace("\\", "/"),
         "scenarioSha256": _sha256(scenario_bytes),
         "executionHeadCommit": head,
@@ -95,10 +104,12 @@ def run_protocol(protocol_path, scenario_path, output_path):
               else assessment["status"])
     final = {**base, "rows": rows, "assessment": assessment,
              "integrityStatus": integrity,
+             "assessmentModuleSha256AtEnd": _sha256(assessment_path.read_bytes()),
              "implementationFingerprintAtEnd": implementation_fingerprint(),
              "stage": "completed", "status": status,
              "completedAt": datetime.datetime.now(datetime.timezone.utc).isoformat()}
-    if final["implementationFingerprintAtEnd"] != baseline_hash:
+    if (final["implementationFingerprintAtEnd"] != baseline_hash
+            or final["assessmentModuleSha256AtEnd"] != assessment_hash):
         final["integrityStatus"] = "failed"
         final["status"] = "failed"
     _write(output_path, final)

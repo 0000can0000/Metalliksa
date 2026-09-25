@@ -1618,3 +1618,20 @@ Latest live-session poll: stage `running`, zero completed rows; the first
 level is still underway. This is not yet a physics result. Continue polling
 this same handle, then verify all three row hashes and apply the existing
 convergence gate. Preserve the previous `failed`/`inconclusive` reports.
+
+## 2026-09-25 continuation — IN625 enthalpy scope and data-gate audit
+
+Read-only source review confirmed that IN625 already has a separate typed
+`in625-bareplate-field` job and `barePlateThermalField` capability, bound to
+the exact source snapshot and recorded as `bounded-material-screening`. The
+scope is 273.15–1623.15 K, assumes fixed supplier density 8440 kg/m³, and uses
+explicit absorbed watts. Above-liquidus, powder/full-transient, and
+experimental-validation claims are rejected or excluded. A second thermal-
+only gate would duplicate the existing capability.
+
+The enthalpy PDE uses density, conductivity, heat capacity, phase bounds, and
+latent heat; viscosity does not enter this field equation, though it remains
+needed for the full transient report's derived Marangoni metric. Keep the
+full-transient gate unchanged. This was a source audit only: no tests or
+runtime execution were performed, so existing dirty source/test files remain
+untouched and runtime verification is still required before claiming a check.

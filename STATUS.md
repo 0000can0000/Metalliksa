@@ -8,6 +8,11 @@
 - Aynı canlı terminal oturumu `29680`, başlangıç `2026-09-25 20:00:11 +03:00`. Son doğrulamada süreç canlı, kısmi rapor `running`, tamamlanan satır `0`; ilk seviye sürüyor. Bu ara kayıt fizik sonucu veya kabul değildir.
 - Sıradaki adım aynı oturumu izlemek; tamamlanınca üç satırın aynı parmak izini ve rapor bütünlüğünü doğrulayıp mevcut convergence kapısıyla yorumlamak. Süreç yalnızca gözlem gecikmesi nedeniyle yeniden başlatılmamalı.
 
+## 2026-09-25 — IN625 sınırlı termal kapsamının fizik denetimi
+- Salt-okunur kaynak incelemesi doğruladı: IN625 zaten ayrı `in625-bareplate-field` iş tipi ve `barePlateThermalField` yeteneğiyle sunuluyor; arşiv kimliği tam kaynak snapshot'ına bağlanıyor. Kapsam 273.15–1623.15 K, sabit 8440 kg/m³ tedarikçi yoğunluk varsayımı ve açık absorbed-W girdisiyle sınırlı; sıvılaşma üstü, powder/full-transient ve deneysel doğrulama iddiası yok. Bu nedenle ikinci bir thermal-only kapısı eklemek tekrarlı olur.
+- Saf entalpi alanı rho/k/Cp/faz+latent heat gerektiriyor; viskozite bu PDE'de yok ama mevcut tam transient raporundaki Marangoni metriğinde kullanılıyor. Viskozite şartını tam rapor kapısından çıkarmak yerine, mevcut türlenmiş sınırlı IN625 yolunu koru. Kaynak incelemesi runtime/test doğrulaması değildir; ilgili testler bu turda çalıştırılmadı.
+- Kanıt kaynakları: `python/lpbf_worker.py`, `python/lpbf_run_capture.py`, `python/lpbf_material_capabilities.py`, `python/in625_bareplate_field.py`; kapsamlı beş özellikli tam transient tablosu için IN625 verisi hâlâ yetersiz.
+
 ## 2026-09-25 — Aynı girdide ayrı LPBF yürütme kaydı
 - Varsayılan kuyruk tekilleştirmesi korunarak, aynı fizik girdisiyle yeni bir hesaplama kaydı oluşturmak için açık `repeat` kapsamı eklendi. Worker/cache fizik kimliği değiştirilmez; yalnızca önceki işi yeniden kullanma adımı atlanır. UI seçeneği ancak aynı tam girdi imzası tamamlanmışsa açılır; girdiler değişince sıfırlanır ve bunun fiziksel/deneysel tekrar olmadığı belirtilir.
 - Commitler: `363c1ef` API/worker yürütme kapsamı; `c354032` UI seçeneği. Ajan doğrulaması: kuyruk/istemci ve UI odaklı Node testleri PASS; Python yürütme kimliği testleri 2/2 PASS; TypeScript kontrolü ve diff-check PASS.

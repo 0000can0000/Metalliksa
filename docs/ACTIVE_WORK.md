@@ -1506,3 +1506,20 @@ Continue the existing process; do not restart it. Once all three levels finish,
 verify the final report against the frozen protocol and retain failed or
 inconclusive status when required. This diagnostic does not change the frozen
 P4 failure or establish experimental validation.
+
+## 2026-09-25 continuation — NIST Table 4 section identity
+
+Read-only source audit mapped the publisher workbook's six rows per condition
+to three physical tracks (`_1`, `_2`, `_3`) and two sections per track: P3 at
+4.9 mm and P4 at 6.0 mm. The later NIST result report says Table 4 `n=6`, and
+the publisher TIFF catalog uses matching P3/P4 plus track-number filenames.
+The older challenge-method document instead says three tracks × P1–P4. Keep
+that source discrepancy explicit; do not synthesize P1/P2 Table 4 rows. The
+publisher workbook is locally hash-pinned, but individual TIFF bytes/sidecars
+are not yet locally verified and no etched-optical observation operator exists.
+
+The existing campaign remains bound to the local Table 4 aggregate transcription
+and `thermal-proxy-screening`; its geometry is not an etched optical observation
+and it emits no comparison residuals. Next source task is to archive/hash-bind
+the six raw observations and matching TIFFs in a separate experimental evidence
+contract before implementing any optical comparison operator.

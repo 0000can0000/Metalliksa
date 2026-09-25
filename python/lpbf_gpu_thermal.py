@@ -51,6 +51,8 @@ def validate_pilot_request(raw):
     """Resolve an explicit CUDA queue request to the unchanged CPU physics input."""
     if not isinstance(raw, dict) or raw.get("jobType") != PILOT_JOB_TYPE:
         raise ValueError("Explicit gpu-thermal-pilot jobType required")
+    if raw.get("powderGridPolicy") == "layer-conforming":
+        raise ValueError("CUDA pilot does not support layer-conforming powder grids")
     device = raw.get("backend")
     # Check before accepting; execution checks again if the device disappears.
     require_cuda(device)

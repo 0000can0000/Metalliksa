@@ -1135,3 +1135,31 @@ Next: retain P4 as failed/inconclusive; diagnose grid/thresholded-geometry
 resolution and design any new observable/protocol before running it. This is
 numerical screen evidence, not experimental validation. Preserve original P4
 thresholds and continue the complete P0–P10 objective.
+
+## 2026-09-25 — Production transient manufactured check and CUDA request guard
+
+Added `python/test_lpbf_production_transient_manufactured.py`. It drives the
+actual CPU `transient()` loop with a manufactured spatially uniform enthalpy
+ramp, while retaining the production `source_limited_step` retry/capture logic
+and passive boundary-loss accounting. Three distinct time-step caps recover
+the analytic final peak and center temperature; energy closure is below
+`1e-10`. This closes the prior test gap where temporal refinement used a
+separate local update loop. It does not independently test nonuniform spatial
+conduction or validate the laser/material model experimentally.
+
+The CUDA thermal pilot now rejects `powderGridPolicy=layer-conforming` before
+device discovery and mesh work. The pilot still implements the standard-grid
+model identity, so accepting a layer-aligned request would have performed
+expensive work under the wrong contract. Standard/reference acceptance remains
+covered. No physical equations or legacy model identity changed.
+
+Verification: `test_lpbf_gpu_thermal` plus the manufactured transient test
+**8/8 PASS**, including the frozen IN718 and estimated-legacy 316L CUDA parity
+cases on RTX 4060. The manufactured test + heat-source + convergence suites
+ran **26 tests: 25 PASS, 1 Linux-only OpenFOAM skip**. These are software and
+numerical-consistency checks, not experimental validation or a GPU speedup
+claim.
+
+Next: add an independent nonuniform manufactured check through production
+stepping, then continue frozen-gate P4 resolution diagnosis. Preserve P4/P5
+outcomes; P6 remains partial and IN625 full-transient admission remains closed.

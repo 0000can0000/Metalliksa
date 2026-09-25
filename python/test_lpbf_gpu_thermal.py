@@ -6,7 +6,8 @@ import copy
 
 import numpy as np
 
-from lpbf_gpu_thermal import PARITY_TARGETS, compare_with_cpu, require_cuda, run_gpu
+from lpbf_gpu_thermal import (PARITY_TARGETS, compare_with_cpu, require_cuda,
+                              run_gpu, validate_pilot_request)
 from lpbf_simulation import validate
 from lpbf_core_physics import scan_segments
 
@@ -17,6 +18,27 @@ CASE = {"mode": "standard", "backend": "reference", "material": "Inconel 718",
 
 
 class GpuThermal(unittest.TestCase):
+    def test_pilot_rejects_layer_conforming_grid_before_device_or_mesh_work(self):
+        request = {**CASE, "jobType": "gpu-thermal-pilot", "backend": "cuda:0",
+                   "powderGridPolicy": "layer-conforming"}
+        with patch("lpbf_gpu_thermal.require_cuda") as require_device, \
+             patch("lpbf_gpu_thermal.calculate_mesh_domain") as calculate_domain:
+            with self.assertRaisesRegex(ValueError, "does not support layer-conforming"):
+                validate_pilot_request(request)
+        require_device.assert_not_called()
+        calculate_domain.assert_not_called()
+
+    def test_pilot_accepts_standard_reference_request(self):
+        request = {**CASE, "jobType": "gpu-thermal-pilot", "backend": "cuda:0"}
+        with patch("lpbf_gpu_thermal.require_cuda") as require_device:
+            settings, material = validate_pilot_request(request)
+        require_device.assert_called_once_with("cuda:0")
+        self.assertEqual(settings["backend"], "cuda:0")
+        self.assertEqual(settings["mode"], "standard")
+        self.assertEqual(settings["study"], "none")
+        self.assertNotIn("powderGridPolicy", settings)
+        self.assertEqual(material["materialId"], "in718")
+
     def test_gpu_path_rejects_truncated_source_capture(self):
         try:
             import torch

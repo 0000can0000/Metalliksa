@@ -40,8 +40,8 @@ part of this commit. Latest lint/buildPASS37.97s (existing chunk warning).
 Ruling: deliver bounded LPBF package with explicit shared-tree failure; do not
 overwrite concurrent unrelated UQ work to manufacture a green overall result.
 
-Remaining goal: run/experiment persistence and shared physics extraction; Phase
-still OPEN. The steps below record the implemented task design; execution results
+Remaining goal: run/experiment persistence and shared physics extraction; this
+work remains open. The steps below record the implemented task design; execution results
 above are authoritative about actual passes and the remaining integration issue.
 
 ## Global constraints
@@ -117,4 +117,4 @@ unit/physics literals and field shape; preserve exact returned hashes.
   actual browser check is required when the later run-history UI is introduced.
 - [ ] Commit and record the next run-record schema/import/restore package. Draft
   its detailed plan against the source repository API immediately before coding;
-  do not infer Phase acceptance from this preparatory contract package.
+  do not infer engineering acceptance from this preparatory contract package.

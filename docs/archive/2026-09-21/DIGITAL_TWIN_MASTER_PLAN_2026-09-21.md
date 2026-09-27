@@ -251,26 +251,26 @@ Sanal sensör karşılaştırmaları gerçek sensörün uzamsal/zamansal çözü
 - Eşdeğer CPU/GPU termal testlerinde seçilmiş bütünsel metrik farkı ≤ %1; faz sınırlarının ağ hassasiyeti ayrı ele alınır.
 - Pilot bağımsız W/D değerlendirmesinde medyan göreli hata ≤ %15 araştırma hedefi; tüm koşullar ve en kötü hata da yayımlanır. Sıfıra yakın ölçümlerde göreli hata yerine mutlak hata kullanılır.
 
-Deney özelindeki nihai toleranslar ölçüm belirsizliği ve kullanım amacıyla, sonuçlara bakılmadan Faz'de dondurulur. Başarısız sonuç sonrası tolerans sessizce gevşetilmez; değişiklik gerekçesi ve yeni değerlendirme sürümü kaydedilir. Az veri halinde güven aralığı/olasılıksal doğruluk konusunda güçlü iddia kurulmaz.
+Deney özelindeki nihai toleranslar ölçüm belirsizliği ve kullanım amacıyla, sonuçlara bakılmadan kabul protokolünde dondurulur. Başarısız sonuç sonrası tolerans sessizce gevşetilmez; değişiklik gerekçesi ve yeni değerlendirme sürümü kaydedilir. Az veri halinde güven aralığı/olasılıksal doğruluk konusunda güçlü iddia kurulmaz.
 
 ## 12. İş paketleri, bağımlılıklar ve çıkış kapıları
 
-Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen veri erişimi, bilimsel model düzeltmeleri ve kullanıcı inceleme beklemeleri dahil değildir. Faz sonrası yeniden tahmin edilir; takvim taahhüdü değildir.
+Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen veri erişimi, bilimsel model düzeltmeleri ve kullanıcı inceleme beklemeleri dahil değildir. Her iş paketi sonrasında yeniden tahmin edilir; takvim taahhüdü değildir.
 
-| Faz | Efor | Bağımlılık | Çıktı | Çıkış kapısı |
+| İş paketi | Efor | Bağımlılık | Çıktı | Çıkış kapısı |
 | --- | --- | --- | --- | --- |
-| 0 — Gerçek durum denetimi | 3–5 gün | Yok | Motor/veri/ortam envanteri, baseline ve risk kaydı | Çalışan giriş noktaları, model kanıtı ve boşluklar ayrılmış |
-| 1 — Kalıcı kayıt ve sözleşme | 5–8 gün | 0 | SQLite metadata, artifact deposu, sürüm ve geçiş | Kuru geçiş, çakışma, yedekten geri dönüş ve kaynak bütünlüğü testleri |
-| 2 — İlk açık deney paketi | 4–7 gün | 0; kayıt için 1 | IN718 aday dataset, ölçüm eşleştirmesi, dondurulmuş değerlendirme protokolü | Kaynak/koşul yeterliliği; kalibrasyon ve test ayrımı |
-| 3 — Ortak termal çekirdek | 8–15 gün | 1, 2 | Mevcut solver adaptörü ve CPU termal referans | Analitik test, enerji ve yakınsama kapıları |
-| 4 — İlk bütünleşik ürün | 6–10 gün | 3 | Deney aç → çalıştır → karşılaştır → dışa aktar akışı | Yeniden açma/üretme, hata durumları ve deney raporu |
-| 5 — GPU ve hesap yönetimi | 5–10 gün | 3; ürün entegrasyonu 4 | GPU eşleştirme, kuyruk, iptal, bellek/süre profili | CPU/GPU uyumu ve ölçülmüş performans; başarısız optimizasyon kabul edilmez |
-| 6 — Alaşım ve senaryo genişleme | 6–12 gün | 2, 4 | Mevcut dört alaşımın yeterlilik matrisi, IN625 aday paketi | Yeni alaşım için aynı veri kabul süreci geçilmiş |
-| 7 — İleri fizik doğrulaması | 15–30+ gün | 3–6 ilgili kapılar | Seçilmiş akış/keyhole veya termomekanik/mikroyapı hattı | Her model için ayrı benchmark ve aktarım kontrolleri |
-| 8 — Hassasiyet ve optimizasyon | 6–12 gün | 4, yeterli doğrulanmış model | Veri önceliklendirme, belirsizlik ve sınırlı parametre araması | Alan dışı kontrol ve optimumun referans solverla doğrulanması |
-| 9 — Vekil modeller | 8–15+ gün | 5, 6, yeterli veri | Uygun kapsamda hızlandırılmış tahmin | Grup bazlı ayrılmış değerlendirme, alan dışı davranış ve hata bütçesi |
+| Gerçek durum denetimi | 3–5 gün | Yok | Motor/veri/ortam envanteri, baseline ve risk kaydı | Çalışan giriş noktaları, model kanıtı ve boşluklar ayrılmış |
+| Kalıcı kayıt ve sözleşme | 5–8 gün | Gerçek durum denetimi | SQLite metadata, artifact deposu, sürüm ve geçiş | Kuru geçiş, çakışma, yedekten geri dönüş ve kaynak bütünlüğü testleri |
+| İlk açık deney paketi | 4–7 gün | Gerçek durum denetimi; kayıt altyapısı | IN718 aday dataset, ölçüm eşleştirmesi, dondurulmuş değerlendirme protokolü | Kaynak/koşul yeterliliği; kalibrasyon ve test ayrımı |
+| Ortak termal çekirdek | 8–15 gün | Kalıcı kayıt ve sözleşme; ilk açık deney paketi | Mevcut solver adaptörü ve CPU termal referans | Analitik test, enerji ve yakınsama kapıları |
+| İlk bütünleşik ürün | 6–10 gün | Ortak termal çekirdek | Deney aç → çalıştır → karşılaştır → dışa aktar akışı | Yeniden açma/üretme, hata durumları ve deney raporu |
+| GPU ve hesap yönetimi | 5–10 gün | Ortak termal çekirdek; ilk bütünleşik ürünün entegrasyonu | GPU eşleştirme, kuyruk, iptal, bellek/süre profili | CPU/GPU uyumu ve ölçülmüş performans; başarısız optimizasyon kabul edilmez |
+| Alaşım ve senaryo genişleme | 6–12 gün | İlk açık deney paketi; ilk bütünleşik ürün | Mevcut dört alaşımın yeterlilik matrisi, IN625 aday paketi | Yeni alaşım için aynı veri kabul süreci geçilmiş |
+| İleri fizik doğrulaması | 15–30+ gün | Ortak termal çekirdek ve ilgili kabul kapıları | Seçilmiş akış/keyhole veya termomekanik/mikroyapı hattı | Her model için ayrı benchmark ve aktarım kontrolleri |
+| Hassasiyet ve optimizasyon | 6–12 gün | İlk bütünleşik ürün; yeterli doğrulanmış model | Veri önceliklendirme, belirsizlik ve sınırlı parametre araması | Alan dışı kontrol ve optimumun referans solverla doğrulanması |
+| Vekil modeller | 8–15+ gün | GPU ve hesap yönetimi; alaşım ve senaryo genişleme; yeterli veri | Uygun kapsamda hızlandırılmış tahmin | Grup bazlı ayrılmış değerlendirme, alan dışı davranış ve hata bütçesi |
 
-İlk bütünleşik sürüm Faz sonunda yaklaşık 26–45 odaklı iş günü ölçeğindedir. Faz ve 9 araştırma riski taşır; toplam program için kesin bitiş tarihi verilemez. GPU hızlandırması, CPU ile bilimsel olarak anlamlı ilk ürünün ön koşulu değildir.
+İlk bütünleşik ürün; gerçek durum denetimi, kalıcı kayıt, ilk açık deney paketi, ortak termal çekirdek ve ürün entegrasyonu tamamlandığında yaklaşık 26–45 odaklı iş günü ölçeğindedir. İleri fizik ve vekil model çalışmaları araştırma riski taşır; toplam program için kesin bitiş tarihi verilemez. GPU hızlandırması, CPU ile bilimsel olarak anlamlı ilk ürünün ön koşulu değildir.
 
 ### Faz ayrıntılı kontrol listesi
 
@@ -287,13 +287,13 @@ Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen ver
 
 ### Sonraki fazların iş bölümü
 
-Faz: şema/sürüm → artifact manifesti → kayıt repository'si → legacy import → backup/restore → API entegrasyonu.
+İş paketi — Kayıt altyapısı: şema/sürüm → artifact manifesti → kayıt repository'si → legacy import → backup/restore → API entegrasyonu.
 
-Faz: kaynak manifesti → birim/ölçüm normalizasyonu → koşul ve tekrar grupları → kabul protokolü → dondurulmuş fixture.
+İş paketi — Veri temeli: kaynak manifesti → birim/ölçüm normalizasyonu → koşul ve tekrar grupları → kabul protokolü → dondurulmuş fixture.
 
-Faz: input/output sözleşmesi → materyal adaptörü → kaynak/sınır koşulu muhasebesi → analitik testler → yakınsama → deney karşılaştırması.
+İş paketi — Termal model: input/output sözleşmesi → materyal adaptörü → kaynak/sınır koşulu muhasebesi → analitik testler → yakınsama → deney karşılaştırması.
 
-Faz: çalışma seçimi → durum ve eksik veri görünümü → iş çalıştırma → karşılaştırma → tam export/import → uçtan uca test.
+İş paketi — Uygulama entegrasyonu: çalışma seçimi → durum ve eksik veri görünümü → iş çalıştırma → karşılaştırma → tam export/import → uçtan uca test.
 
 Faz alt planları ilgili önceki kapı sonuçlarıyla yazılır. Bugünden kesin solver implementasyonu veya dosya satırı taahhüt etmek, denetim bulgularını yok saymak olur. Bu belge program planıdır; satır düzeyinde kod tarifinin yerine geçmez.
 
@@ -326,7 +326,7 @@ Başarısız iş, eksik model, alan dışı girdi ve tahmini özellikler açık 
 
 ## 15. Test, yayın ve risk yönetimi
 
-Mevcut komutlar: `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:lpbf`, `npm run test:lpbf:engineering`, `npm run test:meltpool`; çalışan servisle `npm run test:lpbf:api`. Python komutlarının seçtiği interpreter Faz'da doğrulanır. Bu planlama oturumunda bu testler çalıştırılmadı.
+Mevcut komutlar: `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:lpbf`, `npm run test:lpbf:engineering`, `npm run test:meltpool`; çalışan servisle `npm run test:lpbf:api`. Python komutlarının seçtiği interpreter ilk denetimde doğrulanır. Bu planlama oturumunda bu testler çalıştırılmadı.
 
 Hızlı kontroller her ilgili değişiklikte; pahalı yakınsama/benchmark çalışmaları solver veya materyal yasası değiştiğinde; tam ürün kontrolü faz kapısında yapılır. Her fizik değişikliği eski dondurulmuş benchmark'a karşı gerileme raporu üretir.
 
@@ -371,4 +371,4 @@ Dış kaynaklar 21 Eylül 2026 planlaması sırasında kontrol edildi. Kaynaklar
 - [S6 — NVIDIA Warp](https://developer.nvidia.com/warp-python)
 - [S7 — Materials Project veri sorgulama ve hesaplama kökeni](https://docs.materialsproject.org/downloading-data/using-the-api/querying-data)
 
-Yerel dayanaklar: `AGENTS.md`, `RULES.md`, `SCHEMA.md`, `docs/RESEARCH_WORKSTATION.md`, `docs/MODULE_EVIDENCE_INVENTORY.md`, `docs/ENVIRONMENT_READINESS.md`, `docs/LPBF_ENGINEERING.md`, üst proje `STATUS.md` ve incelenen kaynak aralıkları. Güncel bilimsel yetenekler Faz'da test/ölçüm kanıtıyla yeniden değerlendirilecektir.
+Yerel dayanaklar: `AGENTS.md`, `RULES.md`, `SCHEMA.md`, `docs/RESEARCH_WORKSTATION.md`, `docs/MODULE_EVIDENCE_INVENTORY.md`, `docs/ENVIRONMENT_READINESS.md`, `docs/LPBF_ENGINEERING.md`, üst proje `STATUS.md` ve incelenen kaynak aralıkları. Güncel bilimsel yetenekler denetimde test/ölçüm kanıtıyla yeniden değerlendirilecektir.

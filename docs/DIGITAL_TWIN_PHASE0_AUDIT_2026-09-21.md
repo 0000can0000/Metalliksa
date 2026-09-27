@@ -87,7 +87,7 @@ Secondary-module work remains deferred.
   10 PASS (input/retry/late error/finally/A-B-A/unmount/zero). These are software
   checks using synthetic inputs, not experimental qualification.
 - Remaining: explicit client-JS fitting, SyntheticNoise wrappers/provenance,
-  incomplete static ASTM/K-K labels, legacy LinKK numerics and broader Phase.
+  incomplete static ASTM/K-K labels, legacy LinKK numerics and broader audit scope.
 
 ## 2026-09-21 continuation: CNLS numerical and result contracts
 
@@ -184,8 +184,8 @@ when no adjustable parameters, and clips covariance/R². len<5 Lin-KK still repo
 95/true/zero. CNLSFittingStudio and cnlsOptimizer.runAsyncAutoFit still have invented
 default metrics; EquivalentCircuitBuilder/Plotly stale-input cancellation remains
 to audit. Built-in EIS metadata still calls synthetic circuits measured experiments.
-Repair these next, then material authority/queued transient and remaining Phase
-profiling/raw hashes/source terms/SQLite ADR. Initial audit remains open.
+Repair these next, then address material authority, queued transient work,
+profiling, raw hashes, source terms and the SQLite ADR. Initial audit remains open.
 
 The user's subsequent instruction expands the audit to fabricated Python outputs.
 Random sampling is evaluated by method/seed/convergence; it is not itself fabrication.
@@ -268,7 +268,7 @@ No packages were installed or lock files changed by this audit.
    several direct lab branches have independent default constants. These need
    migration to the material authority with explicit missing-data rejection.
 
-## Outstanding Phase acceptance work
+## Outstanding engineering audit work
 
 - Complete fresh visible-module route/data/test mapping and reconcile inventory.
 - Run isolated live API and browser checks, including failures/stale inputs.
@@ -342,7 +342,7 @@ Initial audit remains open. No experimental qualification or all-engine audit is
   STATUS.md is the active continuation point, updated at each meaningful checkpoint.
 
 Final full unit rerun after inventory corrections: **111 PASS / 0 FAIL**, 2.564 s.
-This does not clear the separate TypeScript lint or Phase scientific gates.
+This does not clear the separate TypeScript lint or scientific acceptance gates.
 
 ## EIS frontend repair — continuation 01a0c11f
 
@@ -372,7 +372,7 @@ This does not clear the separate TypeScript lint or Phase scientific gates.
   its direct API, broad backend stationarity/compliance strings, heuristic SOH/
   DRT interpretations and examples elsewhere remain scientific/audit gaps.
   The physical studio rejects reports with no residuals rather than showing the
-  backend's insufficient-points score. No Phase gate is accepted by this repair.
+  backend's insufficient-points score. This repair does not pass an acceptance gate.
 
 ## Micrograph training/export guard repair — continuation 01a0c11f
 
@@ -394,7 +394,7 @@ This does not clear the separate TypeScript lint or Phase scientific gates.
   zero-epoch initialization and unguarded export. Backend nonfabrication regression
   suite remains ten PASS on CPU venv. Logs in `.runtime/phase0-audit/`.
 - EIS test server PID41348 and captured children stopped; no listeners remain
-  on 3190/5190. Unknown-owner HMR24678 was left untouched. Phase stays open.
+  on 3190/5190. Unknown-owner HMR24678 was left untouched. Initial audit stays open.
 # 2026-09-21 — Python synthetic recovery contract
 
 Owner01a0c326. Four focused regressions first failed, including actual CLI
@@ -404,4 +404,4 @@ Recovery preserves missing values, undefined zero-denominator percentages and
 unavailable uncertainty; aggregate percentages require every row. No arbitrary
 robustness grade, inferred reliability, default convergence/time or score.
 One synthetic realization is not experimental qualification. Frontend migration
-and its tests remain pending; Phase is open.
+and its tests remain pending; the audit is open.

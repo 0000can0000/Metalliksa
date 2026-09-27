@@ -190,7 +190,7 @@ flows. Owned paths include CNLSFittingStudio, cnlsOptimizer, pythonCnlsReport,
 eisData types, builder null rendering, focused tests and checkpoint documents.
 Next immediate scope: late-input/report identity across Studio/Builder/Plotly;
 explicit client-JS and SyntheticNoise stress wrappers still need audit. Then
-synthetic EIS provenance and prior Phase gates. Initial audit remains open. No push/install.
+synthetic EIS provenance and prior engineering gates. Initial audit remains open. No push/install.
 
 # Current owner — 2026-09-21
 

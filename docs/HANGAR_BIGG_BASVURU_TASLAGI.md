@@ -1,7 +1,7 @@
 # HANGAR BİGG Başvuru Ön Çalışması — Metalliksa
 
 > **Durum:** İç çalışma taslağı; başvuruya hazır değildir. Ürün anlatımı 2026-09-27 itibarıyla uygulama belgeleriyle hizalanmıştır. Problem, müşteri, pazar, ödeme isteği ve program koşulları doğrulanmalıdır.
-> **Ürün kapsamı için kaynak:** [Metalliksa Ürün Özeti](PRODUCT_OVERVIEW.md).
+> **Ürün kapsamı için kaynak:** [Metalliksa Ürün Özeti](PRODUCT_OVERVIEW.md). Teknik olgunluk ve açık doğrulama kapıları başvuru metni gönderilmeden önce [güncel durum](../STATUS.md) ve [ürün yol haritasıyla](../ROADMAP.md) yeniden karşılaştırılmalıdır.
 
 ## 1. İş fikrinin kısa adı
 
@@ -19,13 +19,13 @@ Bu henüz müşteri görüşmeleriyle doğrulanmış bir bulgu değildir. Başvu
 
 ## 4. Mevcut çözüm
 
-Metalliksa, bugün çalışan araştırma mühendisliği prototipi içinde üç bağlantılı çalışma alanı sunar:
+Metalliksa, bugün çalışan araştırma mühendisliği prototipi içinde üç çalışma alanı sunar:
 
 - **LPBF Engineering:** malzeme/proses girdileriyle kullanılabilir termal ve analitik tarama iş akışları;
 - **Materials Intelligence:** malzeme verisi ve malzeme araştırma araçları;
 - **Evidence & Qualification:** araştırma kaynakları, incelenmiş bulgular, ölçüm kayıtları ve mühendislik sonuçları için izlenebilir inceleme akışı.
 
-Research Hub kaynak ve bulguları modüllerle ilişkilendirebilir; bu kayıtlar çözücü girdilerini kendiliğinden değiştirmez. Amaç, analizi ve dayanaklarını birlikte inceleyebilmektir.
+Research Hub kaynak ve bulguları modüllerle ilişkilendirebilir; bu kayıtlar çözücü girdilerini kendiliğinden değiştirmez. Amaç, analizi ve dayanaklarını birlikte inceleyebilmektir. Aynı çalışmanın kimliğini koruyarak API ve tarayıcı üzerinden arşivleme, dışa aktarma ve geri yükleme akışının bütünleşmesi halen geliştirme/doğrulama işidir; tamamlanmış ürün özelliği gibi sunulmamalıdır.
 
 ## 5. Farklılaşma hipotezi
 
@@ -47,7 +47,7 @@ Kurumsal Ar-Ge ekipleri, LPBF hizmet sağlayıcıları, makine üreticileri ve m
 
 ## 7. Mevcut teknik durum ve kanıt sınırı
 
-Metalliksa bir araştırma prototipidir. LPBF geçici termal çözücüsü araştırma kapsamındadır; serbest yüzeyli, buharlaşma/recoil ve eriyik akışı fiziklerini çözen yüksek doğruluklu CFD yeteneği mevcut değildir. Uygun bağımsız deney karşılaştırması ve yakınsama kanıtı olmayan model çıktıları doğrulanmış tahmin olarak sunulamaz.
+Metalliksa bir araştırma prototipidir. LPBF geçici termal çözücüsü araştırma kapsamındadır; serbest yüzeyli, buharlaşma/recoil ve eriyik akışı fiziklerini çözen yüksek doğruluklu CFD yeteneği mevcut değildir. Uygun bağımsız deney karşılaştırması ve yakınsama kanıtı olmayan model çıktıları doğrulanmış tahmin olarak sunulamaz. Güncel teknik öncelikler ve kanıt durumu tarihli başvuru anlatısından ayrı olarak [durum kaydında](../STATUS.md) ve [yol haritasında](../ROADMAP.md) izlenir.
 
 Yazılım testleri, CPU/GPU sayısal paritesi veya arşivlenmiş çalıştırma kayıtları yazılım/nümerik kanıttır; tek başlarına fiziksel doğrulama, üretim yeterliliği ya da standart sertifikası sağlamaz. Modüllerin olgunluk ve kanıt durumları farklıdır; [LPBF kapsamı](LPBF_ENGINEERING.md), [güncel durum](../STATUS.md) ve [kanıt kayıtları](../PROOF.md) başvuru metniyle birlikte kontrol edilmelidir.
 

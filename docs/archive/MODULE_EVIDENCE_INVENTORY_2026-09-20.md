@@ -1,6 +1,6 @@
 # Module evidence inventory
 
-**Historical snapshot:** 2026-09-20, with targeted Phase corrections on 2026-09-21. This is a bounded software evidence inventory, not a current workspace registry or scientific validation report. Fresh execution evidence and unresolved defects for that snapshot are recorded in `docs/DIGITAL_TWIN_PHASE0_AUDIT_2026-09-21.md`; unchanged rows retain their earlier inspection limits. Use the live application and current `PROOF.md` entries for present-day status.
+**Historical snapshot:** 2026-09-20. This is a bounded software evidence inventory, not a current workspace registry or scientific validation report. Fresh execution evidence and unresolved defects for that snapshot are recorded in `docs/archive/2026-09-21/DIGITAL_TWIN_BASELINE_AUDIT_2026-09-21.md`; unchanged rows retain their earlier inspection limits. Use the live application and current `PROOF.md` entries for present-day status.
 
 ## Scope and reading rules
 
@@ -98,7 +98,7 @@ Principal paths run in the browser using the components/parsers/stores above. Fi
 
 Modules: `phase-diagram`, `ttt-cct-kinetics`, `electrochem-suite`, `icme-motor`, `uq-lab`, `lpbf-optimizer`, `solidification-microstructure`, `thermomechanical-distortion`, `experimental-validation`, `modulus-fno-lab`, `toolpath-studio`, `murakami-fatigue`, `defect-twin`, `adaptive-mitigation`, `multilaser-plume`, `thermal-accumulation`, `powder-compaction`, `optical-tomography`.
 
-The listed Node routes dispatch through `server/processOrchestrator.ts` and `server/pythonRuntime.ts` to the scripts identified in each row. Browser-only subviews can coexist with these requests. Interpreter choice and IPC ports are documented in `docs/ENVIRONMENT_READINESS.md`; broad numerical/CALPHAD/ML requirements are in `python/requirements.txt`. Actual optional library, thermodynamic database and model availability must be checked for the selected operation. A successful import or a warm module is not successful scientific execution. CALPHAD coverage and the full domain dependency environment remain open A02 work.
+The listed Node routes dispatch through `server/processOrchestrator.ts` and `server/pythonRuntime.ts` to the scripts identified in each row. Browser-only subviews can coexist with these requests. Historical interpreter choice and IPC observations are documented in `docs/archive/ENVIRONMENT_READINESS_2026-09-15.md`; broad numerical/CALPHAD/ML requirements are in `python/requirements.txt`. Actual optional library, thermodynamic database and model availability must be checked for the selected operation. A successful import or a warm module is not successful scientific execution. CALPHAD coverage and the full domain dependency environment remain open A02 work.
 
 ### LPBF worker and external solver boundary
 
@@ -116,7 +116,7 @@ Requires the Node orchestrator route and configured external providers; `AIRGAPP
 
 Modules: `micrograph`.
 
-The ONNX browser path requires compatible model assets and browser ONNX/WASM support (`package.json`); the diagnosis endpoint additionally requires Node/provider access in `routes/copilot.ts`. Python training, when used separately, requires the ML packages in `python/requirements.txt`, model/training data and optional CUDA. The successful synthetic GPU training smoke in `docs/ENVIRONMENT_READINESS.md` does not verify a micrograph model, model asset availability or segmentation accuracy.
+The ONNX browser path requires compatible model assets and browser ONNX/WASM support (`package.json`); the diagnosis endpoint additionally requires Node/provider access in `routes/copilot.ts`. Python training, when used separately, requires the ML packages in `python/requirements.txt`, model/training data and optional CUDA. The historical synthetic GPU training smoke in `docs/archive/ENVIRONMENT_READINESS_2026-09-15.md` does not verify a micrograph model, model asset availability or segmentation accuracy.
 
 ### Network metadata and local research registry
 
@@ -132,7 +132,7 @@ The principal catalog/consultation/report endpoints live in `routes/copilot.ts`.
 
 ### Availability evidence boundary
 
-The inherited 97-unit-test pass and CPU/GPU/tool checks are recorded in `docs/ENVIRONMENT_READINESS.md` and `docs/LPBF_CPU_REPRODUCTION.md`; they cover only their declared paths. `routes/physics.ts` currently hard-codes `pythonVersion` and subsystem `available: true` in `/api/python/status`. Those fields must not be used as installation proof. Use the actual interpreter doctor, IPC details and operation-specific execution checks. Correcting that status endpoint is separate A02 implementation work, not a prerequisite to accurately inventorying its limitation.
+The inherited 97-unit-test pass and CPU/GPU/tool checks are recorded in `docs/archive/ENVIRONMENT_READINESS_2026-09-15.md` and `docs/LPBF_CPU_REPRODUCTION.md`; they cover only their declared paths. `routes/physics.ts` currently hard-codes `pythonVersion` and subsystem `available: true` in `/api/python/status`. Those fields must not be used as installation proof. Use the actual interpreter doctor, IPC details and operation-specific execution checks. Correcting that status endpoint is separate A02 implementation work, not a prerequisite to accurately inventorying its limitation.
 
 ## Next engineering priorities and maintenance
 

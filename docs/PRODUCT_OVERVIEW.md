@@ -4,6 +4,8 @@
 ## Ürün hedefi
 Metalliksa, metal eklemeli imalat araştırmacıları ve mühendislerinin LPBF proses analizlerini, malzeme bağlamını ve ilgili kaynak/kanıt kayıtlarını aynı izlenebilir çalışma ortamında ele almasına yardımcı olan bir araştırma mühendisliği platformudur.
 **Kısa tanım:** Metalliksa, LPBF araştırma ve proses geliştirme çalışmalarında kullanılabilir analizleri, malzeme bilgisini ve kaynaklı kanıtları bir araya getirerek daha izlenebilir mühendislik incelemesi sağlar.
+
+**Başvuruda kullanılabilecek anlatım:** Metalliksa, eklemeli imalat ekiplerinin LPBF analizlerini ve bu analizlerin dayandığı malzeme, girdi ve kaynak kayıtlarını birlikte incelemesine yönelik bir araştırma mühendisliği prototipidir. İlk ürün odağı, sonuçları üretim kararı olarak sunmak değil; teknik çalışmanın nasıl kurulduğunu ve hangi kanıt düzeyine sahip olduğunu görünür kılmaktır.
 ## Kimin için
 Bugünkü ürün yönü öncelikle şu kullanıcı gruplarına göre şekilleniyor:
 - LPBF proses geliştiren malzeme ve üretim mühendisleri;
@@ -16,6 +18,8 @@ Uygulama üç bağlantılı çalışma alanı sunar:
 2. **Materials Intelligence:** malzeme verisi ve malzeme araştırma araçlarını bir araya getirir.
 3. **Evidence & Qualification:** kaynakları, incelenmiş bulguları, ölçüm kayıtlarını ve mühendislik sonuçlarını izlenebilir bir inceleme paketinde ilişkilendirir.
 Research Hub'daki bir kaynak veya bulgu, çözücü girdisini kendiliğinden değiştirmez. Sonuçlar, kullanıldıkları girdiler ve kanıt durumlarıyla birlikte değerlendirilmelidir. Her modül aynı olgunlukta değildir; uygulamadaki Research/Preview ve kanıt etiketleri ürün kapsamının parçasıdır.
+
+Ürün geliştirmedeki güncel öncelik, aynı LPBF çalışmasının malzeme/proses kimliğini ve çalıştırma kanıtını korumak; CPU ve GPU iş akışları arasındaki seçilmiş karşılaştırmaları ve dışa aktarma/geri yükleme yolunu tamamlamaktır. Bu geliştirme işleri tamamlanmış ürün yeterliliği anlamına gelmez; ayrıntılı durum [STATUS.md](../STATUS.md) ve [ürün yol haritasında](../ROADMAP.md) tutulur.
 ## Çözmeye çalıştığımız sorun
 **Problem hipotezi:** LPBF proses geliştirme çalışmalarında proses girdileri, hesaplamalı analizler, literatür bilgisi ve deney sonuçları farklı araç ve kayıtlara dağılabiliyor. Bu durum bir analizin hangi girdilere ve hangi kanıta dayandığını takip etmeyi zorlaştırabilir.
 Metalliksa'nın sınanacak değer önerisi, bu parçaları tek bir araştırma akışında ilişkilendirerek teknik incelemeyi ve sonuçların yeniden izlenmesini kolaylaştırmaktır. Görüşme yapılmış müşteri sayısı, zaman tasarrufu, hurda azalması veya ödeme isteği hakkında doğrulanmış iddia yoktur.
@@ -38,4 +42,5 @@ Bu nedenle başvurularda "üretim kusurunu önceden tahmin eder", "hurdayı azal
 - [HANGAR BİGG başvuru ön çalışması](HANGAR_BIGG_BASVURU_TASLAGI.md) — ürün özetini kullanan, doğrulanması gereken alanları işaretli başvuru taslağı.
 - [Araştırma çalışma alanı ve iş akışları](RESEARCH_WORKSTATION.md) — uygulamanın teknik organizasyonu.
 - [Bilimsel araştırma vizyonu](SCIENTIFIC_RESEARCH_VISION.md) — mevcut kapsamdan ayrı, araştırılması gereken aday yönler.
+- [Ürün yol haritası](../ROADMAP.md) — öncelikler, tamamlanma ölçütleri ve açık teknik kapılar.
 - [Dokümantasyon haritası](README.md) — teknik ve tarihsel dokümanların dizini.

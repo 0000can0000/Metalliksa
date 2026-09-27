@@ -1,6 +1,8 @@
-# Metalliksa Research Engineering Workstation
+# Metalliksa | Traceable LPBF Research Workstation
 
-Metalliksa is a research engineering platform for materials engineers and researchers working with metal additive manufacturing. It brings LPBF process analysis, materials information, research findings and traceable evidence into one workspace to support engineering review and reproducible investigation.
+Metalliksa helps LPBF materials and process engineers and research teams inspect process inputs, run bounded analyses, compare results with evidence, and preserve the record needed to reproduce an engineering review.
+
+The product's value hypothesis is that bringing process analysis, materials context, and source-linked findings into one workflow can make technical reviews easier to trace and repeat. Customer demand and measurable operational benefits have not yet been validated.
 
 ## Workspaces
 
@@ -12,13 +14,20 @@ The Research Hub links literature metadata, reviewed numeric findings and module
 
 ## Scope and evidence
 
-Metalliksa supports research and engineering review; it does not issue a production release or standards qualification. The LPBF transient thermal model is a research solver, and its results are not automatically experimentally validated. Screening, numerical verification, calibrated simulation and comparison with independent measurements are separate forms of evidence. Check each module's scope and each result's evidence status and limitations before relying on it.
+Metalliksa is a research engineering prototype for research and engineering review. It does not issue production releases, certified material allowables, or standards qualifications. The LPBF transient thermal model is a research solver; numerical checks do not establish experimental validation. Module maturity varies, so check each module's scope and each result's evidence status and limitations before relying on it.
 
-Synthetic demonstrations and literature estimates are distinct from measured findings. A traceable source or successful software check alone does not establish experimental validation.
+Synthetic demonstrations, literature estimates, measured findings, model results, and software checks are distinct evidence types. A traceable source or successful software check alone does not establish experimental validation.
 
-## Getting started
+## Product and venture documents
 
-Run the development server from the repository root:
+- [Product overview](docs/PRODUCT_OVERVIEW.md) — intended users, problem and value hypotheses, current scope, maturity, and evidence limits.
+- [Product roadmap](ROADMAP.md) — current priorities and evidence gates.
+- [HANGAR BİGG application draft](docs/HANGAR_BIGG_BASVURU_TASLAGI.md) — internal venture draft with assumptions that still need validation.
+- [Documentation map](docs/README.md) — product and technical documentation.
+
+## Developer setup
+
+For local development, run the server from the repository root:
 
 ```bash
 npm run dev
@@ -26,11 +35,4 @@ npm run dev
 
 Optional AI-backed features, including the copilot, micrograph vision and dataset planner, require `OPENAI_API_KEY` on the server. The application interface is in English.
 
-## Documentation and checks
-
-- [Product overview](docs/PRODUCT_OVERVIEW.md) — goal, intended users, current maturity and evidence limits.
-- [Documentation map](docs/README.md)
-- [Workstation architecture and workflows](docs/RESEARCH_WORKSTATION.md)
-- [LPBF model scope and limitations](docs/LPBF_ENGINEERING.md)
-
-Run the principal checks with `npm run lint`, `npm run test:unit`, `npm run test:lpbf` and `npm run build`. The slower LPBF checks are available through `npm run test:lpbf:slow`.
+For implementation details, see [workstation architecture and workflows](docs/RESEARCH_WORKSTATION.md) and [LPBF model scope and limitations](docs/LPBF_ENGINEERING.md). Principal checks are `npm run lint`, `npm run test:unit`, `npm run test:lpbf` and `npm run build`; slower LPBF checks are available through `npm run test:lpbf:slow`.

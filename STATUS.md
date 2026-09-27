@@ -1,24 +1,24 @@
-# Metalliksa Proje Durumu (STATUS)
+# Metalliksa current status
 
-*Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
+**Snapshot: 27 September 2026**
 
-## 📌 Genel İlerleme Özeti
-- **Python Fizik Motoru:** LPBF için analitik ve termal araştırma çözücüleri ile çeşitli simülasyon araçları içerir; kapsam ve doğrulama durumu modüle göre değişir.
-- **Backend (API) ve Frontend (UI) Entegrasyonları:** Farklı olgunluktaki mühendislik modüllerinin API ve arayüz bağlantısı devam etmektedir; etkin durum ilgili kayıt ve kanıt belgelerinde izlenir.
+## Product state
 
----
+Metalliksa is a research engineering workstation. LPBF is the current core product focus; the application also contains specialist materials and characterization workspaces at different maturity levels. Research or preview availability is not production qualification.
 
-## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi
-- Metalliksa kurallarına (sadece fiziksel temelli veriler) uygun olarak Ti-6Al-4V ve IN718 için grid-search tabanlı 1296 kombinasyonluk bir process map (`data/synthetic_process_map.csv`) üretildi (`python/generate_ml_dataset.py`).
-- Surrogate modeli, fizik tabanlı CSV verisini kullanarak eğitim yürütmek üzere güncellendi; model kapsamı ve kanıt durumu ilgili modül belgelerinde tutulur.
-- **Sıradaki Adım:** End-to-End CAD/Process Contract entegrasyonunu veya mekanik tahmin modellerini web için derlemeyi değerlendirmek.
+The active engineering objective is to complete the shared LPBF material/process identity and a reproducible run-evidence path, then verify the same workflow across CPU, PyTorch CUDA, and Warp CUDA. Work in the shared local checkout may not yet be merged to `main`; this snapshot is not a release statement.
 
-## 2026-09-22 - UI ve STL araçları
-- Uygulama arayüzüne 3D Voxelization (hacimsel ayrıklaştırma) ve STL işleme araçları entegre edildi. Git geçmişindeki uygulama commit'i bu kapsamı kaydeder.
+## Evidence and open gates
 
-## 2026-09-21 - Arayüz entegrasyonları
-- AI meta-modelleri ve Gumbel/Murakami yorulma ömrü endpointleri, React UI tarafına bağlandı (`85f41b4`).
-- Grup bazlı ayrılmış değerlendirme yapıldı ve modelin sınırları dışına (Out-of-Distribution) çıkıldığında sistemin anında "Confidence: 0.0" uyarısı vermesi sağlandı.
+- Selected same-input CPU/Torch and CPU/Warp parity checks pass. They establish only the cases and metrics recorded in [PROOF.md](PROOF.md).
+- The current three-repeat GPU pilot reports a Warp/Torch median ratio of 1.294x and a Torch CPU/CUDA ratio of 1.019x. Device-kernel timing is not available; the evidence does not justify a default-backend change or a general speedup claim.
+- The frozen fine-grid/time convergence result remains inconclusive. Its acceptance limits are unchanged.
+- The IN718 comparison remains unvalidated. IN625 remains screening-only because source-backed properties, uncertainty, and model applicability are incomplete.
+- Run capture and archive workflows have bounded passing checks, but the full identity-preserving API and browser export/restore path still has open integration and acceptance work.
+- No production-release, standards-compliance, or independent experimental-validation claim is established by these checks.
 
-## 2026-09-21 - Hassasiyet ve optimizasyon
-- Backend'de yer alan `lpbf_bayesian_optimizer.py` modülü `server/lpbfWorkerBridge.ts` ve API üzerinden dışarıya açıldı. Optimum proses penceresi parametrelerinin arayışı yapılarak referans belgeler üretildi.
+## Next work
+
+Complete the Warp v2 run-identity and archive integration without changing the established Torch v1 contract. Then check same-run API/browser export and isolated restore, retain the open convergence and experiment gates, and profile matched backends before proposing performance changes.
+
+Use [ROADMAP.md](ROADMAP.md) for priorities, [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md) for current coordination, and [the documentation map](docs/README.md) for canonical and historical records. Dated measurements and command-level evidence belong in [PROOF.md](PROOF.md) and [sonkayıtlar/LOG.md](sonkayıtlar/LOG.md); this file is a short snapshot, not a second event log.

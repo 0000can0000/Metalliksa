@@ -1,24 +1,25 @@
-# Metalliksa Proje Durumu (STATUS)
+# Metalliksa current status
 
-*Bu dosya projenin anlık durumunu, tamamlanan entegrasyonları ve sıradaki hedefleri tutar.*
+**Snapshot: 27 September 2026**
 
-## 📌 Genel İlerleme Özeti
-- **Python Fizik Motoru:** `ROADMAP.md`'ye göre Faz 1'den **Faz 21 (Transient Enthalpy-Method Phase-Change)** aşamasına kadar tüm analitik ve GPU (Warp) tabanlı fizik/simülasyon çekirdekleri yazılmıştır (`python/` dizini).
-- **Backend (API) ve Frontend (UI) Entegrasyonları:** Çekirdek fizik motorlarının son kullanıcıya ve arayüze bağlanma süreci devam etmektedir. Yakın zamanda Faz 8, 9, 10 ve Faz 14 entegrasyonları tamamlanmıştır.
+## Product state
 
----
+Metalliksa is a research engineering prototype focused on a traceable LPBF workflow. The engineering checkout is on `codex/lpbf-buildjob-material-identity`, 40 commits ahead of its remote branch at the last check, and contains local work that is not a `main` release.
 
-## 2026-09-22 - ML Veri Üretimi ve Meta-Model Genişletmesi
-- Metalliksa kurallarına (sadece fiziksel temelli veriler) uygun olarak Ti-6Al-4V ve IN718 için grid-search tabanlı 1296 kombinasyonluk bir process map (`data/synthetic_process_map.csv`) üretildi (`python/generate_ml_dataset.py`).
-- Faz 9 Surrogate Modeli, bu genişletilmiş fizik-tabanlı CSV verisini algılayıp rastgele verilerle birleştirerek hibrit, çok daha yoğun ve yüksek doğruluklu (OOD korumalı) bir eğitim süreci yürütecek şekilde güncellendi.
-- **Sıradaki Adım (Production Readiness):** Geriye kalan "End-to-End CAD/Process Contract" (Faz 14 sonrası entegrasyonlar) veya Mekanik Tahmin Modellerinin (PINN ONNX) web için derlenmesi üzerinden ilerlemek.
+The current objective is to preserve one material/process/run identity through CPU, PyTorch CUDA, and opt-in Warp execution and through the application evidence workflow. A solver result or passing software check alone does not establish experimental validation or production readiness.
 
-## 2026-09-22 - Faz 14 UI ve STL Araçları
-- Uygulama arayüzüne 3D Voxelization (hacimsel ayrıklaştırma) ve STL işleme araçları (Faz 14) entegre edildi. Git geçmişinde `feat: Add Phase 14 voxelization, STL tools and update UI` ile sabitlendi.
+## Evidence and open gates
 
-## 2026-09-21 - Faz 9 & 10 Arayüz Entegrasyonları
-- AI Meta-Modelleri (Faz 9) ve Gumbel/Murakami Yorulma Ömrü (Fatigue - Faz 10) endpointleri, React UI tarafına bağlandı (`85f41b4`).
-- Grup bazlı ayrılmış değerlendirme yapıldı ve modelin sınırları dışına (Out-of-Distribution) çıkıldığında sistemin anında "Confidence: 0.0" uyarısı vermesi sağlandı.
+- Selected same-input CPU/Torch and CPU/Warp numerical checks pass. A bounded native Warp queue run also passed ten stored comparisons and readback checks for its captured artifacts. It does not establish Warp support in the persistent application archive contract.
+- A real browser GPU job failed the parity gate because CPU and GPU endpoint sampling differed. A roundoff-sized final-step difference added a GPU step; fix the shared endpoint rule without changing the frozen acceptance limits.
+- A three-repeat alternating Torch/Warp pilot measured a case-specific median ratio of 1.294x. A separate CPU-source/CUDA-source Torch pilot measured 1.019x. The differences are small, single-session observations without device-kernel attribution; they do not justify a default change or a general speed claim.
+- The frozen fine-grid/time convergence result remains inconclusive.
+- IN718 measurement candidates have not passed source/input/observable matching and remain unvalidated. IN625 is admitted only for bounded screening; full-transient admission and experimental validation remain false.
+- A bounded CPU browser archive/export/import/restore workflow passed for one short software acceptance case. General workflow acceptance and the persistent GPU run/archive/export/restore path remain open.
+- No production-release, standards-compliance, or independent experimental-validation claim is established by these checks.
 
-## 2026-09-21 - Faz 8 Hassasiyet ve Optimizasyon
-- Backend'de yer alan `lpbf_bayesian_optimizer.py` modülü `server/lpbfWorkerBridge.ts` ve API üzerinden dışarıya açıldı. Optimum proses penceresi parametrelerinin arayışı yapılarak referans belgeler üretildi.
+## Next work
+
+Resolve the endpoint-sampling parity failure, preserve exact identity while integrating or withholding Warp from the persistent archive contract, and complete same-run API/browser checks. Keep convergence, IN718, and IN625 limits visible. Profile representative matched runs before making performance claims.
+
+Use [ROADMAP.md](ROADMAP.md) for priorities, [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md) for the current coordination checkpoint, and [docs/README.md](docs/README.md) for the document map. Dated measurements and command-level evidence belong in [PROOF.md](PROOF.md) and [sonkayıtlar/LOG.md](sonkayıtlar/LOG.md); this file is a short snapshot, not a second event log.

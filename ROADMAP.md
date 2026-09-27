@@ -1,35 +1,42 @@
-# Metalliksa roadmap
+# Metalliksa product roadmap
 
-> **Important Navigation Note:** 
-> Metalliksa operates on two distinct, parallel roadmaps to separate physical simulation features from commercial and engineering readiness.
-> 
-> 1. **Physics & Features Roadmap (This Document):** Tracks the technical implementation of physical solvers, simulation models, and algorithms across 21 implementation milestones (Phases 1-21).
-> 2. **Engineering & Pilot Roadmap (UI & Code):** Tracks strict software, quality, and pilot qualification gates (Tasks A01-H02 / Gates K0-K4) needed for industrial usage. This is managed in `src/data/engineeringRoadmap.ts` and visible in the application's Engineering Roadmap UI panel.
-> 
-> *A completed phase in this document is an algorithmic implementation milestone, not a claim of experimental qualification or production readiness (which belongs to the Engineering Roadmap).*
+**Updated: 27 September 2026**
 
-## Current position
+Metalliksa is a traceable research workstation for metal additive manufacturing. It helps materials and process engineers review LPBF inputs and bounded analyses alongside material context and source-linked evidence.
 
-- **Latest implementation milestone:** Phase 21 — transient enthalpy-method phase-change solver (FDM).
-- **Active worktree:** Phase 22 GPU-accelerated 3D transient enthalpy work is present as uncommitted changes; it is intentionally not treated as a completed milestone here.
-- **Application surface:** 30 registered workspaces; the current inventory marks them as Research or Preview, with no module labelled Production.
-- **Evidence boundary:** the application is a traceable engineering research workstation. Solver outputs remain screening results unless the matching evidence is recorded in `PROOF.md`.
-- **Historical plan:** the previous six-phase roadmap is preserved at [`docs/archive/ROADMAP_LEGACY_PHASES.md`](docs/archive/ROADMAP_LEGACY_PHASES.md).
+The product goal is to make technical investigations easier to inspect and reproduce. Customer demand, measurable operational benefits, and willingness to pay remain hypotheses until validated with users and pilot data.
 
-## Implemented milestones
+## Product position
 
-Phases 1–6 established the data, standards, thermal, optics, powder, and CFD foundations. Phases 7–11 added plume/shielding, solidification microstructure, thermomechanics, experimental traceability, and GPU/optimization workflows. Phases 12–16 added toolpath kinematics, fatigue/fracture screening, spatial defect twin, adaptive feed-forward mitigation, and multi-laser/plume coordination. Phases 17–21 added thermal accumulation, powder-bed compaction, optical tomography/NETD, support optimization, and transient latent-heat phase change.
+- The application supports research and engineering screening. It does not issue production release decisions, certified material allowables, or standards qualification.
+- Numerical verification, calibrated simulation, and independent experimental validation are separate evidence states.
+- CPU, PyTorch CUDA, and Warp CUDA results are comparable only when inputs, material law, mesh, boundary conditions, time-step policy, and observation method match.
+- Selected same-input CPU/Torch and CPU/Warp checks pass. A native Warp queue run also passed its bounded capture and artifact-integrity checks; this does not establish general product archive support.
+- A real browser GPU run still failed its parity gate because the GPU endpoint sampling differed from the CPU reference. Keep the issue open until the same run passes without loosening the frozen criteria.
+- The fine-grid/time convergence result remains inconclusive. Available IN718 measurement candidates are not admitted for experimental validation; IN625 remains screening-only.
+- The local shared engineering checkout is ahead of its remote branch and is not a release. Confirm the live Git state before describing local work as available on `main`.
 
-Each milestone must remain backed by its focused tests and a dated entry in [`PROOF.md`](PROOF.md).
+## Work priorities
 
-## Remaining product gaps
+| Priority | Workstream | Exit condition |
+| --- | --- | --- |
+| 1 | Same-run identity and evidence continuity | Inputs, material revision, solver/backend identity, source bytes, and result artifacts stay bound through execution, capture, archive, export, and restore. |
+| 2 | Browser and API workflow | A user can run, inspect, archive, export, restore, reload, and compare the same saved case. Each path reports missing evidence and preserves failures. |
+| 3 | CPU/GPU numerical parity | CPU, PyTorch CUDA, and Warp CUDA pass predeclared same-input field, energy, accepted-step, and melt-geometry criteria. The actual execution mode is recorded. |
+| 4 | Convergence and performance evidence | Frozen mesh/time criteria are resolved without post-hoc threshold changes. Representative alternating timings and profiler attribution separate queue, transfer, compute, and archive costs. |
+| 5 | Experimental and alloy admission | A reference matches regime, geometry, scan history, observation method, and uncertainty. New alloys enter broader models only with source-backed properties and declared applicability. |
+| 6 | Intended-use readiness | Packaging, failure behavior, reproducibility, evidence, and independent review are complete for a defined use; remaining scientific limits stay visible. |
 
-1. **End-to-end CAD/process contract:** preserve CAD geometry, powder state, machine profile, layer plan, and scan strategy as one versioned process vector.
-2. **Baseline comparison:** establish a reproducible GO-MELT or equivalent baseline with declared inputs, mesh/time-step policy, error norms, and wall-clock measurements.
-3. **Part-level validation:** separate calibration from holdout validation using measured melt pools and XCT/Archimedes evidence.
-4. **Physics maturity:** keep the current analytical and screening models distinct from a fully coupled free-surface, evaporation, recoil, Marangoni, and stress solver.
-5. **Production readiness:** move modules from Research/Preview only after runtime, evidence, packaging, and failure-state gates are satisfied.
+## Current sequence
 
-## Working order
+1. Fix the GPU endpoint-sampling mismatch against the existing CPU reference rule; preserve the frozen parity limits.
+2. Integrate Warp v2 identity and artifacts into the durable application archive path, or keep it explicitly diagnostic-only until that contract passes.
+3. Complete same-run API/browser export, restore, reload, and comparison checks for CPU, Torch, and Warp paths.
+4. Retain the inconclusive fine-grid/time result until its predeclared assessment is complete; profile matched backends before proposing performance changes.
+5. Keep IN718 experimental comparison unvalidated and IN625 screening-only until their separate evidence gates pass.
 
-The next implementation decision should target one of the five gaps above. Do not add another physics phase until the selected gap has a clear input contract, acceptance test, evidence boundary, and user-facing workflow.
+Dated observations belong in [PROOF.md](PROOF.md) and the [session log](sonkayıtlar/LOG.md). The short current snapshot is [STATUS.md](STATUS.md); coordination details are in [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md). Superseded plans and dated audits are indexed in [the archive](docs/archive/).
+
+## Deferred scope
+
+Do not expand into unrelated EIS/EDS or add another physics workflow while the parity, archive, convergence, and evidence gates above remain open. Candidate scientific questions are collected in the [research vision](docs/SCIENTIFIC_RESEARCH_VISION.md); they are not current product commitments.

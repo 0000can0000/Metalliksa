@@ -12,7 +12,7 @@ model/evidence upgrade. New tests observed RED before GREEN. StrictTS/targeted
 parser6PASS; final lint/buildPASS. Overall unit initially167PASS, latest147PASS/
 3FAIL from concurrent unowned UQ edits (uq-coupon-csv/uq-empirical/uq-presentation,
 uqLabData import-time throw). These failures remain recorded, not attributed to
-LPBF changes or silently repaired. Phase0 stays OPEN.
+LPBF changes or silently repaired. The audit remains open.
 
 ## 2026-09-21 — Bounded melting CPU resource profile
 
@@ -25,9 +25,9 @@ Acceptance here: explicit CPU identity, nonzero molten volume and saved thermal
 fields, measured resources, existing balance bounds. PASS for that bounded scope.
 Mesh-dependent W/D40/40→80/20um is NOT convergence or experiment validation.
 VRAM/GPU not exercised. Full setup/log/fingerprint references and limitations:
-`docs/LPBF_CORE_BASELINE_2026-09-21.md`. Prior profile actually used10W, not40W.
+`docs/archive/LPBF_CORE_BASELINE_2026-09-21.md`. Prior profile actually used10W, not40W.
 Current CPU regression44PASS/5Linux-OpenFOAMskip across engineering/source/peak/
-overlap/material RPC groups. Phase0 OPEN; no later phase acceptance.
+overlap/material RPC groups. Initial audit remains open; no later milestone acceptance.
 
 ## 2026-09-21 — Source archive byte integrity and portable backup (software evidence)
 
@@ -48,7 +48,7 @@ acceptance, complete simulation backup, UI integration or legacy migration claim
 ## 2026-09-21 — CPU reference audit and material boundary
 
 Application code2a118ee, CPU Python3.12. Engineering26 tests:25PASS,1OpenFOAM
-skip. Phase17 5PASS, worker optional-backend1PASS, new material RPC3PASS after
+skip. thermal accumulation suite: 5 PASS, worker optional-backend1PASS, new material RPC3PASS after
 9 failing subcases before repair. BuildJob fast, Eagar–Tsai, Goldak–Fabbro and
 meltpool accuracy scripts PASS with missing-Warp/flat-plate fallback warnings.
 These results do not establish GPU execution or new experimental validation.
@@ -61,13 +61,13 @@ Energy relative error3.7662e-15; stationary mass accounting5.5560e-17.
 Peak1175.58K: no melt, so this is a low-power conduction/runtime baseline,
 not representative melt-pool performance or experimental validation. VRAM not
 measured (CPU path); repeat/profile scaling and a melting case remain open.
-Local raw report: `.runtime/phase0-audit/lpbf-reference-profile-01a0c339/profile.json`.
+Local raw report: .runtime/phase0-audit/lpbf-reference-profile-01a0c339/profile.json.
 Input hash7bd1b26132e690523930f79ae3c0f199103affe3a1b3974fd7441c0a48d0e628;
 implementation hash3e7cd5b26540f6aef3c01e27b8c422a1a087f74b79688a0ae996fa860d464813.
 Acceptance here is successful execution and existing balance gates only; no new
-benchmark tolerance is introduced. Phase0 remains open.
+benchmark tolerance is introduced. Initial audit remains open.
 
-## 2026-09-18 16:05 — LPBF Multiphysics CFD Phase 3: Knight Recoil Pressure and Hertz-Knudsen Evaporation
+## 2026-09-18 16:05 — LPBF Multiphysics CFD: Knight Recoil Pressure and Hertz-Knudsen Evaporation
 - Scope: `metalliksaMeltPoolFoam-OpenFOAM14-3` / `recoil-knight-clausius-v1`. Standalone OpenFOAM 14 multiphysics CFD solver in `python/openfoam/meltPoolFoam/` with Hertz-Knudsen evaporative mass flux and Knight (1979) recoil normal pressure. Python orchestration in `python/lpbf_cfd.py` and automated verification in `python/test_lpbf_cfd.py`.
 - Formulated physics:
   - Clausius-Clapeyron saturation pressure: $P_{\text{sat}}(T) = P_0 \exp\left( \frac{L_v M}{R_{\text{univ}}} \left( \frac{1}{T_b} - \frac{1}{T} \right) \right)$.
@@ -80,9 +80,9 @@ benchmark tolerance is introduced. Phase0 remains open.
   - Test suite: `python/test_lpbf_cfd.py` 8 tests (7 passed, 1 expected skip on coarse mesh diagnostics-gate, 0 failures, 30.9s).
   - Regression: `test_lpbf_overlap` and `test_lpbf_engineering` 33/33 PASS (36.8s).
 - Limits & boundaries:
-  - Numerical verification on manufactured cases does not constitute experimental keyhole validation. Moving laser beam surface heating (Phase 4) and Fresnel ray tracing follow as separate roadmap gates.
+  - Numerical verification on manufactured cases does not constitute experimental keyhole validation. Moving laser beam surface heating and Fresnel ray tracing follow as separate roadmap gates.
 
-## 2026-09-18 14:45 — LPBF Multiphysics CFD Phase 1: metalliksaMeltPoolFoam Solver and Verification Suite
+## 2026-09-18 14:45 — LPBF Multiphysics CFD: metalliksaMeltPoolFoam Solver and Verification Suite
 - Scope: `metalliksaMeltPoolFoam-OpenFOAM14-1` / `multiphase-vof-csf-v1`. Standalone OpenFOAM 14 solver package in `python/openfoam/meltPoolFoam/` inheriting from `incompressibleVoF` with Python orchestration layer in `python/lpbf_cfd.py` and automated verification test suite in `python/test_lpbf_cfd.py`.
 - Coupled equations:
   - Two-phase metal-gas Volume of Fluid (VOF) with Continuum Surface Force (CSF) Laplace capillarity.
@@ -98,7 +98,7 @@ benchmark tolerance is introduced. Phase0 remains open.
   - `python/test_lpbf_cfd.py`: 5/5 unit tests PASS in 29.9s.
   - Regression: `test_lpbf_overlap.py` 7/7 PASS, `test_lpbf_engineering.py` 26/26 PASS.
 - Limits & Boundaries:
-  - Phase 1 bounded deliverable; Marangoni flow (Phase 2), conservative interface laser heating (Phase 3), and evaporation recoil (Phase 4) remain pending. In accordance with roadmap non-negotiable rules, `freeSurfaceSolver` remains `False` for application UI until fully qualified; screening fallback is preserved.
+  - Bounded deliverable; Marangoni flow, conservative interface laser heating, and evaporation recoil remain pending. In accordance with roadmap non-negotiable rules, `freeSurfaceSolver` remains `False` for application UI until fully qualified; screening fallback is preserved.
 
 ## 2026-09-18 14:15 — Field-resolved inter-track overlap and remelting extraction
 - Scope: enthalpy-fv-6 / metalliksaThermal-OpenFOAM14-6. Field-based tracking of contiguous 3D molten cell envelopes per scan vector (track, layer) directly from simulated temperature and enthalpy fields. Replaces idealized single-track geometric projections (Harkin et al. 2023) for multi-track configurations.
@@ -224,7 +224,7 @@ Screening regime and defect indicators remain analytical; free surface, recoil, 
 
 ## 2026-09-12 — Thermal foundation hardening and scan-history increment (numerical only)
 
-- Architecture audit was written before implementation: `docs/LPBF_ARCHITECTURE_AUDIT.md`. Existing analytic paths are preserved. WSL2 Ubuntu-22.04 reports OpenFOAM-14; actual `wmake`, blockMesh/checkMesh and compiled cases passed.
+- Architecture audit was written before implementation: `docs/archive/LPBF_ARCHITECTURE_AUDIT_2026-09-21.md`. Existing analytic paths are preserved. WSL2 Ubuntu-22.04 reports OpenFOAM-14; actual `wmake`, blockMesh/checkMesh and compiled cases passed.
 - Fixed mesh-dependent Gaussian penetration, source timing before timestep restriction, OpenFOAM top-plane heat-loss selection, projected voxel support for rotated extents, and unrepresented powder-layer activation. Reference source timestep now uses the same local 25 K sensible-equivalent bound as OpenFOAM. The previous global-min/global-max reference limit produced materially different G/R crossing statistics despite close geometry/peak temperatures; the new comparison explicitly checks G, R and cooling within 1%.
 - Inputs: estimated IN718, P=40 W, v=800 mm/s, beam=80 µm, hatch=100 µm, layer=40 µm, preheat=80 °C, track=200 µm, mesh=40 µm, max dt=1 µs, dwell=0, cooling=0.1 ms. Absorptivity is inherited estimated material data. No measured result is introduced.
 - Final observed OpenFOAM L/W/D = 160/40/40 µm, volume=256000 µm³; peak=2496.5463925 K. Reference peak=2496.5463925 K. Relative energy closure error=7.9889e-16; backend peak difference=0%. R and cooling are verified independently, not inferred from width/depth. This coarse voxel fixture does not establish spatial accuracy.
@@ -236,7 +236,7 @@ Screening regime and defect indicators remain analytical; free surface, recoil, 
 - Final physics tests: WSL `python3 python/test_lpbf_engineering.py` **23/23 PASS**, including actual OpenFOAM comparison, multi-layer/island timing, strict schemas, material evidence, mass accounting, phase partition, corrupted cache, restart state and manufactured conduction. API `python/test_lpbf_api.py` **6/6 PASS** both isolated host and restarted full application; covers active cancellation, timeout, cache, artifact download/denial, preflight, nested input and calibration. JSON runtime contract PASS. `npm run lint` and `npm run build` PASS; existing 9.58 MB main JS / 2.69 MB gzip bundle warning remains.
 - Existing regression commands PASS: `test:lpbf`, `test:meltpool`, `test_marangoni_screening.py`, `test_solidification_front.py`, `test_meltpool_literature_catalog.py`, `test_four_alloy_literature.py`. Literature test still reports Guo N01 depth 73.1 versus 180 µm (~59.4% error), not fitted or concealed.
 - Baseline Windows sandbox temporary-directory/SQLite error was environmental; rerun outside the sandbox passed. Final full numerical suite ran in WSL. No claim of experimental validation, ASTM compliance or production readiness.
-- Remaining gates: local/adaptive refinement, domain-size and broader process/material benchmarks, scan-normal sectional extraction, local per-track overlap/defect metrics, resolved metal/gas momentum/interface, Marangoni/evaporation/recoil/keyhole, uncertainty-qualified experimental holdout and mechanics. Phases 2/3 remain explicitly unresolved; thermal scope is retained as requested.
+- Remaining gates: local/adaptive refinement, domain-size and broader process/material benchmarks, scan-normal sectional extraction, local per-track overlap/defect metrics, resolved metal/gas momentum/interface, Marangoni/evaporation/recoil/keyhole, uncertainty-qualified experimental holdout and mechanics. unresolved gates remain explicitly listed; thermal scope is retained as requested.
 
 ## 2026-09-12 — OpenFOAM 14 thermal backend: numerical verification, NOT experimental validation
 
@@ -464,34 +464,34 @@ This logbook records all empirically tested and mathematically verified models, 
 
 ---
 
-## Proof Entry 015: LPBF Build Job Phase 0→2 (Tang, M_molar, k_eff, strategy DOIs, Pydantic)
+## Proof Entry 015: LPBF Build Job Screening Enhancements (Tang, M_molar, k_eff, strategy DOIs, Pydantic)
 - **Date**: 2026-09-06
 - **Module**: `lpbf_thermal_solver.py` / `lpbf_build_job_solver.py` / `lpbf_build_job_schema.py` / `four_alloy_materials.py`
-- **Scope**: Phase 0–2 screening upgrades without UQ/Murakami/AMS. Verdict remains Python-only.
-- **Phase 0**: Per-alloy `M_molar_kg_mol`; Tang LoF gate \((h/W)^2+(t/D)^2\); remove fake peak-T / PDAS / residual-stress ceilings; `processSeed`; Marangoni geometry accepts thermal W/D.
-- **Phase 1**: Effective solid↔liquid \(k/C_p\) for Rosenthal geometry (King \(\Delta H/h_s\) stays solid); \(R=v\cos\theta\); downskin overhang gate; scan strategy stripe / 5 mm / 67° / dwell 0 with DOIs in `assumptions`.
-- **Phase 2**: NumPy in thermal map + slicer bbox; Pydantic request schema; triangle cap 12000 (synced with TS).
+- **Scope**: Screening upgrades without UQ/Murakami/AMS. Verdict remains Python-only.
+- **Materials and geometry**: Per-alloy `M_molar_kg_mol`; Tang LoF gate \((h/W)^2+(t/D)^2\); removed unsupported peak-T / PDAS / residual-stress ceilings; `processSeed`; Marangoni geometry accepts thermal W/D.
+- **Thermal properties and scan strategy**: Effective solid↔liquid \(k/C_p\) for Rosenthal geometry (King \(\Delta H/h_s\) stays solid); \(R=v\cos\theta\); downskin overhang gate; scan strategy stripe / 5 mm / 67° / dwell 0 with DOIs in `assumptions`.
+- **Request schema and slicing**: NumPy in thermal map + slicer bbox; Pydantic request schema; triangle cap 12000 (synced with TS).
 - **Fixtures**: `python/test_lpbf_build_job.py` (seed, Tang, DOIs, incline R, triangle cap, downskin); `python/test_four_alloy_literature.py`; `python/test_lpbf_meltpool_accuracy.py`; `npx tsc --noEmit`.
 - **Status**: **PASS**
 
 ---
 
-## Proof Entry 016: LPBF Build Job Phase 3→4 (UQ, NIST AMB2018-02, Murakami, qualification)
+## Proof Entry 016: LPBF Build Job Uncertainty and Reference Screening (UQ, NIST AMB2018-02, Murakami, qualification)
 - **Date**: 2026-09-06
 - **Module**: `lpbf_screening_uq.py` / `nist_ambench_2018_02.py` / `murakami_fatigue_screening.py` / `lpbf_build_job_solver.py`
-- **Scope**: Phase 3–4 screening. Verdict remains Python-only. No invented defect sizes. NIST numbers from Lane et al. IMMI 2020 Table 4 (IN625 CBM).
-- **Phase 3 (UQ)**: Literature-default Monte Carlo (\(P\pm3\%\), absorptivity \(\pm15\%\), spot \(\pm7.5\%\), \(k\pm12\%\), density \(\pm10\%\)); seeded; outputs `P(printable)`, \(\Delta H/h_s\) mean±std, Pearson Sobol-proxy. UI shows discrete verdict label **and** `P(printable)`.
-- **Phase 4a (NIST)**: AMB2018-02 / CHAL-AMB2018-02-MP CBM means (A/B/C). DOI `10.1007/s40192-020-00169-1`. Four-alloy coverage: Ti64/316L/AlSi10Mg `no_coverage`; IN718 `proxy_only`. Example screening MAPE vs Rosenthal+IN625 props ≈ **51%** overall (not a qualification gate).
-- **Phase 4b/c**: Murakami √area + Gumbel when `defectSqrtAreas_um` supplied; else `data_not_supplied`. Qualification block `not_executed` + AMS/ASTM list + input hash.
-- **Fixtures**: `python/test_lpbf_build_job.py` Phase 0–4 (UQ n=24 seed reproducibility, NIST table values, Murakami empty/filled); `npx tsc --noEmit`.
+- **Scope**: Screening only. Verdict remains Python-only. No invented defect sizes. NIST numbers from Lane et al. IMMI 2020 Table 4 (IN625 CBM).
+- **Uncertainty screening**: Literature-default Monte Carlo (\(P\pm3\%\), absorptivity \(\pm15\%\), spot \(\pm7.5\%\), \(k\pm12\%\), density \(\pm10\%\)); seeded; outputs `P(printable)`, \(\Delta H/h_s\) mean±std, Pearson Sobol-proxy. UI shows discrete verdict label **and** `P(printable)`.
+- **Reference comparison**: AMB2018-02 / CHAL-AMB2018-02-MP CBM means (A/B/C). DOI `10.1007/s40192-020-00169-1`. Four-alloy coverage: Ti64/316L/AlSi10Mg `no_coverage`; IN718 `proxy_only`. Example screening MAPE vs Rosenthal+IN625 props ≈ **51%** overall (not a qualification gate).
+- **Fatigue and qualification**: Murakami √area + Gumbel when `defectSqrtAreas_um` supplied; else `data_not_supplied`. Qualification block `not_executed` + AMS/ASTM list + input hash.
+- **Fixtures**: `python/test_lpbf_build_job.py` (UQ n=24 seed reproducibility, NIST table values, Murakami empty/filled); `npx tsc --noEmit`.
 - **Status**: **PASS**
 
 ---
 
-## Proof Entry 017: LPBF Build Job Phase 5 (cache, lazy UQ/NIST, Murakami paste, SBOM, air-gap)
+## Proof Entry 017: LPBF Build Job Environment and Performance (cache, lazy UQ/NIST, Murakami paste, SBOM, air-gap)
 - **Date**: 2026-09-06
 - **Module**: `lpbf_job_cache.py` / `lpbf_build_job_solver.py` / `lpbf_screening_uq.py` / `murakami_fatigue_screening.py` / `server/airgap.ts` / `generate_sbom.py`
-- **Scope**: Phase 5 environment + performance. Verdict remains Python-only. No invented defect / AM-Bench / AMMT numbers. No AMMT rows (no open NIST numbers beyond Lane Table 4).
+- **Scope**: Environment + performance. Verdict remains Python-only. No invented defect / AM-Bench / AMMT numbers. No AMMT rows (no open NIST numbers beyond Lane Table 4).
 - **Hash cache**: Canonical SHA-256 over alloy + P/v/h/t/d + seed + strategy + mesh fingerprint + UQ/NIST/Murakami flags; in-process hit returns prior result with `cache.hit` / `ageMs` / hitRate.
 - **Lazy UQ / NIST**: Schema + UI defaults `enableUq=false`, `includeAmbench=false`. Decision lab **Run UQ** (n≈96) and **Validate vs NIST**. Session store retains last UQ/NIST blocks. UQ MC does not re-run slicer.
 - **Sensitivity**: Spearman |ρ| share labelled `spearman-proxy` (`screeningSensitivity` / `sobolProxy` alias).
@@ -670,7 +670,7 @@ Tafel ingestion uses exact analytic branch fixtures (Ecorr=-.2 V, icorr=10 uA/cm
 beta_a=.1, beta_c=.2 V/dec; area 2 cm2), recovering current-unit equivalence in
 A/mA/uA/log(A). These checks verify equations and unit handling, not ASTM conformity
 or experimental applicability. See `python/test_no_fabricated_outputs.py` and the
-Phase 0 audit for the 10-test software/analytic scope and remaining limitations.
+initial audit for the 10-test software/analytic scope and remaining limitations.
 
 ## 2026-09-21 — CNLS residual Jacobian sign regression
 
@@ -697,7 +697,7 @@ Uncertainty is conditional local linearized residual-scaled covariance only. Nul
 means unavailable; pure-Python fitting works but uncertainty requires NumPy SVD.
 Shared frontend contract5 tests PASS including HTTP503/no fallback and real-zero
 retention; full unit125, lint and buildPASS. Real browser studio/builder fit and
-error/partial report flows passed using isolated IPC5192. See Phase0 audit for
+error/partial report flows passed using isolated IPC5192. See initial audit for
 exact runtime/browser limits and the still-unreviewed Voigt/JS/synthetic paths.
 
 ## 2026-09-21 — IN718 HDF5 metadata inspection, not thermal validation
@@ -709,7 +709,7 @@ strict TypeScript and production build passed. Existing large-chunk warning rema
 The inspector reads no dataset values; no temperature, width or depth is generated.
 
 73 objects include27 raw signal datasets. Reviewed source conditions and missing
-calibration reasons are in docs/NIST_IN718_HDF5_REVIEW_2026-09-21.md. The stored
+calibration reasons are in docs/archive/2026-09-21/NIST_IN718_HDF5_REVIEW_2026-09-21.md. The stored
 calibration expression has unbalanced parentheses and unspecified emissivity;
 conversion remains null. Source unit digital levels is not Kelvin/Celsius.
 
@@ -717,4 +717,4 @@ Updated metadata was explicitly imported into isolated pilot revision2, retainin
 revision1, and all three archived artifacts were verified again. Document SHA256:
 53a5171e1fdb0fedf5f25bc6160ab57fa835a2594940ef083e78b531d721bc2a.
 Report: .runtime/phase0-audit/hdf5-source-import-01a0c35a.json.
-This is source/provenance and software evidence. Phase0 remains open.
+This is source/provenance and software evidence. Initial audit remains open.

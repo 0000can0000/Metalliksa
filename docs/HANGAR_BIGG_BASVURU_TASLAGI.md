@@ -1,151 +1,121 @@
-# HANGAR BİGG Başvuru Taslağı — Metalliksa
+# HANGAR BİGG Başvuru Ön Çalışması — Metalliksa
 
-> Durum: İlk taslak / başvuru formuna aktarılmadan önce ekip bilgileri ve müşteri görüşmeleri ile tamamlanmalıdır.
-> Tarih: 2026-09-20
+> **Durum:** İç çalışma taslağı; başvuruya hazır değildir. Ürün anlatımı 2026-09-27 itibarıyla uygulama belgeleriyle hizalanmıştır. Problem, müşteri, pazar, ödeme isteği ve program koşulları doğrulanmalıdır.
+> **Ürün kapsamı için kaynak:** [Metalliksa Ürün Özeti](PRODUCT_OVERVIEW.md). Teknik olgunluk ve açık doğrulama kapıları başvuru metni gönderilmeden önce [güncel durum](../STATUS.md) ve [ürün yol haritasıyla](../ROADMAP.md) yeniden karşılaştırılmalıdır.
 
 ## 1. İş fikrinin kısa adı
 
-**Metalliksa — Havacılıkta eklemeli imalat için fizik tabanlı proses zekâsı ve dijital ikiz platformu**
+**Metalliksa — LPBF araştırma ve proses geliştirme için izlenebilir mühendislik platformu**
 
 ## 2. Tek cümlelik tanım
 
-Metalliksa, lazer toz yataklı ergitme (LPBF) süreçlerinde üretim kusurlarını önceden tahmin etmek, proses penceresini optimize etmek ve üretim sonrası doğrulamayı hızlandırmak için fizik tabanlı simülasyon, yapay zekâ ve dijital ikizi tek bir mühendislik platformunda birleştirir.
+Metalliksa, metal eklemeli imalat araştırmacıları ve mühendislerinin LPBF analizlerini, malzeme bilgisini ve kaynaklı kanıt kayıtlarını tek bir çalışma ortamında ilişkilendirerek teknik incelemelerini daha izlenebilir yürütmesine yardımcı olan bir araştırma mühendisliği platformudur.
 
-## 3. Çözdüğümüz problem
+## 3. Çözülmesi hedeflenen problem
 
-Havacılık ve savunma parçalarında LPBF üretim kararları; lazer gücü, tarama hızı, hatch aralığı, katman kalınlığı, malzeme ve geometri arasındaki karmaşık etkileşimlere bağlıdır. Kusurlar çoğu zaman üretimden sonra CT, metalografik inceleme veya mekanik testlerle fark edilir. Bu yaklaşım:
+**Problem hipotezi:** LPBF proses geliştirme sırasında proses girdileri, model çıktıları, literatür bulguları ve deney kayıtları farklı araçlarda tutulabiliyor. Bir sonucun hangi girdi, kaynak, varsayım ve doğrulama durumuna dayandığını yeniden kurmak bu nedenle zorlaşabilir.
 
-- deneme-yanılma sayısını ve malzeme israfını artırır,
-- kritik parçaların üretim süresini uzatır,
-- porozite, lack-of-fusion, keyhole ve termal distorsiyon risklerinin erken yönetilmesini zorlaştırır,
-- simülasyon, üretim ve deney sonuçlarının izlenebilirliğini parçalı hâle getirir.
+Bu henüz müşteri görüşmeleriyle doğrulanmış bir bulgu değildir. Başvuruya sayısal zaman, maliyet, hurda veya deney azalması iddiaları eklenmeden önce kullanıcı ve pilot verisi gereklidir.
 
-## 4. Çözüm
+## 4. Mevcut çözüm
 
-Metalliksa; proses girdilerini, CAD/STL geometrisini, termal geçmişi, kusur göstergelerini ve deneysel kanıtları izlenebilir bir iş akışında birleştirir.
+Metalliksa, bugün çalışan araştırma mühendisliği prototipi içinde üç çalışma alanı sunar:
 
-İlk ürün odağı:
+- **LPBF Engineering:** malzeme/proses girdileriyle kullanılabilir termal ve analitik tarama iş akışları;
+- **Materials Intelligence:** malzeme verisi ve malzeme araştırma araçları;
+- **Evidence & Qualification:** araştırma kaynakları, incelenmiş bulgular, ölçüm kayıtları ve mühendislik sonuçları için izlenebilir inceleme akışı.
 
-1. LPBF proses parametrelerinden termal ve kusur-risk haritası üretmek.
-2. Tarama kinematiği ve çoklu lazer etkileşimlerini analiz etmek.
-3. CAD/STL geometriyi voksel tabanlı dijital ikize dönüştürmek.
-4. Keyhole ve lack-of-fusion gibi riskleri parça koordinatlarına taşımak.
-5. Enerji birikimi ve hotspot bölgeleri için lazer güç kompanzasyonu önermek.
-6. Sonuçları deneysel veri, CT/EBSD ve NIST AM-Bench izlenebilirliği ile karşılaştırmaya hazır biçimde raporlamak.
+Research Hub kaynak ve bulguları modüllerle ilişkilendirebilir; bu kayıtlar çözücü girdilerini kendiliğinden değiştirmez. Amaç, analizi ve dayanaklarını birlikte inceleyebilmektir. Aynı çalışmanın kimliğini koruyarak API ve tarayıcı üzerinden arşivleme, dışa aktarma ve geri yükleme akışının bütünleşmesi halen geliştirme/doğrulama işidir; tamamlanmış ürün özelliği gibi sunulmamalıdır.
 
-## 5. Yenilikçi yön
+## 5. Farklılaşma hipotezi
 
-Mevcut çözümler genellikle yalnızca simülasyon, yalnızca proses izleme veya yalnızca kalite kontrol katmanına odaklanır. Metalliksa’nın farklılaştırıcı yönü; fizik modelleri, hızlı vekil modelleri, optimizasyonu, takım yolu kinematiğini, kusur dijital ikizini ve kanıt/izlenebilirlik katmanını aynı ürün akışında birleştirmesidir.
+Sınanacak ürün varsayımı, hesaplamalı analiz ile kaynak/kanıt izini aynı iş akışında tutmanın araştırma ekiplerine değer sağlayacağıdır. Metalliksa ölçülmüş bulguları, literatür tahminlerini, model sonuçlarını ve yazılım doğrulamalarını ayrı tutmayı hedefler.
 
-Platform; üretim sonrası “kusur bulundu” raporundan önce, üretim öncesi “bu geometri ve proses penceresinde risk nerede oluşur?” sorusuna yanıt vermeyi hedefler.
+Bu aşamada rakiplere göre üstünlük, pazarda benzersizlik veya doğrulanmış maliyet tasarrufu iddiası kurulmamıştır. Rakip ve alternatif iş akışı araştırması başvuru öncesi tamamlanmalıdır.
 
-## 6. Hedef kullanıcı ve ilk müşteri segmenti
+## 6. Hedef kullanıcı ve müşteri varsayımları
 
-### Birincil segment
+### Kullanıcı hipotezleri
 
-- Havacılık ve savunma sanayii parça üreticileri
-- Metal eklemeli imalat kullanan Ar-Ge ve üretim ekipleri
-- LPBF makinesi ve proses geliştirme ekipleri
+- LPBF proses geliştiren malzeme ve üretim mühendisleri;
+- eklemeli imalat araştırmacıları ve üniversite/kurum Ar-Ge ekipleri;
+- simülasyon, literatür ve deney kayıtlarını birlikte değerlendiren teknik ekipler.
 
-### İlk kullanım senaryosu
+### Olası alıcılar — doğrulanacak
 
-Bir havacılık parçası için üretimden önce proses penceresinin taranması; yüksek riskli bölgelerin, olası lack-of-fusion/keyhole alanlarının ve termal distorsiyon risklerinin raporlanması; ardından sınırlı sayıda fiziksel kupon veya parça ile doğrulama.
+Kurumsal Ar-Ge ekipleri, LPBF hizmet sağlayıcıları, makine üreticileri ve malzeme tedarikçileri olası segmentlerdir. İlk müşteri ve ödeme yapan rol henüz seçilmiş/doğrulanmış değildir.
 
-## 7. Çift kullanım potansiyeli
+## 7. Mevcut teknik durum ve kanıt sınırı
 
-Savunma ve havacılıkta kritik metal parçaların daha az deneme ile, daha izlenebilir ve daha düşük hurda riskiyle üretilmesini sağlar. Aynı altyapı; enerji, medikal, otomotiv, uzay ve genel endüstriyel metal eklemeli imalat süreçlerine uyarlanabilir. Böylece savunma odaklı teknik yetkinlik, sivil üretim yazılımı olarak da ticarileştirilebilir.
+Metalliksa bir araştırma prototipidir. LPBF geçici termal çözücüsü araştırma kapsamındadır; serbest yüzeyli, buharlaşma/recoil ve eriyik akışı fiziklerini çözen yüksek doğruluklu CFD yeteneği mevcut değildir. Uygun bağımsız deney karşılaştırması ve yakınsama kanıtı olmayan model çıktıları doğrulanmış tahmin olarak sunulamaz. Güncel teknik öncelikler ve kanıt durumu tarihli başvuru anlatısından ayrı olarak [durum kaydında](../STATUS.md) ve [yol haritasında](../ROADMAP.md) izlenir.
 
-## 8. Mevcut teknik hazırlık seviyesi
+Yazılım testleri, CPU/GPU sayısal paritesi veya arşivlenmiş çalıştırma kayıtları yazılım/nümerik kanıttır; tek başlarına fiziksel doğrulama, üretim yeterliliği ya da standart sertifikası sağlamaz. Modüllerin olgunluk ve kanıt durumları farklıdır; [LPBF kapsamı](LPBF_ENGINEERING.md), [güncel durum](../STATUS.md) ve [kanıt kayıtları](../PROOF.md) başvuru metniyle birlikte kontrol edilmelidir.
 
-Metalliksa hâlihazırda çalışan bir araştırma mühendisliği yazılım prototipidir. Mevcut kapsamda:
+Bu yüzden aşağıdaki iddialar mevcut ürün başarısı gibi yazılmamalıdır: kusuru güvenilir biçimde önceden tahmin etme, proses penceresini kalifiye etme, hurdayı azaltma, fiziksel deneme sayısını düşürme veya üretim serbest bırakma kararı verme. Bunlar ancak tanımlı bir müşteri senaryosunda ölçülüp doğrulanırsa sonuç olarak raporlanabilir.
 
-- termal LPBF simülasyonu ve mühendislik iş akışı,
-- Bayesian proses optimizasyonu ve GPU hızlandırmalı FNO vekil model yolu,
-- takım yolu/galvo kinematiği ve enerji yoğunluğu hotspot analizi,
-- yorulma ve kusur toleransı analizi,
-- CAD/STL vokselizasyonu ve parça seviyesinde kusur uzamsal ikizi,
-- çoklu lazer/plume etkileşimi için analiz,
-- uyarlamalı ileri besleme lazer güç kompanzasyonu,
-- kanıt, izlenebilirlik ve deneysel karşılaştırma kayıtları
+## 8. İlk pilot/PoC hipotezi
 
-bulunmaktadır.
+Bir pilot ortağıyla tek bir alaşım, makine/proses ailesi ve ölçülebilir gözlem seçilmesi önerilir. Pilot başlamadan önce girdiler, veri sahipliği, ölçüm yöntemi, belirsizlik, karşılaştırma metriği ve kabul eşiği üzerinde anlaşılmalıdır.
 
-Bu aşamadaki test ve yazılım doğrulamaları, ürünün deneysel olarak kalifiye edildiği veya üretime hazır olduğu anlamına gelmez. İlk ticarileştirme PoC’sinin amacı, seçilmiş bir müşteri prosesinde bağımsız ölçüm verisiyle sınırlı ve ölçülebilir bir kullanım senaryosunu doğrulamaktır.
+Olası değerlendirme ölçütleri — müşteriyle belirlenecek:
 
-## 9. İlk PoC ve başarı ölçütleri
+- aynı girdilerle çalıştırma ve sonuç kimliğinin yeniden üretilebilirliği;
+- her sonucun girdi, kaynak ve kanıt durumunun izlenebilmesi;
+- model/analiz çıktısının bağımsız ölçümle önceden belirlenmiş metrikte karşılaştırılması;
+- kullanıcıların iş akışını tamamlayıp raporu teknik incelemede kullanabilmesi.
 
-### PoC kapsamı
+Ölçüm verisi ve kabul kriterleri sağlanmadan pilot başarısı veya doğruluk oranı varsayılmamalıdır.
 
-Tek bir alaşım, tek bir LPBF makinesi/proses ailesi ve tek bir parça veya kupon geometrisi seçilecektir. Metalliksa aynı proses vektörünü simüle edecek; CT, metalografi veya melt-pool ölçümleri ile karşılaştırılacaktır.
+## 9. Ticarileştirme varsayımları
 
-### Başarı ölçütleri
+İlk olarak ücretli pilot/PoC, sonrasında kurumsal yazılım lisansı araştırılabilir. Bu iş modeli ve fiyatlandırma doğrulanmamıştır. Ücretlendirme biçimi, kurulum/yerel çalışma gereksinimi, veri güvenliği ve kurum içi satın alma süreci müşteri görüşmeleriyle netleştirilmelidir.
 
-- Kusur-risk bölgelerinin bağımsız ölçümle konum bazında karşılaştırılabilir olması.
-- Proses parametre taramasının fiziksel deneme sayısını azaltacak bir aday pencere üretmesi.
-- Termal/proses çıktılarının aynı girdilerle tekrarlanabilir olması.
-- Her sonucun varsayım, veri kaynağı, belirsizlik ve doğrulama durumu ile birlikte raporlanması.
-- Müşterinin karar sürecinde kullanabileceği kısa ve izlenebilir bir proses raporu oluşturulması.
+## 10. HANGAR BİGG programından beklenen katkı
 
-## 10. Ticarileştirme modeli
+- İlk kullanıcı ve müşteri segmentine erişim, problem görüşmelerinin yürütülmesi;
+- veri ve ölçüm erişimi olan bir pilot/PoC ortağı bulma;
+- teknik başarı kriterleri ve bağımsız doğrulama tasarımına mentorluk;
+- fikrî haklar, rakip araştırması, kurumsal satın alma ve pazara giriş konularında destek.
 
-İlk aşamada kurumsal pilot ve PoC hizmeti; sonrasında yıllık kurumsal yazılım lisansı, proses geliştirme modülleri ve doğrulama/entegrasyon hizmetleri.
+Program adı, güncel çağrı şartları, uygun gider kalemleri ve başvuru takvimi resmî çağrı dokümanından ayrıca doğrulanmalıdır.
 
-Muhtemel ürün paketleri:
+## 11. İlk 13 haftada hedeflenecek işler
 
-- **Screening:** hızlı proses penceresi ve kusur-risk taraması,
-- **Engineering:** takım yolu, termal geçmiş, optimizasyon ve dijital ikiz,
-- **Qualification Support:** deneysel veri, izlenebilirlik ve müşteri kalite raporları.
+1. En az üç potansiyel kullanıcıyla problem görüşmesi yapmak ve görüşme notlarını kanıt olarak saklamak.
+2. En acil kullanıcı problemi, kullanıcı rolü ve olası ödeme yapan kurumu ayırmak.
+3. Paylaşılabilir deney verisi, veri kullanım hakkı ve teknik pilot ortağını netleştirmek.
+4. Tek alaşım/proses/ölçüm kapsamlı PoC protokolünü ve kabul ölçütlerini yazmak.
+5. Rakip ve mevcut alternatif iş akışlarını kaynaklı biçimde karşılaştırmak.
+6. Müşteri görüşmelerine göre MVP kapsamını ve iş modeli/fiyatlandırma varsayımını güncellemek.
 
-## 11. Rakiplere karşı yaklaşım
+Bunlar program için hedeflerdir; tamamlanmış faaliyetler olarak sunulmamalıdır.
 
-Metalliksa’nın ilk hedefi genel amaçlı tam fiziksel CFD yazılımlarını doğrudan ikame etmek değildir. Daha dar ve savunulabilir bir kullanım alanında; proses geliştirme ekiplerinin hızlı karar vermesini, riskli bölgeleri önceliklendirmesini ve deneysel doğrulama kayıtlarını tek akışta tutmasını sağlamaktır. Ürün, gerekli yerlerde sonucu “screening” veya “validation pending” olarak açıkça etiketler; bu yaklaşım havacılıkta güvenilirlik ve izlenebilirlik açısından kritik bir farklılaştırıcıdır.
+## 12. Bütçe ve kaynak ihtiyacı
 
-## 12. HANGAR BİGG’den beklenen katkı
+Yatırım tutarı, ekip maliyetleri ve uygun harcamalar mevcut başvuru çağrısı ile gerçek tekliflere göre belirlenecektir. Doğrulanmamış sabit tutar, personel, gelir veya GPU performans rakamı eklenmemelidir.
 
-- TUSAŞ ve Teknopark Ankara altyapısında metal eklemeli imalat/karakterizasyon PoC erişimi
-- Havacılıkta gerçek kullanıcı problemi ve teknik gereksinim doğrulaması
-- Sertifikasyon, fikrî haklar, savunma-sanayii tedarik süreçleri ve pazara giriş mentörlüğü
-- İlk müşteri ve pilot proje bağlantıları
-- Patent taraması ve uygun fikrî mülkiyet stratejisi
-- Ürünün kurumsal satın alma ve güvenlik gereksinimlerine hazırlanması
-
-## 13. 13 haftalık program için hedefler
-
-1. İlk müşteri segmenti ve kritik kullanım senaryosunu kesinleştirmek.
-2. En az üç potansiyel kullanıcıyla problem görüşmesi yapmak.
-3. Bir PoC ortağı, veri formatı ve başarı ölçütlerini netleştirmek.
-4. Ürün kapsamını tek bir ödeme yapılabilir MVP’ye indirmek.
-5. Fikri haklar ve rakip patent taramasını tamamlamak.
-6. Pilot fiyatlama ve lisans modelini oluşturmak.
-7. Demo Day için çalışan, sınırlı ama ölçülebilir bir gösterim hazırlamak.
-
-## 14. 1.350.000 TL yatırımın ön kullanım planı
-
-Bu tablo başvuru çağrısının güncel bütçe kuralları ve ekip maliyetleriyle son hâline getirilecektir.
-
-| Kalem | Amaç | Öncelik |
+| İhtiyaç | Kullanım amacı | Tutar/durum |
 |---|---|---|
-| PoC ve deneysel doğrulama | Numune üretimi, CT/metalografi/ölçüm ve veri hazırlığı | 1 |
-| Ürünleştirme | Kullanıcı akışı, raporlama, veri/izlenebilirlik ve güvenlik | 2 |
-| GPU/hesaplama altyapısı | Simülasyon, vekil model ve optimizasyon çalıştırma kapasitesi | 3 |
-| Fikri haklar | Patent taraması, başvuru ve hukuki danışmanlık | 4 |
-| Pilot satış ve iş geliştirme | Müşteri görüşmeleri, saha PoC’si ve teknik satış materyali | 5 |
+| Bağımsız ölçüm ve pilot | Numune, ölçüm, veri hazırlığı | Teklif ve pilot kapsamı beklenecek |
+| Ürünleştirme | Kullanılabilir akış, raporlama ve veri güvenliği | Kapsam/maliyet çıkarılacak |
+| Hesaplama altyapısı | Tanımlı pilot iş yükleri | Ölçüm ve teknik gereksinim sonrası |
+| Fikrî haklar ve danışmanlık | Patent/özgür kullanım araştırması ve hukuki destek | Güncel teklif beklenecek |
 
-Not: Başvuruda doğrulanmamış personel maliyeti, müşteri sayısı, gelir veya performans rakamı yazılmamalıdır. Rakamlar ekip ve çağrı kuralları netleştirildikten sonra eklenmelidir.
+## 13. 90 saniyelik sunum taslağı
 
-## 15. 90 saniyelik sözlü sunum
+LPBF proses geliştirmede bir mühendis yalnızca bir simülasyon sonucuna değil; o sonucun hangi malzeme ve proses girdileriyle üretildiğine, hangi kaynağa dayandığına ve ölçümle ne ölçüde karşılaştırıldığına da ihtiyaç duyar. Metalliksa, LPBF analizlerini, malzeme bilgisini ve kaynaklı kanıt kayıtlarını tek bir araştırma mühendisliği çalışma ortamında bir araya getiren bir prototiptir. Bugünkü hedefimiz üretim için doğrulanmış kusur tahmini vermek değil; araştırma ve proses geliştirme çalışmalarının girdilerini, sonuçlarını ve kanıt durumunu izlenebilir kılmaktır. İlk olarak bu ihtiyacın gerçek kullanıcılar için ne kadar önemli olduğunu görüşmelerle doğrulayacağız. Ardından bir pilot ortağıyla tek bir proses ve ölçüm kapsamı seçecek, bağımsız karşılaştırma yöntemini ve başarı ölçütlerini önceden belirleyeceğiz. HANGAR BİGG’den kullanıcı ve pilot erişimi, ölçüm/PoC tasarımı ve ticarileştirme mentörlüğü bekliyoruz.
 
-Havacılıkta kritik metal parçaların eklemeli imalatında en pahalı hata, kusuru üretimden sonra fark etmektir. Lazer gücü, tarama hızı, malzeme ve geometri arasındaki etkileşimler; porozite, lack-of-fusion, keyhole ve distorsiyon risklerini artırabilir. Metalliksa bu problemi, fizik tabanlı LPBF simülasyonunu yapay zekâ, proses optimizasyonu ve parça seviyesinde dijital ikizle birleştirerek çözüyor. Kullanıcı, üretimden önce proses penceresini tarıyor, riskli bölgeleri görüyor ve hangi fiziksel denemelerin gerçekten gerekli olduğunu belirliyor. İlk PoC’miz tek bir havacılık alaşımı ve parça/kupon üzerinde, CT veya metalografi verisiyle bağımsız karşılaştırma yapacak. Hedefimiz genel bir simülasyon aracı olmak değil; havacılık üretim ekiplerinin daha az deneme, daha az hurda ve daha izlenebilir kalite kararı almasını sağlayan kurumsal proses zekâsı ürünü geliştirmek. HANGAR BİGG’den beklentimiz, bu yazılımı gerçek TUSAŞ/ekosistem kullanım senaryosunda doğrulamak, fikrî haklarını korumak ve ilk pilot müşterilere ulaşmaktır.
+## 14. Başvuru öncesi tamamlanacaklar
 
-## 16. Başvuru öncesi doldurulacak alanlar
+- Kurucu ve ekip bilgileri, görev dağılımı ve CV'ler;
+- problem görüşmeleri, kullanıcı alıntıları ve izinli kayıtlar;
+- ilk kullanıcı, satın alma rolü ve doğrulanmış pilot ortağı;
+- pilot girdileri, ölçüm verisi, veri sahipliği/izinleri ve kabul kriterleri;
+- rakip/alternatif araştırması ve kaynaklar;
+- ürünün güncel demo akışı ile hangi parçaların Research/Preview olduğunu gösteren kanıt;
+- fikrî haklar ve üçüncü taraf yazılım/veri lisansları;
+- güncel başvuru çağrısı, bütçe şartları, yatırım tutarı ve iletişim bilgileri.
 
-- Kurucu/girişimci adı, özgeçmişi ve uzmanlık alanları:
-- Ekip üyeleri ve görev dağılımı:
-- İlk müşteri/problem görüşmeleri:
-- Kullanılabilir veri seti ve veri sahipliği:
-- Seçilecek alaşım, makine ve PoC geometrisi:
-- İlk hedef müşteri/kurum:
-- Fikri hakların mevcut durumu:
-- Başvuru formundaki güncel yatırım tutarı ve şartlar:
-- İletişim bilgileri:
+## Başvuru metnini güncelleme kuralı
 
+Ürün kapsamı değiştiğinde önce [Metalliksa Ürün Özeti](PRODUCT_OVERVIEW.md) ve `STATUS.md` kontrol edilir. Başvuru taslağına yalnızca bu kaynaklarda desteklenen mevcut yetenekler yazılır; müşteri, pazar ve etki iddiaları ayrı kanıtla doğrulanır.

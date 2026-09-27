@@ -27,7 +27,7 @@ inputs not rejected. GREEN:7 then8tests after real Queue restore/cache test.
 Current Windows engineering25PASS/1skip, source7PASS/1skip. Current WSL
 8core+26engineering+8source+5peak+7overlap=54PASS, no skips.40W pre/post parity:
 six numerical sections and all64artifact SHA256s identical. Real Python result
-passes TypeScript parser unchanged. Logs `.runtime/phase0-audit/core-*01a0c36f*`.
+passes TypeScript parser unchanged. Logs .runtime/phase0-audit/core-*01a0c36f*.
 
 Task2 RED: missing expected exception for malformed contract (after Node spawn
 EPERM was removed with scoped permission). GREEN focused parser/diagnostics6PASS.
@@ -40,13 +40,13 @@ part of this commit. Latest lint/buildPASS37.97s (existing chunk warning).
 Ruling: deliver bounded LPBF package with explicit shared-tree failure; do not
 overwrite concurrent unrelated UQ work to manufacture a green overall result.
 
-Remaining goal: run/experiment persistence and shared physics extraction; Phase0
+Remaining goal: run/experiment persistence and shared physics extraction; Phase
 still OPEN. The steps below record the implemented task design; execution results
 above are authoritative about actual passes and the remaining integration issue.
 
 ## Global constraints
 
-- Phase0 OPEN; no later-phase or experimental acceptance.
+- Initial audit remains open; no experimental qualification accepted.
 - Keep model IDs, source conditions and current numerical tolerances.
 - No installation, push, live migration or secondary-module changes.
 - Legacy absence remains legacy; contract present but invalid must fail.
@@ -117,4 +117,4 @@ unit/physics literals and field shape; preserve exact returned hashes.
   actual browser check is required when the later run-history UI is introduced.
 - [ ] Commit and record the next run-record schema/import/restore package. Draft
   its detailed plan against the source repository API immediately before coding;
-  do not infer Phase1 acceptance from this preparatory contract package.
+  do not infer Phase acceptance from this preparatory contract package.

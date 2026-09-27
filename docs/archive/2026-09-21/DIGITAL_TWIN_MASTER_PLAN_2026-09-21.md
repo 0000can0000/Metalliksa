@@ -113,7 +113,7 @@ Python fizik ve veri değerlendirme katmanı olarak kalır. Node mevcut API, iş
 - Disk doluluğu ve saklama bütçesi görünürdür. Kaynak/sonuç silme otomatik ve sessiz yapılmaz.
 - PostgreSQL'e geçiş tetikleyicisi: birden fazla hosttan yoğun eşzamanlı yazma veya çok kullanıcılı servis gereksinimi. İlk fazda ikinci veritabanı işletilmez.
 
-Kesin Node SQLite sürücüsü Faz 0 uyumluluk deneyiyle seçilir. Mevcut bir paketin kurulu olması tercih sebebi değildir; aktif Node sürümü, paket kilidi ve transaction/backup testleri belirleyicidir.
+Kesin Node SQLite sürücüsü Faz uyumluluk deneyiyle seçilir. Mevcut bir paketin kurulu olması tercih sebebi değildir; aktif Node sürümü, paket kilidi ve transaction/backup testleri belirleyicidir.
 
 ## 5. Veri modeli ve değişmez kurallar
 
@@ -251,11 +251,11 @@ Sanal sensör karşılaştırmaları gerçek sensörün uzamsal/zamansal çözü
 - Eşdeğer CPU/GPU termal testlerinde seçilmiş bütünsel metrik farkı ≤ %1; faz sınırlarının ağ hassasiyeti ayrı ele alınır.
 - Pilot bağımsız W/D değerlendirmesinde medyan göreli hata ≤ %15 araştırma hedefi; tüm koşullar ve en kötü hata da yayımlanır. Sıfıra yakın ölçümlerde göreli hata yerine mutlak hata kullanılır.
 
-Deney özelindeki nihai toleranslar ölçüm belirsizliği ve kullanım amacıyla, sonuçlara bakılmadan Faz 2'de dondurulur. Başarısız sonuç sonrası tolerans sessizce gevşetilmez; değişiklik gerekçesi ve yeni değerlendirme sürümü kaydedilir. Az veri halinde güven aralığı/olasılıksal doğruluk konusunda güçlü iddia kurulmaz.
+Deney özelindeki nihai toleranslar ölçüm belirsizliği ve kullanım amacıyla, sonuçlara bakılmadan Faz'de dondurulur. Başarısız sonuç sonrası tolerans sessizce gevşetilmez; değişiklik gerekçesi ve yeni değerlendirme sürümü kaydedilir. Az veri halinde güven aralığı/olasılıksal doğruluk konusunda güçlü iddia kurulmaz.
 
 ## 12. İş paketleri, bağımlılıklar ve çıkış kapıları
 
-Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen veri erişimi, bilimsel model düzeltmeleri ve kullanıcı inceleme beklemeleri dahil değildir. Faz 0 sonrası yeniden tahmin edilir; takvim taahhüdü değildir.
+Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen veri erişimi, bilimsel model düzeltmeleri ve kullanıcı inceleme beklemeleri dahil değildir. Faz sonrası yeniden tahmin edilir; takvim taahhüdü değildir.
 
 | Faz | Efor | Bağımlılık | Çıktı | Çıkış kapısı |
 | --- | --- | --- | --- | --- |
@@ -270,9 +270,9 @@ Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen ver
 | 8 — Hassasiyet ve optimizasyon | 6–12 gün | 4, yeterli doğrulanmış model | Veri önceliklendirme, belirsizlik ve sınırlı parametre araması | Alan dışı kontrol ve optimumun referans solverla doğrulanması |
 | 9 — Vekil modeller | 8–15+ gün | 5, 6, yeterli veri | Uygun kapsamda hızlandırılmış tahmin | Grup bazlı ayrılmış değerlendirme, alan dışı davranış ve hata bütçesi |
 
-İlk bütünleşik sürüm Faz 0–4 sonunda yaklaşık 26–45 odaklı iş günü ölçeğindedir. Faz 7 ve 9 araştırma riski taşır; toplam program için kesin bitiş tarihi verilemez. GPU hızlandırması, CPU ile bilimsel olarak anlamlı ilk ürünün ön koşulu değildir.
+İlk bütünleşik sürüm Faz sonunda yaklaşık 26–45 odaklı iş günü ölçeğindedir. Faz ve 9 araştırma riski taşır; toplam program için kesin bitiş tarihi verilemez. GPU hızlandırması, CPU ile bilimsel olarak anlamlı ilk ürünün ön koşulu değildir.
 
-### Faz 0 ayrıntılı kontrol listesi
+### Faz ayrıntılı kontrol listesi
 
 - [ ] Kullanıcının mevcut değişikliklerini envantere al; çalışma başlangıç commit'i ve dirty durumunu kaydet.
 - [ ] Her görünür motor için UI → API/worker → solver → veri → test bağlantısını çıkar.
@@ -287,15 +287,15 @@ Eforlar tek geliştiricinin odaklı iş günü için ön tahmindir. Beklenen ver
 
 ### Sonraki fazların iş bölümü
 
-Faz 1: şema/sürüm → artifact manifesti → kayıt repository'si → legacy import → backup/restore → API entegrasyonu.
+Faz: şema/sürüm → artifact manifesti → kayıt repository'si → legacy import → backup/restore → API entegrasyonu.
 
-Faz 2: kaynak manifesti → birim/ölçüm normalizasyonu → koşul ve tekrar grupları → kabul protokolü → dondurulmuş fixture.
+Faz: kaynak manifesti → birim/ölçüm normalizasyonu → koşul ve tekrar grupları → kabul protokolü → dondurulmuş fixture.
 
-Faz 3: input/output sözleşmesi → materyal adaptörü → kaynak/sınır koşulu muhasebesi → analitik testler → yakınsama → deney karşılaştırması.
+Faz: input/output sözleşmesi → materyal adaptörü → kaynak/sınır koşulu muhasebesi → analitik testler → yakınsama → deney karşılaştırması.
 
-Faz 4: çalışma seçimi → durum ve eksik veri görünümü → iş çalıştırma → karşılaştırma → tam export/import → uçtan uca test.
+Faz: çalışma seçimi → durum ve eksik veri görünümü → iş çalıştırma → karşılaştırma → tam export/import → uçtan uca test.
 
-Faz 5–9 alt planları ilgili önceki kapı sonuçlarıyla yazılır. Bugünden kesin solver implementasyonu veya dosya satırı taahhüt etmek, denetim bulgularını yok saymak olur. Bu belge program planıdır; satır düzeyinde kod tarifinin yerine geçmez.
+Faz alt planları ilgili önceki kapı sonuçlarıyla yazılır. Bugünden kesin solver implementasyonu veya dosya satırı taahhüt etmek, denetim bulgularını yok saymak olur. Bu belge program planıdır; satır düzeyinde kod tarifinin yerine geçmez.
 
 ## 13. Mevcut entegrasyon yüzeyleri ve önerilen sahiplik
 
@@ -326,7 +326,7 @@ Başarısız iş, eksik model, alan dışı girdi ve tahmini özellikler açık 
 
 ## 15. Test, yayın ve risk yönetimi
 
-Mevcut komutlar: `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:lpbf`, `npm run test:lpbf:engineering`, `npm run test:meltpool`; çalışan servisle `npm run test:lpbf:api`. Python komutlarının seçtiği interpreter Faz 0'da doğrulanır. Bu planlama oturumunda bu testler çalıştırılmadı.
+Mevcut komutlar: `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:lpbf`, `npm run test:lpbf:engineering`, `npm run test:meltpool`; çalışan servisle `npm run test:lpbf:api`. Python komutlarının seçtiği interpreter Faz'da doğrulanır. Bu planlama oturumunda bu testler çalıştırılmadı.
 
 Hızlı kontroller her ilgili değişiklikte; pahalı yakınsama/benchmark çalışmaları solver veya materyal yasası değiştiğinde; tam ürün kontrolü faz kapısında yapılır. Her fizik değişikliği eski dondurulmuş benchmark'a karşı gerileme raporu üretir.
 
@@ -357,7 +357,7 @@ Hızlı kontroller her ilgili değişiklikte; pahalı yakınsama/benchmark çal�
 
 Önerilen varsayımlar: tek kullanıcılı yerel ürün; LPBF ilk odak; IN718/NIST ilk aday; SQLite metadata; mevcut Python/Node/React yığını; CPU doğruluğu GPU hızından önce; yeni alaşım eklemede veri kapısı.
 
-Bu varsayımlar kullanıcı incelemesine açıktır. Planın kabulü yeni paket kurulumu, uzak servise veri gönderimi veya kod uygulaması yapılmış olduğu anlamına gelmez. Sonraki somut iş Faz 0 denetimi, ardından bulgulara göre veri temeli ve ilk benchmark alt projelerinin ayrıntılı uygulama planlarıdır.
+Bu varsayımlar kullanıcı incelemesine açıktır. Planın kabulü yeni paket kurulumu, uzak servise veri gönderimi veya kod uygulaması yapılmış olduğu anlamına gelmez. Sonraki somut iş Faz denetimi, ardından bulgulara göre veri temeli ve ilk benchmark alt projelerinin ayrıntılı uygulama planlarıdır.
 
 ## 17. Kaynaklar
 
@@ -371,4 +371,4 @@ Dış kaynaklar 21 Eylül 2026 planlaması sırasında kontrol edildi. Kaynaklar
 - [S6 — NVIDIA Warp](https://developer.nvidia.com/warp-python)
 - [S7 — Materials Project veri sorgulama ve hesaplama kökeni](https://docs.materialsproject.org/downloading-data/using-the-api/querying-data)
 
-Yerel dayanaklar: `AGENTS.md`, `RULES.md`, `SCHEMA.md`, `docs/RESEARCH_WORKSTATION.md`, `docs/MODULE_EVIDENCE_INVENTORY.md`, `docs/ENVIRONMENT_READINESS.md`, `docs/LPBF_ENGINEERING.md`, üst proje `STATUS.md` ve incelenen kaynak aralıkları. Güncel bilimsel yetenekler Faz 0'da test/ölçüm kanıtıyla yeniden değerlendirilecektir.
+Yerel dayanaklar: `AGENTS.md`, `RULES.md`, `SCHEMA.md`, `docs/RESEARCH_WORKSTATION.md`, `docs/MODULE_EVIDENCE_INVENTORY.md`, `docs/ENVIRONMENT_READINESS.md`, `docs/LPBF_ENGINEERING.md`, üst proje `STATUS.md` ve incelenen kaynak aralıkları. Güncel bilimsel yetenekler Faz'da test/ölçüm kanıtıyla yeniden değerlendirilecektir.

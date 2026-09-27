@@ -9,7 +9,7 @@ two revisions isolated backup/restorePASS; result bytes unchanged, link only
 storage association (not experiment). Next bounded run archive API/UI with
 trusted Node/WSL root mapping, completed job IDs and current-input identity.
 No live migration/push/install/agents; all eleven external dirty paths preserved.
-Phase0 OPEN; shared physics seams/scientific audit continue after persistence.
+Initial audit remains open; shared physics seams/scientific audit continue after persistence.
 
 EXACT CHECKPOINT:5ee6fae run archive, adfdcca evidence repair; final docs commit
 is next gitlog entry. User explicitly said "Bağlam arttı yeni yere geç".
@@ -21,7 +21,7 @@ then API/UI and remaining shared-physics/scientific gaps. No whole-goal completi
 NEWEST: run capture commit5ee6fae. Experimental evidence repair completed after it:
 fixed predictions/default measurements removed from unbound UI; backend arithmetic
 comparison-only/unvalidated, no empty validated result or15/20percent pass claims.
-See LPBF_SCIENTIFIC_FINDINGS_2026-09-21.md. Phase10 5PASS, UI1PASS, lint/buildPASS36.60s,
+See LPBF_SCIENTIFIC_FINDINGS_2026-09-21.md. thermal accumulation suite: 5 PASS, UI1PASS, lint/buildPASS36.60s,
 actualAPI equality unvalidated and empty400; compiled-component browser keyboard/
 visualPASS. Next persistence package fullrun+sourcebundle/restore then API/UI.
 Preserve existing external dirty files; user confirmed stopping other writer.
@@ -35,7 +35,7 @@ Fullunit151PASS/4FAIL from external EIS/UQ changes (eis-unavailable plus3UQ).
 User stopped other writer; preserve all unowned files. User reiterated ONLY LPBF
 database/Python shared core and investigate unscientific LPBF behavior. Next bounded
 package: experimentalvalidation fixed predictions/false validated status. Persistence
-still needs fullrun+sourcebundle, API/UI; current backup is metadata ONLY. Phase0 OPEN.
+still needs fullrun+sourcebundle, API/UI; current backup is metadata ONLY. Initial audit remains open.
 
 
 LATEST: coreContract v1 implemented; commit is next application git log entry.
@@ -63,7 +63,7 @@ queue; no live migration/secondqueue. Worker artifact manifest includes more tha
 public artifact endpoint (e.g. peak-field.npz, OpenFOAM case); plan full capture
 without client filesystem paths. Input/material SHA v1 must be verified in Python,
 not assumed to match JSON.stringify numbers. Keep source science unreviewed.
-Then run bundle/restore/API/UI incrementally with acceptance checks. Phase0 OPEN;
+Then run bundle/restore/API/UI incrementally with acceptance checks. Initial audit remains open;
 no laterphase acceptance. Explicit sharedcore+database objective continues.
 
 Owner01a0c36f claimed clean2ce1abc. Bounded16entry LPBF wiring/core audit and
@@ -74,7 +74,7 @@ CPU engineering/source/peak/overlap/material suites44PASS/5OpenFOAMskip after
 sandbox temp-directory failure was removed by scoped test permission.
 New spec `LPBF_SHARED_CORE_CONTRACT.md`; first implementation plan
 `2026-09-21-lpbf-core-identity.md`. Next: TDD bound result
-model/backend/material/input identity, then consumer guard. Phase0 stays OPEN.
+model/backend/material/input identity, then consumer guard. Phase stays OPEN.
 Additional located LPBF risks: ExperimentalValidationLab hardcoded predictions
 and backend unconditional validated; powder worker returns radii instead of packing;
 old GPU no route, incompatible physics/materials/boundaries. Do not auto-enable.
@@ -88,7 +88,7 @@ independent reference. Logs wsl-doctor-01a0c35a.json and
 wsl-engineering-01a0c35a.log under .runtime/phase0-audit. No packages installed.
 FIRST NEXT: bounded current LPBF engine/material/source/result map and a
 representative MELTING CPU profile. Prior40W/1175.58K profile does not qualify.
-Then detailed shared-core contracts and remaining Phase0 gates. See newest audit
+Then detailed shared-core contracts and remaining Phase gates. See newest audit
 section for accepted baseline scopes and gaps. Secondary modules remain deferred.
 No owned server/browser work remains. Test server42236 stopped,3196 no listener.
 Source01a0c35a stops all writes after successor dispatch. User's direct authorization
@@ -113,7 +113,7 @@ rejects mismatched review refs. Updated documentSHA
 Actual isolated store .runtime/lpbf-source-ui-01a0c35a imported revision2 and
 verified3files550398609bytes; revision1 retained. No production store migrated.
 Report .runtime/phase0-audit/hdf5-source-import-01a0c35a.json. No server running.
-Next: finish Phase0 bounded LPBF engine/core mapping, representative melt-run
+Next: finish Phase bounded LPBF engine/core mapping, representative melt-run
 resource profile and current runtime/WSL checks; then detailed shared-core contracts.
 Unambiguous primary calibration equation remains required for thermal comparison.
 
@@ -128,8 +128,8 @@ full166unit/lint/strictTS/buildPASS. Real compiled UI+source router browser3196:
 Enter preview/import/verify3IN718files550398609bytes PASS; injected503 removes prior
 success;20s late preview discarded across stage navigation; Tab/visual checkPASS.
 Local Graft bounded6files refreshed in .runtime/graft-source-ui; CBM18Sep stale.
-Next: IN718 HDF5 attribute/calibration review and common-core/Phase0 gates.
-Phase0 OPEN, Phase1 not accepted. No installations or push in this UI package.
+Next: IN718 HDF5 attribute/calibration review and common-core/Phase gates.
+Initial audit remains open, Phase not accepted. No installations or push in this UI package.
 Historical FIRST NEXT UI instruction below is now complete.
 
 LATEST PACKAGE: bounded local source API now connected to server.ts BEFORE global
@@ -146,7 +146,7 @@ server/lpbfSourceArchiveService.ts, routes/lpbfSources.ts, tests/lpbf-source-api
 5new tests/full161unitPASS; app lint/strictAPI_TS/production build PASS. Vite existing
 large-chunk warning. Real production3195 smoke:3files550398609bytes imported, current
 byte verificationPASS, null temperature conversion retained, stale import409.
-Report `.runtime/phase0-audit/source-api-smoke-01a0c349.json`; isolated data at
+Report .runtime/phase0-audit/source-api-smoke-01a0c349.json; isolated data at
 `.runtime/lpbf-source-http-01a0c349`. Owned40016+Python41112/30868+console hosts stopped;
 3195/5195 listener check empty. No browser/UI change or legacy migration.
 
@@ -157,7 +157,7 @@ fresh byte check with exact revision. Input-bound stale-response protection, fai
 states and real browser+keyboard checks required. Do not populate measured width,
 depth or temperature from unreviewed raw camera signal; do not alter activeSpecimen
 process implicitly. No UI code written yet. Then HDF5 measurement review/common
-physics core/remaining Phase0 gates. Whole objective is not finished by these packages.
+physics core/remaining Phase gates. Whole objective is not finished by these packages.
 
 CURRENT OWNER01a0c349-747d-7e52-bbf7-8e87df3211f7. Storage package now complete:
 lpbfArtifactStore/import/bundle plus source repository integration,14new tests,
@@ -170,7 +170,7 @@ destination; snapshot DELETE journal mode and rejection of SQLite sidecars preve
 unhashed WAL state. ctime hard-link race fixed by retaining hash/size/mtime checks.
 See LPBF_SOURCE_ARCHIVE.md/PROOF. No live API/UI or legacy migration yet.
 NEXT: UI source archive workflow; HDF5 measurement review/common core
-and Phase0 remain OPEN. Historical NEXT artifact-storage instruction below is done.
+and Phase remain OPEN. Historical NEXT artifact-storage instruction below is done.
 
 LATEST CHECKPOINT: source metadata repository implemented and verified (next git
 log identifies commit). `server/lpbfSourceRepository.ts` uses node:sqlite with
@@ -197,14 +197,14 @@ restore bundle that contains bytes+metadata; current backup is METADATA ONLY.
 After that connect the reviewed path to API/UI with input-bound results, and
 continue IN718 measurement review/common core gates. No benchmark tolerance changes.
 CPU/scientific runtimes lack h5py; inspect existing tools before any installation.
-Do not restart EIS/EDS work. Phase0 still OPEN; persistence foundation is partial,
-not acceptance of Phase1. No test server currently owned/running by this task.
+Do not restart EIS/EDS work. Phase still OPEN; persistence foundation is partial,
+not acceptance of Phase. No test server currently owned/running by this task.
 
 Active owner01a0c339-7e60-7573-b548-4fd5e6cbef44 started from clean affdaec.
 Thermal-accumulation now uses shared four_alloy_materials properties and canonical
 aliases, converts Celsius to Kelvin, and rejects missing/unknown alloys. Real RPC
 regression first failed (9 subcase failures), then all3 tests passed. CPU engineering
-25PASS/1OpenFOAM skip (26 total), Phase17 5PASS, optional GPU isolation1PASS,
+25PASS/1OpenFOAM skip (26 total), thermal accumulation suite: 5 PASS, optional GPU isolation1PASS,
 unit133PASS and lintPASS. Initial engineering run had6 sandbox temp-directory
 permission errors; scoped unsandboxed rerun above passed. Screening equations and
 their physical limitations remain unchanged; no experimental validation claimed.
@@ -223,8 +223,8 @@ no melt; see PROOF. Representative melting/GPU profile still open. Graft local
 wiring refreshed; generator rewrote tracked unrelated cards, only those generated
 changes were restored. CBM still18Sep stale; direct source evidence remains primary.
 Next: artifact store and dry-run import on the new versioned repository;
-complete IN718 attribute/measurement review and remaining Phase0 gates. Secondary
-modules remain deferred; Phase0 OPEN.
+complete IN718 attribute/measurement review and remaining Phase gates. Secondary
+modules remain deferred; Initial audit remains open.
 
 LATEST USER DECISION: build a shared LPBF core. The user explicitly reversed the
 previous restriction with "Yok yok ortak çekirdek yapalım". The earlier prohibition
@@ -256,7 +256,7 @@ Next: bounded LPBF current test baseline (existing CPU numerical/engineering,
 material registry and API contracts); separate analytical/experimental evidence;
 material authority and unknown-alloy fallback; benchmark raw hash/source terms;
 SQLite driver transaction/backup ADR; representative thermal runtime/RAM/VRAM
-profile and real transient queue/cancellation/budget. Phase0 remains OPEN.
+profile and real transient queue/cancellation/budget. Initial audit remains open.
 Use existing runtimes; don't reinstall without a concrete requirement. Graph
 generation18Sep stale, Graft stale; source fallback used in this task.
 
@@ -284,7 +284,7 @@ preceded this final blocker checkpoint. All test processes were stopped.
   No subagents/fleet. Gemini scope unknown. Preserve others' changes.
 - Source01a0c15d-a9c9-77c1-b20a-d72ba631fa2c stops writing upon successor dispatch.
   Verify Git/ACTIVE_WORK then inherit. Code d4db76d committed; clean app tree/index
-  before this docs checkpoint. Phase0 OPEN; dependent phases NOT accepted.
+  before this docs checkpoint. Initial audit remains open; dependent phases NOT accepted.
 - d4db76d: useInputBoundTask guards input identity, retry, unmount, late success,
   error/finally, A-B-A changes and multi-stage fit/DRT. Studio/Builder results no
   longer rewrite inputs automatically; explicit Apply required. FileReader guards.
@@ -361,7 +361,7 @@ preceded this final blocker checkpoint. All test processes were stopped.
    profiles. Prior candidate/EDS transfer and explicit precipitate input are fixed.
 4. Material authority/unknown-alloy fallback; transient GPU bounded existingqueue
    route with real cancellation/budget; AIOrchestrator optional-agent completed.
-5. Phase0 gates: WSL outside sandbox; representative thermal walltime/peakRAM/VRAM/
+5. Phase gates: WSL outside sandbox; representative thermal walltime/peakRAM/VRAM/
    artifact profile; raw hashes/source terms; isolated NodeSQLite transaction/backup
    ADR; capability map and dependent detailed plan. No early phase acceptance.
 
@@ -476,7 +476,7 @@ No exact context percentage is exposed. This section supersedes all history belo
 5. Material authority/unknown-alloy fallback; missing transient GPU bounded route
    on existing persistent queue with true cancellation/budget; AIOrchestratorPanel
    optional-agent completed badge remain open.
-6. Phase0 remains OPEN: WSL outside sandbox; representative thermal wall-time,
+6. Initial audit remains open: WSL outside sandbox; representative thermal wall-time,
    peak RAM/VRAM/artifact measurements; raw hashes/source terms; isolated Node
    SQLite transaction/backup restore ADR; capability map/detailed dependent plan.
    Don't prematurely accept dependent phases or claim all fake output removed.
@@ -584,7 +584,7 @@ supersedes ALL historical sections below. Do not reopen completed packages.
    transientGPU route. Bound compute/materials/budget and use existing persistent
    queue cancellation; aborting HTTP does not cancel solver. AIOrchestratorPanel
    falsely completed optional agents remains open.
-6. Phase0 acceptance still OPEN: WSL outside sandbox, representative thermal
+6. Phase acceptance still OPEN: WSL outside sandbox, representative thermal
    wall-time/RAM/VRAM/artifact profile, raw hashes/source terms, isolated Node
    SQLite transaction+backup/restore ADR, mapping and dependent detailed plan.
    Do not accept dependent phases early or claim all fake output removed.
@@ -646,7 +646,7 @@ This section supersedes ALL historical sections below.
    studios/exports explicitly label synthetic. Other consumers and original
    metadata still need audit. Synthetic test fixtures must not be blindly deleted.
 3. Fresh full unit117/117 PASS; buildPASS25.35s. General lint still FAIL, no changed
-   EIS/shared hook diagnostics. Exact errors `.runtime/phase0-audit/lint-eis-final.txt`.
+   EIS/shared hook diagnostics. Exact errors .runtime/phase0-audit/lint-eis-final.txt.
    Initial added SSR import test hit Plotly `self` then eager import repaired;
    full suite rerun passed. Initial no-result SSR test genuinely failed fabricated95.
 4. Browser actual components on tests/eis-browser.html, real NodeAPI→CPU Python:
@@ -666,7 +666,7 @@ This section supersedes ALL historical sections below.
    Scientific venv test_micrograph_export_guards.py7PASS; CPU
    test_no_fabricated_outputs.py10PASS6.265s. Red/green logs in audit runtime dir.
 
-## Concrete next work — Phase0 still OPEN
+## Concrete next work — Phase still OPEN
 
 1. Fix TypeScript lint by actual contracts, not `any`/suppression:
    EmbeddedPythonLPBFSimulator alloy prop; LPBFGroundTruthDataLab Recharts click
@@ -695,14 +695,14 @@ This section supersedes ALL historical sections below.
 4. AIOrchestratorPanel all-agents-completed badge still wrong for unconfigured
    providers. Distinct from repaired python/orchestrator.py; route optionally
    collects allowlisted sources, so not merely plan-only.
-5. Finish Phase0 acceptance: actual WSL check outside sandbox, thermal wall-time/
+5. Finish Phase acceptance: actual WSL check outside sandbox, thermal wall-time/
    RAM/VRAM/artifact profile, raw benchmark hashes/source terms, isolated Node
    SQLite transaction/backup/restore ADR, bounded current engine mapping and next
    dependent detailed plan. Do not accept dependent phases early.
 
 ## Environment / tools / cleanup
 
-- Read AGENTS/RULES/ACTIVE_WORK/master plan/Phase0 audit. Skills read in this task:
+- Read AGENTS/RULES/ACTIVE_WORK/master plan/initial audit. Skills read in this task:
   AgentMemory recall; Superpowers systematic-debugging, verification, TDD + writing
   good tests; computer-use. Recall returned zero. CBM project
   C-Users-can02-Projects-metalliksaa-Metalliksa-1 gen2026-09-18T15:50:24Z, stale/
@@ -762,7 +762,7 @@ No packages installed, no user data reset, no push. Browser tab is disposable.
   failures repaired by honest 35-module mapping and runtime groups. No test relaxed.
 - `npm run build`: PASS, Vite24.36s, existing large chunk warning retained.
 - General TypeScript lint: still FAIL. Full diagnostics in
-  `.runtime/phase0-audit/lint-successor.txt`; no Keyhole diagnostic. Errors include
+  .runtime/phase0-audit/lint-successor.txt; no Keyhole diagnostic. Errors include
   EmbeddedPythonLPBFSimulator alloy prop, Recharts ScatterPointItem record accesses,
   ResolvedThermalViewer useRef arguments, AdvancedBatteryPhysicsStudio translation
   ReactNode, EDSSpectrumLab modal props, EquivalentCircuitBuilder chart unions/
@@ -792,7 +792,7 @@ No packages installed, no user data reset, no push. Browser tab is disposable.
   Mesh differences do NOT decrease regularly: asymptotic convergence unresolved.
   At128 nodes budgets4/8/16 agree and unresolved power is zero. No experiment claim.
 
-## Immediate next work — Phase 0 still OPEN
+## Immediate next work — Phase still OPEN
 
 1. **Remove fake frontend EIS fallbacks** (claimed, NOT edited):
    - src/components/EISUploadInsightsStudio.tsx `runDeepEISAnalysis` catch ~173–309
@@ -832,7 +832,7 @@ No packages installed, no user data reset, no push. Browser tab is disposable.
    optional allowlisted source collection, so do not claim it is plan-only. UI marks
    all agents Completed when any response exists even when Sol/Astra unconfigured;
    stale/error/approval semantics and English product language still need repair.
-6. Finish Phase0: WSL readiness actual commands outside sandbox, representative
+6. Finish Phase: WSL readiness actual commands outside sandbox, representative
    thermal wall-time/RAM/VRAM/artifact profiling, benchmark raw hashes/source terms,
    isolated Node SQLite transaction/backup/restore ADR, bounded complete engine
    mapping and first dependent detailed plan. No dependent phase accepted early.
@@ -876,7 +876,7 @@ forward, open the successor yourself, and avoid simultaneous owners editing.
 
 ## Objective and constraints
 
-Continue `DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md` from current code, Phase 0
+Continue `DIGITAL_TWIN_MASTER_PLAN_2026-09-21.md` from current code, Phase
 first. User additionally requested all random/dummy/fake outputs removed and Python
 engines repaired. Preserve the earlier explicit distinction: Monte Carlo is not
 itself fake physics; evaluate seed/method/convergence/uncertainty. Remove fabricated
@@ -884,7 +884,7 @@ measurement/results and untrained inference presented as calculation. Preserve
 legitimate equation models and isolated analytic/synthetic test fixtures.
 
 Read applicable AGENTS.md, RULES.md, parent STATUS.md, ACTIVE_WORK.md, master plan
-and Phase 0 audit. Do not ask again for routine authorization. Do not invent data,
+and initial audit. Do not ask again for routine authorization. Do not invent data,
 relax tolerances after results, or conflate software/numerical/experimental evidence.
 Gemini scope is unknown; preserve changes, recheck ownership before writing, stop
 overlapping writes and continue independent work. Local commits only, no push.
@@ -893,7 +893,7 @@ overlapping writes and continue independent work. Local commits only, no push.
 
 - Initial HEAD fb1a614, clean application tree/index.
 - Current HEAD **95b6222**: optional Warp/PyTorch imports isolated from CPU worker.
-  Includes worker regression test, initial Phase 0 audit and ownership record.
+  Includes worker regression test, initial initial audit and ownership record.
   Fresh tests: optional-backend RPC PASS; CPU engineering 25 PASS / 1 OpenFOAM SKIP.
 - Index currently empty. **All application uncommitted changes at handoff are ours**:
   ACTIVE_WORK.md, battery_corrosion_eis_solver.py, battery_corrosion_python_ingest.py,
@@ -905,7 +905,7 @@ overlapping writes and continue independent work. Local commits only, no push.
   unrelated cache deletions/untracked files/nested repos. No reset/stash/cleanup.
 - No live test/server process from this task remains. No packages installed.
   Logs/temporary edit helpers are ignored under `.runtime/phase0-audit/`.
-- Phase 0 is **not complete**, no dependent phase accepted.
+- Phase is **not complete**, no dependent phase accepted.
 
 ## Uncommitted repairs and exact verification limits
 
@@ -965,7 +965,7 @@ overlapping writes and continue independent work. Local commits only, no push.
   builds random U-Net and exports it; export_to_onnx accepts untrained models and
   train_model(epochs=0) can return untrained network. Remove/restrict with traceable
   trained checkpoint and tests. Import-time pip install also needs explicit error.
-- Literal candidates: `.runtime/phase0-audit/python-candidates.txt` and
+- Literal candidates: .runtime/phase0-audit/python-candidates.txt and
   `ui-candidates.txt`. Not every match is a defect (IDs, model initialization, ONNX
   shape probes, seeded uncertainty). Review beyond keywords before comprehensive
   claims. Global RNG in powder/marangoni, unseeded CNLS DE/inverse alloy search,
@@ -977,7 +977,7 @@ overlapping writes and continue independent work. Local commits only, no push.
 - Inventory stale: 35 registered modules vs doc saying32; missing AI orchestrator
   and transient GPU rows, runtime list also missing keyhole. Unit suite fails these
   assertions. Reconcile mapping/evidence without falsely upgrading maturity.
-- Phase 0 remaining: live API/browser, WSL check, representative thermal time/RAM/
+- Phase remaining: live API/browser, WSL check, representative thermal time/RAM/
   VRAM/artifact profiling, raw benchmark hashes/source terms, Node SQLite transaction/
   backup/restore ADR, complete bounded engine mapping and next detailed plan.
 

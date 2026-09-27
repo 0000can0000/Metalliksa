@@ -6,7 +6,7 @@ checkpoint docs/parent STATUS.md. First acceptance: full immutable run + source
 snapshot/bytes, exact historical links, exclusive destination, completion last,
 isolated verified restore. Existing source-only bundle preserved. No agents,
 live migration, push or installs. All eleven external dirty paths remain unowned.
-Phase0 OPEN; continue API/UI and shared physics after this package.
+Initial audit remains open; continue API/UI and shared physics after this package.
 Bundle complete d7dc7e4. Now also owns server/lpbfArchivePaths.ts,
 server/lpbfRunArchiveService.ts, routes/lpbfRuns.ts, narrow bridge/worker/server
 integration, focused API/path/capture tests and .gitignore. No external paths
@@ -18,7 +18,7 @@ Continues clean application HEAD2ce1abc in the same LOCAL checkout. Predecessor
 stopped writes after dispatch. Owns bounded current LPBF engine/core evidence map,
 representative melting CPU resource profile, shared-core contracts/implementation
 subplan, and checkpoint documents/parent STATUS.md. Preserve model identities and
-frozen numerical acceptance thresholds. Phase0 remains OPEN. No installation,
+frozen numerical acceptance thresholds. Initial audit remains open. No installation,
 push, live migration or secondary-module work. Graph generation18Sep is stale;
 task-directed coverage and direct source fallback are required.
 
@@ -43,7 +43,7 @@ Source stops writing after successor dispatch; successor claims its real task ID
 
 Packages complete:661153a source UI; b0bd0bd HDF5 metadata review. Fresh WSL
 engineering26PASS including OpenFOAM; doctor records missing dependencies, no
-Torch GPU proof. Newest audit/CURRENT CONTINUATION define remaining Phase0 scope.
+Torch GPU proof. Newest audit/CURRENT CONTINUATION define remaining audit scope.
 Source stops writing after successor dispatch; successor claims its own real ID.
 
 Continues clean 77fb27f in the same LOCAL checkout; predecessor stopped writes.
@@ -51,7 +51,7 @@ Owns source archive UI/service/tests, LpbfEngineeringWorkspace integration and
 checkpoint documents. Acceptance: source conditions/unknowns, hash-bound preview
 and import, revision-bound fresh integrity, visible failures, stale-response
 protection and actual browser/keyboard checks. Preserve activeSpecimen inputs.
-Phase0 OPEN; shared LPBF core/database remains the overall objective.
+Initial audit remains open; shared LPBF core/database remains the overall objective.
 CBM generation18Sep stale/untracked in scope; exact source fallback used.
 UI package661153a complete;166unit/lint/strictTS/build and actual browser checks
 passed. Test server42236 stopped. Next owns python/nist_hdf5_review.py, its tests,
@@ -67,8 +67,8 @@ Owns server/lpbfArtifactStore.ts, server/lpbfSourceImport.ts, related focused te
 repository integration and checkpoint documents/parent STATUS.md. First acceptance:
 streaming hash/size verification, contained regular files, exclusive immutable
 publication, owned staging cleanup, all bytes verified before metadata publication,
-and bytes+metadata backup/restore. Preserve unreviewed scientific evidence. Phase0
-OPEN; no live migration or secondary modules. CBM18Sep lacks these files; direct
+and bytes+metadata backup/restore. Preserve unreviewed scientific evidence. The
+initial audit remains open; no live migration or secondary modules. CBM18Sep lacks these files; direct
 source fallback. Plan: artifact store → import → bundle → actual IN718 pilot.
 
 Storage package complete:14 new regressions/full156unitPASS, strict TS PASS.
@@ -87,7 +87,7 @@ API package complete:5new tests/full161unitPASS, lint/strict API TS/build PASS.
 Actual production server3195+IPC5195 smoke imported3IN718 files, verified current
 bytes, retained null conversion and rejected stale revision409. Owned server40016
 and descendants41112/30868/console hosts stopped; both ports have no listeners.
-Evidence `.runtime/phase0-audit/source-api-smoke-01a0c349.json`. No UI changes yet.
+Evidence .runtime/phase0-audit/source-api-smoke-01a0c349.json. No UI changes yet.
 Next owner should add source archive panel to LpbfEngineeringWorkspace comparison
 stage with current-input-bound async state; do not turn raw signal into measurements.
 Source01a0c349 stops writing after successor dispatch; no overlapping work assumed.
@@ -100,10 +100,10 @@ python/test_lpbf_thermal_materials.py and checkpoint documents/parent STATUS.md.
 Acceptance: thermal-accumulation uses four_alloy_materials, resolves aliases,
 rejects unknown/missing identity instead of silently calculating Ti64, and keeps
 the screening equations unchanged. Verify real JSON-lines worker requests and
-CPU engineering/Phase17 tests. No secondary-module work, push or installation.
-Graph generation18Sep is stale; exact source fallback applies. Phase0 OPEN.
+CPU engineering and related tests. No secondary-module work, push or installation.
+Graph generation18Sep is stale; exact source fallback applies. Initial audit remains open.
 Also owns the thermal service's required material type. Package verified:
-RPC3, engineering25+1skip, Phase17 5, optional1, unit133 and lint PASS.
+RPC3, engineering25+1skip, thermal accumulation suite: 5 PASS, optional1, unit133 and lint PASS.
 Next owns tests/lpbf-sqlite-compatibility.test.ts and SQLite ADR/provenance notes.
 Material repair committed2a118ee. SQLite trial3 and full unit136PASS; source-context
 metadata and low-power profile recorded. Also owns PROOF.md. Next scope is isolated
@@ -139,7 +139,7 @@ SyntheticNoiseStressStudio/cnlsOptimizer/syntheticEISNoiseGenerator consumers,
 their types and regression/browser harnesses. Preserve observed external edits.
 Acceptance: fit displayed points, no invented recovery/uncertainty/grades,
 input-bound asynchronous work, meaningful unit/numerical/browser checks.
-Phase0 OPEN. STATUS and handoff maintained by this owner.
+Initial audit remains open. STATUS and handoff maintained by this owner.
 
 # Historical owner retained — successor NOT created
 
@@ -147,7 +147,7 @@ Two create_thread calls were auto-review rejected. Original user messages were
 retrieved before retry, but review still requires direct approval in this task.
 Approval question pending; do not bypass/retry without it. Source01a0c15d retains
 ownership. d4db76d code verified; clean app tree before docs-only checkpoint.
-Phase0 remains OPEN; exact next work is CURRENT CONTINUATION. No running server.
+Initial audit remains open; exact next work is CURRENT CONTINUATION. No running server.
 
 # Successor dispatch checkpoint after d4db76d
 
@@ -156,7 +156,7 @@ PASS, actual held-response paths verified. Servers37764,17228,25496 and verified
 children stopped;3193/5193 no listeners. Source01a0c15d stops writing on fresh LOCAL
 successor dispatch. Successor inherits after STATUS/CURRENT CONTINUATION/Git.
 Next scope: explicit client-JS and SyntheticNoise contracts; inspected findings
-recorded in handoff, not yet implemented. Phase0 OPEN. No push/install.
+recorded in handoff, not yet implemented. Initial audit remains open. No push/install.
 
 # Current owner — 01a0c15d, 2026-09-21
 
@@ -167,11 +167,11 @@ documents/parent STATUS. Acceptance: changed inputs/retries/unmount reject late
 fit and DRT results; accepted fits do not silently rewrite newer inputs; Python
 simulation never displays old points as current. Held real-response browser
 regression plus lint/unit/build. No push/install/worktree or Gemini assignment.
-Phase0 remains OPEN. Historical ownership below is superseded.
+Initial audit remains open. Historical ownership below is superseded.
 
 Package verified: unit126/lint/buildPASS,10 hook browser assertions, real held
 fit/DRT/simulation regressions PASS. Additional owned paths pythonCnlsReport and
-its test: fitted report topology corrected (R3→R2 red/green). Details in Phase0
+its test: fitted report topology corrected (R3→R2 red/green). Details in the
 audit. Next scope: explicit client-JS solver and SyntheticNoise consumers.
 
 # Successor dispatch checkpoint
@@ -180,7 +180,7 @@ Code e1ab00f complete; browser serverPID17488 and descendants stopped;
 3192/5192 have no listeners. Source01a0c148 stops writing upon fresh LOCAL
 successor dispatch. Inherit after reading STATUS/CURRENT CONTINUATION and Git.
 First scope: Studio/Builder/Plotly input identity and late responses. All other
-open scopes/limits are in current handoff. Phase0 remains OPEN.
+open scopes/limits are in current handoff. Initial audit remains open.
 
 # CNLS package checkpoint — current owner01a0c148
 
@@ -190,7 +190,7 @@ flows. Owned paths include CNLSFittingStudio, cnlsOptimizer, pythonCnlsReport,
 eisData types, builder null rendering, focused tests and checkpoint documents.
 Next immediate scope: late-input/report identity across Studio/Builder/Plotly;
 explicit client-JS and SyntheticNoise stress wrappers still need audit. Then
-synthetic EIS provenance and prior Phase0 gates. Phase0 OPEN. No push/install.
+synthetic EIS provenance and prior Phase gates. Initial audit remains open. No push/install.
 
 # Current owner — 2026-09-21
 
@@ -199,7 +199,7 @@ main checkout at clean HEAD4f76eca. Source01a0c133 stopped writing on dispatch.
 Owns python/cnls_fitting_solver.py, new focused numerical tests, fitting report
 contracts/consumers as inspected, and STATUS/PROOF/audit/handoff/this record.
 First acceptance: analytic R and R-C recovery; truthful fixed/zero-iteration,
-uncertainty and convergence reports. No phase acceptance, push, install or
+uncertainty and convergence reports. No later acceptance gate, push, install or
 Gemini scope assumed. Historical ownership below is superseded.
 # Active Work
 
@@ -214,11 +214,11 @@ Continuation task 01a0c133-a81d-7f93-9174-d85ad5b1e979 owns the shared LOCAL
 checkout from clean HEAD 6600806 on 2026-09-21; source 01a0c11f stopped writing.
 Current package: the twelve component paths in lint-continuation-baseline.txt,
 src/utils/materialDataPipeline.ts and focused regression/browser tests. Ownership
-also includes this record, Phase0 audit, handoff and parent STATUS.md. No worktree,
+also includes this record, initial audit, handoff and parent STATUS.md. No worktree,
 push, package install or Gemini assignment. Acceptance: tsc passes through actual
 contracts; candidate identity/properties survive transfer; missing precipitation
 input cannot become a default prediction; EDS transfers chemistry only; browser
-interaction, unit suite and build verified. Phase0 remains OPEN.
+interaction, unit suite and build verified. Initial audit remains open.
 
 Browser exposed a real Python CNLS report mismatch (missing chiSquare crashes
 the circuit builder). Same owner additionally claims src/utils/pythonCnlsReport.ts
@@ -232,11 +232,11 @@ Same LOCAL checkout; no worktree, push or Gemini assignment. Current package own
 the two EIS studios, shared latest-request hook/service and regression tests.
 Acceptance: backend errors/missing reports remain unavailable, old responses and
 cached results cannot masquerade as current input, and no compliance defaults.
-Micrograph export remains the next claimed package. Phase 0 remains open.
+Micrograph export remains the next claimed package. Initial audit remains open.
 
 EIS package complete: unit117/117, build PASS, live component/API browser checks
 PASS (real results, controlled failures/partial/late responses, keyboard). General
-lint remains FAIL, no changed-EIS diagnostics. See Phase0 audit for exact limits.
+lint remains FAIL, no changed-EIS diagnostics. See initial audit for exact limits.
 Next work: train_micrograph_segmentation.py import side effects and untrained
 export guards; new Python regression tests belong to this same owner.
 
@@ -270,7 +270,7 @@ Coordination record; not an atomic lock or proof that another agent received a t
 
 | Agent | Task | Checkout | Owned paths | State / acceptance |
 | --- | --- | --- | --- | --- |
-| Codex | Digital Twin Phase 0 current-code audit | Metalliksa-1, main, baseline fb1a614 | docs/ACTIVE_WORK.md, docs/DIGITAL_TWIN_PHASE0_AUDIT_2026-09-21.md, audit regression tests; parent STATUS.md | In progress: fresh runtime/build/tests, keyhole energy/seed/input checks, orchestrator and UI/API/worker tracing; no phase gate accepted yet |
+| Codex | Digital Twin current-code audit | Metalliksa-1, main, baseline fb1a614 | docs/ACTIVE_WORK.md, docs/DIGITAL_TWIN_PHASE0_AUDIT_2026-09-21.md, audit regression tests; parent STATUS.md | In progress: fresh runtime/build/tests, keyhole energy/seed/input checks, orchestrator and UI/API/worker tracing; no acceptance gate has been passed yet |
 | Gemini | Not assigned here | Unknown | None recorded | User will assign scope; confirm paths before overlapping writes |
 
 Codex additionally owns python/lpbf_worker.py and python/test_lpbf_worker_optional.py to isolate optional Warp/PyTorch imports from the CPU queue. Acceptance: real CPU capabilities and estimate requests work without optional backends; unsupported requests return an error without killing the worker; existing queue tests retain cancellation/restart/error behavior.
@@ -284,7 +284,7 @@ Codex maintains shared STATUS.md and serial Git index operations until an explic
 Checkpoint8157c18 complete. Source task01a0c10a stops writes when successor is
 created. Next owner must read STATUS and the CURRENT CONTINUATION section of
 `docs/archive/2026-09-21/DIGITAL_TWIN_HANDOFF_2026-09-21.md`, verify Git, then continue the claimed open scopes.
-No Gemini work assumed; no phase gate accepted. Temporary test servers are stopped.
+No Gemini work assumed; no acceptance gate was passed. Temporary test servers are stopped.
 # Current owner — 01a0c383-a755-7b53-84c6-3ec040b67aa0, 2026-09-21
 
 Handoff checkpoint:5ee6fae run archive; adfdcca evidence repair. User explicitly

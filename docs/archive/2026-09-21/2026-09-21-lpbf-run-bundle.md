@@ -12,7 +12,7 @@ all source revisions/bytes in that source snapshot (a deliberate superset of
 linked revisions); preserve revision numbers, timestamps and unreviewed status.
 No live overwrite, installation, HTTP paths or new queue. Completion manifest
 last, binding both SQLite metadata and the nested source completion manifest.
-Hash integrity is not a signature or scientific qualification. Phase0 OPEN.
+Hash integrity is not a signature or scientific qualification. Initial audit remains open.
 
 Ruling: reuse the source-only bundle unchanged, including all its revisions,
 rather than invent a second source serialization. Cost: larger backups. Run and

@@ -41,4 +41,4 @@ CBM18Sep stale/changed in all relevant files; direct reads used. Root mapping
 must follow worker-reported platform, not assume Windows/WSL environment parity.
 Ruling: Linux-native WSL roots on Windows fail explicitly instead of introducing
 UNC mounts or accepting a client mapping. Shared /mnt drive default works.
-No numerical equations changed. Phase0 OPEN; UI and shared physics follow.
+No numerical equations changed. Initial audit remains open; UI and shared physics follow.

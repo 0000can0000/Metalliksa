@@ -12,7 +12,7 @@ identities, reuses LpbfArtifactStore, then atomically publishes immutable metada
 
 ## Constraints and execution ledger
 
-Phase0 OPEN. No science upgrade, live migration, push or second queue. Legacy
+Initial audit remains open. No science upgrade, live migration, push or second queue. Legacy
 absence explicitly legacy-unbound; malformed present contracts fail. Only trusted
 server code supplies filesystem roots; no HTTP endpoint in this first package.
 Ruling: continue expressly authorized native LOCAL checkout, no agents. Plan

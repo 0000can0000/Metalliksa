@@ -53,7 +53,7 @@ API verification:5 focused regressions/full161unitPASS; lint, strict API TypeScr
 and production build PASS (existing Vite large-chunk warning). Real production
 server3195→local isolated archive imported3IN718 files/550398609bytes; fresh verify
 returned revision1/document hash and stale import returned409. Report:
-`.runtime/phase0-audit/source-api-smoke-01a0c349.json`. Test server/IPC stopped.
+.runtime/phase0-audit/source-api-smoke-01a0c349.json. Test server/IPC stopped.
 
 - `LpbfArtifactStore`: streams files through SHA256/size verification using a 1 MiB
   buffer. Objects live at `objects/<first-two-hash-characters>/<sha256>`. Private

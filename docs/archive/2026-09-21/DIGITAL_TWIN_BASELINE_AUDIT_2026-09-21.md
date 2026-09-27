@@ -3,7 +3,7 @@
 Started 2026-09-21 at `fb1a614b8b9ce97b2cbe4d818ea622b63664d008`, branch `main`.
 The application tree and index were initially clean. The parent repository already
 contained changes, including STATUS.md and cache deletions; these are not ours.
-Gemini ownership is unknown. See ACTIVE_WORK.md for this task's scope.
+Gemini ownership was not recorded. This dated note does not describe current task ownership.
 
 **The audit remains open. No experimental qualification is accepted.**
 

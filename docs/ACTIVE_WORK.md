@@ -1,24 +1,20 @@
-# Active LPBF work — 27 September 2026
+# Active LPBF coordination — 27 September 2026
 
-This is a short coordination snapshot. Dated measurements remain in `../PROOF.md` and `../sonkayıtlar/LOG.md`.
+This file coordinates parallel work; it is not a second status or evidence log. Use [STATUS.md](../STATUS.md) for current findings, [ROADMAP.md](../ROADMAP.md) for product priorities, and [PROOF.md](../PROOF.md) for dated evidence.
 
 ## Scope
 
-Complete the shared LPBF material/process identity and a reproducible run path across CPU, PyTorch CUDA, and opt-in Warp v2. Preserve Torch v1 behavior. EIS/EDS and unrelated modules are deferred while the LPBF acceptance gates remain open.
+Complete the shared LPBF material/process identity and reproducible run path across CPU, PyTorch CUDA, and opt-in Warp v2. Keep Torch v1 behavior stable. Defer EIS/EDS and unrelated modules while these acceptance gates remain open.
 
-## Current evidence
+## Work ownership
 
-- Selected CPU/Torch and CPU/Warp same-input numerical checks pass. A bounded native Warp queue case passed its captured field comparisons and artifact readback; the public persistent archive contract remains Torch-bound.
-- A real browser GPU job failed parity because the final accepted sampling differed from the CPU reference by a roundoff-sized endpoint step. Keep the frozen criteria and fix the endpoint rule before claiming parity for that path.
-- The alternating three-repeat pilot measured Torch/Warp median ratio 1.294x. The separate Torch source integration pilot measured CPU/CUDA ratio 1.019x. No device-kernel profiler attribution is available; these are case-specific observations, not a default-backend or general speedup basis.
-- Fine-grid/time convergence remains inconclusive. IN718 is unvalidated; IN625 remains screening-only.
-- A bounded CPU browser archive/export/import/restore case passed. General GPU workflow acceptance remains open.
-- The shared local checkout has unpublished work; its current status is not a `main` release.
+- The implementation owner changes only the assigned solver, worker, integration, and focused test paths.
+- The integration owner checks identity and artifacts across execution, persistent storage, API, export/import, and browser restore.
+- Independent reviewers stay read-only unless assigned specific paths. Record accepted findings and their evidence in `PROOF.md`; keep this file limited to ownership and the next coordination steps.
 
-## Next acceptance
+## Next coordination steps
 
-1. Fix the GPU endpoint-sampling mismatch without changing frozen tolerances.
-2. Bind Warp v2 state and artifacts to the persistent run identity, or retain diagnostic-only status until the archive contract passes.
-3. Verify API and browser export, reload, comparison, and isolated restore on the same saved run.
-4. Finish the frozen convergence assessment and profile representative matched backends before optimizing.
-5. Keep alloy and independent-measurement gates separate from software/numerical checks.
+1. Resolve the GPU endpoint-sampling mismatch against the CPU reference without loosening frozen parity criteria.
+2. Integrate Warp v2 into the persistent run/archive contract only if its solver and material identity remain exact; otherwise keep it diagnostic-only.
+3. Verify export, reload, comparison, and isolated restore on the same saved run through the API and browser.
+4. Revisit the frozen convergence assessment, performance profiling, and alloy/measurement gates only with their separate evidence requirements.

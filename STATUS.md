@@ -4,21 +4,22 @@
 
 ## Product state
 
-Metalliksa is a research engineering workstation. LPBF is the current core product focus; the application also contains specialist materials and characterization workspaces at different maturity levels. Research or preview availability is not production qualification.
+Metalliksa is a research engineering prototype focused on a traceable LPBF workflow. The engineering checkout is on `codex/lpbf-buildjob-material-identity`, 40 commits ahead of its remote branch at the last check, and contains local work that is not a `main` release.
 
-The active engineering objective is to complete the shared LPBF material/process identity and a reproducible run-evidence path, then verify the same workflow across CPU, PyTorch CUDA, and Warp CUDA. Work in the shared local checkout may not yet be merged to `main`; this snapshot is not a release statement.
+The current objective is to preserve one material/process/run identity through CPU, PyTorch CUDA, and opt-in Warp execution and through the application evidence workflow. A solver result or passing software check alone does not establish experimental validation or production readiness.
 
 ## Evidence and open gates
 
-- Selected same-input CPU/Torch and CPU/Warp parity checks pass. They establish only the cases and metrics recorded in [PROOF.md](PROOF.md).
-- The current three-repeat GPU pilot reports a Warp/Torch median ratio of 1.294x and a Torch CPU/CUDA ratio of 1.019x. Device-kernel timing is not available; the evidence does not justify a default-backend change or a general speedup claim.
-- The frozen fine-grid/time convergence result remains inconclusive. Its acceptance limits are unchanged.
-- The IN718 comparison remains unvalidated. IN625 remains screening-only because source-backed properties, uncertainty, and model applicability are incomplete.
-- Run capture and archive workflows have bounded passing checks, but the full identity-preserving API and browser export/restore path still has open integration and acceptance work.
+- Selected same-input CPU/Torch and CPU/Warp numerical checks pass. A bounded native Warp queue run also passed ten stored comparisons and readback checks for its captured artifacts. It does not establish Warp support in the persistent application archive contract.
+- A real browser GPU job failed the parity gate because CPU and GPU endpoint sampling differed. A roundoff-sized final-step difference added a GPU step; fix the shared endpoint rule without changing the frozen acceptance limits.
+- A three-repeat alternating Torch/Warp pilot measured a case-specific median ratio of 1.294x. A separate CPU-source/CUDA-source Torch pilot measured 1.019x. The differences are small, single-session observations without device-kernel attribution; they do not justify a default change or a general speed claim.
+- The frozen fine-grid/time convergence result remains inconclusive.
+- IN718 measurement candidates have not passed source/input/observable matching and remain unvalidated. IN625 is admitted only for bounded screening; full-transient admission and experimental validation remain false.
+- A bounded CPU browser archive/export/import/restore workflow passed for one short software acceptance case. General workflow acceptance and the persistent GPU run/archive/export/restore path remain open.
 - No production-release, standards-compliance, or independent experimental-validation claim is established by these checks.
 
 ## Next work
 
-Complete the Warp v2 run-identity and archive integration without changing the established Torch v1 contract. Then check same-run API/browser export and isolated restore, retain the open convergence and experiment gates, and profile matched backends before proposing performance changes.
+Resolve the endpoint-sampling parity failure, preserve exact identity while integrating or withholding Warp from the persistent archive contract, and complete same-run API/browser checks. Keep convergence, IN718, and IN625 limits visible. Profile representative matched runs before making performance claims.
 
-Use [ROADMAP.md](ROADMAP.md) for priorities, [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md) for current coordination, and [the documentation map](docs/README.md) for canonical and historical records. Dated measurements and command-level evidence belong in [PROOF.md](PROOF.md) and [sonkayıtlar/LOG.md](sonkayıtlar/LOG.md); this file is a short snapshot, not a second event log.
+Use [ROADMAP.md](ROADMAP.md) for priorities, [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md) for the current coordination checkpoint, and [docs/README.md](docs/README.md) for the document map. Dated measurements and command-level evidence belong in [PROOF.md](PROOF.md) and [sonkayıtlar/LOG.md](sonkayıtlar/LOG.md); this file is a short snapshot, not a second event log.

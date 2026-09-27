@@ -561,7 +561,7 @@ Operational log of agent jobs **whether they finished or stopped mid-task**. New
 - **Agent**: Cursor Auto (Composer)
 - **Result**: PASS
 - **Task**: MetalliX LPBF Faz+4: literature UQ on build-job; NIST AMB2018-02; Murakami/Gumbel; AMS/ASTM qualification template; verdict label + P(printable); dört alaşım; sayı uydurma yok.
-- **Done**: lpbf_screening_uq.py MC + Sobol-proxy; 
+- **Done**: lpbf_screening_uq.py MC + Sobol-proxy;
 ist_ambench_2018_02.py Table 4 CBM; murakami_fatigue_screening.py; build-job/schema/TS/rail/Decision lab wired; PROOF 016.
 - **Where we left off**: Nothing left on this task. Commit/push yeni1 then main sync.
 - **Files**: python/lpbf_screening_uq.py, python/nist_ambench_2018_02.py, python/murakami_fatigue_screening.py, python/lpbf_build_job_solver.py, python/lpbf_build_job_schema.py, python/lpbf_thermal_solver.py, python/test_lpbf_build_job.py, src/services/pythonComputationService.ts, src/store/useLpbfBuildJobStore.ts, src/components/LpbfBuildJobRail.tsx, src/components/3d-distortion-lab/IndustrialLPBFDecisionLab.tsx, PROOF.md, sonkayıtlar/LOG.md

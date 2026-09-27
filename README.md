@@ -36,3 +36,7 @@ npm run dev
 Optional AI-backed features, including the copilot, micrograph vision and dataset planner, require `OPENAI_API_KEY` on the server. The application interface is in English.
 
 For implementation details, see [workstation architecture and workflows](docs/RESEARCH_WORKSTATION.md) and [LPBF model scope and limitations](docs/LPBF_ENGINEERING.md). Principal checks are `npm run lint`, `npm run test:unit`, `npm run test:lpbf` and `npm run build`; slower LPBF checks are available through `npm run test:lpbf:slow`.
+
+## Contributor handoff
+
+Record each work segment in [the session log](sonkayıtlar/LOG.md): last action, next step, whether the work is complete or partial, and any blocker. Apply this to code, UI, materials, evidence, tests, and documentation.

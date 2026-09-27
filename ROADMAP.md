@@ -35,7 +35,7 @@ The product goal is to make technical investigations easier to inspect and repro
 4. Retain the inconclusive fine-grid/time result until its predeclared assessment is complete; profile matched backends before proposing performance changes.
 5. Keep IN718 experimental comparison unvalidated and IN625 screening-only until their separate evidence gates pass.
 
-Dated observations belong in [PROOF.md](PROOF.md) and the [session log](sonkayıtlar/LOG.md). The short current snapshot is [STATUS.md](STATUS.md); coordination details are in [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md). Superseded plans and dated audits are indexed in [the archive](docs/archive/README.md).
+Dated observations belong in [PROOF.md](PROOF.md) and the [session log](sonkayıtlar/LOG.md). The short current snapshot is [STATUS.md](STATUS.md); coordination details are in [docs/ACTIVE_WORK.md](docs/ACTIVE_WORK.md). Superseded plans and dated audits are indexed in [the archive](docs/archive/).
 
 ## Deferred scope
 

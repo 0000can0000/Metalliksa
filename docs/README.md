@@ -62,7 +62,7 @@ not user-facing documentation.
 
 ## Historical records
 
-- [Archive index](archive/README.md) — superseded plans, dated audits, and
+- [Archived records](archive/) — superseded plans, dated audits, and
   environment/module snapshots. Use these for provenance, not current status.
 
 ### Maintenance
